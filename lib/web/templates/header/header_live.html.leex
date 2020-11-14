@@ -1,0 +1,25 @@
+<header class="cpub__header">
+  <nav
+    role="navigation"
+    aria-label="Main navigation">
+
+    <div class="header__left">
+      <% homepage = if @current_user, do: "/~", else: "/"  %>
+      <%= live_redirect to: homepage do %>
+        <h3>Bonfire</h3>
+      <% end %>
+    </div>
+
+    <div class="header__right">
+
+    <%= live_component(
+      @socket,
+      Bonfire.Me.Web.HeaderMeLive,
+      id: :my_user_header,
+      current_user: @current_user,
+      current_account: @current_account
+    ) %>
+
+    </div>
+  </nav>
+</header>
