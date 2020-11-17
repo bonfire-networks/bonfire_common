@@ -1,0 +1,73 @@
+<div class="lg:hidden flex w-100 flex-col flex-1">
+  <div class="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
+    <details class="details-dialog">
+      <summary class="h-full flex items-center">
+        <div class="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:bg-gray-100 focus:text-gray-600 lg:hidden" aria-label="Open sidebar">
+          <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </div>
+      </summary>
+      <details-dialog>
+      <div class="md:hidden">
+        <%= live_component(
+          @socket,
+          SidebarMobileLive
+        ) %>
+      </div>
+      </details-dialog>
+    </details>
+    <div class="flex-1 px-4 flex justify-between">
+      <div class="flex-1 flex">
+       <form class="w-full items-center flex md:ml-0" action="#" method="GET">
+        <label for="search_field" class="sr-only">Search</label>
+        <div style="max-width: 290px; height: 40px;" class="relative w-full text-gray-400 focus-within:text-gray-600">
+          <div style="left: 8px" class="text-gray-500 absolute inset-y-0 left-0 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 fill-current" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" />
+            </svg>
+          </div>
+          <input type="search" id="search_field" class="pl-8 w-full bg-gray-300 placeholder-gray-500 h-full" placeholder="Search">
+        </div>
+      </form>
+      </div>
+      <div class="ml-4 flex items-center md:ml-6">
+        <!-- Profile dropdown -->
+        <div class="ml-3 relative">
+          <div>
+              <details class="details-dropdown">
+                <summary>
+                  <div class="max-w-xs flex items-center text-sm rounded-full focus:outline-none focus:shadow-outline" id="user-menu" aria-label="User menu" aria-haspopup="true">
+                    <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
+                  </div>
+                </summary>
+                <details-menu>
+                  <div class="origin-top-right z-10 absolute right-0 mt-2 w-48 rounded-md shadow-lg">
+                    <div class="py-1 rounded-md bg-white shadow-xs" role="menu" aria-orientation="vertical" aria-labelledby="user-menu">
+                      <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Your Profile</a>
+                      <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Settings</a>
+                      <details class="details-dialog">
+                        <summary>
+                          <div class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Sign out</div>
+                        </summary>
+                        <details-dialog>
+                          <%= live_component(
+                            @socket,
+                            ModalLive
+                          ) %>
+                        <%# <button type="button" data-close-dialog>Close</button> %>
+                        </details-dialog>
+                      </details>
+                    </div>
+                  </div>
+                </details-menu>
+              </details>
+
+
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
