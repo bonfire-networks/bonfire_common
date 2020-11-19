@@ -152,6 +152,9 @@ defmodule Bonfire.Common.Utils do
     {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
   end
 
+  @doc """
+  Special LiveView helper function which allows loading LiveComponents in regular Phoenix views: `live_render_component(@conn, MyLiveComponent)`
+  """
   def live_render_component(conn, load_live_component) do
     if Code.ensure_loaded(load_live_component), do: live_render(@conn,
         Bonfire.Web.LiveComponent,

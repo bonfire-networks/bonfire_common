@@ -17,9 +17,6 @@ defmodule Bonfire.Web.LiveComponent do
   end
 
   defp mounted(params, %{"load_live_component" => load_live_component} = session, socket) do
-    # IO.inspect(params: params)
-    # IO.inspect(session: session)
-    # IO.inspect(socket: socket)
 
      {:ok, socket |> assign(:load_live_component, load_live_component)}
   end
@@ -27,7 +24,6 @@ defmodule Bonfire.Web.LiveComponent do
   defp mounted(_params, _session, socket), do: {:ok, socket}
 
   def render(assigns) do
-      # IO.inspect(assigns: assigns)
       ~L"""
       <%= if Map.has_key?(assigns, :load_live_component) and Code.ensure_loaded(assigns.load_live_component), do: live_component(
       @socket,
