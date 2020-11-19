@@ -1,5 +1,5 @@
-defmodule Bonfire.Web.Layout.HeaderGuestLive do
+defmodule Bonfire.Web.Components.HeaderGuestLive do
   use Bonfire.Web, :view
-  # alias Bonfire.Web.Layout.ModalLive
+  # alias Bonfire.Web.Components.ModalLive
 
 end

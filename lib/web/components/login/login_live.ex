@@ -1,4 +1,4 @@
-defmodule Bonfire.Web.Layout.LoginLive do
+defmodule Bonfire.Web.Components.LoginLive do
   use Bonfire.Web, :live_component
 
 end

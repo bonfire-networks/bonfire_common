@@ -1,4 +1,4 @@
-defmodule Bonfire.Web.Layout.SidebarMobileLive do
+defmodule Bonfire.Web.Components.SidebarMobileLive do
   use Bonfire.Web, :live_component
 
 end

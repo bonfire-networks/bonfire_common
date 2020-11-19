@@ -1,4 +1,4 @@
-defmodule Bonfire.Web.Layout.ProfileHeroLive do
+defmodule Bonfire.Web.Components.ProfileHeroLive do
   use Bonfire.Web, :live_component
 
 end

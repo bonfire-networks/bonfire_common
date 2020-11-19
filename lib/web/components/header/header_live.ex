@@ -1,5 +1,5 @@
-defmodule Bonfire.Web.Layout.HeaderLive do
+defmodule Bonfire.Web.Components.HeaderLive do
   use Bonfire.Web, :live_component
-  alias Bonfire.Web.Layout.ModalLive
-  alias Bonfire.Web.Layout.SidebarMobileLive
+  alias Bonfire.Web.Components.ModalLive
+  alias Bonfire.Web.Components.SidebarMobileLive
 end

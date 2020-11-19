@@ -1,4 +1,4 @@
-defmodule Bonfire.Web.Layout.ActivityLive do
+defmodule Bonfire.Web.Components.ActivityLive do
   use Bonfire.Web, :live_component
 
 end
