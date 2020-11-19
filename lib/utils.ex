@@ -152,4 +152,13 @@ defmodule Bonfire.Common.Utils do
     {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
   end
 
+  def live_render_component(conn, load_live_component) do
+    if Code.ensure_loaded(load_live_component), do: live_render(@conn,
+        Bonfire.Web.LiveComponent,
+        session: %{
+          "load_live_component"=> load_live_component
+        }
+      )
+  end
+
 end
