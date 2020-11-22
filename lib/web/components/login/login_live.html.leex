@@ -9,13 +9,24 @@
       </div>
     </div>
     <div class="py-5 mx-auto sm:px-6 lg:px-8">
-      <form action="#" method="POST">
+      <%= f = form_for @form, Routes.login_path(@socket, :create), class: "w-full flex md:ml-0" %>
+        <%= if @error == :no_match do %>
+          <div role="status" class="box__warning">
+            <span>Not found. Either your username or password was incorrect. Did you mean to <%= link "sign up", to: Routes.signup_path(:index) %>?</span>
+          </div>
+        <% end %>
+        <%= if @error == :email_not_confirmed do %>
+          <div role="status" class="box__warning">
+            <span>We need you to click the link in the email we sent you to verify your email address.</span>
+          </div>
+        <% end %>
+
         <div>
           <label for="email" class="block text-sm font-medium leading-5 text-gray-700">
             Email address
           </label>
           <div class="mt-1 rounded-md shadow-sm">
-            <input id="email" type="email" required class="w-full">
+            <%= email_input f, :email, required: true, class: "w-full" %>
           </div>
         </div>
 
@@ -24,22 +35,22 @@
             Password
           </label>
           <div class="mt-1 rounded-md shadow-sm">
-            <input id="password" type="password" required class="w-full">
+            <%= password_input f, :password, required: true, class: "w-full" %>
           </div>
         </div>
 
         <div class="mt-6 flex items-center justify-between">
           <div class="flex items-center">
-            <input id="remember_me" type="checkbox" class="form-checkbox h-4 w-4 text-gray-900 transition duration-150 ease-in-out">
+            <%= checkbox f, :remember_me, class: "form-checkbox h-4 w-4 text-gray-900 transition duration-150 ease-in-out" %>
             <label for="remember_me" class="ml-2 block text-sm leading-5 text-gray-900">
               Remember me
             </label>
           </div>
 
           <div class="text-sm leading-5">
-            <a href="#" class="font-medium text-gray-900 hover:text-gray-700 focus:outline-none focus:underline transition ease-in-out duration-150">
-              Forgot your password?
-            </a>
+            <%= #link "Forgot your password?",
+                #to: Routes.forgot_password_path(@socket, :index),
+                #class: "font-medium text-gray-900 hover:text-gray-700 focus:outline-none focus:underline transition ease-in-out duration-150" %>
           </div>
         </div>
 
