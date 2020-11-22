@@ -10,10 +10,7 @@
       </summary>
       <details-dialog>
       <div class="md:hidden">
-        <%= live_component(
-          @socket,
-          SidebarMobileLive
-        ) %>
+        <%= live_component(@socket, SidebarMobileLive, assigns) %>
       </div>
       </details-dialog>
     </details>
@@ -51,10 +48,7 @@
                           <div class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Sign out</div>
                         </summary>
                         <details-dialog>
-                          <%= live_component(
-                            @socket,
-                            ModalLive
-                          ) %>
+                          <%= live_component(@socket, ModalLive, assigns) %>
                         <%# <button type="button" data-close-dialog>Close</button> %>
                         </details-dialog>
                       </details>
