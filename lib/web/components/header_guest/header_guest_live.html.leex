@@ -32,12 +32,12 @@
 
           <span class="inline-flex rounded-md shadow-sm">
             <button type="button" class="inline-flex items-center px-4 py-2 text-sm leading-5 font-medium rounded-md text-gray-100 bg-gray-900 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:text-gray-200 active:bg-gray-700 transition ease-in-out duration-150">
-              Login
+              <a href="<%= Routes.login_path(@socket) %>">Login</a>
             </button>
           </span>
           <span class="inline-flex ml-3 rounded-md shadow-sm">
             <button type="button" class="inline-flex items-center px-4 py-2 text-sm leading-5 font-medium rounded-md text-gray-100 bg-gray-900 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:text-gray-200 active:bg-gray-700 transition ease-in-out duration-150">
-              Signup
+              <a href="<%= Routes.signup_path(@socket) %>">Signup</a>
             </button>
           </span>
         </div>
