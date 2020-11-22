@@ -1,59 +1,67 @@
 defmodule Bonfire.Web do
   @moduledoc false
 
-  def controller do
+  def controller(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Phoenix.Controller, namespace: Bonfire.Web
+      use Phoenix.Controller, unquote(opts)
 
       import Plug.Conn
       import Bonfire.Common.Web.Gettext
       alias Bonfire.Web.Router.Helpers, as: Routes
-
-      # FIXME
-      # alias Bonfire.Web.Plugs.{MustBeGuest, MustLogIn}
-
+      alias Bonfire.Web.Plugs.{MustBeGuest, MustLogIn}
+      import Phoenix.LiveView.Controller
       import Bonfire.Common.Utils
     end
   end
 
-  def view(root \\ "lib/web/templates") do
+  def view(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:root, "lib/web/views")
+      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Phoenix.View,
-        root: unquote(root),
-        namespace: Bonfire.Web
+      use Phoenix.View, unquote(opts)
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
-      # Include shared imports and aliases for views
       unquote(view_helpers())
     end
   end
 
-  def live_view do
+  def live_view(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:layout, {Bonfire.Web.LayoutView, "live.html"})
+      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Phoenix.LiveView,
-        namespace: Bonfire.Web,
-        layout: {Bonfire.Common.Web.LayoutView, "live.html"}
-
-      unquote(view_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent,
-        namespace: Bonfire.Web
+      use Phoenix.LiveView, unquote(opts)
 
       unquote(view_helpers())
     end
   end
 
-  def router do
+  def live_component(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Phoenix.Router,
-        namespace: Bonfire.Web
+      use Phoenix.LiveComponent, unquote(opts)
+
+      unquote(view_helpers())
+    end
+  end
+
+  def router(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
+    quote do
+      use Phoenix.Router, unquote(opts)
 
       import Plug.Conn
       import Phoenix.Controller
@@ -63,10 +71,12 @@ defmodule Bonfire.Web do
     end
   end
 
-  def channel do
+  def channel(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Phoenix.Channel,
-        namespace: Bonfire.Web
+      use Phoenix.Channel, unquote(opts)
 
       import Bonfire.Common.Web.Gettext
     end
@@ -99,7 +109,7 @@ defmodule Bonfire.Web do
     apply(__MODULE__, which, [])
   end
 
-  defmacro __using__([which | args]) do
-    apply(__MODULE__, which, args)
+  defmacro __using__([{which,opts}]) when is_atom(which) and is_list(opts) do
+    apply(__MODULE__, which, [opts])
   end
 end
