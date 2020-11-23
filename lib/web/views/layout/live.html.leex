@@ -19,7 +19,11 @@
   <div class="h-screen container mx-auto max-w-screen-lg">
  <%= live_component(@socket, Bonfire.Web.Components.LogoHeaderLive, assigns) %>
   <div class="flex flex-col overflow-hidden">
-    <div class="relative z-10 rounded-md flex-shrink-0 flex h-16 bg-white shadow justify-between">
+
+<%= if  is_nil(@current_account) == false && !@current_user do %>
+    <div></div>
+  <% else %>
+  <div class="relative z-10 rounded-md flex-shrink-0 flex h-16 bg-white shadow justify-between">
       <div class="flex items-center flex-shrink-0 px-4">
         <div class="border-r pr-4">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -47,14 +51,17 @@
             </span>
           </div>
         </div>
-    </div>
+    </div>  
+  <% end %>
+  
    <%= @inner_content %>
    </div>
  <% else %>
  <div class="h-screen flex overflow-hidden">
  <%= live_component(
     @socket,
-    SidebarLive
+    Bonfire.Web.Components.SidebarLive,
+    assigns
   ) %>
 
   <div class="flex flex-col w-0 flex-1 overflow-y-auto">
@@ -62,7 +69,8 @@
     <div class="h-screen container mx-auto max-w-screen-lg">
       <%= live_component(
         @socket,
-        HeaderLive
+        Bonfire.Web.Components.HeaderLive, 
+        assigns
       ) %>
 
       <div class="p-4 lg:p-0">
