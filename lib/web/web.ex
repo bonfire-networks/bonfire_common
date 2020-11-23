@@ -56,6 +56,13 @@ defmodule Bonfire.Web do
     end
   end
 
+  def live_plug(_opts \\ []) do
+    quote do
+      alias Bonfire.Web.Router.Helpers, as: Routes
+      import Phoenix.LiveView
+    end
+  end
+
   def router(opts \\ []) do
     opts =
       opts
