@@ -3,16 +3,17 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUserFromPath do
   use Bonfire.Web, :live_plug
   alias Bonfire.Me.{Accounts, Users}
   alias Bonfire.Me.Web.{SwitchUserLive}
+  alias CommonsPub.Users.User
 
-  def mount(%{"as_username" => username}, _session, socket) do
-    case Users.get_current(username, socket.assigns[:current_account]) do
-      {:ok, user} -> {:ok, assign(socket, current_user: user)}
-      _ -> no(socket)
-    end
-  end
-  def mount(_, _, socket), do: no(socket)
+  # the non-live plug already supplied the current user
+  def mount(_, _, %{assigns: %{current_user: %User{}}}=socket), do: {:ok, socket}
 
-  def no(socket),
-    do: {:halt, push_redirect(socket, to: Routes.live_path(socket, SwitchUserLive))}
+  def mount(%{"as_username" => username}, _, socket),
+    do: check_user(Users.get_current(username, socket.assigns[:current_account]), socket)
+
+  def mount(_, _, socket), do: check_user(nil, socket)
+
+  defp check_user({:ok, user}, socket), do: {:ok, assign(socket, current_user: user)}
+  defp check_user(_, socket), do: {:halt, push_redirect(socket, to: Routes.live_path(socket, SwitchUserLive))}
 
 end
