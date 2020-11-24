@@ -23,18 +23,10 @@
     </div>
   <% else %>
     <div class="h-screen flex overflow-hidden">
-      <%= live_component(
-          @socket,
-          Bonfire.Web.Components.SidebarLive,
-          assigns
-        ) %>
+      <%= live_component(@socket, Bonfire.Web.Components.SidebarLive, assigns) %>
       <div class="flex flex-col w-0 flex-1 overflow-y-auto">
         <div class="h-screen container mx-auto max-w-screen-lg">
-          <%= live_component(
-            @socket,
-            Bonfire.Web.Components.HeaderLive, 
-            assigns
-          ) %>
+          <%= live_component(@socket, Bonfire.Web.Components.HeaderLive, assigns) %>
           <div class="p-4 lg:p-0">
             <%= @inner_content %>
           </div>
@@ -42,4 +34,4 @@
       </div>
     </div>
   <% end %>
- </div>
+</div>
