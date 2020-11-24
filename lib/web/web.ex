@@ -51,8 +51,15 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveComponent, unquote(opts)
-
       unquote(view_helpers())
+    end
+  end
+
+  def plug(_opts \\ []) do
+    quote do
+      alias Bonfire.Web.Router.Helpers, as: Routes
+      import Plug.Conn
+      import Phoenix.Controller
     end
   end
 
