@@ -1,5 +1,5 @@
 <div class="flex flex-col overflow-hidden">
-    <div class="relative z-10 rounded-md flex-shrink-0 flex h-16 bg-white shadow justify-between">
+  <div class="relative z-10 rounded-md flex-shrink-0 flex h-16 bg-white shadow justify-between">
       <div class="flex items-center flex-shrink-0 px-4">
         <div class="border-r pr-4">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -26,7 +26,7 @@
             </div>
           </form>
         </div>
-        </div>
+      </div>
       <div class="px-4 flex ">
         <%= if !@current_account do %>
           <div class="ml-4 flex items-center md:ml-6">
@@ -48,7 +48,7 @@
         <% else %>
           <div class="ml-4 flex items-center md:ml-6">
             <span class="inline-flex rounded-md shadow-sm">
-              <%= link to: Routes.login_path(@socket, :index) do %>
+              <%= link to: Routes.live_path(@socket, Bonfire.Me.Web.SwitchUserLive) do %>
                 <button type="button" class="inline-flex items-center px-4 py-2 text-sm leading-5 font-medium rounded-md text-gray-100 bg-gray-900 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:text-gray-200 active:bg-gray-700 transition ease-in-out duration-150">
                   Select the user
                 </button>
@@ -57,4 +57,5 @@
           </div>
         <% end %>
       </div>
-    </div>
+  </div>
+</div>  
