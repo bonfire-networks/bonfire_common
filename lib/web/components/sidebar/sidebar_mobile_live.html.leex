@@ -8,7 +8,7 @@
       </button>
     </div>
     <div class="flex-shrink-0 flex mb-8 items-center px-4">
-      <%= link to: Routes.home_path(@socket, :home) do %>
+      <%= link to: Routes.live_path(@socket, Bonfire.Me.Web.MeHomeLive, @current_user.character.username) do %>
             <div class="flex items-center">
               <svg class="mx-auto" width="28px" height="28px" viewBox="0 0 28 28" version="1.1" xmlns="http://www.w3.org/2000/svg">
                 <g id="Artboard-Copy-2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
