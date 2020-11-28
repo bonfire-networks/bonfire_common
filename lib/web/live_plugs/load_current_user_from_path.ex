@@ -1,9 +1,9 @@
 defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUserFromPath do
 
   use Bonfire.Web, :live_plug
-  alias Bonfire.Me.{Accounts, Users}
-  alias Bonfire.Me.Web.{SwitchUserLive}
-  alias CommonsPub.Users.User
+  alias Bonfire.Me.Identity.{Accounts, Users}
+  alias Bonfire.Me.Web.SwitchUserLive
+  alias Bonfire.Data.Identity.User
 
   # the non-live plug already supplied the current user
   def mount(_, _, %{assigns: %{current_user: %User{}}}=socket), do: {:ok, socket}

@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Web.LivePlugs.AuthRequired do
+defmodule Bonfire.Common.Web.LivePlugs.AccountRequired do
 
   import Phoenix.LiveView
 

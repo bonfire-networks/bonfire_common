@@ -1,8 +1,8 @@
 defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccountFromSession do
 
   use Bonfire.Web, :live_plug
-  alias Bonfire.Me.Accounts
-  alias CommonsPub.Accounts.Account
+  alias Bonfire.Me.Identity.Accounts
+  alias Bonfire.Data.Identity.Account
 
   # the non-live plug already supplied the current account
   def mount(_, _, %{assigns: %{current_account: %Account{}}}=socket), do: {:ok, socket}
