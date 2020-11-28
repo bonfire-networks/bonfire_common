@@ -1,4 +1,5 @@
 # bonfire_data_access_control = "~> 0.1"
+# bonfire_data_activity_pub = "~> 0.1"
 # bonfire_data_identity = "~> 0.1"
 # bonfire_data_social = "~> 0.1"
 gettext = "~> 0.11"
