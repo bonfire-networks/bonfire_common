@@ -14,6 +14,9 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Plugs.{MustBeGuest, MustLogIn}
       import Phoenix.LiveView.Controller
       import Bonfire.Common.Utils
+
+      unquote(use_if_available(Thesis.Controller))
+
     end
   end
 
@@ -30,6 +33,8 @@ defmodule Bonfire.Web do
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
       unquote(view_helpers())
+
+      unquote(use_if_available(Thesis.View))
     end
   end
 
@@ -82,6 +87,9 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Router
 
       import Bonfire.Common.Utils
+
+      unquote(use_if_available(Thesis.Router))
+
     end
   end
 
@@ -113,6 +121,14 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Router.Helpers, as: Routes
 
       import Bonfire.Common.Utils
+    end
+  end
+
+  defp use_if_available(module) do
+    if Code.ensure_loaded?(module) do
+      quote do
+        use unquote(module)
+      end
     end
   end
 
