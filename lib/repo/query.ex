@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule CommonsPub.Repo.Query do
+defmodule Bonfire.Repo.Query do
   import Ecto.Query
 
   def unroll(items, key \\ :context)
@@ -19,10 +19,10 @@ defmodule CommonsPub.Repo.Query do
   end
 
   defmacro match_admin() do
-    quote do
-      %CommonsPub.Users.User{
-        local_user: %CommonsPub.Users.LocalUser{is_instance_admin: true}
-      }
-    end
+    # quote do
+    #   %CommonsPub.Users.User{
+    #     local_user: %CommonsPub.Users.LocalUser{is_instance_admin: true}
+    #   }
+    # end
   end
 end

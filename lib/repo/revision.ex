@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule CommonsPub.Repo.Revision do
-  alias CommonsPub.Repo
+defmodule Bonfire.Repo.Revision do
+  alias Bonfire.Repo
   import Ecto.Query, only: [from: 2]
 
   def insert(module, parent, attrs) do

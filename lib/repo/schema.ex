@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule CommonsPub.Repo.Schema do
+defmodule Bonfire.Repo.Schema do
   @moduledoc "Macros for defining Ecto Schemas"
 
   @doc "Uses Ecto.Schema and imports the contents of this module"
   defmacro __using__(_) do
     quote do
       use Ecto.Schema
-      import CommonsPub.Repo.Schema
+      import Bonfire.Repo.Schema
     end
   end
 

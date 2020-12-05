@@ -1,6 +1,6 @@
-defmodule CommonsPub.Repo.Migrator do
+defmodule Bonfire.Repo.Migrator do
 @moduledoc """
-TODO: add such a migrator to supervision tree
+TODO: add such a migrator to app's supervision tree?
 """
   use GenServer
   require Logger
@@ -11,8 +11,8 @@ TODO: add such a migrator to supervision tree
 
   def init(_) do
 
-    # CommonsPub.ReleaseTasks.startup_migrations()
-    # CommonsPub.ReleaseTasks.migrate_repos()
+    # Bonfire.Common.ReleaseTasks.startup_migrations()
+    # Bonfire.Common.ReleaseTasks.migrate_repos()
 
     {:ok, nil}
   end

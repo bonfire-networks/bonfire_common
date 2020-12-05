@@ -11,7 +11,7 @@ defmodule Bonfire.Repo do
   alias Ecto.Changeset
 
   import Ecto.Query
-  alias CommonsPub.Common.Errors.NotFoundError
+  alias Bonfire.Common.Errors.NotFoundError
 
   require Logger
 
@@ -148,7 +148,7 @@ defmodule Bonfire.Repo do
   def maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
 
   def maybe_do_preload(obj, preloads) when is_struct(obj) do
-    CommonsPub.Repo.preload(obj, preloads)
+    Bonfire.Repo.preload(obj, preloads)
   rescue
     ArgumentError ->
       obj

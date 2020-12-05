@@ -10,5 +10,7 @@ phoenix_html = "~> 2.11"
 phoenix_live_dashboard = "~> 0.2.0"
 phoenix_live_view = "~> 0.14"
 plug_cowboy = "~> 2.0"
+# checking email validity
+email_checker = "~> 0.1"
 # specific for Publisher:Thesis extension
 # thesis = "~> 0.3.4"

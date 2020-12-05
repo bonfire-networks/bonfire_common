@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule CommonsPub.Repo.Changeset do
+defmodule Bonfire.Repo.Changeset do
   @moduledoc "Helper functions for changesets"
 
   alias Ecto.Changeset
   alias Ecto.ULID
 
-  # alias CommonsPub.Locales
-  alias CommonsPub.Mail.Checker
+  alias Bonfire.Mailer.Checker
 
   @doc "Generates the primary ID for an object, and sets the canonical URL based on that"
   def cast_object(changeset) do
@@ -21,25 +20,25 @@ defmodule CommonsPub.Repo.Changeset do
     Changeset.put_change(cs, :canonical_url, ActivityPub.Utils.object_url(%{id: id}))
   end
 
-  @doc "Validates a country code is one of the ones we know about"
-  def validate_country_code(changeset, field) do
-    Changeset.validate_change(changeset, field, fn _, code ->
-      case CommonsPub.Locales.country(code) do
-        {:ok, _} -> []
-        _ -> [{field, "must be a recognised country code"}]
-      end
-    end)
-  end
+  # @doc "Validates a country code is one of the ones we know about"
+  # def validate_country_code(changeset, field) do
+  #   Changeset.validate_change(changeset, field, fn _, code ->
+  #     case CommonsPub.Locales.country(code) do
+  #       {:ok, _} -> []
+  #       _ -> [{field, "must be a recognised country code"}]
+  #     end
+  #   end)
+  # end
 
-  @doc "Validates a language code is one of the ones we know about"
-  def validate_language_code(changeset, field) do
-    Changeset.validate_change(changeset, field, fn _, code ->
-      case CommonsPub.Locales.language(code) do
-        {:ok, _} -> []
-        _ -> [{field, "must be a recognised language code"}]
-      end
-    end)
-  end
+  # @doc "Validates a language code is one of the ones we know about"
+  # def validate_language_code(changeset, field) do
+  #   Changeset.validate_change(changeset, field, fn _, code ->
+  #     case CommonsPub.Locales.language(code) do
+  #       {:ok, _} -> []
+  #       _ -> [{field, "must be a recognised language code"}]
+  #     end
+  #   end)
+  # end
 
   @spec validate_http_url(Changeset.t(), atom) :: Changeset.t()
   @doc "Validates that a URL uses HTTP(S) and has a correct format."

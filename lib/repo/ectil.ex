@@ -1,4 +1,4 @@
-defmodule CommonsPub.Repo.Ectil do
+defmodule Bonfire.Repo.Ectil do
   require Ecto.Query
   alias Ecto.Query
 
