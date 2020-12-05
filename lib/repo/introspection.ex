@@ -15,7 +15,19 @@ defmodule Bonfire.Repo.Introspection do
   @doc """
   Lists all modules in the CommonsPub OTP application
   """
-  def app_modules(), do: Application.spec(Application.get_env(:bonfire_common, :otp_app), :modules)
+  def app_modules() do
+    otp_app = Application.get_env(:bonfire_common, :otp_app)
+    Application.spec(otp_app, :modules) || all_modules()
+  end
+
+  def all_modules() do
+    :code.all_loaded()
+      # |> IO.inspect(limit: :infinity)
+      |> Enum.filter(fn {mod, _} -> "#{mod}" =~ ~r{^[A-Z]} end)
+      |> Enum.map(fn {mod, _} -> mod end)
+      # |> Enum.map(fn mod -> hd(Module.split(mod)) end)
+      |> Enum.uniq
+  end
 
   @spec ecto_schema_table(atom()) :: binary() | nil
   @doc """
@@ -26,8 +38,11 @@ defmodule Bonfire.Repo.Introspection do
 
   @spec is_ecto_schema_module?(atom) :: boolean()
   @doc "true if the given atom names an Ecto Schema module"
-  def is_ecto_schema_module?(module) do
+  def is_ecto_schema_module?(module) when is_atom(module) do
     Code.ensure_loaded?(module) and
       function_exported?(module, :__schema__, 1)
   end
+
+  def is_ecto_schema_module?(_), do: false
+
 end

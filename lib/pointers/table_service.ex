@@ -49,13 +49,17 @@ defmodule Bonfire.Common.Pointers.TableService do
     try do
       Table
       |> @repo.all(telemetry_event: @init_query_name)
+      # |> IO.inspect
       |> pair_schemata()
+      # |> IO.inspect
       |> populate_table()
+
+      Logger.info("TableService started")
 
       {:ok, []}
     rescue
       e ->
-        Logger.info("TableService could not init because: #{inspect(e, pretty: true)}")
+        Logger.warn("TableService could not init because: #{inspect(e, pretty: true)}")
         {:ok, []}
     end
   end
@@ -140,8 +144,10 @@ defmodule Bonfire.Common.Pointers.TableService do
   # operating over the referenced tables to the `schema` key. Errors
   # if a matching schema is not found
   defp pair_schemata(entries) do
+    schema_modules = Introspection.ecto_schema_modules()
+    # IO.inspect(schema_modules: schema_modules)
     index =
-      Enum.reduce(Introspection.ecto_schema_modules(), %{}, fn module, acc ->
+      Enum.reduce(schema_modules, %{}, fn module, acc ->
         schema_reduce(Introspection.ecto_schema_table(module), module, acc)
       end)
 
