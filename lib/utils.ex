@@ -100,6 +100,35 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  @doc """
+  Convert map atom keys to strings
+  """
+  def stringify_keys(map, recursive \\ true)
+
+  def stringify_keys(nil, _recursive), do: nil
+
+  def stringify_keys(map = %{}, true) do
+    map
+    |> Enum.map(fn {k, v} -> {Atom.to_string(k), stringify_keys(v)} end)
+    |> Enum.into(%{})
+  end
+
+  def stringify_keys(map = %{}, _) do
+    map
+    |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end)
+    |> Enum.into(%{})
+  end
+
+  # Walk a list and stringify the keys of
+  # of any map members
+  def stringify_keys([head | rest], recursive) do
+    [stringify_keys(head, recursive) | stringify_keys(rest, recursive)]
+  end
+
+  def stringify_keys(not_a_map, recursive) do
+    not_a_map
+  end
+
   def map_error({:error, value}, fun), do: fun.(value)
   def map_error(other, _), do: other
 
@@ -162,6 +191,10 @@ defmodule Bonfire.Common.Utils do
           "load_live_component"=> load_live_component
         }
       )
+  end
+
+  def live_render_with_conn(conn, live_view) do
+    Phoenix.LiveView.Controller.live_render(conn, live_view, session: %{"conn" => conn})
   end
 
 end

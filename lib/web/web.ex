@@ -34,7 +34,6 @@ defmodule Bonfire.Web do
 
       unquote(view_helpers())
 
-      unquote(use_if_available(Thesis.View))
     end
   end
 
@@ -47,6 +46,7 @@ defmodule Bonfire.Web do
       use Phoenix.LiveView, unquote(opts)
 
       unquote(view_helpers())
+
     end
   end
 
@@ -57,6 +57,7 @@ defmodule Bonfire.Web do
     quote do
       use Phoenix.LiveComponent, unquote(opts)
       unquote(view_helpers())
+
     end
   end
 
@@ -121,13 +122,22 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Router.Helpers, as: Routes
 
       import Bonfire.Common.Utils
+
+      unquote(use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
+
     end
   end
 
-  defp use_if_available(module) do
+  defp use_if_available(module, fallback_module \\ nil) do
     if Code.ensure_loaded?(module) do
       quote do
         use unquote(module)
+      end
+    else
+      if is_atom(fallback_module) and Code.ensure_loaded?(fallback_module) do
+        quote do
+          use unquote(fallback_module)
+        end
       end
     end
   end

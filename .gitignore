@@ -25,3 +25,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 bonfire_web_phoenix-*.tar
 
+# ignore local mess deps
+deps.path

@@ -14,6 +14,7 @@
     <% end %>
   </head>
   <body>
+    <%= if Code.ensure_loaded?(Thesis.View), do: Thesis.View.thesis_editor(@conn) %>
     <%= @inner_content %>
   </body>
 </html>
