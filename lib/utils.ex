@@ -206,4 +206,11 @@ defmodule Bonfire.Common.Utils do
     Phoenix.LiveView.Controller.live_render(conn, live_view, session: %{"conn" => conn})
   end
 
+  @doc "Applies change_fn if the first parameter is not nil."
+  def maybe(nil, _change_fn), do: nil
+
+  def maybe(val, change_fn) do
+    change_fn.(val)
+  end
+
 end
