@@ -3,6 +3,8 @@ defmodule Bonfire.Repo do
   Ecto Repo and related common functions
   """
 
+  @repo Application.get_env(:bonfire_common, :repo_module)
+
   use Ecto.Repo,
     otp_app: Application.get_env(:bonfire_common, :otp_app),
     adapter: Ecto.Adapters.Postgres
@@ -137,9 +139,10 @@ defmodule Bonfire.Repo do
     ret
   end
 
-  def maybe_preload(obj, :context) do
-    CommonsPub.Contexts.prepare_context(obj)
-  end
+  # def maybe_preload(obj, :context) do
+  # # follow the context Pointer
+  #   CommonsPub.Contexts.prepare_context(obj)
+  # end
 
   def maybe_preload(obj, preloads) do
     maybe_do_preload(obj, preloads)
@@ -148,7 +151,7 @@ defmodule Bonfire.Repo do
   def maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
 
   def maybe_do_preload(obj, preloads) when is_struct(obj) do
-    Bonfire.Repo.preload(obj, preloads)
+    @repo.preload(obj, preloads)
   rescue
     ArgumentError ->
       obj

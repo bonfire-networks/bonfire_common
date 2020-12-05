@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Repo.Revision do
-  alias Bonfire.Repo
   import Ecto.Query, only: [from: 2]
+
+  @repo Application.get_env(:bonfire_common, :repo_module)
 
   def insert(module, parent, attrs) do
     parent_keys =
@@ -13,11 +14,11 @@ defmodule Bonfire.Repo.Revision do
 
     parent
     |> module.create_changeset(revision_attrs)
-    |> Repo.insert()
+    |> @repo.insert()
   end
 
   def preload(module, queryable) do
     query = from(r in module, order_by: [desc: r.inserted_at])
-    Repo.preload(queryable, [:current, revisions: query])
+    @repo.preload(queryable, [:current, revisions: query])
   end
 end

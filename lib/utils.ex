@@ -57,6 +57,15 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  def is_ulid(str) when is_binary(str) do
+    with :error <- Ecto.ULID.cast(str) do
+      false
+    else
+      _ -> true
+    end
+  end
+
+  def is_ulid(_), do: false
 
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
