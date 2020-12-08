@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Error do
   require Logger
   alias __MODULE__
+  alias Ecto.Changeset
 
   defstruct [:code, :message, :status]
 
@@ -38,6 +39,9 @@ defmodule Bonfire.Common.Error do
 
   defp handle(reason, extra \\ "")
 
+  defp handle(reason, %Ecto.Changeset{} = changeset),
+    do: handle(reason, changeset_nessage(changeset))
+
   defp handle(code, extra) when is_atom(code) do
     {status, message} = metadata(code, extra)
 
@@ -51,7 +55,7 @@ defmodule Bonfire.Common.Error do
   defp handle(status, extra) when is_integer(status) do
     return(%Error{
       code: status,
-      message: "#{inspect(extra)}",
+      message: "#{extra}",
       status: status
     })
   end
@@ -61,7 +65,7 @@ defmodule Bonfire.Common.Error do
 
     return(%Error{
       code: status,
-      message: "#{message} #{inspect(extra)}",
+      message: "#{message} #{extra}",
       status: status
     })
   end
@@ -82,8 +86,13 @@ defmodule Bonfire.Common.Error do
     end)
   end
 
+  def changeset_nessage(%Changeset{} = changeset) do
+    {_key, {message, _args}} = changeset.errors |> List.first()
+    message |> String.trim("\"")
+  end
+
   defp return(error) do
-    Logger.info("#{inspect(error)}")
+    Logger.warn("#{inspect(error)}")
     error
   end
 
@@ -103,7 +112,7 @@ defmodule Bonfire.Common.Error do
     show = String.replace(message, "%s", extra)
 
     if show == message do
-      {status, "#{show} #{inspect(extra)}"}
+      {status, "#{show} #{extra}"}
     else
       {status, "#{show}"}
     end
