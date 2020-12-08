@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Pointers.Queries do
-  alias Bonfire.Common.Pointers.TableService
   import Ecto.Query
   alias Pointers.Pointer
 
@@ -32,10 +31,10 @@ defmodule Bonfire.Common.Pointers.Queries do
   def filter(q, {:table, id}) when is_binary(id), do: where(q, [pointer: p], p.table_id == ^id)
 
   def filter(q, {:table, name}) when is_atom(name),
-    do: filter(q, {:table, TableService.lookup_id!(name)})
+    do: filter(q, {:table, Pointers.Tables.id!(name)})
 
   def filter(q, {:table, tables}) when is_list(tables) do
-    tables = TableService.lookup_ids!(tables)
+    tables = Pointers.Tables.ids!(tables)
     where(q, [pointer: p], p.table_id in ^tables)
   end
 end

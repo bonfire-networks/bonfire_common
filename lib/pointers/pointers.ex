@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Pointers do
-  alias Bonfire.Common.Pointers.TableService
   alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
 
@@ -46,7 +45,7 @@ defmodule Bonfire.Common.Pointers do
   Note: Throws a TableNotFoundError if the table cannot be found
   """
   @spec table!(Pointer.t()) :: Table.t()
-  def table!(%Pointer{table_id: id}), do: TableService.lookup!(id)
+  def table!(%Pointer{table_id: id}), do: Pointers.Tables.table!(id)
 
   @doc """
   Forge a pointer from a structure that participates in the meta abstraction.
@@ -58,7 +57,7 @@ defmodule Bonfire.Common.Pointers do
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: table_id, id: id} = pointed) do
     # IO.inspect(forge: pointed)
-    table = TableService.lookup!(table_id)
+    table = Pointers.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
 
@@ -70,7 +69,7 @@ defmodule Bonfire.Common.Pointers do
   """
   @spec forge!(table_id :: integer | atom, id :: binary) :: %Pointer{}
   def forge!(table_id, id) do
-    table = TableService.lookup!(table_id)
+    table = Pointers.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
@@ -138,7 +137,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader(schema, id_filters, override_filters) when not is_atom(schema) do
-    loader(TableService.lookup_schema!(schema), id_filters, override_filters)
+    loader(Pointers.Tables.schema!(schema), id_filters, override_filters)
   end
 
   defp loader(schema, id_filters, override_filters) do
@@ -155,4 +154,22 @@ defmodule Bonfire.Common.Pointers do
   defp filters(_schema, id_filters, override_filters) do
     id_filters ++ override_filters
   end
+
+  @doc "Lists all that Pointers knows about"
+  def list_all() do
+    data = Pointers.Tables.data()
+    case data do
+      [{_, r}] -> r
+      _ -> []
+    end
+  end
+
+  def list_pointable_schemas() do
+    pointable_tables = list_all()
+
+    Enum.reduce(pointable_tables, [], fn x, acc ->
+      Enum.concat(acc, [x.schema])
+    end)
+  end
+
 end
