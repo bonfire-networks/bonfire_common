@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Error do
   require Logger
   alias __MODULE__
 
-  defstruct [:code, :message, :status_code]
+  defstruct [:code, :message, :status]
 
   @common_errors Application.get_env(:bonfire_common, :common_errors) || []
   @error_list Map.keys(@common_errors)
@@ -44,7 +44,7 @@ defmodule Bonfire.Common.Error do
     return(%Error{
       code: code,
       message: message,
-      status_code: status
+      status: status
     })
   end
 
@@ -52,7 +52,7 @@ defmodule Bonfire.Common.Error do
     return(%Error{
       code: status,
       message: "#{inspect(extra)}",
-      status_code: status
+      status: status
     })
   end
 
@@ -62,7 +62,7 @@ defmodule Bonfire.Common.Error do
     return(%Error{
       code: status,
       message: "#{message} #{inspect(extra)}",
-      status_code: status
+      status: status
     })
   end
 
@@ -77,13 +77,13 @@ defmodule Bonfire.Common.Error do
       return(%Error{
         code: :validation,
         message: String.capitalize("#{k} #{v}"),
-        status_code: 422
+        status: 422
       })
     end)
   end
 
   defp return(error) do
-    Logger.warn("#{inspect(error)}")
+    Logger.info("#{inspect(error)}")
     error
   end
 
@@ -103,9 +103,9 @@ defmodule Bonfire.Common.Error do
     show = String.replace(message, "%s", extra)
 
     if show == message do
-      {status, "#{message} #{inspect(extra)}"}
+      {status, "#{show} #{inspect(extra)}"}
     else
-      {status, "#{message}"}
+      {status, "#{show}"}
     end
   end
 
