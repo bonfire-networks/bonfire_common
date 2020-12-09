@@ -38,6 +38,7 @@ defmodule Bonfire.Repo do
         :ok -> :ok
         {:ok, v} -> v
         {:error, reason} -> rollback_error(reason)
+        {:error, reason, extra} -> rollback_error(reason, extra)
         _ -> rollback_unexpected(ret)
       end
     end)
@@ -109,14 +110,15 @@ defmodule Bonfire.Repo do
     |> all()
   end
 
-  defp rollback_error(reason) do
+  defp rollback_error(reason, extra \\ nil) do
     Logger.debug(transact_with_error: reason)
+    if extra, do: Logger.debug(transact_with_error_extra: extra)
     rollback(reason)
   end
 
   defp rollback_unexpected(ret) do
     Logger.error(
-      "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` but got: #{
+      "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{
         inspect(ret)
       }"
     )
