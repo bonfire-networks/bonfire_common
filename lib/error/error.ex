@@ -92,7 +92,7 @@ defmodule Bonfire.Common.Error do
   end
 
   defp return(error) do
-    Logger.warn("#{inspect(error)}")
+    Logger.info("#{inspect(error)}")
     error
   end
 
