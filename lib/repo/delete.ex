@@ -1,22 +1,20 @@
 defmodule Bonfire.Repo.Delete do
 
-  import Bonfire.Common.Error
-
   require Logger
 
   @repo Application.get_env(:bonfire_common, :repo_module)
 
-  @spec soft_delete(any()) :: {:ok, any()} | {:error, Error.t()}
+  @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Just marks an entry as deleted in the database"
   def soft_delete(it), do: deletion_result(do_soft_delete(it))
 
   @spec soft_delete!(any()) :: any()
-  @doc "Marks an entry as deleted in the database or throws an Error"
+  @doc "Marks an entry as deleted in the database or throws an error"
   def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
 
   defp do_soft_delete(it), do: @repo.update(Bonfire.Repo.Changeset.soft_delete_changeset(it))
 
-  @spec hard_delete(any()) :: {:ok, any()} | {:error, Error.t()}
+  @spec hard_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Actually deletes an entry from the database"
   def hard_delete(it) do
     it
@@ -61,7 +59,13 @@ defmodule Bonfire.Repo.Delete do
 
   defp maybe_creator_allow_delete?(_, _), do: false
 
-  def deletion_result({:error, e}), do: {:error, error(:deletion_error, e)}
+  def deletion_result({:error, e}) do
+    if Code.ensure_loaded?(Bonfire.Common.Error) do
+      {:error, Bonfire.Common.Error.error(:deletion_error, e)}
+    else
+      {:error, :deletion_error}
+    end
+  end
   def deletion_result(other), do: other
 
   def deletion_result!({:ok, val}), do: val

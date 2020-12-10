@@ -83,14 +83,14 @@ defmodule Bonfire.Repo do
   """
   def single(q), do: do_single(one(q))
 
-  defp do_single(nil), do: NotFoundError.new()
+  defp do_single(nil), do: {:error, :not_found}
   defp do_single(other), do: {:ok, other}
 
   @doc "Like Repo.get, but returns an ok/error tuple"
-  @spec fetch(atom, integer | binary) :: {:ok, atom} | {:error, NotFoundError.t()}
+  @spec fetch(atom, integer | binary) :: {:ok, atom} | {:error, :not_found}
   def fetch(queryable, id) do
     case get(queryable, id) do
-      nil -> {:error, NotFoundError.new()}
+      nil -> {:error, :not_found}
       thing -> {:ok, thing}
     end
   end
@@ -98,7 +98,7 @@ defmodule Bonfire.Repo do
   @doc "Like Repo.get_by, but returns an ok/error tuple"
   def fetch_by(queryable, term) do
     case get_by(queryable, term) do
-      nil -> {:error, NotFoundError.new()}
+      nil -> {:error, :not_found}
       thing -> {:ok, thing}
     end
   end

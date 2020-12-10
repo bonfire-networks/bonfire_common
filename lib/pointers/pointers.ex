@@ -42,7 +42,7 @@ defmodule Bonfire.Common.Pointers do
 
   @doc """
   Retrieves the Table that a pointer points to
-  Note: Throws a TableNotFoundError if the table cannot be found
+  Note: Throws an error if the table cannot be found
   """
   @spec table!(Pointer.t()) :: Table.t()
   def table!(%Pointer{table_id: id}), do: Pointers.Tables.table!(id)
