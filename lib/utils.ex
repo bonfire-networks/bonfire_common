@@ -97,6 +97,10 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
+  def maybe_get(_, _, fallback \\ nil)
+  def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
+  def maybe_get(_, _, fallback), do: fallback
+
   def map_get(map, key, fallback) do
     Map.get(map, key, fallback)
   end
