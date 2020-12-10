@@ -13,7 +13,7 @@ defmodule Bonfire.Common.Pointers do
         get(pointer, filters)
       end
     else
-      {:error, Bonfire.Common.Errors.NotFoundError.new()}
+      {:error, :not_found}
     end
   end
 

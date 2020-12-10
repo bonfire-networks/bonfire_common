@@ -13,7 +13,6 @@ defmodule Bonfire.Repo do
   alias Ecto.Changeset
 
   import Ecto.Query
-  alias Bonfire.Common.Errors.NotFoundError
 
   require Logger
 
