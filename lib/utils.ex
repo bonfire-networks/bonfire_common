@@ -97,13 +97,60 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
+  def map_get(map, key, fallback) do
+    Map.get(map, key, fallback)
+  end
+
   def maybe_get(_, _, fallback \\ nil)
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
 
-  def map_get(map, key, fallback) do
-    Map.get(map, key, fallback)
+  @doc "Replace a key in a map"
+  def map_key_replace(%{} = map, key, new_key) do
+    map
+    |> Map.put(new_key, Map.get(map, key))
+    |> Map.delete(key)
   end
+
+  def attr_get_id(attrs, field_name) do
+    if is_map(attrs) and Map.has_key?(attrs, field_name) do
+      attr = Map.get(attrs, field_name)
+
+      maybe_get_id(attr)
+    end
+  end
+
+  def maybe_get_id(attr) do
+    if is_map(attr) and Map.has_key?(attr, :id) do
+      attr.id
+    else
+      attr
+    end
+  end
+
+  @doc "conditionally update a map"
+  def maybe_put(map, _key, nil), do: map
+  def maybe_put(map, _key, ""), do: map
+  def maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  @doc "Applies change_fn if the first parameter is not nil."
+  def maybe(nil, _change_fn), do: nil
+
+  def maybe(val, change_fn) do
+    change_fn.(val)
+  end
+
+  @doc "Applies change_fn if the first parameter is an {:ok, val} tuple, else returns the value"
+  def maybe_ok_error({:ok, val}, change_fn) do
+    {:ok, change_fn.(val)}
+  end
+
+  def maybe_ok_error(other, _change_fn), do: other
+
+  @doc "Append an item to a list if it is not nil"
+  @spec maybe_append([any()], any()) :: [any()]
+  def maybe_append(list, nil), do: list
+  def maybe_append(list, value), do: [value | list]
 
   def maybe_str_to_atom(str) do
     try do
@@ -151,7 +198,6 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(nil, value), do: value
   def replace_nil(other, _), do: other
 
-
   def input_to_atoms(data) do
     data |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), v} end)
   end
@@ -194,16 +240,21 @@ defmodule Bonfire.Common.Utils do
     {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
   end
 
+  # defdelegate content(conn, name, type, opts \\ [do: ""]), to: Bonfire.Common.Web.ContentAreas
+
   @doc """
   Special LiveView helper function which allows loading LiveComponents in regular Phoenix views: `live_render_component(@conn, MyLiveComponent)`
   """
   def live_render_component(conn, load_live_component) do
-    if Code.ensure_loaded(load_live_component), do: Phoenix.LiveView.Controller.live_render(conn,
-        Bonfire.Web.LiveComponent,
-        session: %{
-          "load_live_component"=> load_live_component
-        }
-      )
+    if Code.ensure_loaded(load_live_component),
+      do:
+        Phoenix.LiveView.Controller.live_render(
+          conn,
+          Bonfire.Web.LiveComponent,
+          session: %{
+            "load_live_component" => load_live_component
+          }
+        )
   end
 
   def live_render_with_conn(conn, live_view) do
@@ -216,5 +267,4 @@ defmodule Bonfire.Common.Utils do
   def maybe(val, change_fn) do
     change_fn.(val)
   end
-
 end
