@@ -68,7 +68,7 @@ defmodule Bonfire.Common.Web.ContentAreas do
 
   def meta_serialize(map) when is_map(map) do
     map
-    |> Poison.encode!
+    |> Jason.encode!
   end
 
   @doc """
@@ -81,7 +81,7 @@ defmodule Bonfire.Common.Web.ContentAreas do
   def meta_attributes(%{meta: nil}), do: []
   def meta_attributes(%{} = page_content) do
     page_content.meta
-    |> Poison.decode!(keys: :atoms)
+    |> Jason.decode!(keys: :atoms)
   end
 
   defp stringify(str) when is_binary(str), do: str
