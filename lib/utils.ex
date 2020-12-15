@@ -267,4 +267,8 @@ defmodule Bonfire.Common.Utils do
   def maybe(val, change_fn) do
     change_fn.(val)
   end
+
+  def macro_inspect(fun) do
+      fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
+  end
 end
