@@ -121,6 +121,14 @@ defmodule Bonfire.Common.Config do
     end
   end
 
+  @doc """
+  Get all config keys/values for a Bonfire extension or OTP app
+  """
+  def get_ext(module_or_otp_app) do
+    otp_app = maybe_extension_loaded(module_or_otp_app)
+    Application.get_all_env(otp_app)
+  end
+
   def get_ext!(module_or_otp_app, key) do
     value = get_ext(module_or_otp_app, key, nil)
 
