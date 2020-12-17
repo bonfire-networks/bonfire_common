@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Error do
 
   defstruct [:code, :message, :status]
 
-  @common_errors Application.get_env(:bonfire_common, :common_errors, %{})
+  @common_errors Bonfire.Common.Config.get_ext(:bonfire_common, :common_errors, %{})
   @error_list Map.keys(@common_errors)
 
   # Error Tuples

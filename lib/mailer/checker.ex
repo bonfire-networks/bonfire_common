@@ -33,5 +33,5 @@ defmodule Bonfire.Mailer.Checker do
     end
   end
 
-  defp config(), do: Application.get_env(:bonfire_common, __MODULE__)
+  defp config(), do: Bonfire.Common.Config.get_ext(:bonfire_common, __MODULE__)
 end

@@ -3,10 +3,10 @@ defmodule Bonfire.Repo do
   Ecto Repo and related common functions
   """
 
-  @repo Application.get_env(:bonfire_common, :repo_module)
+  import Bonfire.Common.Config, only: [repo: 0]
 
   use Ecto.Repo,
-    otp_app: Application.get_env(:bonfire_common, :otp_app),
+    otp_app: Bonfire.Common.Config.get_ext(:bonfire_common, :otp_app),
     adapter: Ecto.Adapters.Postgres
 
   alias Pointers.Changesets
@@ -152,7 +152,7 @@ defmodule Bonfire.Repo do
   def maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
 
   def maybe_do_preload(obj, preloads) when is_struct(obj) do
-    @repo.preload(obj, preloads)
+    repo().preload(obj, preloads)
   rescue
     ArgumentError ->
       obj
