@@ -2,7 +2,7 @@ defmodule Bonfire.Repo.Delete do
 
   require Logger
 
-  @repo Application.get_env(:bonfire_common, :repo_module)
+  import Bonfire.Common.Config, only: [repo: 0]
 
   @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Just marks an entry as deleted in the database"
@@ -12,13 +12,13 @@ defmodule Bonfire.Repo.Delete do
   @doc "Marks an entry as deleted in the database or throws an error"
   def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
 
-  defp do_soft_delete(it), do: @repo.update(Bonfire.Repo.Changeset.soft_delete_changeset(it))
+  defp do_soft_delete(it), do: repo().update(Bonfire.Repo.Changeset.soft_delete_changeset(it))
 
   @spec hard_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Actually deletes an entry from the database"
   def hard_delete(it) do
     it
-    |> @repo.delete(
+    |> repo().delete(
       stale_error_field: :id,
       stale_error_message: "has already been deleted"
     )

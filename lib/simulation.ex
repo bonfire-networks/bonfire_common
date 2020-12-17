@@ -119,4 +119,30 @@ defmodule Bonfire.Common.Simulation do
 
   def maybe_one_of(list), do: Faker.Util.pick(list ++ [nil])
 
+  @doc """
+  Repeats a function count times if count_or_range is a positive integer.
+
+  If count_or_range is a positive range, a random number from this
+  range is selected and that value used as a count
+  """
+  def some(count_or_range \\ 1, fun)
+
+  def some(count, fun)
+      when is_function(fun, 0) and
+             is_integer(count) and
+             count > 0 do
+    for _ <- 1..count do
+      fun.()
+    end
+  end
+
+  def some(%Range{first: first, last: last}, fun)
+      when is_function(fun, 0) and
+             is_integer(first) and
+             is_integer(last) and
+             first > 0 and
+             last >= first do
+    some(Faker.random_between(first, last), fun)
+  end
+
 end

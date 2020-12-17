@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Pointers do
   alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
 
-  @repo Application.get_env(:bonfire_common, :repo_module)
+  import Bonfire.Common.Config, only: [repo: 0]
 
   def get(id, filters \\ [])
 
@@ -25,11 +25,11 @@ defmodule Bonfire.Common.Pointers do
     thing
   end
 
-  def one(filters), do: @repo.single(Queries.query(Pointer, filters))
+  def one(filters), do: repo().single(Queries.query(Pointer, filters))
 
-  def one!(filters), do: @repo.one!(Queries.query(Pointer, filters))
+  def one!(filters), do: repo().one!(Queries.query(Pointer, filters))
 
-  def many(filters \\ []), do: {:ok, @repo.all(Queries.query(Pointer, filters))}
+  def many(filters \\ []), do: {:ok, repo().all(Queries.query(Pointer, filters))}
 
   # already have a pointer - just return it
   def maybe_forge!(%Pointer{} = pointer), do: pointer
@@ -144,7 +144,7 @@ defmodule Bonfire.Common.Pointers do
     module = apply(schema, :queries_module, [])
     filters = filters(schema, id_filters, override_filters)
     # IO.inspect(filters)
-    {:ok, @repo.all(apply(module, :query, [schema, filters]))}
+    {:ok, repo().all(apply(module, :query, [schema, filters]))}
   end
 
   defp filters(schema, id_filters, []) do

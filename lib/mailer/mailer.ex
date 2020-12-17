@@ -5,7 +5,7 @@ defmodule Bonfire.Mailer do
 
   def send_now(email, to) do
     from =
-      Application.get_env(:bonfire, __MODULE__, [])
+      Bonfire.Common.Config.get_ext(:bonfire, __MODULE__, [])
       |> Keyword.get(:from_address, "noreply@bonfire.local")
     try do
       mail =

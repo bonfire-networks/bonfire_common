@@ -1,6 +1,8 @@
 defmodule Bonfire.Common.Web.ContentAreas do
   import Phoenix.HTML, only: [safe_to_string: 1]
 
+  alias Bonfire.Common.Web.ContentAreas.Render
+
   @doc """
   Returns HTML-safe string if type is `:html` or just a string if `:text`.
 
@@ -41,7 +43,7 @@ defmodule Bonfire.Common.Web.ContentAreas do
   defp render_content(_conn, name, type, opts) do
     make_content(name, type, stringify(opts[:do]), Keyword.delete(opts, :do))
     |>
-    Bonfire.Common.Web.ContentAreas.Render.render_editable(opts)
+    Render.render_editable(opts)
   end
 
   defp make_content(name, type, content, meta) do
