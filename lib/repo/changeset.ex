@@ -3,7 +3,7 @@ defmodule Bonfire.Repo.Changeset do
   @moduledoc "Helper functions for changesets"
 
   alias Ecto.Changeset
-  alias Ecto.ULID
+  alias Pointers.ULID
 
   alias Bonfire.Mailer.Checker
 

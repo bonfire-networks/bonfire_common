@@ -18,8 +18,8 @@ defmodule Bonfire.Repo.Schema do
   """
   defmacro table_schema(table, body) do
     quote do
-      @primary_key {:id, Ecto.ULID, autogenerate: true}
-      @foreign_key_type Ecto.ULID
+      @primary_key {:id, Pointers.ULID, autogenerate: true}
+      @foreign_key_type Pointers.ULID
       @timestamps_opts [type: :utc_datetime_usec, inserted_at: false]
       schema(unquote(table), unquote(body))
     end
@@ -34,7 +34,7 @@ defmodule Bonfire.Repo.Schema do
   defmacro uuidv4_schema(table, body) do
     quote do
       @primary_key {:id, :binary_id, autogenerate: true}
-      @foreign_key_type Ecto.ULID
+      @foreign_key_type Pointers.ULID
       @timestamps_opts [type: :utc_datetime_usec, inserted_at: :created_at]
       schema(unquote(table), unquote(body))
     end
@@ -49,7 +49,7 @@ defmodule Bonfire.Repo.Schema do
   defmacro view_schema(view, body) do
     quote do
       @primary_key false
-      @foreign_key_type Ecto.ULID
+      @foreign_key_type Pointers.ULID
       schema(unquote(view), unquote(body))
     end
   end

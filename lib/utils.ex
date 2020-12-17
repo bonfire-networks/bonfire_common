@@ -58,7 +58,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def is_ulid(str) when is_binary(str) do
-    with :error <- Ecto.ULID.cast(str) do
+    with :error <- Pointers.ULID.cast(str) do
       false
     else
       _ -> true

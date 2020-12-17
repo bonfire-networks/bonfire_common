@@ -88,7 +88,7 @@ defmodule Bonfire.Common.Simulation do
   @doc "Generates a random unique uuid"
   def uuid(), do: Zest.Faking.unused(&Faker.UUID.v4/0, :uuid)
   @doc "Generates a random unique ulid"
-  def ulid(), do: Ecto.ULID.generate()
+  def ulid(), do: Pointers.ULID.generate()
   @doc "Generates a random unique email"
   def email(), do: Zest.Faking.unused(&Faker.Internet.email/0, :email)
   @doc "Generates a random domain name"
