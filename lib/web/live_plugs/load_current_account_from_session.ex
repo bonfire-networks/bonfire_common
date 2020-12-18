@@ -15,7 +15,6 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccountFromSession do
   defp check_account(nil, socket) do
     {:halt,
      socket
-     |> clear_session()
      |> push_redirect(to: Routes.login_path(socket, :index))}
   end
 
