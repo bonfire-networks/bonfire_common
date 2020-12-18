@@ -12,7 +12,7 @@
       <%= f = form_for @form, Routes.login_path(@socket, :create), class: "w-full md:ml-0" %>
         <%= if @error == :no_match do %>
           <div role="status" class="box__warning">
-            <span>Not found. Either your username or password was incorrect. Did you mean to <%= link "sign up", to: Routes.signup_path(:index) %>?</span>
+            <span>Not found. Either your email, username or password was incorrect. Did you mean to <%= link "sign up", to: Routes.signup_path(:index) %>?</span>
           </div>
         <% end %>
         <%= if @error == :email_not_confirmed do %>
@@ -23,11 +23,12 @@
 
         <div>
           <label for="email" class="block text-sm font-medium leading-5 text-gray-700">
-            Email address
+            Email address or @username
           </label>
           <div class="mt-1 rounded-md shadow-sm">
-            <%= text_input f, :email_or_username, required: true, class: "w-full" %>
+            <%= text_input f, :username_or_email, required: true, class: "w-full" %>
           </div>
+          <%= error_tag f, :username_or_email %>
         </div>
 
         <div class="mt-6">
