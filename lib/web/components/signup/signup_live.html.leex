@@ -10,20 +10,28 @@
   </div>
   <div class="py-5 mx-auto sm:px-6 lg:px-8">
     <%= if @registered do %>
-      <div role="status" class="form__confirmation">
-        <h2>Hooray, you're registered!</h2>
-        <p>
-          Now we need you to confirm your email address. We've mailed
-          you a link. Please click it to continue.
-        </p>
-      </div>
-    <% else %>
-      <%= if @error == :taken do %>
-        <div role="status" class="box__warning">
-          <span>This email is taken. Did you mean to <%= link "log in", to: "/login" %>?</span>
+        <div
+          role="status"
+          class="form__confirmation">
+          <h2>Hooray! You are registered</h2>
+          <p>
+            Now we need you to confirm your email address. We've mailed
+            you a link. Please click it to continue.
+          </p>
         </div>
-      <% end %>
-      <%= f = form_for @form, Routes.signup_path(@socket, :create) %>
+      <% else %>
+        <%= case @error do %>
+        <%= nil -> %>
+        <%= :taken -> %>
+          <div role="status" class="box__warning">
+            <span>This email is taken. Did you mean to <%= link "log in", to: "/login" %>?</span>
+          </div>
+        <%= error -> %>
+          <div role="status" class="box__warning">
+            <span>An error occurred: <%=error %></span>
+          </div>
+        <% end %>
+ <%= f = form_for @form, Routes.signup_path(@socket, :create), [id: "signup-form"] %>
         <div>
           <label for="email" class="block text-sm font-medium leading-5 text-gray-700">
             Email address
@@ -34,6 +42,7 @@
               <%= error_tag g, :email_address %>
             <% end %>
           </div>
+          <%= error_tag f, :email_address %>
         </div>
         <div class="mt-6">
           <%= for g <- inputs_for(f, :credential) do %>
