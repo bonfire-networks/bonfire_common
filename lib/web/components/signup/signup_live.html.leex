@@ -10,8 +10,8 @@
     </div>
     <div class="py-5 mx-auto sm:px-6 lg:px-8">
     <%= if @registered do %>
-        <div 
-          role="status" 
+        <div
+          role="status"
           class="form__confirmation">
           <h2>Hooray! You are registered</h2>
           <p>
@@ -20,12 +20,18 @@
           </p>
         </div>
       <% else %>
-        <%= if @error == :taken do %>
+        <%= case @error do %>
+        <%= nil -> %>
+        <%= :taken -> %>
           <div role="status" class="box__warning">
             <span>This email is taken. Did you mean to <%= link "log in", to: "/login" %>?</span>
           </div>
+        <%= error -> %>
+          <div role="status" class="box__warning">
+            <span>An error occurred: <%=error %></span>
+          </div>
         <% end %>
- <%= f = form_for @form, Routes.signup_path(@socket, :create), [id: "signup-form"] %>        
+ <%= f = form_for @form, Routes.signup_path(@socket, :create), [id: "signup-form"] %>
         <div>
           <label for="email" class="block text-sm font-medium leading-5 text-gray-700">
             Email address
@@ -33,6 +39,7 @@
           <div class="mt-1 rounded-md shadow-sm">
             <%= email_input f, :email_address, required: true, class: "w-full" %>
           </div>
+          <%= error_tag f, :email_address %>
         </div>
 
         <div class="mt-6">

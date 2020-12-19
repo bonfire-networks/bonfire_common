@@ -10,14 +10,19 @@
     </div>
     <div class="py-5 mx-auto sm:px-6 lg:px-8">
       <%= f = form_for @form, Routes.login_path(@socket, :create), class: "w-full md:ml-0" %>
-        <%= if @error == :no_match do %>
+        <%= case @error do %>
+        <%= nil -> %>
+        <%= :not_found -> %>
           <div role="status" class="box__warning">
-            <span>Not found. Either your username or password was incorrect. Did you mean to <%= link "sign up", to: Routes.signup_path(:index) %>?</span>
+            <span>Account not found. Either your username or password was incorrect. Did you want to <%= link "sign up", to: Routes.signup_path(@socket, :index), class: "underline font-bold" %>?</span>
           </div>
-        <% end %>
-        <%= if @error == :email_not_confirmed do %>
+        <%= :email_not_confirmed -> %>
           <div role="status" class="box__warning">
             <span>We need you to click the link in the email we sent you to verify your email address.</span>
+          </div>
+        <%= error -> %>
+          <div role="status" class="box__warning">
+            <span>There was an error (<%= error %>), please try again.</span>
           </div>
         <% end %>
 
@@ -26,8 +31,10 @@
             Email address
           </label>
           <div class="mt-1 rounded-md shadow-sm">
-            <%= email_input f, :email, required: true, class: "w-full" %>
+            <%= email_input f, :email_or_username, required: true, class: "w-full" %>
           </div>
+          <%= error_tag f, :email_or_username %>
+
         </div>
 
         <div class="mt-6">
@@ -37,6 +44,8 @@
           <div class="mt-1 rounded-md shadow-sm">
             <%= password_input f, :password, required: true, class: "w-full" %>
           </div>
+          <%= error_tag f, :password %>
+
         </div>
 
         <div class="mt-6 flex items-center justify-between">
@@ -65,7 +74,10 @@
         <div class="mt-4">
           <p>
             <span>&#x01f44b; </span>
-            <%= link "Did you forgot your password?", to: Routes.forgot_password_path(@socket, :index), class: "underline font-bold" %>.
+            <%= link "Did you forgot your password?", to: Routes.forgot_password_path(@socket, :index), class: "underline font-bold" %>
+          </p>
+          <p>
+            🆕 <%= link "Need to sign up instead?", to: Routes.signup_path(@socket, :index), class: "underline font-bold" %>
           </p>
         </div>
       </form>
