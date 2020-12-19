@@ -60,8 +60,8 @@ defmodule Bonfire.Repo.Delete do
   defp maybe_creator_allow_delete?(_, _), do: false
 
   def deletion_result({:error, e}) do
-    if Code.ensure_loaded?(Bonfire.Common.Error) do
-      {:error, Bonfire.Common.Error.error(:deletion_error, e)}
+    if Code.ensure_loaded?(Bonfire.Fail.Error) do
+      {:error, Bonfire.Fail.Error.error(:deletion_error, e)}
     else
       {:error, :deletion_error}
     end
