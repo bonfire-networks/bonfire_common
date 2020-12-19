@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUserFromPath do
+defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
 
   use Bonfire.Web, :live_plug
   alias Bonfire.Me.Identity.{Accounts, Users}

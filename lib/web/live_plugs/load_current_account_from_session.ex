@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccountFromSession do
+defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccount do
 
   use Bonfire.Web, :live_plug
   alias Bonfire.Me.Identity.Accounts
