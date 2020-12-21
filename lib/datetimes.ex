@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.DateTimes do
 
-  def now(DateTime.utc_now())
+  def now(), do: DateTime.utc_now()
 
   def past?(%DateTime{}=dt) do
     DateTime.compare(now(), dt) == :gt
