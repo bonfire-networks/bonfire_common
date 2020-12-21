@@ -21,9 +21,9 @@ defmodule Bonfire.Common.Config do
       compilation_error(
         "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{
           extension
-        }/config/#{extension}.ex ./config/#{extension}.ex` in your Bonfire app repository, and then customise the copied config as necessary and finally add a line with `import_config \"#{
+        }/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository, and then customise the copied config as necessary and finally add a line with `import_config \"#{
           extension
-        }.exs\"` to your `./config/config.ex`"
+        }.exs\"` to your `./config/config.exs`"
       )
     end
   end
@@ -119,6 +119,14 @@ defmodule Bonfire.Common.Config do
     else
       ret
     end
+  end
+
+  @doc """
+  Get all config keys/values for a Bonfire extension or OTP app
+  """
+  def get_ext(module_or_otp_app) do
+    otp_app = maybe_extension_loaded(module_or_otp_app)
+    Application.get_all_env(otp_app)
   end
 
   def get_ext!(module_or_otp_app, key) do
