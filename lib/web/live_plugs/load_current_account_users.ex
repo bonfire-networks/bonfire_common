@@ -5,7 +5,9 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccountUsers do
   alias Bonfire.Data.Identity.Account
 
   # from the plug
-  def mount(_, _, %{assigns: %{current_account_users: _}}=socket), do: {:ok, socket}
+  def mount(_, _, %{assigns: %{current_account_users: _}}=socket) do
+    {:ok, socket}
+  end
 
   # pull from account
   def mount(_, _, %{assigns: %{current_account: %Account{}=account}}=socket) do
