@@ -11,12 +11,16 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
   end
 
   def mount(_, %{"user_id" => id}, socket) do
-    check_user(Users.get_current(id), socket)
+    current_user = Users.get_current(id, Map.get(socket.assigns, :current_account))
+    # IO.inspect(current_user: current_user)
+    check_user(current_user, socket)
   end
 
   def mount(_, _, socket), do: check_user(nil, socket)
 
-  defp check_user({:ok, user}, socket) do
+  defp check_user({:ok, user}, socket), do: check_user(user, socket)
+
+  defp check_user(%User{} = user, socket) do
     {:ok, assign(socket, current_user: user)}
   end
 
