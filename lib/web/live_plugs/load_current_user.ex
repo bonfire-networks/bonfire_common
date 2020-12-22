@@ -21,7 +21,7 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
   end
 
   defp check_user(_, socket) do
-    path = Routes.live_path(socket, SwitchUserLive)
+    path = Routes.switch_user_path(socket, :index)
     {:halt, push_redirect(socket, to: path)}
   end
 
