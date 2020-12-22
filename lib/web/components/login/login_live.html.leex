@@ -11,15 +11,15 @@
   <div class="py-5 mx-auto sm:px-6 lg:px-8">
     <%= f = form_for @form, Routes.login_path(@socket, :create), class: "w-full md:ml-0" %>
       <%= case @form.errors[:form] do %>
-      <%= "not_found" -> %>
+      <%= {"not_found",_} -> %>
         <div role="status" class="box__warning">
           <span>Account not found. Either your username or password was incorrect. Did you want to <%= link "sign up", to: Routes.signup_path(@socket, :index), class: "underline font-bold" %>?</span>
         </div>
-      <%= "email_not_confirmed" -> %>
+      <%= {"email_not_confirmed",_} -> %>
         <div role="status" class="box__warning">
           <span>We need you to click the link in the email we sent you to verify your email address.</span>
         </div>
-      <%= error -> %>
+      <%= {error,_} -> %>
         <div role="status" class="box__warning">
           <span>There was an error (<%= error %>), please try again.</span>
         </div>
@@ -76,7 +76,7 @@
           <%= link "Did you forgot your password?", to: Routes.forgot_password_path(@socket, :index), class: "underline font-bold" %>
         </p>
         <p>
-          <span>&#01F195; </span>
+          <span>&#x01F195; </span>
           <%= link "Need to sign up instead?", to: Routes.signup_path(@socket, :index), class: "underline font-bold" %>
         </p>
       </div>
