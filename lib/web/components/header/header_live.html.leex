@@ -1,6 +1,6 @@
 <div class="hidden lg:block flex w-100 flex-col flex-1">
   <div class="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
-    
+
     <div class="flex items-center flex-shrink-0 px-4">
         <div class="border-r pr-4">
           <%= link to: Routes.live_path(@socket, Bonfire.Me.Web.MeHomeLive, @current_user.character.username) do %>
@@ -13,7 +13,7 @@
               </svg>
               <h2 class="ml-2 text-sm font-medium text-gray-900">Bonfire / Instance name</h2>
             </div>
-          <% end %>        
+          <% end %>
         </div>
       </div>
       <div class="flex-1 items-center flex">
@@ -54,7 +54,7 @@
                 <details-menu>
                   <div class="origin-top-right z-10 absolute right-0 mt-2 w-48 rounded-md shadow-lg">
                     <div class="py-1 rounded-md bg-white shadow-xs" role="menu" aria-orientation="vertical" aria-labelledby="user-menu">
-                     <%= link to: Routes.live_path(@socket, Bonfire.Me.Web.ProfileLive, @current_user.character.username, @current_user.character.username) do %>
+                     <%= link to: Routes.live_path(@socket, Bonfire.Me.Web.ProfileLive, @current_user.character.username) do %>
                       <button class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Your Profile</button>
                     <% end %>
                       <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition ease-in-out duration-150" role="menuitem">Your Profile</a>
@@ -72,7 +72,7 @@
                   </div>
                 </details-menu>
               </details>
-              
+
         </div>
       </div>
   </div>
