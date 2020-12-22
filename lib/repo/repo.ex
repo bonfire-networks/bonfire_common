@@ -86,6 +86,15 @@ defmodule Bonfire.Repo do
   defp do_single(nil), do: {:error, :not_found}
   defp do_single(other), do: {:ok, other}
 
+  @doc """
+  Like Repo.single, except on failure, adds an error to the changeset
+  """
+  def find(q, changeset, field \\ :form), do: do_find(one(q), changeset, field)
+
+  defp do_find(nil, changeset, field),
+    do: {:error, Changeset.add_error(changeset, field, "not_found")}
+  defp do_find(other, _changeset, _field), do: {:ok, other}
+
   @doc "Like Repo.get, but returns an ok/error tuple"
   @spec fetch(atom, integer | binary) :: {:ok, atom} | {:error, :not_found}
   def fetch(queryable, id) do
