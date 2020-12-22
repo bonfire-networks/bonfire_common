@@ -7,7 +7,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Controller, unquote(opts)
-
+      require Logger
       import Plug.Conn
       import Bonfire.Common.Web.Gettext
       alias Bonfire.Web.Router.Helpers, as: Routes
@@ -27,7 +27,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.View, unquote(opts)
-
+      require Logger
       # Import convenience functions from controllers
       import Phoenix.Controller,
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
@@ -44,6 +44,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveView, unquote(opts)
+      require Logger
 
       unquote(view_helpers())
 
@@ -56,6 +57,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveComponent, unquote(opts)
+      require Logger
       unquote(view_helpers())
 
     end
@@ -66,6 +68,7 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Router.Helpers, as: Routes
       import Plug.Conn
       import Phoenix.Controller
+      require Logger
     end
   end
 
@@ -73,6 +76,7 @@ defmodule Bonfire.Web do
     quote do
       alias Bonfire.Web.Router.Helpers, as: Routes
       import Phoenix.LiveView
+      require Logger
     end
   end
 
@@ -82,6 +86,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Router, unquote(opts)
+      require Logger
 
       import Plug.Conn
       import Phoenix.Controller
@@ -100,6 +105,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Channel, unquote(opts)
+      require Logger
 
       import Bonfire.Common.Web.Gettext
     end
