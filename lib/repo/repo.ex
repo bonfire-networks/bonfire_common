@@ -171,4 +171,5 @@ defmodule Bonfire.Repo do
   end
 
   def maybe_do_preload(obj, _), do: obj
+
 end

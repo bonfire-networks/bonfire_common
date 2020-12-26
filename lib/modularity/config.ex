@@ -69,6 +69,18 @@ defmodule Bonfire.Common.Config do
     if Code.ensure_loaded?(module), do: module
   end
 
+  def maybe_maybe_or(module, fallback) do
+    if Code.ensure_loaded?(module) do
+      module
+    else
+      fallback
+    end
+  end
+
+  def maybe_schema_or_pointer(schema_module) do
+    maybe_maybe_or(schema_module, Pointers.Pointer)
+  end
+
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
   """
