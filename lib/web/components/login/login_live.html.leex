@@ -33,7 +33,7 @@
           Email address or @username
         </label>
         <div class="mt-1 rounded-md shadow-sm">
-          <%= email_input f, :email_or_username, required: true, class: "w-full" %>
+          <%= text_input f, :email_or_username, required: true, class: "w-full" %>
         </div>
         <%= error_tag f, :email_or_username %>
       </div>
