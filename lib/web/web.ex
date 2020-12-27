@@ -1,6 +1,8 @@
 defmodule Bonfire.Web do
   @moduledoc false
 
+  alias Bonfire.Common.Utils
+
   def controller(opts \\ []) do
     opts =
       opts
@@ -135,12 +137,12 @@ defmodule Bonfire.Web do
   end
 
   defp use_if_available(module, fallback_module \\ nil) do
-    if Code.ensure_loaded?(module) do
+    if Utils.module_exists?(module) do
       quote do
         use unquote(module)
       end
     else
-      if is_atom(fallback_module) and Code.ensure_loaded?(fallback_module) do
+      if is_atom(fallback_module) and Utils.module_exists?(fallback_module) do
         quote do
           use unquote(fallback_module)
         end

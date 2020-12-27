@@ -2,6 +2,8 @@
 defmodule Bonfire.Contexts do
   @doc "Helpers for referring to hypothetical functions in other context modules"
 
+  alias Bonfire.Common.Utils
+
   require Logger
 
   def run_context_function(
@@ -14,7 +16,7 @@ defmodule Bonfire.Contexts do
   def run_context_function(object_schema_or_context, fun, args, fallback_fun)
       when is_atom(object_schema_or_context) and is_atom(fun) and is_list(args) and
              is_function(fallback_fun) do
-    if Code.ensure_loaded?(object_schema_or_context) do
+    if Utils.module_exists?(object_schema_or_context) do
       object_context_module =
         if Kernel.function_exported?(object_schema_or_context, :context_module, 0) do
           apply(object_schema_or_context, :context_module, [])
@@ -25,7 +27,7 @@ defmodule Bonfire.Contexts do
 
       arity = length(args)
 
-      if Code.ensure_loaded?(object_context_module) do
+      if Utils.module_exists?(object_context_module) do
         if Kernel.function_exported?(object_context_module, fun, arity) do
           # IO.inspect(function_exists_in: object_context_module)
 

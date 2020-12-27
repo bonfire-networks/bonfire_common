@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Config do
+  alias Bonfire.Common.Utils
+
   def top_level_otp_app do
     get!(:otp_app, :bonfire_common)
   end
@@ -52,7 +54,7 @@ defmodule Bonfire.Common.Config do
   def extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
 
-    Code.ensure_loaded?(extension) or
+    Utils.module_exists?(extension) or
       Enum.member?(Application.loaded_applications() |> Enum.map(&elem(&1, 0)), extension)
   end
 
@@ -66,11 +68,11 @@ defmodule Bonfire.Common.Config do
   end
 
   def maybe_module_loaded(module) do
-    if Code.ensure_loaded?(module), do: module
+    if Utils.module_exists?(module), do: module
   end
 
   def maybe_maybe_or(module, fallback) do
-    if Code.ensure_loaded?(module) do
+    if Utils.module_exists?(module) do
       module
     else
       fallback
@@ -80,6 +82,7 @@ defmodule Bonfire.Common.Config do
   def maybe_schema_or_pointer(schema_module) do
     maybe_maybe_or(schema_module, Pointers.Pointer)
   end
+
 
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)

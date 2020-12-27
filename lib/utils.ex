@@ -246,7 +246,7 @@ defmodule Bonfire.Common.Utils do
   Special LiveView helper function which allows loading LiveComponents in regular Phoenix views: `live_render_component(@conn, MyLiveComponent)`
   """
   def live_render_component(conn, load_live_component) do
-    if Code.ensure_loaded(load_live_component),
+    if Utils.module_exists(load_live_component),
       do:
         Phoenix.LiveView.Controller.live_render(
           conn,
@@ -270,5 +270,9 @@ defmodule Bonfire.Common.Utils do
 
   def macro_inspect(fun) do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
+  end
+
+  def module_exists?(module) do
+    function_exported?(module, :__info__, 1)
   end
 end
