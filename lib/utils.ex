@@ -275,4 +275,34 @@ defmodule Bonfire.Common.Utils do
   def module_exists?(module) do
     function_exported?(module, :__info__, 1)
   end
+
+
+  def use_if_available(module, fallback_module \\ nil) do
+    if module_exists?(module) do
+      quote do
+        use unquote(module)
+      end
+    else
+      if is_atom(fallback_module) and module_exists?(fallback_module) do
+        quote do
+          use unquote(fallback_module)
+        end
+      end
+    end
+  end
+
+  def import_if_available(module, fallback_module \\ nil) do
+    if module_exists?(module) do
+      quote do
+        import unquote(module)
+      end
+    else
+      if is_atom(fallback_module) and module_exists?(fallback_module) do
+        quote do
+          import unquote(fallback_module)
+        end
+      end
+    end
+  end
+
 end

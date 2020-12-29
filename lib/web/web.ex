@@ -19,7 +19,7 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Controller
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.Controller))
+      unquote(Utils.use_if_available(Thesis.Controller))
 
     end
   end
@@ -99,7 +99,7 @@ defmodule Bonfire.Web do
 
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.Router))
+      unquote(Utils.use_if_available(Thesis.Router))
 
     end
   end
@@ -134,22 +134,8 @@ defmodule Bonfire.Web do
 
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      unquote(Utils.use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
-    end
-  end
-
-  defp use_if_available(module, fallback_module \\ nil) do
-    if Utils.module_exists?(module) do
-      quote do
-        use unquote(module)
-      end
-    else
-      if is_atom(fallback_module) and Utils.module_exists?(fallback_module) do
-        quote do
-          use unquote(fallback_module)
-        end
-      end
     end
   end
 

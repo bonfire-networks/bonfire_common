@@ -2,6 +2,7 @@
 defmodule Bonfire.Common.Pointers do
   alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
+  alias Pointers.NotFound
 
   import Bonfire.Common.Config, only: [repo: 0]
 
@@ -18,7 +19,10 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def get(%Pointer{} = pointer, filters) do
-    follow!(pointer, filters)
+    obj = follow!(pointer, filters)
+    {:ok, obj}
+  rescue
+    NotFound -> {:error, :not_found}
   end
 
   def get(%{} = thing, _) do
