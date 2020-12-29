@@ -12,7 +12,7 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
 
   def mount(_, %{"user_id" => id}, socket) do
     current_user = Users.get_current(id)
-    IO.inspect(current_user: current_user)
+    # IO.inspect(current_user: current_user)
     check_user(current_user, socket)
   end
 
