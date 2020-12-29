@@ -273,7 +273,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def module_exists?(module) do
-    function_exported?(module, :__info__, 1)
+    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
 
 

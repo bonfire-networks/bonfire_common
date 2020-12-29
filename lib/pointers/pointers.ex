@@ -6,6 +6,14 @@ defmodule Bonfire.Common.Pointers do
 
   import Bonfire.Common.Config, only: [repo: 0]
 
+  def get!(id, filters \\ []) do
+    with {:ok, obj} <- get(id, filters) do
+      obj
+    else e ->
+      raise NotFound
+    end
+  end
+
   def get(id, filters \\ [])
 
   def get(id, filters) when is_binary(id) do
@@ -103,6 +111,8 @@ defmodule Bonfire.Common.Pointers do
     end
   end
 
+  # def preload!(pointers, opts, filters) when is_list(pointers) and length(pointers)==1, do: preload!(hd(pointers), opts, filters)
+
   def preload!(pointers, opts, filters) when is_list(pointers) do
     pointers
     |> preload_load(opts, filters)
@@ -145,10 +155,11 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader(schema, id_filters, override_filters) do
-    module = apply(schema, :queries_module, [])
+    query_module = Bonfire.Contexts.run_context_function(schema, :queries_module, [])
     filters = filters(schema, id_filters, override_filters)
     # IO.inspect(filters)
-    {:ok, repo().all(apply(module, :query, [schema, filters]))}
+    query = Bonfire.Contexts.run_context_function(query_module, :query, [schema, filters])
+    {:ok, repo().all(query)}
   end
 
   defp filters(schema, id_filters, []) do
@@ -160,18 +171,12 @@ defmodule Bonfire.Common.Pointers do
   end
 
   @doc "Lists all that Pointers knows about"
-  def list_all() do
-    data = Pointers.Tables.data()
-    case data do
-      [{_, r}] -> r
-      _ -> []
-    end
-  end
+  def list_all(), do: Pointers.Tables.data()
 
   def list_pointable_schemas() do
     pointable_tables = list_all()
 
-    Enum.reduce(pointable_tables, [], fn x, acc ->
+    Enum.reduce(pointable_tables, [], fn {_id, x}, acc ->
       Enum.concat(acc, [x.schema])
     end)
   end
