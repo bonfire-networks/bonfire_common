@@ -6,7 +6,7 @@ defmodule Bonfire.Repo do
   import Bonfire.Common.Config, only: [repo: 0]
 
   use Ecto.Repo,
-    otp_app: Bonfire.Common.Config.get_ext(:bonfire_common, :otp_app),
+    otp_app: Bonfire.Common.Config.get!(:otp_app),
     adapter: Ecto.Adapters.Postgres
 
   alias Pointers.Changesets

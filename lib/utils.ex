@@ -70,14 +70,14 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
-  def map_get(map, key, fallback) when is_atom(key) do
+  def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
     Map.get(map, key, map_get(map, Atom.to_string(key), fallback))
   end
 
   @doc """
   Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback
   """
-  def map_get(map, key, fallback) when is_binary(key) do
+  def map_get(map, key, fallback) when is_map(map) and is_binary(key) do
     Map.get(
       map,
       key,
@@ -97,9 +97,7 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
-  def map_get(map, key, fallback) do
-    Map.get(map, key, fallback)
-  end
+  def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
@@ -304,5 +302,6 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
+
 
 end

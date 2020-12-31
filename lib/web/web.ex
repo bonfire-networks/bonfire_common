@@ -4,7 +4,7 @@ defmodule Bonfire.Web do
   alias Bonfire.Common.Utils
 
   def controller(opts \\ []) do
-    IO.inspect(controller: opts)
+    # IO.inspect(controller: opts)
 
     opts =
       opts
@@ -45,7 +45,7 @@ defmodule Bonfire.Web do
     IO.inspect(live_view: opts)
     opts =
       opts
-      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get_ext!(:bonfire_common, :default_layout_module), "live.html"})
+      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveView, unquote(opts)
