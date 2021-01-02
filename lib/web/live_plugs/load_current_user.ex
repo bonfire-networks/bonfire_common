@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
   end
 
   defp check_user(user, socket) do
-    {:ok, socket}
+    {:ok, assign(socket, current_user: nil)}
     # Note: use UserRequired live plug instead if a user MUST be selected
     # path = Routes.switch_user_path(socket, :index)
     # {:halt, push_redirect(socket, to: path)}

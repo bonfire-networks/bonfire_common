@@ -103,6 +103,19 @@ defmodule Bonfire.Common.Utils do
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
 
+  def put_new_in(%{} = map, [key], val) do
+    Map.put_new(map, key, val)
+  end
+
+  def put_new_in(%{} = map, [key | path], val) when is_list(path) do
+    {_, ret} =
+      Map.get_and_update(map, key, fn existing ->
+        {val, put_new_in(existing || %{}, path, val)}
+      end)
+
+    ret
+  end
+
   @doc "Replace a key in a map"
   def map_key_replace(%{} = map, key, new_key) do
     map
