@@ -146,7 +146,7 @@ defmodule Bonfire.Web do
     apply(__MODULE__, which, [])
   end
 
-  defmacro __using__([{which,opts}]) when is_atom(which) and is_list(opts) do
+  defmacro __using__({which, opts}) when is_atom(which) and is_list(opts) do
     apply(__MODULE__, which, [opts])
   end
 end
