@@ -3,6 +3,7 @@ defmodule Bonfire.Repo.Delete do
   require Logger
 
   import Bonfire.Common.Config, only: [repo: 0]
+  alias Bonfire.Common.Utils
 
   @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Just marks an entry as deleted in the database"
@@ -60,7 +61,7 @@ defmodule Bonfire.Repo.Delete do
   defp maybe_creator_allow_delete?(_, _), do: false
 
   def deletion_result({:error, e}) do
-    if Code.ensure_loaded?(Bonfire.Fail.Error) do
+    if Utils.module_exists?(Bonfire.Fail.Error) do
       {:error, Bonfire.Fail.Error.error(:deletion_error, e)}
     else
       {:error, :deletion_error}

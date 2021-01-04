@@ -1,7 +1,11 @@
 defmodule Bonfire.Web do
   @moduledoc false
 
+  alias Bonfire.Common.Utils
+
   def controller(opts \\ []) do
+    # IO.inspect(controller: opts)
+
     opts =
       opts
       |> Keyword.put_new(:namespace, Bonfire.Web)
@@ -15,7 +19,7 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Controller
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.Controller))
+      unquote(Utils.use_if_available(Thesis.Controller))
 
     end
   end
@@ -38,9 +42,10 @@ defmodule Bonfire.Web do
   end
 
   def live_view(opts \\ []) do
+    IO.inspect(live_view: opts)
     opts =
       opts
-      |> Keyword.put_new(:layout, {Bonfire.Web.LayoutView, "live.html"})
+      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveView, unquote(opts)
@@ -94,7 +99,7 @@ defmodule Bonfire.Web do
 
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.Router))
+      unquote(Utils.use_if_available(Thesis.Router))
 
     end
   end
@@ -129,22 +134,8 @@ defmodule Bonfire.Web do
 
       import Bonfire.Common.Utils
 
-      unquote(use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      unquote(Utils.use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
-    end
-  end
-
-  defp use_if_available(module, fallback_module \\ nil) do
-    if Code.ensure_loaded?(module) do
-      quote do
-        use unquote(module)
-      end
-    else
-      if is_atom(fallback_module) and Code.ensure_loaded?(fallback_module) do
-        quote do
-          use unquote(fallback_module)
-        end
-      end
     end
   end
 
@@ -155,7 +146,7 @@ defmodule Bonfire.Web do
     apply(__MODULE__, which, [])
   end
 
-  defmacro __using__([{which,opts}]) when is_atom(which) and is_list(opts) do
+  defmacro __using__({which, opts}) when is_atom(which) and is_list(opts) do
     apply(__MODULE__, which, [opts])
   end
 end

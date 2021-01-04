@@ -70,14 +70,14 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
-  def map_get(map, key, fallback) when is_atom(key) do
+  def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
     Map.get(map, key, map_get(map, Atom.to_string(key), fallback))
   end
 
   @doc """
   Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback
   """
-  def map_get(map, key, fallback) when is_binary(key) do
+  def map_get(map, key, fallback) when is_map(map) and is_binary(key) do
     Map.get(
       map,
       key,
@@ -97,13 +97,24 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
-  def map_get(map, key, fallback) do
-    Map.get(map, key, fallback)
-  end
+  def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
+
+  def put_new_in(%{} = map, [key], val) do
+    Map.put_new(map, key, val)
+  end
+
+  def put_new_in(%{} = map, [key | path], val) when is_list(path) do
+    {_, ret} =
+      Map.get_and_update(map, key, fn existing ->
+        {val, put_new_in(existing || %{}, path, val)}
+      end)
+
+    ret
+  end
 
   @doc "Replace a key in a map"
   def map_key_replace(%{} = map, key, new_key) do
@@ -246,7 +257,7 @@ defmodule Bonfire.Common.Utils do
   Special LiveView helper function which allows loading LiveComponents in regular Phoenix views: `live_render_component(@conn, MyLiveComponent)`
   """
   def live_render_component(conn, load_live_component) do
-    if Code.ensure_loaded(load_live_component),
+    if module_exists?(load_live_component),
       do:
         Phoenix.LiveView.Controller.live_render(
           conn,
@@ -271,4 +282,39 @@ defmodule Bonfire.Common.Utils do
   def macro_inspect(fun) do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
   end
+
+  def module_exists?(module) do
+    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
+  end
+
+
+  def use_if_available(module, fallback_module \\ nil) do
+    if module_exists?(module) do
+      quote do
+        use unquote(module)
+      end
+    else
+      if is_atom(fallback_module) and module_exists?(fallback_module) do
+        quote do
+          use unquote(fallback_module)
+        end
+      end
+    end
+  end
+
+  def import_if_available(module, fallback_module \\ nil) do
+    if module_exists?(module) do
+      quote do
+        import unquote(module)
+      end
+    else
+      if is_atom(fallback_module) and module_exists?(fallback_module) do
+        quote do
+          import unquote(fallback_module)
+        end
+      end
+    end
+  end
+
+
 end

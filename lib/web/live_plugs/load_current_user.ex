@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentUser do
 
   use Bonfire.Web, :live_plug
   alias Bonfire.Me.Identity.{Accounts, Users}
-  alias Bonfire.Me.Web.SwitchUserLive
+  # alias Bonfire.Me.Web.SwitchUserLive
   alias Bonfire.Data.Identity.User
 
   # the non-live plug already supplied the current user
