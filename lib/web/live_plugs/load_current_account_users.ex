@@ -14,6 +14,6 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccountUsers do
     {:ok, assign(socket, current_account_users: Users.by_account(account))}
   end
 
-  def mount(_, _, socket), do: {:ok, socket}
+  def mount(_, _, socket), do: {:ok, assign(socket, :current_account_users, [])}
 
 end

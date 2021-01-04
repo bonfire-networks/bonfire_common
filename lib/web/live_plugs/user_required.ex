@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Web.LivePlugs.UserRequired do
   use Bonfire.Web, :live_plug
   alias Bonfire.Data.Identity.{Account, User}
   alias Plug.Conn.Query
+  alias Bonfire.Common.Web.Misc
 
   def mount(_params, _session, %{assigns: the}=socket) do
     check(the[:current_user], the[:current_account], socket)
@@ -14,20 +15,14 @@ defmodule Bonfire.Common.Web.LivePlugs.UserRequired do
     {:halt,
      socket
      |> put_flash(:info, "You must choose a user to see that page.")
-     |> go(Routes.switch_user_path(socket, :index))}
+     |> redirect(to: Routes.switch_user_path(socket, :index))}
   end
 
   defp check(_user, _account, socket) do
     {:halt,
      socket
      |> put_flash(:info, "You must log in to see that page.")
-     |> go(Routes.login_path(socket, :index))}
-  end
-
-  # TODO: should we preserve query strings?
-  defp go(socket, path) do
-    path = path <> "?" <> Query.encode(go: socket.requested_path)
-    push_redirect(socket, to: path)
+     |> redirect(to: Routes.login_path(socket, :index))}
   end
 
 end

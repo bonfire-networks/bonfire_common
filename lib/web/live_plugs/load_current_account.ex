@@ -9,19 +9,10 @@ defmodule Bonfire.Common.Web.LivePlugs.LoadCurrentAccount do
     {:ok, socket}
   end
   
-  def mount(_, %{"account_id" => id}, socket) do
-    check_account(Accounts.get_current(id), socket)
-  end
-
-  def mount(_, _, socket), do: check_account(nil, socket)
-
-  defp check_account(%Account{}=account, socket) do
-    {:ok, assign(socket, current_account: account)}
-  end
-
-  defp check_account(_, socket) do
-    path = Routes.login_path(socket, :index)
-    {:halt, push_redirect(socket, to: path)}
+  def mount(_, session, socket) do
+    {:ok,
+     socket
+     |> assign(current_account: Accounts.get_current(session["account_id"]))}
   end
 
 end

@@ -10,13 +10,7 @@ defmodule Bonfire.Common.Web.LivePlugs.AccountRequired do
     {:halt,
      socket
      |> put_flash(:error, "You must log in to view that page.")
-     |> go(Routes.login_path(socket, :index))}
-  end
-
-  # TODO: should we preserve query strings?
-  defp go(conn, path) do
-    path = path <> "?" <> Query.encode(go: conn.requested_path)
-    redirect(conn, to: path)
+     |> redirect(to: Routes.login_path(socket, :index))}
   end
 
 end
