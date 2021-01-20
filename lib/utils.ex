@@ -103,6 +103,10 @@ defmodule Bonfire.Common.Utils do
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
 
+  def to_struct(nil, _module) do
+    nil
+  end
+
   def put_new_in(%{} = map, [key], val) do
     Map.put_new(map, key, val)
   end
@@ -171,6 +175,20 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  def maybe_atom_to_string(atom) when is_atom(atom) do
+    Atom.to_string(atom)
+  end
+  def maybe_atom_to_string(other) do
+    other
+  end
+
+  def maybe_struct_to_map(struct = %{__struct__: _}) do
+    Map.from_struct(struct)
+  end
+  def maybe_struct_to_map(other) do
+    other
+  end
+
   @doc """
   Convert map atom keys to strings
   """
@@ -180,13 +198,20 @@ defmodule Bonfire.Common.Utils do
 
   def stringify_keys(map = %{}, true) do
     map
-    |> Enum.map(fn {k, v} -> {Atom.to_string(k), stringify_keys(v)} end)
+    |> maybe_struct_to_map()
+    |> Enum.map(fn {k, v} ->
+        {
+          maybe_atom_to_string(k),
+          stringify_keys(v)
+        }
+      end)
     |> Enum.into(%{})
   end
 
   def stringify_keys(map = %{}, _) do
     map
-    |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end)
+    |> maybe_struct_to_map()
+    |> Enum.map(fn {k, v} -> {maybe_atom_to_string(k), v} end)
     |> Enum.into(%{})
   end
 

@@ -158,18 +158,16 @@ defmodule Bonfire.Repo do
     maybe_do_preload(obj, preloads)
   end
 
-  def maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
+  defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
 
-  def maybe_do_preload(obj, preloads) when is_struct(obj) do
+  defp maybe_do_preload(obj, preloads) when is_struct(obj) do
     repo().preload(obj, preloads)
   rescue
-    ArgumentError ->
-      obj
-
-    MatchError ->
+    e ->
+      Logger.error("maybe_do_preload: #{inspect e}")
       obj
   end
 
-  def maybe_do_preload(obj, _), do: obj
+  defp maybe_do_preload(obj, _), do: obj
 
 end
