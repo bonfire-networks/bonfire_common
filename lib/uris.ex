@@ -30,9 +30,17 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp generate_canonical_url(id) when is_binary(id) do
-    endpoint = Bonfire.Common.Config.get!(:endpoint_module)
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
-    endpoint.url() <> ap_base_path <> "/objects/" <> id
+    base_url() <> ap_base_path <> "/objects/" <> id
+  end
+
+  def base_url() do
+  try do
+    endpoint = Bonfire.Common.Config.get!(:endpoint_module)
+    if Code.ensure_loaded?(endpoint), do: endpoint.url()
+  rescue _ ->
+    ""
+  end
   end
 
 end

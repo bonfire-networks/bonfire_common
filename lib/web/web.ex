@@ -42,7 +42,7 @@ defmodule Bonfire.Web do
   end
 
   def live_view(opts \\ []) do
-    IO.inspect(live_view: opts)
+    # IO.inspect(live_view: opts)
     opts =
       opts
       |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})

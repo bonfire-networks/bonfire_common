@@ -24,7 +24,7 @@ defmodule Bonfire.Repo do
   #   {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
   # end
 
-    @doc """
+  @doc """
   Run a transaction, similar to `Repo.transaction/1`, but it expects an ok or error
   tuple. If an error tuple is returned, the transaction is aborted.
   """
