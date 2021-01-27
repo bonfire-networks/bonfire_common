@@ -155,15 +155,16 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader(schema, id_filters, override_filters) do
-    query_module = Bonfire.Contexts.run_context_function(schema, :queries_module, [])
+    IO.inspect(schema: schema)
+    query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [])
     filters = filters(schema, id_filters, override_filters)
     # IO.inspect(filters)
-    query = Bonfire.Contexts.run_context_function(query_module, :query, [schema, filters])
+    query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
     {:ok, repo().all(query)}
   end
 
   defp filters(schema, id_filters, []) do
-    id_filters ++ apply(schema, :follow_filters, [])
+    id_filters ++ Bonfire.Contexts.run_module_function(schema, :follow_filters, [])
   end
 
   defp filters(_schema, id_filters, override_filters) do
