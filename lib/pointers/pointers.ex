@@ -157,10 +157,23 @@ defmodule Bonfire.Common.Pointers do
   defp loader(schema, id_filters, override_filters) do
     IO.inspect(schema: schema)
     query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [])
-    filters = filters(schema, id_filters, override_filters)
-    # IO.inspect(filters)
-    query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
-    {:ok, repo().all(query)}
+    case query_module do
+      {:error, _} ->
+        IO.inspect("Pointers loader cowboy query: #{schema} #{inspect id_filters} #{inspect override_filters}")
+
+        import Ecto.Query
+
+        query = from l in schema,
+          where: ^id_filters
+
+        {:ok, repo().all(query)}
+
+      _ ->
+        filters = filters(schema, id_filters, override_filters)
+        # IO.inspect(filters)
+        query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
+        {:ok, repo().all(query)}
+    end
   end
 
   defp filters(schema, id_filters, []) do

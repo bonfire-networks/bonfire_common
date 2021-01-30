@@ -155,7 +155,16 @@ defmodule Bonfire.Repo do
   # end
 
   def maybe_preload(obj, preloads) do
-    maybe_do_preload(obj, preloads)
+    preloaded =
+      maybe_do_preload(obj, preloads)
+
+    case Map.get(preloaded, preloads) do
+      %Pointers.Pointer{} = pointer ->
+        preloaded
+        |> Map.put(preloads, Bonfire.Common.Pointers.follow!(pointer))
+
+      _ -> preloaded
+    end
   end
 
   defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
