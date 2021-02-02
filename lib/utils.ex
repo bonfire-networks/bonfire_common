@@ -13,11 +13,7 @@ defmodule Bonfire.Common.Utils do
 
   @doc "Returns a value, or a fallback if not present"
   def e(key, fallback) do
-    if(strlen(key) > 0) do
-      key
-    else
-      fallback
-    end
+    key || fallback
   end
 
   @doc "Returns a value from a map, or a fallback if not present"
@@ -71,7 +67,9 @@ defmodule Bonfire.Common.Utils do
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
   def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
-    Map.get(map, key, map_get(map, Atom.to_string(key), fallback))
+    Map.get(map, key,
+      map_get(map, Atom.to_string(key), fallback)
+    ) |> filter_empty(fallback)
   end
 
   @doc """
@@ -87,21 +85,20 @@ defmodule Bonfire.Common.Utils do
         Map.get(
           map,
           maybe_str_to_atom(key),
-          Map.get(
-            map,
-            maybe_str_to_atom(Recase.to_camel(key)),
-            fallback
-          )
+          fallback
         )
       )
-    )
+    ) |> filter_empty(fallback)
   end
 
   def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
-  def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback)
+  def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback) |> filter_empty(fallback)
   def maybe_get(_, _, fallback), do: fallback
+
+  def filter_empty(%Ecto.Association.NotLoaded{}, fallback \\ nil), do: fallback
+  def filter_empty(r, fallback), do: r || fallback
 
   def to_struct(nil, _module) do
     nil
@@ -234,9 +231,10 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(nil, value), do: value
   def replace_nil(other, _), do: other
 
-  def input_to_atoms(data) do
-    data |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), v} end)
+  def input_to_atoms(%{} = data) do
+    data |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
   end
+  def input_to_atoms(v), do: v
 
   def random_string(length) do
     :crypto.strong_rand_bytes(length) |> Base.url_encode64() |> binary_part(0, length)

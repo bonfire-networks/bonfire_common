@@ -158,10 +158,39 @@ defmodule Bonfire.Repo do
     preloaded =
       maybe_do_preload(obj, preloads)
 
-    case Map.get(preloaded, preloads) do
+    preload_pointers(preloads, preloaded)
+
+  end
+
+  def preload_pointers(key, preloaded) when is_list(preloaded) do
+    Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)
+  end
+
+  # TODO: figure out how to do deep preloads
+  # def preload_pointers(keys, preloaded) when is_list(keys) do
+  #   IO.inspect(keys)
+  #   preloaded
+  #   |> Bonfire.Common.Utils.maybe_struct_to_map()
+  #   |> get_and_update_in([Access.all], &{&1, preload_pointer(&1)})
+  # end
+
+  def preload_pointers(key, preloaded) do
+    case Map.get(preloaded, key) do
       %Pointers.Pointer{} = pointer ->
+
         preloaded
-        |> Map.put(preloads, Bonfire.Common.Pointers.follow!(pointer))
+        |> Map.put(key, Bonfire.Common.Pointers.follow!(pointer))
+
+      _ -> preloaded
+    end
+  end
+
+  def preload_pointer(preloaded) do
+    IO.inspect(preload_pointer: preloaded)
+    case preloaded do
+      %Pointers.Pointer{} = pointer ->
+
+        Bonfire.Common.Pointers.follow!(pointer)
 
       _ -> preloaded
     end
