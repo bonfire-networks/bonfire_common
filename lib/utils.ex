@@ -23,8 +23,8 @@ defmodule Bonfire.Common.Utils do
   @doc "Returns a value from a map, or a fallback if not present"
   def e(map, key, fallback) do
     if(is_map(map)) do
-      # attempt using key as atom or string
-      map_get(map, key, fallback)
+      # attempt using key as atom or string, fallback if doesn't exist or is nil
+      map_get(map, key, fallback) || fallback
     else
       fallback
     end
