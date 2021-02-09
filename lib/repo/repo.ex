@@ -14,6 +14,13 @@ defmodule Bonfire.Repo do
 
   import Ecto.Query
 
+  # import cursor-based pagination helper
+  use Paginator,
+    limit: 10,                           # sets the default limit TODO: put in config
+    maximum_limit: 100,                  # sets the maximum limit
+    include_total_count: false,           # include total count by default?
+    total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
+
   require Logger
 
   @doc """
@@ -55,7 +62,7 @@ defmodule Bonfire.Repo do
 
   @doc """
   Like `insert/1`, but understands remapping changeset errors to attr
-  names from config (and only config, no overrides at present!).
+  names from config (and only config, no overrides at present!)
   """
   def put(%Changeset{}=changeset) do
     with {:error, changeset} <- insert(changeset) do
@@ -116,6 +123,24 @@ defmodule Bonfire.Repo do
     queryable
     |> where([t], t.id in ^ids)
     |> all()
+  end
+
+  @default_cursor_fields [cursor_fields: [:id]]
+
+  def many_paginated(%{order_bys: order} = queryable, opts \\ @default_cursor_fields, repo_opts \\ []) when is_list(order) and length(order) > 0 do
+    IO.inspect(order_by: order)
+    queryable
+    |>
+    paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
+  end
+  def many_paginated(queryable, opts, repo_opts) do
+    queryable
+    |>
+    order_by([o],
+      desc: o.id
+    )
+    |>
+    paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
   end
 
   defp rollback_error(reason, extra \\ nil) do
@@ -207,5 +232,6 @@ defmodule Bonfire.Repo do
   end
 
   defp maybe_do_preload(obj, _), do: obj
+
 
 end
