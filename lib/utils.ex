@@ -339,5 +339,13 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  def ok(ret, fallback \\ nil) do
+    with {:ok, val} <- ret do
+      val
+    else _ ->
+      fallback
+    end
+  end
+
 
 end
