@@ -347,5 +347,35 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  @doc """
+  Subscribe to something for realtime updates, like a feed or thread
+  """
+  def pubsub_subscribe(topics, socket \\ nil) when is_list(topics) do
+    Enum.each(topics, &pubsub_subscribe(&1, socket))
+  end
 
+  def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" do
+    IO.inspect(pubsubbed_to: topic)
+
+    if is_nil(socket) or Phoenix.LiveView.connected?(socket), do:
+      Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
+  end
+
+  def pubsub_subscribe(_, _) do
+    false
+  end
+
+  @doc """
+  Broadcast some data for realtime updates, for example to a feed or thread
+  """
+  # def pubsub_broadcast(topic, {_payload_type, _data} = payload) do
+  #   Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, payload)
+  # end
+  # def pubsub_broadcast(topic, data) do
+  #   Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, {:message, data}) # fallback payload_type of 'message'
+  # end
+  def pubsub_broadcast(topic, data) do
+    IO.inspect(pubsub_broadcast: topic)
+    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
+  end
 end
