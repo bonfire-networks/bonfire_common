@@ -270,9 +270,9 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def paginate_next(fetch_function, %{assigns: assigns} = socket) do
-    {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
-  end
+  # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
+  #   {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
+  # end
 
   # defdelegate content(conn, name, type, opts \\ [do: ""]), to: Bonfire.Common.Web.ContentAreas
 
@@ -378,4 +378,77 @@ defmodule Bonfire.Common.Utils do
     IO.inspect(pubsub_broadcast: topic)
     Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
   end
+
+
+  @doc """
+  Run a function and expects tuple.
+  If anything else is returned, like an error, a flash message is shown to the user.
+  """
+  def undead_mount(socket, fun), do: undead(socket, fun, :ok)
+
+  def undead(socket, fun, return_key \\ :noreply) do
+    ret = fun.()
+
+    case ret do
+      {:ok, socket} -> {:ok, socket}
+      {:ok, socket, data} -> {:ok, socket, data}
+      {:noreply, socket} -> {:noreply, socket}
+      {:reply, data, socket} -> {:reply, data, socket}
+      {:error, reason} -> live_exception(socket, return_key, reason)
+      {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
+      ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
+    end
+  rescue
+    error in Ecto.Query.CastError ->
+      live_exception(socket, return_key, "You seem to have provided an incorrect data type (eg. an invalid ID)", error, __STACKTRACE__)
+    error in Ecto.ConstraintError ->
+      live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
+    error ->
+      live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
+  catch
+    error ->
+      live_exception(socket, return_key, "An exceptional error occured", error, __STACKTRACE__)
+  end
+
+  defp live_exception(socket, :mounted, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+    with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
+      {:ok, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
+    end
+  end
+
+  defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
+    with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
+      {return_key, put_flash(socket, :error, msg)}
+    end
+  end
+
+  defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+
+    debug_log(msg, exception, stacktrace, kind)
+
+    if Bonfire.Common.Config.get!(:env) == :dev do
+
+      banner = if exception && stacktrace, do: Exception.format_banner(kind, exception, stacktrace)
+      details = if stacktrace, do: Exception.format_stacktrace(stacktrace)
+
+      {:error, "#{msg} -- #{banner} --- #{details}"}
+    else
+      {:error, msg}
+    end
+  end
+
+  defp debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+
+    Logger.error(msg)
+
+    if exception && stacktrace, do: Logger.error(Exception.format_banner(kind, exception, stacktrace))
+    # if exception, do: IO.puts(Exception.format_exit(exception))
+    if stacktrace, do: IO.puts(Exception.format_stacktrace(stacktrace))
+
+    if exception && stacktrace && Bonfire.Common.Utils.module_exists?(Sentry), do: Sentry.capture_exception(
+      exception,
+      stacktrace: stacktrace
+    )
+  end
+
 end

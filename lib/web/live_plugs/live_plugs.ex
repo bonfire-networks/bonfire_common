@@ -24,12 +24,18 @@ defmodule Bonfire.Common.Web.LivePlugs do
     do: live_plug_(y, apply(mod, :mount, [params, session, socket]), params, session)
 
   defp live_plug_([fun | y], {:ok, socket}, params, session) when is_function(fun,3),
-    do: live_plug_(y, apply(fun, [params, session, socket]), params, session)
+    do: live_plug_(y, apply_undead(socket, fun, [params, session, socket]), params, session)
 
   defp live_plug_([{fun, args} | y], {:ok, socket}, params, session)
   when is_list(args) and is_function(fun),
-    do: live_plug_(y, apply(fun, [params, session, socket]), params, session)
+    do: live_plug_(y, apply_undead(socket, fun, [params, session, socket]), params, session)
 
   defp live_plug_(_, other, _, _), do: other
+
+  defp apply_undead(socket, fun, args) do
+    Bonfire.Common.Utils.undead(socket, fn ->
+      apply(fun, args)
+    end, :mounted)
+  end
 
 end
