@@ -259,6 +259,10 @@ defmodule Bonfire.Common.Utils do
     Regex.replace(~r/(<a href=\"http.+\")>/U, content, "\\1 target=\"_blank\">")
   end
 
+  def date_from_now(%{id: id}) do
+    date_from_pointer(id)
+  end
+
   def date_from_now(date) do
     with {:ok, from_now} <-
            Timex.shift(date, minutes: -3)
@@ -267,6 +271,12 @@ defmodule Bonfire.Common.Utils do
     else
       _ ->
         ""
+    end
+  end
+
+  def date_from_pointer(id) do
+    with {:ok, ts} <- Pointers.ULID.timestamp(id) do
+      date_from_now(ts)
     end
   end
 
