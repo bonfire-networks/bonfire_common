@@ -5,6 +5,7 @@ defmodule Bonfire.Common.Pointers do
   alias Pointers.NotFound
 
   import Bonfire.Common.Config, only: [repo: 0]
+  require Logger
 
   def get!(id, filters \\ []) do
     with {:ok, obj} <- get(id, filters) do
@@ -104,8 +105,11 @@ defmodule Bonfire.Common.Pointers do
     # IO.inspect(pointer)
 
     if is_nil(pointer.pointed) or Keyword.get(opts, :force) do
-      {:ok, [pointed]} = loader(table_id, [id: id], filters)
-      %{pointer | pointed: pointed}
+      with {:ok, [pointed]} <- loader(table_id, [id: id], filters) do
+        %{pointer | pointed: pointed}
+      else _ ->
+        pointer
+      end
     else
       pointer
     end
@@ -155,16 +159,19 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader(schema, id_filters, override_filters) do
-    IO.inspect(schema: schema)
-    query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [])
+    # IO.inspect(schema: schema)
+    query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [], &query_pointer_function_error/2)
     case query_module do
       {:error, _} ->
-        IO.inspect("Pointers loader cowboy query: #{schema} #{inspect id_filters} #{inspect override_filters}")
+
+        filters = id_filters ++ override_filters
+
+        Logger.warn("Pointers.preload!: Attempting cowboy query on #{schema} with filters: #{inspect filters}")
 
         import Ecto.Query
 
         query = from l in schema,
-          where: ^id_filters
+          where: ^filters
 
         {:ok, repo().all(query)}
 
@@ -174,6 +181,12 @@ defmodule Bonfire.Common.Pointers do
         query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
         {:ok, repo().all(query)}
     end
+  end
+
+  def query_pointer_function_error(error, args, level \\ :warn) do
+    Logger.log(level, "Pointers.preload!: #{error} with args: (#{inspect args})")
+
+    {:error, error}
   end
 
   defp filters(schema, id_filters, []) do

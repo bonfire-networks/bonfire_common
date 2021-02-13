@@ -191,7 +191,7 @@ defmodule Bonfire.Repo do
     Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)
   end
 
-  # TODO: figure out how to do deep preloads
+  # TODO: figure out how to handle nested Pointer preloads
   # def preload_pointers(keys, preloaded) when is_list(keys) do
   #   IO.inspect(keys)
   #   preloaded
@@ -227,7 +227,7 @@ defmodule Bonfire.Repo do
     repo().preload(obj, preloads)
   rescue
     e ->
-      Logger.error("maybe_do_preload: #{inspect e}")
+      Logger.warn("maybe_do_preload: #{inspect e}")
       obj
   end
 

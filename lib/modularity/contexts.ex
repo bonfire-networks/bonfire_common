@@ -54,7 +54,9 @@ defmodule Bonfire.Contexts do
   def run_context_function(object_schema_or_context, fun, args, fallback_fun)
       when is_atom(object_schema_or_context) and is_atom(fun) and is_list(args) and
              is_function(fallback_fun) do
+
     if Utils.module_exists?(object_schema_or_context) do
+
       object_context_module =
         if Kernel.function_exported?(object_schema_or_context, :context_module, 0) do
           apply(object_schema_or_context, :context_module, [])
@@ -72,7 +74,7 @@ defmodule Bonfire.Contexts do
 
     else
       fallback_fun.(
-        "No such module (#{object_schema_or_context}) could be loaded.",
+        "No such module (#{object_schema_or_context}) could be found.",
         args
       )
     end
@@ -92,9 +94,8 @@ defmodule Bonfire.Contexts do
     run_context_function(object_schema_or_context, fun, [args], fallback_fun)
   end
 
-  def run_context_function_error(error, args) do
-    Logger.error("Error running context function: #{error}")
-    IO.inspect(run_context_function: args)
+  def run_context_function_error(error, args, level \\ :error) do
+    Logger.log(level, "Bonfire.Contexts: Error running function: #{error} with args: (#{inspect args})")
 
     {:error, error}
   end

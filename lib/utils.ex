@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Utils do
   import Phoenix.LiveView
   require Logger
+  alias Bonfire.Web.Router.Helpers, as: Routes
 
   def strlen(x) when is_nil(x), do: 0
   def strlen(%{} = obj) when obj == %{}, do: 0
@@ -428,7 +429,8 @@ defmodule Bonfire.Common.Utils do
 
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      {return_key, put_flash(socket, :error, msg)}
+      IO.inspect(socket)
+      {return_key, put_flash(socket, :error, msg) |> push_patch(to: Routes.live_path(socket, socket.view))}
     end
   end
 
@@ -441,7 +443,7 @@ defmodule Bonfire.Common.Utils do
       banner = if exception && stacktrace, do: Exception.format_banner(kind, exception, stacktrace)
       details = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
-      {:error, "#{msg} -- #{banner} --- #{details}"}
+      {:error, ("#{msg} -- #{banner} --- #{details}" |> String.slice(0..1000)) }
     else
       {:error, msg}
     end
@@ -453,7 +455,7 @@ defmodule Bonfire.Common.Utils do
 
     if exception && stacktrace, do: Logger.error(Exception.format_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
-    if stacktrace, do: IO.puts(Exception.format_stacktrace(stacktrace))
+    if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
     if exception && stacktrace && Bonfire.Common.Utils.module_exists?(Sentry), do: Sentry.capture_exception(
       exception,
