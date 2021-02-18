@@ -132,6 +132,7 @@ defmodule Bonfire.Web do
 
       alias Bonfire.Web.Router.Helpers, as: Routes
 
+      alias Bonfire.Common.Utils
       import Bonfire.Common.Utils
 
       unquote(Utils.use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
