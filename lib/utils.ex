@@ -399,6 +399,8 @@ defmodule Bonfire.Common.Utils do
   def undead(socket, fun, return_key \\ :noreply) do
     ret = fun.()
 
+    # IO.inspect(undead_ret: ret)
+
     case ret do
       {:ok, socket} -> {:ok, socket}
       {:ok, socket, data} -> {:ok, socket, data}

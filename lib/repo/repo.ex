@@ -187,6 +187,7 @@ defmodule Bonfire.Repo do
 
   end
 
+
   def preload_pointers(key, preloaded) when is_list(preloaded) do
     Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)
   end
