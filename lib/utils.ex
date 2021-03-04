@@ -439,7 +439,7 @@ defmodule Bonfire.Common.Utils do
 
     if Bonfire.Common.Config.get!(:env) == :dev do
 
-      banner = if exception && stacktrace, do: Exception.format_banner(kind, exception, stacktrace)
+      banner = if exception, do: debug_banner(kind, exception, stacktrace)
       details = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
       {:error, ("#{msg} -- #{banner} --- #{details}" |> String.slice(0..1000)) }
@@ -452,7 +452,7 @@ defmodule Bonfire.Common.Utils do
 
     Logger.error(msg)
 
-    if exception && stacktrace, do: Logger.error(Exception.format_banner(kind, exception, stacktrace))
+    if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
     if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
@@ -460,6 +460,11 @@ defmodule Bonfire.Common.Utils do
       exception,
       stacktrace: stacktrace
     )
+  end
+
+  defp debug_banner(kind, exception, stacktrace) do
+    if exception && stacktrace, do: Exception.format_banner(kind, exception, stacktrace),
+    else: inspect exception
   end
 
 end
