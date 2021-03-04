@@ -366,9 +366,8 @@ defmodule Bonfire.Common.Utils do
   end
 
   def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" do
-    IO.inspect(pubsubbed_to: topic)
-
     if is_nil(socket) or Phoenix.LiveView.connected?(socket), do:
+      IO.inspect(pubsubbed_to: topic)
       Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
   end
 

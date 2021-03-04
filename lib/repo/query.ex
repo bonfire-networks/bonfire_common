@@ -39,9 +39,9 @@ defmodule Bonfire.Repo.Query do
             {QueryElf.Plugins.AutomaticSorters, fields: unquote(sortable_fields)},
             # {QueryElf.Plugins.OffsetPagination, default_per_page: unquote(default_per_page)},
             # put any other plugins to include everywhere here
-          ] ++ unquote(extra_plugins) # adds additional plugins from opts
+          ] ++ unquote(extra_plugins) # adds additional plugins from `use Bonfire.Repo.Query` opts
       else
-        Logger.error("Must specify a `schema` as option when you `use` Query")
+        Logger.error("Must specify a `schema: EctoSchemaModule` option when you `use` Query")
       end
 
     end
