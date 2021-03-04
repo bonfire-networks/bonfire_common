@@ -85,6 +85,13 @@ defmodule Bonfire.Repo do
     end
   end
 
+  def upsert(q) do
+    insert!(
+      q,
+      on_conflict: :nothing
+    )
+  end
+
   @doc """
   Like Repo.one, but returns an ok/error tuple.
   """
