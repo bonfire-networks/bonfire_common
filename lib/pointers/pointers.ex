@@ -38,6 +38,14 @@ defmodule Bonfire.Common.Pointers do
     thing
   end
 
+  def one(id) when is_binary(id) do
+    if Bonfire.Common.Utils.is_ulid(id) do
+      one(id: id)
+    else
+      {:error, :not_found}
+    end
+  end
+
   def one(filters), do: repo().single(Queries.query(Pointer, filters))
 
   def one!(filters), do: repo().one!(Queries.query(Pointer, filters))

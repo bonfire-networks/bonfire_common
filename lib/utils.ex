@@ -321,14 +321,18 @@ defmodule Bonfire.Common.Utils do
     function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
 
+  def module_enabled?(module) do
+    # TODO: make it possible to disable extensions (and modules) in config
+    module_exists?(module)
+  end
 
   def use_if_available(module, fallback_module \\ nil) do
-    if module_exists?(module) do
+    if module_enabled?(module) do
       quote do
         use unquote(module)
       end
     else
-      if is_atom(fallback_module) and module_exists?(fallback_module) do
+      if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           use unquote(fallback_module)
         end
@@ -337,12 +341,12 @@ defmodule Bonfire.Common.Utils do
   end
 
   def import_if_available(module, fallback_module \\ nil) do
-    if module_exists?(module) do
+    if module_enabled?(module) do
       quote do
         import unquote(module)
       end
     else
-      if is_atom(fallback_module) and module_exists?(fallback_module) do
+      if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
         end
@@ -408,6 +412,7 @@ defmodule Bonfire.Common.Utils do
       {:reply, data, socket} -> {:reply, data, socket}
       {:error, reason} -> live_exception(socket, return_key, reason)
       {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
+      :ok -> {return_key, socket} # shortcut for return nothing
       ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
     end
   rescue
@@ -415,6 +420,8 @@ defmodule Bonfire.Common.Utils do
       live_exception(socket, return_key, "You seem to have provided an incorrect data type (eg. an invalid ID)", error, __STACKTRACE__)
     error in Ecto.ConstraintError ->
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
+    error in FunctionClauseError ->
+      live_exception(socket, return_key, "An app function received didn't received the data it expected", error, __STACKTRACE__)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
@@ -430,9 +437,11 @@ defmodule Bonfire.Common.Utils do
 
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      IO.inspect(socket)
       {return_key, put_flash(socket, :error, msg) |> push_patch(to: Routes.live_path(socket, socket.view))}
     end
+  rescue
+    ArgumentError -> # for cases where the live_path may need param(s) which we don't know about
+      {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
   end
 
   defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
