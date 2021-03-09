@@ -421,7 +421,7 @@ defmodule Bonfire.Common.Utils do
     error in Ecto.ConstraintError ->
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
     error in FunctionClauseError ->
-      live_exception(socket, return_key, "An app function received didn't received the data it expected", error, __STACKTRACE__)
+      live_exception(socket, return_key, "A function didn't receive the data it expected", error, __STACKTRACE__)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
