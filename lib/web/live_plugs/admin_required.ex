@@ -1,11 +1,11 @@
 defmodule Bonfire.Common.Web.LivePlugs.AdminRequired do
 
   use Bonfire.Web, :live_plug
-  alias Bonfire.Data.Identity.Account
+  alias Bonfire.Data.Identity.User
 
-  def mount(_params, _session, socket), do: check(socket.assigns[:current_account], socket)
+  def mount(_params, _session, socket), do: check(socket.assigns[:current_user], socket)
 
-  defp check(%Account{instance_admin: %{is_instance_admin: true}}, socket), do: {:ok, socket}
+  defp check(%User{instance_admin: %{is_instance_admin: true}}, socket), do: {:ok, socket}
   defp check(_, socket) do
     {:halt,
      socket

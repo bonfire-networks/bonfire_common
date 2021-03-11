@@ -146,9 +146,33 @@ defmodule Bonfire.Common.Utils do
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  @doc "recursively merge maps or lists"
+  def deep_merge(left = %{}, right = %{}) do
+    Map.merge(left, right, &deep_resolve/3)
+  end
+  def deep_merge(left = [], right = []) do
+    left ++ right
+  end
+
+  # Key exists in both maps, and both values are of the same type.
+  # These can be merged recursively.
+  defp deep_resolve(_key, left = %{}, right = []) do
+    deep_merge(left, right)
+  end
+  defp deep_resolve(_key, left = [], right = []) do
+    deep_merge(left, right)
+  end
+
+  # Key exists in both maps, but at least one of the values is
+  # NOT a map or array. We fall back to standard merge behavior, preferring
+  # the value on the right.
+  defp deep_resolve(_key, _left, right) do
+    right
+  end
+
   def assigns_merge(assigns, map = %{}) do
     assigns
-    |> Map.merge(map)
+    |> deep_merge(map)
     |> Enum.reject( fn
       {:flash, _} -> true
       _ -> false
