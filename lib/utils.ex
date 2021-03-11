@@ -146,6 +146,15 @@ defmodule Bonfire.Common.Utils do
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  def assigns_merge(assigns, map = %{}) do
+    assigns
+    |> Map.merge(map)
+    |> Enum.reject( fn
+      {:flash, _} -> true
+      _ -> false
+    end)
+  end
+
   @doc "Applies change_fn if the first parameter is not nil."
   def maybe(nil, _change_fn), do: nil
 
