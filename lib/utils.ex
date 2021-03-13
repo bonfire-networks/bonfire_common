@@ -404,11 +404,12 @@ defmodule Bonfire.Common.Utils do
 
   def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" do
     if is_nil(socket) or Phoenix.LiveView.connected?(socket), do:
-      IO.inspect(pubsubbed_to: topic)
+      Logger.info("pubsub_subscribe: #{inspect topic}")
       Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
   end
 
   def pubsub_subscribe(_, _) do
+    Logger.info("pubsub did not subscribe")
     false
   end
 
@@ -421,10 +422,11 @@ defmodule Bonfire.Common.Utils do
   # def pubsub_broadcast(topic, data) do
   #   Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, {:message, data}) # fallback payload_type of 'message'
   # end
-  def pubsub_broadcast(topic, data) do
-    IO.inspect(pubsub_broadcast: topic)
+  def pubsub_broadcast(topic, data) when not is_nil(topic) and topic !="" and not is_nil(data) do
+    Logger.info("pubsub_broadcast: #{inspect topic}")
     Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
   end
+  def pubsub_broadcast(_, _), do: Logger.info("pubsub did not broadcast")
 
 
   @doc """
