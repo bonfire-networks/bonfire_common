@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Web.LivePlugs do
+defmodule Bonfire.Web.LivePlugs do
   @moduledoc "Like a plug, but for a liveview"
 
   @compile {:inline, live_plug_: 4}

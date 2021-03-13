@@ -5,7 +5,7 @@ defmodule Bonfire.Web.LiveComponent do
 
   use Bonfire.Web, :live_view
 
-  alias Bonfire.Common.Web.LivePlugs
+  alias Bonfire.Web.LivePlugs
 
   def mount(params, session, socket) do
     LivePlugs.live_plug params, session, socket, [

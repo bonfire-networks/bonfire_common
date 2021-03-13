@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.URIs do
 
   alias Bonfire.Common.Utils
-  alias Bonfire.Me.Identity.Characters
+  alias Bonfire.Me.Characters
 
   def canonical_url(%{canonical_url: canonical_url}) when not is_nil(canonical_url) do
     canonical_url
