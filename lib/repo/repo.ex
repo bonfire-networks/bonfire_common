@@ -207,7 +207,7 @@ defmodule Bonfire.Repo do
   #   |> get_and_update_in([Access.all], &{&1, preload_pointer(&1)})
   # end
 
-  def preload_pointers(key, preloaded) do
+  def preload_pointers(key, preloaded) when is_map(preloaded) do
     case Map.get(preloaded, key) do
       %Pointers.Pointer{} = pointer ->
 
@@ -217,6 +217,7 @@ defmodule Bonfire.Repo do
       _ -> preloaded
     end
   end
+  def preload_pointers(key, preloaded), do: preloaded
 
   def preload_pointer(preloaded) do
     IO.inspect(preload_pointer: preloaded)
