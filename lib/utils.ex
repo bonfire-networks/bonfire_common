@@ -416,12 +416,10 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Broadcast some data for realtime updates, for example to a feed or thread
   """
-  # def pubsub_broadcast(topic, {_payload_type, _data} = payload) do
-  #   Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, payload)
-  # end
-  # def pubsub_broadcast(topic, data) do
-  #   Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, {:message, data}) # fallback payload_type of 'message'
-  # end
+  def pubsub_broadcast(topic, {payload_type, _data} = payload) do
+    Logger.info("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
+    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, payload)
+  end
   def pubsub_broadcast(topic, data) when not is_nil(topic) and topic !="" and not is_nil(data) do
     Logger.info("pubsub_broadcast: #{inspect topic}")
     Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)

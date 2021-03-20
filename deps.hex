@@ -17,4 +17,4 @@ faker = "~> 0.12"
 # specific for Publisher:Thesis extension
 # thesis = "~> 0.3"
 query_elf = "~> 0.3.0" # ecto query helpers
-paginator = "~> 1.0.3" # paginate queries
+paginator = "~> 1.0.4" # paginate queries

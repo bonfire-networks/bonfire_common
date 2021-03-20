@@ -17,7 +17,7 @@ defmodule Bonfire.Repo do
   # import cursor-based pagination helper
   use Paginator,
     limit: 10,                           # sets the default limit TODO: put in config
-    maximum_limit: 100,                  # sets the maximum limit
+    maximum_limit: 1000,                  # sets the maximum limit TODO: put in config
     include_total_count: false,           # include total count by default?
     total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
 
@@ -134,18 +134,22 @@ defmodule Bonfire.Repo do
 
   @default_cursor_fields [cursor_fields: [:id]]
 
-  def many_paginated(%{order_bys: order} = queryable, opts \\ @default_cursor_fields, repo_opts \\ []) when is_list(order) and length(order) > 0 do
+  def many_paginated(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+
+  def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
     # IO.inspect(order_by: order)
     queryable
     |>
     paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
   end
+
   def many_paginated(queryable, opts, repo_opts) do
     queryable
     |>
     order_by([o],
       desc: o.id
     )
+    # |> IO.inspect
     |>
     paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
   end
