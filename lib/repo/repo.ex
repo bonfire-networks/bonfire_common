@@ -190,6 +190,7 @@ defmodule Bonfire.Repo do
   #   CommonsPub.Contexts.prepare_context(obj)
   # end
 
+  def maybe_preload({:ok, obj}, preloads), do: {:ok, maybe_preload(obj, preloads)}
   def maybe_preload(obj, preloads) do
     preloaded =
       maybe_do_preload(obj, preloads)
