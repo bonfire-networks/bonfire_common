@@ -26,7 +26,8 @@ defmodule Bonfire.Repo.Query do
       # import ecto `from` etc
       import Ecto.Query
 
-      # import `join_preload` helper
+      # `reusable_join` and `join_preload` helpers
+      require QueryElf.Plugins.ReusableJoin
       import QueryElf.Plugins.Preloader
 
       require Logger
