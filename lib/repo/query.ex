@@ -29,6 +29,7 @@ defmodule Bonfire.Repo.Query do
       # `reusable_join` and `join_preload` helpers
       require QueryElf.Plugins.ReusableJoin
       import QueryElf.Plugins.Preloader
+      require QueryElf.Plugins.Preloader
 
       require Logger
 
