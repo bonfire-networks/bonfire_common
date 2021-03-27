@@ -68,9 +68,9 @@ defmodule Bonfire.Common.Utils do
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
   def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
-    Map.get(map, key,
+    maybe_get(map, key,
       map_get(map, Atom.to_string(key), fallback)
-    ) |> filter_empty(fallback)
+    ) |> magic_filter_empty(map, key, fallback)
   end
 
   @doc """
@@ -89,17 +89,28 @@ defmodule Bonfire.Common.Utils do
           fallback
         )
       )
-    ) |> filter_empty(fallback)
+    ) |> magic_filter_empty(map, key, fallback)
   end
 
   def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
-  def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback) |> filter_empty(fallback)
+  def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback) |> magic_filter_empty(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
 
-  def filter_empty(%Ecto.Association.NotLoaded{}, fallback \\ nil), do: fallback
-  def filter_empty(r, fallback), do: r || fallback
+  def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback \\ nil) when is_map(map) and is_atom(key) do
+    if Bonfire.Common.Config.get!(:env) == :dev do
+      Logger.error("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
+      Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
+    else
+      Logger.warn("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
+      fallback
+    end
+  end
+  def magic_filter_empty(val, _, _, fallback), do: val |> filter_empty(fallback)
+
+  def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
+  def filter_empty(val, fallback), do: val || fallback
 
   def to_struct(nil, _module) do
     nil
@@ -436,7 +447,7 @@ defmodule Bonfire.Common.Utils do
   def undead(socket, fun, return_key \\ :noreply) do
     ret = fun.()
 
-    # IO.inspect(undead_ret: ret)
+    #IO.inspect(undead_ret: ret)
 
     case ret do
       {:ok, socket} -> {:ok, socket}

@@ -137,7 +137,7 @@ defmodule Bonfire.Repo do
   def many_paginated(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
-    # IO.inspect(order_by: order)
+    #IO.inspect(order_by: order)
     queryable
     |>
     paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
@@ -198,7 +198,6 @@ defmodule Bonfire.Repo do
     preload_pointers(preloads, preloaded)
 
   end
-
 
   def preload_pointers(key, preloaded) when is_list(preloaded) do
     Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)

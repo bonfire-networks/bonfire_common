@@ -77,7 +77,7 @@ defmodule Bonfire.Common.Pointers do
   """
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: table_id, id: id} = pointed) do
-    # IO.inspect(forge: pointed)
+    #IO.inspect(forge: pointed)
     table = Pointers.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
@@ -110,7 +110,7 @@ defmodule Bonfire.Common.Pointers do
   def preload!(pointer_or_pointers, opts \\ [], filters \\ [])
 
   def preload!(%Pointer{id: id, table_id: table_id} = pointer, opts, filters) do
-    # IO.inspect(pointer)
+    #IO.inspect(pointer)
 
     if is_nil(pointer.pointed) or Keyword.get(opts, :force) do
       with {:ok, [pointed]} <- loader(table_id, [id: id], filters) do
@@ -167,7 +167,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader(schema, id_filters, override_filters) do
-    # IO.inspect(schema: schema)
+    #IO.inspect(schema: schema)
     query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [], &query_pointer_function_error/2)
     case query_module do
       {:error, _} ->
@@ -185,7 +185,7 @@ defmodule Bonfire.Common.Pointers do
 
       _ ->
         filters = filters(schema, id_filters, override_filters)
-        # IO.inspect(filters)
+        #IO.inspect(filters)
         query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
         {:ok, repo().all(query)}
     end

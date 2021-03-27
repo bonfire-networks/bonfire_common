@@ -9,7 +9,7 @@ defmodule Bonfire.Common.Web.ErrorHelpers do
   Generates tag for inlined form input errors.
   """
   def error_tag(form, field) do
-    # IO.inspect(errors: form.errors)
+    #IO.inspect(errors: form.errors)
     Keyword.get_values(form.errors, field)
     |> Enum.reduce({[], MapSet.new()}, fn error, {errors, seen} ->
       if MapSet.member?(seen, error) do

@@ -17,7 +17,7 @@ defmodule Bonfire.Repo.Query do
     # Allow the user to include extra plugins
     extra_plugins = opts[:plugins] || []
 
-    # IO.inspect(Keyword.get(opts, :schema))
+    #IO.inspect(Keyword.get(opts, :schema))
 
     quote do
       # import the repo() function

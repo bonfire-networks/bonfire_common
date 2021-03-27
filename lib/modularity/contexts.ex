@@ -19,7 +19,7 @@ defmodule Bonfire.Contexts do
 
     if Utils.module_exists?(module) do
       if Kernel.function_exported?(module, fun, arity) do
-        # IO.inspect(function_exists_in: module)
+        #IO.inspect(function_exists_in: module)
 
         try do
           apply(module, fun, args)
