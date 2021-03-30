@@ -459,6 +459,7 @@ defmodule Bonfire.Common.Utils do
       {:error, reason} -> live_exception(socket, return_key, reason)
       {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
       :ok -> {return_key, socket} # shortcut for return nothing
+      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data seems invalid and could not be inserted/updated.", cs)
       ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
     end
   rescue
@@ -468,6 +469,8 @@ defmodule Bonfire.Common.Utils do
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
     error in FunctionClauseError ->
       live_exception(socket, return_key, "A function didn't receive the data it expected", error, __STACKTRACE__)
+    cs in Ecto.Changeset ->
+        live_exception(socket, return_key, "The data seems invalid and could not be inserted/updated.", cs, nil)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
@@ -490,16 +493,22 @@ defmodule Bonfire.Common.Utils do
       {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
   end
 
-  defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+  defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+
+  defp debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind) do
+    debug_exception(Bonfire.Repo.ChangesetErrors.cs_to_string(cs), exception, stacktrace, kind)
+  end
+
+  defp debug_exception(msg, exception, stacktrace, kind) do
 
     debug_log(msg, exception, stacktrace, kind)
 
     if Bonfire.Common.Config.get!(:env) == :dev do
 
-      banner = if exception, do: debug_banner(kind, exception, stacktrace)
-      details = if stacktrace, do: Exception.format_stacktrace(stacktrace)
+      exception = if exception, do: debug_banner(kind, exception, stacktrace)
+      stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
-      {:error, ("#{msg} -- #{banner} --- #{details}" |> String.slice(0..1000)) }
+      {:error, Enum.join([msg, exception, stacktrace] |> Enum.filter(& &1), " - ") |> String.slice(0..1000) }
     else
       {:error, msg}
     end
@@ -519,8 +528,12 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
+  defp debug_banner(kind, %Ecto.Changeset{} = cs, _) do
+    Bonfire.Repo.ChangesetErrors.cs_to_string(cs)
+  end
+
   defp debug_banner(kind, exception, stacktrace) do
-    if exception && stacktrace, do: Exception.format_banner(kind, exception, stacktrace),
+    if exception && stacktrace, do: inspect Exception.format_banner(kind, exception, stacktrace),
     else: inspect exception
   end
 
