@@ -444,7 +444,8 @@ defmodule Bonfire.Common.Utils do
   Run a function and expects tuple.
   If anything else is returned, like an error, a flash message is shown to the user.
   """
-  def undead_mount(socket, fun), do: undead(socket, fun, :ok)
+  def undead_mount(socket, fun), do: undead(socket, fun, {:mount, :ok})
+  def undead_params(socket, fun), do: undead(socket, fun, {:mount, :noreply})
 
   def undead(socket, fun, return_key \\ :noreply) do
     ret = fun.()
@@ -478,9 +479,9 @@ defmodule Bonfire.Common.Utils do
       live_exception(socket, return_key, "An exceptional error occured", error, __STACKTRACE__)
   end
 
-  defp live_exception(socket, :mounted, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+  defp live_exception(socket, {:mount, return_key}, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      {:ok, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
+      {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
     end
   end
 

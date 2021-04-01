@@ -33,9 +33,9 @@ defmodule Bonfire.Web.LivePlugs do
   defp live_plug_(_, other, _, _), do: other
 
   defp apply_undead(socket, fun, args) do
-    Bonfire.Common.Utils.undead(socket, fn ->
+    Bonfire.Common.Utils.undead_mount(socket, fn ->
       apply(fun, args)
-    end, :mounted)
+    end)
   end
 
 end
