@@ -66,6 +66,16 @@ defmodule Bonfire.Common.Utils do
 
   def is_ulid(_), do: false
 
+  def ulid(%{id: id}) when is_binary(id), do: ulid(id)
+  def ulid(id) do
+    if is_ulid(id) do
+      id
+    else
+      Logger.error("Expected ULID ID, got #{inspect id}")
+      nil
+    end
+  end
+
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
@@ -199,6 +209,7 @@ defmodule Bonfire.Common.Utils do
     change_fn.(val)
   end
 
+  @spec maybe_ok_error(any, any) :: any
   @doc "Applies change_fn if the first parameter is an {:ok, val} tuple, else returns the value"
   def maybe_ok_error({:ok, val}, change_fn) do
     {:ok, change_fn.(val)}
@@ -350,13 +361,6 @@ defmodule Bonfire.Common.Utils do
 
   def live_render_with_conn(conn, live_view) do
     Phoenix.LiveView.Controller.live_render(conn, live_view, session: %{"conn" => conn})
-  end
-
-  @doc "Applies change_fn if the first parameter is not nil."
-  def maybe(nil, _change_fn), do: nil
-
-  def maybe(val, change_fn) do
-    change_fn.(val)
   end
 
   def macro_inspect(fun) do

@@ -30,12 +30,10 @@ defmodule Bonfire.Common.Web.ContentAreas do
       <%= content(@conn, "Image identifier", :image, alt: "My alt tag", do: "http://placekitten.com/200/300") %>
 
   """
-  @spec content(Plug.Conn.t, String.t, String.t, list) :: String.t | {:safe, String.t}
   def content(conn, name, type, opts \\ [do: ""]) do
     render_content(conn, name, type, opts)
   end
 
-  @spec content(Plug.Conn.t, String.t, String.t, list, list) :: String.t | {:safe, String.t}
   def content(conn, name, type, opts, [do: block]) do
     render_content(conn, name, type, Keyword.put(opts, :do, block))
   end

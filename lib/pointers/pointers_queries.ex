@@ -9,6 +9,12 @@ defmodule Bonfire.Common.Pointers.Queries do
 
   def query(q, filters), do: filter(query(q), filters)
 
+  @spec filter(
+          any,
+          maybe_improper_list
+          | {:id, binary | maybe_improper_list}
+          | {:table, binary | [atom | binary]}
+        ) :: any
   @doc "Filter the query according to arbitrary criteria"
   def filter(q, filter_or_filters)
 

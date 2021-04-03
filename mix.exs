@@ -11,7 +11,8 @@ defmodule Bonfire.Common.MixProject do
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       deps: Mess.deps [
         {:phoenix_live_reload, "~> 1.2", only: :dev},
-        {:dbg, "~> 1.0", only: :dev}
+        {:dbg, "~> 1.0", only: :dev},
+        {:zest, "~> 0.1", optional: true}
       ]
     ]
   end

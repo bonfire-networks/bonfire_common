@@ -37,7 +37,7 @@ defmodule Bonfire.Common.Config do
     extension = maybe_extension_loaded(module_or_otp_app)
 
     config = Application.get_all_env(extension)
-    !is_nil(config) and config != []
+    config && config != []
   end
 
   @doc """
