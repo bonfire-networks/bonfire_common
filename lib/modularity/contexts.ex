@@ -7,10 +7,17 @@ defmodule Bonfire.Contexts do
   require Logger
 
   def run_module_function(
+    module,
+    fun,
+    args \\ [],
+    fallback_fun \\ &run_context_function_error/2
+  )
+
+  def run_module_function(
       module,
       fun,
-      args \\ [],
-      fallback_fun \\ &run_context_function_error/2
+      args,
+      fallback_fun
     )
     when is_atom(module) and is_atom(fun) and is_list(args) and
             is_function(fallback_fun) do
@@ -43,6 +50,20 @@ defmodule Bonfire.Contexts do
       )
     end
   end
+
+    def run_module_function(
+      module,
+      fun,
+      args,
+      fallback_fun
+    )
+    when is_atom(module) and is_atom(fun) and
+            is_function(fallback_fun), do: run_module_function(
+      module,
+      fun,
+      [args],
+      fallback_fun
+    )
 
   def run_context_function(
         object,
