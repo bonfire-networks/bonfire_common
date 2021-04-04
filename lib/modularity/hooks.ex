@@ -6,7 +6,7 @@ defmodule Bonfire.Common.Hooks do
       caller = Bonfire.Common.Hooks.caller()
 
       ret
-      |> Bonfire.Common.Hooks.maybe_hook_after(caller)
+      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
     end
   end
 
@@ -14,37 +14,47 @@ defmodule Bonfire.Common.Hooks do
     quote do
       caller = Bonfire.Common.Hooks.caller()
 
-      Bonfire.Repo.transact_with(unquote(fun))
-      |> Bonfire.Common.Hooks.maybe_hook_after(caller)
+      Bonfire.Common.Hooks.maybe_hook(unquote(fun), caller, :before)
+      |> Bonfire.Repo.transact_with()
+      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
     end
   end
 
-  defmacro hook_undead(socket, fun, return_key \\ :noreply) do
+  defmacro hook_undead(socket, action, attrs, fun, return_key \\ :noreply) do
     quote do
       caller = Bonfire.Common.Hooks.caller()
 
+      Bonfire.Common.Hooks.maybe_hook([unquote(action), unquote(attrs)], caller, :before)
+
       Bonfire.Common.Utils.undead(unquote(socket), unquote(fun), unquote(return_key))
-      |> Bonfire.Common.Hooks.maybe_hook_after(caller)
+      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
     end
   end
 
-  def maybe_hook_after(ret, caller) do
-    case Bonfire.Common.Config.get([:hooks, caller]) do
+  def maybe_hook(ret, caller, position \\ :after)
+
+  def maybe_hook(ret, caller, position) do
+    case Bonfire.Common.Config.get([:hooks, caller], %{}) |> Map.get(position) do
       {module, fun} ->
         IO.inspect(run_hook_module: module)
         IO.inspect(run_hook_function: fun)
-        Bonfire.Contexts.run_module_function(module, fun, ret)
+        Bonfire.Contexts.run_module_function(module, fun, ret, &run_hook_function_error/2)
       _ ->
-        IO.inspect(no_hook: caller)
+        IO.inspect("no hook (#{position}): #{inspect caller}")
         ret
     end
   end
 
-  def caller() do
-    {callingMod, callingFunc, callingFuncArity, _} = Process.info(self(), :current_stacktrace) |> elem(1) |> IO.inspect |> Enum.fetch!(2)
+  def caller do
+    {callingMod, callingFunc, callingFuncArity, _} =
+      Process.info(self(), :current_stacktrace)
+      |> elem(1)
+      # |> IO.inspect
+      |> Enum.fetch!(2)
     # IO.inspect(callingMod: callingMod)
     # IO.inspect(callingFunc: callingFunc)
-    {callingMod, callingFunc, callingFuncArity}
+    # IO.inspect(callingFuncArity: callingFuncArity)
+    {callingMod, callingFunc}
   end
 
   def run_hook_function_error(error, args, level \\ :error) do
