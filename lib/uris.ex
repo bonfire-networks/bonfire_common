@@ -34,13 +34,17 @@ defmodule Bonfire.Common.URIs do
     base_url() <> ap_base_path <> "/objects/" <> id
   end
 
-  def base_url() do
-  try do
-    endpoint = Bonfire.Common.Config.get!(:endpoint_module)
-    if Code.ensure_loaded?(endpoint), do: endpoint.url()
-  rescue _ ->
-    ""
-  end
+  def base_url(conn \\ nil)
+  def base_url(%{scheme: :http, host: host, port: 80}), do: "http://"<>host
+  def base_url(%{scheme: :https, host: host, port: 443}), do: "https://"<>host
+  def base_url(%{scheme: scheme, host: host, port: port}), do: "#{scheme}:#{port}//"<>host
+  def base_url(_) do
+    try do
+      endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+      if Code.ensure_loaded?(endpoint), do: endpoint.url(), else: "/"
+    rescue _ ->
+      "/"
+    end
   end
 
 end

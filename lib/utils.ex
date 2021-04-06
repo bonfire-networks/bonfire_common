@@ -21,11 +21,11 @@ defmodule Bonfire.Common.Utils do
   def e({:ok, map}, key, fallback), do: e(map, key, fallback)
 
   def e(map, key, fallback) do
-    if(is_map(map)) do
-      # attempt using key as atom or string, fallback if doesn't exist or is nil
-      map_get(map, key, fallback) || fallback
-    else
-      fallback
+    # IO.inspect(map: map)
+    case map do
+      map when is_map(map) -> map_get(map, key, fallback) || fallback # attempt using key as atom or string, fallback if doesn't exist or is nil
+      list when is_list(list) and length(list)==1 -> e(List.first(map), key, fallback)
+      _ -> fallback
     end
   end
 
