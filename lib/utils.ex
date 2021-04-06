@@ -173,8 +173,9 @@ defmodule Bonfire.Common.Utils do
   def deep_merge(left = %{}, right = %{}) do
     Map.merge(left, right, &deep_resolve/3)
   end
-  def deep_merge(left = [], right = []) do
-    left ++ right
+  def deep_merge(left, right) when is_list(left) and is_list(right) do
+    if Keyword.keyword?(left), do: Keyword.merge(left, right), # this includes dups :/ maybe switch to https://github.com/PragTob/deep_merge ?
+    else: left ++ right
   end
 
   # Key exists in both maps, and both values are of the same type.
@@ -193,13 +194,17 @@ defmodule Bonfire.Common.Utils do
     right
   end
 
-  def assigns_merge(assigns, map = %{}) do
+
+  def assigns_merge(assigns, map = %{}), do: assigns_merge(assigns, Map.to_list(map))
+  def assigns_merge(assigns, list) when is_list(list) do
     assigns
-    |> deep_merge(map)
+    # |> IO.inspect
     |> Enum.reject( fn
+      {:id, _} -> true
       {:flash, _} -> true
       _ -> false
     end)
+    |> deep_merge(list)
   end
 
   @doc "Applies change_fn if the first parameter is not nil."

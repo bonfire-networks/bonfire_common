@@ -185,6 +185,7 @@ defmodule Bonfire.Repo do
     ret
   end
 
+
   # def maybe_preload(obj, :context) do
   # # follow the context Pointer
   #   CommonsPub.Contexts.prepare_context(obj)
@@ -198,6 +199,20 @@ defmodule Bonfire.Repo do
     preload_pointers(preloads, preloaded)
 
   end
+
+
+  defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
+
+  defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
+    repo().preload(obj, preloads)
+  rescue
+    e ->
+      Logger.warn("maybe_do_preload: #{inspect e}")
+      obj
+  end
+
+  defp maybe_do_preload(obj, _), do: obj
+
 
   def preload_pointers(key, preloaded) when is_list(preloaded) do
     Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)
@@ -233,18 +248,6 @@ defmodule Bonfire.Repo do
       _ -> preloaded
     end
   end
-
-  defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
-
-  defp maybe_do_preload(obj, preloads) when is_struct(obj) do
-    repo().preload(obj, preloads)
-  rescue
-    e ->
-      Logger.warn("maybe_do_preload: #{inspect e}")
-      obj
-  end
-
-  defp maybe_do_preload(obj, _), do: obj
 
 
 end
