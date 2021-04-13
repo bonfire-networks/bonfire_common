@@ -23,10 +23,10 @@ defmodule Bonfire.Repo do
 
   require Logger
 
-  @doc """
-  Dynamically loads the repository url from the
-  DATABASE_URL environment variable.
-  """
+  # @doc """
+  # Dynamically loads the repository url from the
+  # DATABASE_URL environment variable.
+  # """
   # def init(_, opts) do
   #   {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
   # end
@@ -236,7 +236,7 @@ defmodule Bonfire.Repo do
       _ -> preloaded
     end
   end
-  def preload_pointers(key, preloaded), do: preloaded
+  def preload_pointers(_key, preloaded), do: preloaded
 
   def preload_pointer(preloaded) do
     IO.inspect(preload_pointer: preloaded)

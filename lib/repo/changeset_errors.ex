@@ -21,7 +21,8 @@ defmodule Bonfire.Repo.ChangesetErrors do
     end)
   end
 
-  defp do_to_string(val, sep \\ ", ") when is_list(val) do
+  defp do_to_string(val, sep \\ ", ")
+  defp do_to_string(val, sep) when is_list(val) do
     Enum.map(val, &do_to_string/1)
     |> Enum.filter(& &1)
     |> Enum.join(sep)
@@ -29,4 +30,32 @@ defmodule Bonfire.Repo.ChangesetErrors do
   defp do_to_string(empty, _) when empty == %{} or empty == "", do: nil
   defp do_to_string(%{} = many, _), do: many(many)
   defp do_to_string(val, _), do: to_string(val)
+
+
+  # ------
+  # TODO: consolidate the above and below functions?
+
+  def changeset_errors_string(changeset, include_first_level_of_keys \\ true)
+  def changeset_errors_string(%Ecto.Changeset{} = changeset, include_first_level_of_keys) do
+    errors = Ecto.Changeset.traverse_errors(changeset, fn
+        {msg, opts} -> String.replace(msg, "%{count}", to_string(opts[:count]))
+        msg -> msg
+      end)
+    errors_map_string(errors, include_first_level_of_keys)
+  end
+  def changeset_errors_string(error, _), do: error
+
+  def errors_map_string(errors, include_keys \\ true)
+
+  def errors_map_string(%{} = errors, true) do
+    Enum.map_join(errors, ", ", fn {key, val} -> "#{key} #{errors_map_string(val)}" end)
+  end
+
+  def errors_map_string(%{} = errors, false) do
+    Enum.map_join(errors, ", ", fn {_key, val} -> "#{errors_map_string(val)}" end)
+  end
+
+  def errors_map_string(e, _) do
+    e
+  end
 end

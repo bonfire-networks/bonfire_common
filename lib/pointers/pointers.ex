@@ -10,7 +10,7 @@ defmodule Bonfire.Common.Pointers do
   def get!(id, filters \\ []) do
     with {:ok, obj} <- get(id, filters) do
       obj
-    else e ->
+    else _e ->
       raise NotFound
     end
   end

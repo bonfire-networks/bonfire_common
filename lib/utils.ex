@@ -85,9 +85,7 @@ defmodule Bonfire.Common.Utils do
     ) |> magic_filter_empty(map, key, fallback)
   end
 
-  @doc """
-  Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback
-  """
+  #doc """ Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
   def map_get(map, key, fallback) when is_map(map) and is_binary(key) do
     Map.get(
       map,
@@ -110,7 +108,8 @@ defmodule Bonfire.Common.Utils do
   def maybe_get(%{} = map, key, fallback), do: Map.get(map, key, fallback) |> magic_filter_empty(map, key, fallback)
   def maybe_get(_, _, fallback), do: fallback
 
-  def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback \\ nil) when is_map(map) and is_atom(key) do
+  def magic_filter_empty(val, map, key, fallback \\ nil)
+  def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback) when is_map(map) and is_atom(key) do
     if Bonfire.Common.Config.get!(:env) == :dev do
       Logger.error("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
@@ -287,7 +286,7 @@ defmodule Bonfire.Common.Utils do
     [stringify_keys(head, recursive) | stringify_keys(rest, recursive)]
   end
 
-  def stringify_keys(not_a_map, recursive) do
+  def stringify_keys(not_a_map, _recursive) do
     not_a_map
   end
 
@@ -348,6 +347,8 @@ defmodule Bonfire.Common.Utils do
       date_from_now(ts)
     end
   end
+
+  def avatar_url(obj), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
 
   # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
   #   {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
@@ -426,14 +427,18 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Subscribe to something for realtime updates, like a feed or thread
   """
-  def pubsub_subscribe(topics, socket \\ nil) when is_list(topics) do
+  def pubsub_subscribe(topics, socket \\ nil)
+  def pubsub_subscribe(topics, socket) when is_list(topics) and is_map(socket) do
     Enum.each(topics, &pubsub_subscribe(&1, socket))
   end
 
-  def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" do
-    if is_nil(socket) or Phoenix.LiveView.connected?(socket), do:
+  def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" and is_map(socket) do
+    if Phoenix.LiveView.connected?(socket) do
       Logger.info("pubsub_subscribe: #{inspect topic}")
       Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
+    else
+      pubsub_subscribe(nil, nil)
+    end
   end
 
   def pubsub_subscribe(_, _) do
@@ -494,12 +499,12 @@ defmodule Bonfire.Common.Utils do
       live_exception(socket, return_key, "An exceptional error occured", error, __STACKTRACE__)
   end
 
-  defp live_exception(socket, {:mount, return_key}, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+  defp live_exception(socket, return_key, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+  defp live_exception(socket, {:mount, return_key}, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
       {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
     end
   end
-
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
       {return_key, put_flash(socket, :error, msg) |> push_patch(to: Routes.live_path(socket, socket.view))}
@@ -544,7 +549,7 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
-  defp debug_banner(kind, %Ecto.Changeset{} = cs, _) do
+  defp debug_banner(_kind, %Ecto.Changeset{} = cs, _) do
     Bonfire.Repo.ChangesetErrors.cs_to_string(cs)
   end
 

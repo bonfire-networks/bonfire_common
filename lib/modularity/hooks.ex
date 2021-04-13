@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Hooks do
     quote do
       caller = Bonfire.Common.Hooks.caller()
 
-      ret
+      unquote(ret)
       |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
     end
   end
@@ -46,7 +46,7 @@ defmodule Bonfire.Common.Hooks do
   end
 
   def caller do
-    {callingMod, callingFunc, callingFuncArity, _} =
+    {callingMod, callingFunc, _callingFuncArity, _} =
       Process.info(self(), :current_stacktrace)
       |> elem(1)
       # |> IO.inspect

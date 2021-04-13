@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Repo.Query do
   import Ecto.Query
-  import Bonfire.Common.Config, only: [repo: 0]
+  # import Bonfire.Common.Config, only: [repo: 0]
 
   defmacro __using__(opts) do
 
@@ -12,7 +12,7 @@ defmodule Bonfire.Repo.Query do
     sortable_fields = (opts[:sortable_fields] || []) ++ [:id]
 
     # Use a default per page of `20`, but allow the user to change this value
-    default_per_page = opts[:default_per_page] || 20
+    # default_per_page = opts[:default_per_page] || 20
 
     # Allow the user to include extra plugins
     extra_plugins = opts[:plugins] || []

@@ -3,22 +3,22 @@ defmodule Bonfire.Repo.Changeset do
   @moduledoc "Helper functions for changesets"
 
   alias Ecto.Changeset
-  alias Pointers.ULID
+  # alias Pointers.ULID
 
   alias Bonfire.Mailer.Checker
 
-  @doc "Generates the primary ID for an object, and sets the canonical URL based on that"
-  def cast_object(changeset) do
-    cast_object(changeset, Changeset.get_field(changeset, :canonical_url))
-  end
+  # @doc "Generates the primary ID for an object, and sets the canonical URL based on that"
+  # def cast_object(changeset) do
+  #   cast_object(changeset, Changeset.get_field(changeset, :canonical_url))
+  # end
 
-  defp cast_object(cs, x) when not is_nil(x), do: cs
+  # defp cast_object(cs, x) when not is_nil(x), do: cs
 
-  defp cast_object(cs, _) do
-    id = ULID.generate()
-    Changeset.put_change(cs, :id, id)
-    Changeset.put_change(cs, :canonical_url, ActivityPub.Utils.object_url(%{id: id}))
-  end
+  # defp cast_object(cs, _) do
+  #   id = ULID.generate()
+  #   Changeset.put_change(cs, :id, id)
+  #   Changeset.put_change(cs, :canonical_url, ActivityPub.Utils.object_url(%{id: id}))
+  # end
 
   # @doc "Validates a country code is one of the ones we know about"
   # def validate_country_code(changeset, field) do

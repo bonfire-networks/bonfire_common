@@ -16,7 +16,7 @@ defmodule Bonfire.Web.LiveComponent do
     ]
   end
 
-  defp mounted(params, %{"load_live_component" => load_live_component} = session, socket) do
+  defp mounted(_params, %{"load_live_component" => load_live_component} = _session, socket) do
 
      {:ok, socket |> assign(:load_live_component, load_live_component)}
   end

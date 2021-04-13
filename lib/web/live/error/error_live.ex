@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Web.ErrorLive do
   use Bonfire.Web, :live_view
 
-  def mount(params, session, socket) do
+  def mount(_params, _session, socket) do
     {:ok,
      socket
       |> assign_new(:page, fn -> nil end)
