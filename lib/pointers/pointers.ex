@@ -18,7 +18,7 @@ defmodule Bonfire.Common.Pointers do
   def get(id, filters \\ [])
 
   def get(id, filters) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid(id) do
+    if Bonfire.Common.Utils.is_ulid?(id) do
       with {:ok, pointer} <- one(id: id) do
         get(pointer, filters)
       end
@@ -39,7 +39,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def one(id) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid(id) do
+    if Bonfire.Common.Utils.is_ulid?(id) do
       one(id: id)
     else
       {:error, :not_found}

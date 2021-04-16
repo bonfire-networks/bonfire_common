@@ -55,7 +55,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def is_ulid(str) when is_binary(str) do
+  def is_ulid?(str) when is_binary(str) and byte_size(str)==26 do
     with :error <- Pointers.ULID.cast(str) do
       false
     else
@@ -63,11 +63,11 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def is_ulid(_), do: false
+  def is_ulid?(_), do: false
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
   def ulid(id) do
-    if is_ulid(id) do
+    if is_ulid?(id) do
       id
     else
       Logger.error("Expected ULID ID, got #{inspect id}")
