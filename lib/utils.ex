@@ -427,21 +427,26 @@ defmodule Bonfire.Common.Utils do
   Subscribe to something for realtime updates, like a feed or thread
   """
   def pubsub_subscribe(topics, socket \\ nil)
-  def pubsub_subscribe(topics, socket) when is_list(topics) and is_map(socket) do
+
+  def pubsub_subscribe(topics, socket) when is_list(topics) do
     Enum.each(topics, &pubsub_subscribe(&1, socket))
   end
 
-  def pubsub_subscribe(topic, socket) when not is_nil(topic) and topic !="" and is_map(socket) do
-    if Phoenix.LiveView.connected?(socket) do
+  def pubsub_subscribe(topic, socket) when is_binary(topic) and topic !="" do
+    # IO.inspect(socket)
+    # if Phoenix.LiveView.connected?(socket) do
       Logger.info("pubsub_subscribe: #{inspect topic}")
-      Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
-    else
-      pubsub_subscribe(nil, nil)
-    end
+
+      endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+      endpoint.subscribe(topic)
+      # Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
+    # else
+    #   Logger.info("LiveView not connect to subscribe to #{topic}")
+    # end
   end
 
-  def pubsub_subscribe(_, _) do
-    Logger.info("pubsub did not subscribe")
+  def pubsub_subscribe(topic, _) do
+    Logger.info("pubsub did not subscribe to #{topic}")
     false
   end
 
@@ -450,14 +455,19 @@ defmodule Bonfire.Common.Utils do
   """
   def pubsub_broadcast(topic, {payload_type, _data} = payload) do
     Logger.info("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
-    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, payload)
+    do_broadcast(topic, payload)
   end
   def pubsub_broadcast(topic, data) when not is_nil(topic) and topic !="" and not is_nil(data) do
     Logger.info("pubsub_broadcast: #{inspect topic}")
-    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
+    do_broadcast(topic, data)
   end
   def pubsub_broadcast(_, _), do: Logger.info("pubsub did not broadcast")
 
+  defp do_broadcast(topic, data) do
+    # endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    # endpoint.broadcast_from(self(), topic, step, state)
+    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
+  end
 
   @doc """
   Run a function and expects tuple.
