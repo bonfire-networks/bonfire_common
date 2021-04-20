@@ -352,6 +352,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
   def avatar_url(obj), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
 
+  def image_url(%{profile: profile}), do: image_url(profile)
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{} = obj \\ nil), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
