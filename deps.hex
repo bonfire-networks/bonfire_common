@@ -20,3 +20,5 @@ query_elf = "~> 0.3.0" # ecto query helpers
 paginator = "~> 1.0.4" # paginate queries
 # to handle markdown:
 earmark = "~> 1.4"
+# to convert between map/struct/keyword list
+mappable = "~> 0.2.0"

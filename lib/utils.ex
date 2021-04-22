@@ -123,9 +123,6 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(val, fallback), do: val || fallback
 
-  def to_struct(nil, _module) do
-    nil
-  end
 
   def put_new_in(%{} = map, [key], val) do
     Map.put_new(map, key, val)
@@ -313,6 +310,45 @@ defmodule Bonfire.Common.Utils do
   end
   def input_to_atoms(v), do: v
 
+  def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
+  defp maybe_to_structs_recurse(data, parent_id \\ nil)
+  defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do
+    data
+    |> Map.new(fn {k, v} -> {k, maybe_to_structs_recurse(v, e(data, :id, nil))} end)
+    |> maybe_add_mixin_id(parent_id)
+    |> maybe_to_struct(type)
+  end
+  defp maybe_to_structs_recurse(%{} = data, parent_id) do
+    data
+    |> Map.new(fn {k, v} -> {k, maybe_to_structs_recurse(v, e(data, :id, nil))} end)
+  end
+  defp maybe_to_structs_recurse(v, _), do: v
+
+  defp maybe_add_mixin_id(%{id: id} = data, _parent_id) when not is_nil(id), do: data
+  defp maybe_add_mixin_id(data, parent_id) when not is_nil(parent_id), do: Map.merge(data, %{id: parent_id})
+  defp maybe_add_mixin_id(data, parent_id), do: data
+
+  def maybe_to_struct(obj, type) when is_binary(type), do: maybe_to_struct(obj, maybe_str_to_module(type))
+  def maybe_to_struct(obj, type) when is_atom(type) do
+    if module_enabled?(type), do: Mappable.to_struct(obj, type),
+    else: obj
+  end
+  def maybe_to_struct(obj, _type), do: obj
+
+  def struct_from_map(a_map, as: a_struct) do # MIT licensed function by Kum Sackey
+    # Find the keys within the map
+    keys = Map.keys(a_struct)
+            |> Enum.filter(fn x -> x != :__struct__ end)
+    # Process map, checking for both string / atom keys
+    processed_map =
+    for key <- keys, into: %{} do
+        value = Map.get(a_map, key) || Map.get(a_map, to_string(key))
+        {key, value}
+      end
+    a_struct = Map.merge(a_struct, processed_map)
+    a_struct
+  end
+
   def random_string(length) do
     :crypto.strong_rand_bytes(length) |> Base.url_encode64() |> binary_part(0, length)
   end
@@ -358,11 +394,13 @@ defmodule Bonfire.Common.Utils do
   end
 
   def avatar_url(%{profile: profile}), do: avatar_url(profile)
+  def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
   def avatar_url(obj), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
 
   def image_url(%{profile: profile}), do: image_url(profile)
+  def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{} = obj \\ nil), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
