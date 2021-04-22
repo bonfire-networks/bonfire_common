@@ -42,6 +42,18 @@ defmodule Bonfire.Common.Config do
 
   @doc """
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
+  # TODO: also make it possible to disable individual modules in config
+  """
+  def module_enabled?(module) do
+    module_exists?(module) && extension_enabled?(module)
+  end
+
+  def module_exists?(module) do
+    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
+  end
+
+  @doc """
+  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
   """
   def extension_enabled?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
@@ -54,7 +66,7 @@ defmodule Bonfire.Common.Config do
   def extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
 
-    Utils.module_exists?(extension) or
+    module_exists?(extension) or
       Enum.member?(Application.loaded_applications() |> Enum.map(&elem(&1, 0)), extension)
   end
 
@@ -68,19 +80,19 @@ defmodule Bonfire.Common.Config do
   end
 
   def maybe_module_loaded(module) do
-    if Utils.module_exists?(module), do: module
+    if module_exists?(module), do: module
   end
 
-  def maybe_maybe_or(module, fallback) do
-    if Utils.module_exists?(module) do
+  def maybe_schema_or_pointer(schema_module) do
+    module_exists_or(schema_module, Pointers.Pointer)
+  end
+
+  def module_exists_or(module, fallback) do
+    if module_exists?(module) do
       module
     else
       fallback
     end
-  end
-
-  def maybe_schema_or_pointer(schema_module) do
-    maybe_maybe_or(schema_module, Pointers.Pointer)
   end
 
 

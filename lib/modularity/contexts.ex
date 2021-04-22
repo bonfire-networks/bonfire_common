@@ -24,7 +24,7 @@ defmodule Bonfire.Contexts do
 
     arity = length(args)
 
-    if Utils.module_exists?(module) do
+    if Utils.module_enabled?(module) do
       if Kernel.function_exported?(module, fun, arity) do
         #IO.inspect(function_exists_in: module)
 
@@ -76,7 +76,7 @@ defmodule Bonfire.Contexts do
       when is_atom(object_schema_or_context) and is_atom(fun) and is_list(args) and
              is_function(fallback_fun) do
 
-    if Utils.module_exists?(object_schema_or_context) do
+    if Utils.module_enabled?(object_schema_or_context) do
 
       object_context_module =
         if Kernel.function_exported?(object_schema_or_context, :context_module, 0) do

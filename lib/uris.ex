@@ -18,7 +18,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp generate_canonical_url(%{id: id} = thing) when is_binary(id) do
-    if Utils.module_exists?(Characters) do
+    if Utils.module_enabled?(Characters) do
       # check if object is a Character (in which case use actor URL)
       case Characters.character_url(thing) do
         nil -> generate_canonical_url(id)

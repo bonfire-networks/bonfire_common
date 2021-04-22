@@ -2,6 +2,7 @@ defmodule Bonfire.Common.Utils do
   import Phoenix.LiveView
   require Logger
   alias Bonfire.Web.Router.Helpers, as: Routes
+  alias Bonfire.Common.Config
 
   def strlen(x) when is_nil(x), do: 0
   def strlen(%{} = obj) when obj == %{}, do: 0
@@ -231,11 +232,20 @@ defmodule Bonfire.Common.Utils do
   def maybe_append(list, nil), do: list
   def maybe_append(list, value), do: [value | list]
 
-  def maybe_str_to_atom(str) do
+  def maybe_str_to_atom(str) when is_binary(str) do
     try do
       String.to_existing_atom(str)
     rescue
       ArgumentError -> str
+    end
+  end
+  def maybe_str_to_atom(other), do: other
+
+  def maybe_str_to_module(str) when is_binary(str) do
+    case maybe_str_to_atom(str) do
+      module when is_atom(module) -> module
+      "Elixir."<>_ -> nil # doesn't exist
+      other -> maybe_str_to_module("Elixir."<>str)
     end
   end
 
@@ -368,7 +378,7 @@ defmodule Bonfire.Common.Utils do
   Special LiveView helper function which allows loading LiveComponents in regular Phoenix views: `live_render_component(@conn, MyLiveComponent)`
   """
   def live_render_component(conn, load_live_component) do
-    if module_exists?(load_live_component),
+    if module_enabled?(load_live_component),
       do:
         Phoenix.LiveView.Controller.live_render(
           conn,
@@ -387,21 +397,19 @@ defmodule Bonfire.Common.Utils do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
   end
 
-  def module_exists?(module) do
-    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
-  end
+  defdelegate module_enabled?(module), to: Config
 
-  def module_enabled?(module) do
-    # TODO: make it possible to disable extensions (and modules) in config
-    module_exists?(module)
-  end
+  defmacro use_if_enabled(module, fallback_module \\ nil), do: do_use_if_enabled(module, fallback_module)
 
-  def use_if_available(module, fallback_module \\ nil) do
+  def do_use_if_enabled(module, fallback_module \\ nil)
+  def do_use_if_enabled(module, fallback_module) when is_atom(module) do
     if module_enabled?(module) do
+      Logger.info("Found module to use: #{module}")
       quote do
         use unquote(module)
       end
     else
+      Logger.info("Did not find module to use: #{module}")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           use unquote(fallback_module)
@@ -409,13 +417,16 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
+  def do_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: do_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
-  def import_if_available(module, fallback_module \\ nil) do
+  defmacro import_if_enabled(module, fallback_module \\ nil) do
     if module_enabled?(module) do
+      Logger.info("Found module to import: #{module}")
       quote do
         import unquote(module)
       end
     else
+      Logger.info("Did not find module to import: #{module}")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
@@ -561,7 +572,7 @@ defmodule Bonfire.Common.Utils do
     # if exception, do: IO.puts(Exception.format_exit(exception))
     if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
-    if exception && stacktrace && Bonfire.Common.Utils.module_exists?(Sentry), do: Sentry.capture_exception(
+    if exception && stacktrace && Bonfire.Common.Utils.module_enabled?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
     )

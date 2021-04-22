@@ -2,6 +2,7 @@ defmodule Bonfire.Web do
   @moduledoc false
 
   alias Bonfire.Common.Utils
+  require Utils
 
   def controller(opts \\ []) do
     #IO.inspect(controller: opts)
@@ -11,15 +12,11 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Controller, unquote(opts)
-      require Logger
       import Plug.Conn
-      import Bonfire.Common.Web.Gettext
-      alias Bonfire.Web.Router.Helpers, as: Routes
       alias Bonfire.Web.Plugs.{MustBeGuest, MustLogIn}
       import Phoenix.LiveView.Controller
-      import Bonfire.Common.Utils
 
-      unquote(Utils.use_if_available(Thesis.Controller))
+      unquote(view_helpers())
 
     end
   end
@@ -31,12 +28,12 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.View, unquote(opts)
-      require Logger
       # Import convenience functions from controllers
       import Phoenix.Controller,
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
       unquote(view_helpers())
+      unquote(live_view_helpers())
 
     end
   end
@@ -49,9 +46,9 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveView, unquote(opts)
-      require Logger
 
       unquote(view_helpers())
+      unquote(live_view_helpers())
 
     end
   end
@@ -62,8 +59,8 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveComponent, unquote(opts)
-      require Logger
       unquote(view_helpers())
+      unquote(live_view_helpers())
 
     end
   end
@@ -97,9 +94,11 @@ defmodule Bonfire.Web do
       import Phoenix.Controller
       import Phoenix.LiveView.Router
 
-      import Bonfire.Common.Utils
+      alias Bonfire.Common.Utils
+      import Utils
+      require Utils
 
-      unquote(Utils.use_if_available(Thesis.Router))
+      unquote(Utils.do_use_if_enabled(Thesis.Router))
 
     end
   end
@@ -118,11 +117,10 @@ defmodule Bonfire.Web do
 
   defp view_helpers do
     quote do
+      require Logger
+
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
-
-      # Import LiveView helpers (live_render, live_component, live_patch, etc)
-      import Phoenix.LiveView.Helpers
 
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
@@ -133,9 +131,19 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Router.Helpers, as: Routes
 
       alias Bonfire.Common.Utils
-      import Bonfire.Common.Utils
+      import Utils
+      require Utils
 
-      unquote(Utils.use_if_available(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      unquote(Utils.do_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
+
+    end
+  end
+
+  defp live_view_helpers do
+    quote do
+
+      # Import LiveView helpers (live_render, live_component, live_patch, etc)
+      import Phoenix.LiveView.Helpers
 
     end
   end
