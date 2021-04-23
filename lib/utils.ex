@@ -193,9 +193,8 @@ defmodule Bonfire.Common.Utils do
     right
   end
 
-  def assigns_merge(%{} = assigns, new) when is_map(assigns), do: assigns_merge(Map.to_list(assigns), new)
-  def assigns_merge(assigns, new) do
-
+  def assigns_merge(%{} = assigns) when is_map(assigns), do: assigns_clean(Map.to_list(assigns))
+  def assigns_clean(assigns) do
     assigns
     # |> IO.inspect
     |> Enum.reject( fn
@@ -205,6 +204,14 @@ defmodule Bonfire.Common.Utils do
       {:socket, _} -> true
       _ -> false
     end)
+    # |> IO.inspect
+  end
+
+  def assigns_merge(%{} = assigns, new) when is_map(assigns), do: assigns_merge(Map.to_list(assigns), new)
+  def assigns_merge(assigns, new) do
+
+    assigns
+    |> assigns_clean()
     |> deep_merge(new)
     # |> IO.inspect
   end
@@ -457,7 +464,9 @@ defmodule Bonfire.Common.Utils do
   end
   def do_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: do_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
-  defmacro import_if_enabled(module, fallback_module \\ nil) do
+  defmacro import_if_enabled(module, fallback_module \\ nil), do: do_use_if_enabled(module, fallback_module)
+
+  def do_import_if_enabled(module, fallback_module \\ nil) do
     if module_enabled?(module) do
       Logger.info("Found module to import: #{module}")
       quote do
@@ -472,6 +481,7 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
+  def do_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: do_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
   def ok(ret, fallback \\ nil) do
     with {:ok, val} <- ret do

@@ -1,6 +1,8 @@
 defmodule Bonfire.Web.LivePlugs do
   @moduledoc "Like a plug, but for a liveview"
 
+  alias Bonfire.Common.Utils
+
   @compile {:inline, live_plug_: 4}
 
   def live_plug(params, session, socket, list),
@@ -33,7 +35,9 @@ defmodule Bonfire.Web.LivePlugs do
   defp live_plug_(_, other, _, _), do: other
 
   defp apply_undead(socket, fun, args) do
-    Bonfire.Common.Utils.undead_mount(socket, fn ->
+    socket = if Utils.module_enabled?(Surface), do: Surface.init(socket), else: socket # needed if using Surface in a normal LiveView
+
+    Utils.undead_mount(socket, fn ->
       apply(fun, args)
     end)
   end

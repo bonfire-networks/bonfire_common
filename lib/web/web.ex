@@ -65,6 +65,30 @@ defmodule Bonfire.Web do
     end
   end
 
+  def stateful_component(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
+    quote do
+      use Surface.LiveComponent , unquote(opts)
+      unquote(view_helpers())
+      unquote(live_view_helpers())
+
+    end
+  end
+
+  def stateless_component(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:namespace, Bonfire.Web)
+    quote do
+      use Surface.Component, unquote(opts)
+      unquote(view_helpers())
+      unquote(live_view_helpers())
+
+    end
+  end
+
   def plug(_opts \\ []) do
     quote do
       alias Bonfire.Web.Router.Helpers, as: Routes
@@ -144,6 +168,9 @@ defmodule Bonfire.Web do
 
       # Import LiveView helpers (live_render, live_component, live_patch, etc)
       import Phoenix.LiveView.Helpers
+
+      # Import Surface if any dep is using it
+      Utils.do_import_if_enabled(Surface)
 
     end
   end
