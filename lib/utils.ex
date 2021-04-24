@@ -406,13 +406,14 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
-  def avatar_url(obj), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
+  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME when we have uploads
+  def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url() # FIXME when we have uploads
 
   def image_url(%{profile: profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
-  def image_url(%{} = obj \\ nil), do: Bonfire.Me.Fake.image(obj) # FIXME when we have uploads
+  def image_url(%{id: id}), do: Bonfire.Me.Fake.image_url(id) # FIXME when we have uploads
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME when we have uploads
 
   # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
