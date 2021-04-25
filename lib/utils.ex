@@ -337,6 +337,8 @@ defmodule Bonfire.Common.Utils do
   defp maybe_add_mixin_id(data, parent_id) when not is_nil(parent_id), do: Map.merge(data, %{id: parent_id})
   defp maybe_add_mixin_id(data, parent_id), do: data
 
+  def maybe_to_struct(obj, type \\ nil)
+  def maybe_to_struct(%{index_type: type} = obj, nil), do: maybe_to_struct(obj, maybe_str_to_module(type))
   def maybe_to_struct(obj, type) when is_binary(type), do: maybe_to_struct(obj, maybe_str_to_module(type))
   def maybe_to_struct(obj, type) when is_atom(type) do
     if module_enabled?(type), do: Mappable.to_struct(obj, type),
