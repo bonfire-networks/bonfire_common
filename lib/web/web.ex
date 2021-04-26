@@ -122,7 +122,7 @@ defmodule Bonfire.Web do
       import Utils
       require Utils
 
-      unquote(Utils.do_use_if_enabled(Thesis.Router))
+      unquote(Utils.quoted_use_if_enabled(Thesis.Router))
 
     end
   end
@@ -158,7 +158,7 @@ defmodule Bonfire.Web do
       import Utils
       require Utils
 
-      unquote(Utils.do_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      unquote(Utils.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
     end
   end
@@ -170,7 +170,7 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Helpers
 
       # Import Surface if any dep is using it
-      Utils.do_import_if_enabled(Surface)
+      Utils.quoted_import_if_enabled(Surface)
 
     end
   end

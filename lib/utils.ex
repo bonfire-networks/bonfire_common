@@ -449,10 +449,10 @@ defmodule Bonfire.Common.Utils do
 
   defdelegate module_enabled?(module), to: Config
 
-  defmacro use_if_enabled(module, fallback_module \\ nil), do: do_use_if_enabled(module, fallback_module)
+  defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
 
-  def do_use_if_enabled(module, fallback_module \\ nil)
-  def do_use_if_enabled(module, fallback_module) when is_atom(module) do
+  def quoted_use_if_enabled(module, fallback_module \\ nil)
+  def quoted_use_if_enabled(module, fallback_module) when is_atom(module) do
     if module_enabled?(module) do
       Logger.info("Found module to use: #{module}")
       quote do
@@ -467,11 +467,11 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
-  def do_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: do_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
-  defmacro import_if_enabled(module, fallback_module \\ nil), do: do_use_if_enabled(module, fallback_module)
+  defmacro import_if_enabled(module, fallback_module \\ nil), do: quoted_import_if_enabled(module, fallback_module)
 
-  def do_import_if_enabled(module, fallback_module \\ nil) do
+  def quoted_import_if_enabled(module, fallback_module \\ nil) when is_atom(module) do
     if module_enabled?(module) do
       Logger.info("Found module to import: #{module}")
       quote do
@@ -486,7 +486,7 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
-  def do_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: do_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
   def ok(ret, fallback \\ nil) do
     with {:ok, val} <- ret do
