@@ -315,7 +315,7 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(other, _), do: other
 
   def input_to_atoms(%{} = data) do
-    data |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
+    data |> Map.drop(["_csrf_token"]) |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
   end
   def input_to_atoms(v), do: v
 
