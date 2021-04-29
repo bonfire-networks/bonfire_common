@@ -70,7 +70,8 @@ defmodule Bonfire.Web do
       opts
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
-      use Surface.LiveComponent , unquote(opts)
+      use Surface.LiveComponent, unquote(opts)
+
       unquote(view_helpers())
       unquote(live_view_helpers())
 
@@ -81,13 +82,24 @@ defmodule Bonfire.Web do
     opts =
       opts
       |> Keyword.put_new(:namespace, Bonfire.Web)
+
     quote do
+
+      # IO.inspect(unquote(opts))
+
       use Surface.Component, unquote(opts)
+
       unquote(view_helpers())
       unquote(live_view_helpers())
 
+      prop globals, :map, default: %{}
+
+      prop current_account, :any
+      prop current_user, :any
+
     end
   end
+
 
   def plug(_opts \\ []) do
     quote do

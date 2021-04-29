@@ -181,11 +181,11 @@ defmodule Bonfire.Common.Config do
       get(parent_key, [], otp_app)
       |> put_in(keys, value)
 
-    Application.put_env(otp_app, parent_key, parent)
+    Application.put_env(otp_app, parent_key, parent, persistent: true)
   end
 
   def put(key, value, otp_app) do
-    Application.put_env(otp_app, key, value)
+    Application.put_env(otp_app, key, value, persistent: true)
   end
 
   def delete(key, otp_app \\ nil)
@@ -199,11 +199,11 @@ defmodule Bonfire.Common.Config do
       get(parent_key, [], otp_app)
       |> get_and_update_in(keys, fn _ -> :pop end)
 
-    Application.put_env(otp_app, parent_key, parent)
+    Application.put_env(otp_app, parent_key, parent, persistent: true)
   end
 
   def delete(key, otp_app) do
-    Application.delete_env(otp_app, key)
+    Application.delete_env(otp_app, key, persistent: true)
   end
 
   # some aliases to specific config keys for convienience

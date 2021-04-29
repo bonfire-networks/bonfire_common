@@ -222,7 +222,7 @@ defmodule Bonfire.Repo do
   # def preload_pointers(keys, preloaded) when is_list(keys) do
   #   IO.inspect(keys)
   #   preloaded
-  #   |> Bonfire.Common.Utils.maybe_struct_to_map()
+  #   |> Bonfire.Common.Utils.maybe_to_map()
   #   |> get_and_update_in([Access.all], &{&1, preload_pointer(&1)})
   # end
 

@@ -193,6 +193,31 @@ defmodule Bonfire.Common.Utils do
     right
   end
 
+
+  def assign_global(socket, assigns) when is_list(assigns) or is_map(assigns) do
+    socket
+    # |> Phoenix.LiveView.assign(assign, value)
+    |> Phoenix.LiveView.assign(:globals,
+      Map.get(socket.assigns, :globals, %{})
+      |> Map.merge(maybe_to_map(assigns))
+    )
+
+    # Enum.reduce(assigns, socket, fn {key, value}, acc ->
+    #   assign_global(acc, key, value)
+    # end)
+  end
+  def assign_global(socket, {_, _} = assign) do
+    assign_global(socket, [assign])
+  end
+  def assign_global(socket, assign, value) do
+    socket |> assign_global({assign, value})
+  end
+  # def assign_global(socket, assign, value) do
+  #   socket
+  #   |> Phoenix.LiveView.assign(assign, value)
+  #   |> Phoenix.LiveView.assign(:global_assigns, [assign] ++ Map.get(socket.assigns, :global_assigns, []))
+  # end
+
   def assigns_clean(%{} = assigns) when is_map(assigns), do: assigns_clean(Map.to_list(assigns))
   def assigns_clean(assigns) do
     assigns
@@ -201,15 +226,33 @@ defmodule Bonfire.Common.Utils do
       {:id, _} -> true
       {:flash, _} -> true
       {:__changed__, _} -> true
+      # {:__context_, _} -> true
+      {:__surface__, _} -> true
       {:socket, _} -> true
       _ -> false
     end)
     # |> IO.inspect
   end
 
-  def assigns_merge(socket, %{} = assigns, new) when is_map(assigns), do: socket |> Phoenix.LiveView.assign(assigns_merge(assigns, new))
+  def assigns_minimal(%{} = assigns) when is_map(assigns), do: assigns_minimal(Map.to_list(assigns))
+  def assigns_minimal(assigns) do
 
-  def assigns_merge(%{} = assigns, new) when is_map(assigns), do: assigns_merge(Map.to_list(assigns), new)
+    preserve_global_assigns = Keyword.get(assigns, :global_assigns, []) || [] #|> IO.inspect
+
+    assigns
+    # |> IO.inspect
+    |> Enum.reject( fn
+      {:current_user, _} -> false
+      {:current_account, _} -> false
+      {:global_assigns, _} -> false
+      {assign, _} -> assign not in preserve_global_assigns
+      _ -> true
+    end)
+    # |> IO.inspect
+  end
+
+  def assigns_merge(%Phoenix.LiveView.Socket{} = socket, assigns, new) when is_map(assigns) or is_list(assigns), do: socket |> Phoenix.LiveView.assign(assigns_merge(assigns, new))
+  def assigns_merge(assigns, new) when is_map(assigns), do: assigns_merge(Map.to_list(assigns), new)
   def assigns_merge(assigns, new) do
 
     assigns
@@ -255,17 +298,32 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def maybe_atom_to_string(atom) when is_atom(atom) do
+  def maybe_to_string(atom) when is_atom(atom) do
     Atom.to_string(atom)
   end
-  def maybe_atom_to_string(other) do
-    other
+  def maybe_to_string(list) when is_list(list) do
+    List.to_string(list)
+  end
+  def maybe_to_string({key, val}) do
+    maybe_to_string(key)<>":"<>maybe_to_string(val)
+  end
+  def maybe_to_string(other) do
+    to_string(other)
   end
 
-  def maybe_struct_to_map(struct = %{__struct__: _}) do
+  def maybe_to_map(struct = %{__struct__: _}) do
     Map.from_struct(struct)
   end
-  def maybe_struct_to_map(other) do
+  def maybe_to_map(data) when is_tuple(data) do
+    data
+    |> Enum.chunk_every(2)
+    |> Enum.into(%{}, fn [a, b] -> {a, b} end)
+  end
+  def maybe_to_map(data) when is_list(data) do
+    data
+    |> Enum.into(%{})
+  end
+  def maybe_to_map(other) do
     other
   end
 
@@ -278,10 +336,10 @@ defmodule Bonfire.Common.Utils do
 
   def stringify_keys(map = %{}, true) do
     map
-    |> maybe_struct_to_map()
+    |> maybe_to_map()
     |> Enum.map(fn {k, v} ->
         {
-          maybe_atom_to_string(k),
+          maybe_to_string(k),
           stringify_keys(v)
         }
       end)
@@ -290,8 +348,8 @@ defmodule Bonfire.Common.Utils do
 
   def stringify_keys(map = %{}, _) do
     map
-    |> maybe_struct_to_map()
-    |> Enum.map(fn {k, v} -> {maybe_atom_to_string(k), v} end)
+    |> maybe_to_map()
+    |> Enum.map(fn {k, v} -> {maybe_to_string(k), v} end)
     |> Enum.into(%{})
   end
 
@@ -418,6 +476,21 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{id: id}), do: Bonfire.Me.Fake.image_url(id) # FIXME when we have uploads
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME when we have uploads
 
+  def current_user(%{assigns: %{current_user: current_user}} = _socket) do
+    current_user
+  end
+  def current_user(%{current_user: current_user} = _assigns) do
+    current_user
+  end
+  def current_user(%{id: %{profile: %{}}} = current_user) do
+    current_user
+  end
+  def current_user(%{id: %{character: %{}}} = current_user) do
+    current_user
+  end
+  def current_user(_), do: nil
+
+
   # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
   #   {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
   # end
@@ -452,9 +525,10 @@ defmodule Bonfire.Common.Utils do
   defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
 
   def quoted_use_if_enabled(module, fallback_module \\ nil)
-  def quoted_use_if_enabled(module, fallback_module) when is_atom(module) do
-    if module_enabled?(module) do
-      Logger.info("Found module to use: #{module}")
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
+  def quoted_use_if_enabled(module, fallback_module) do
+    if is_atom(module) and module_enabled?(module) do
+      # Logger.debug("Found module to use: #{module}")
       quote do
         use unquote(module)
       end
@@ -467,13 +541,13 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
   defmacro import_if_enabled(module, fallback_module \\ nil), do: quoted_import_if_enabled(module, fallback_module)
 
-  def quoted_import_if_enabled(module, fallback_module \\ nil) when is_atom(module) do
-    if module_enabled?(module) do
-      Logger.info("Found module to import: #{module}")
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
+  def quoted_import_if_enabled(module, fallback_module \\ nil) do
+    if is_atom(module) and module_enabled?(module) do
+      # Logger.debug("Found module to import: #{module}")
       quote do
         import unquote(module)
       end
@@ -486,7 +560,6 @@ defmodule Bonfire.Common.Utils do
       end
     end
   end
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
 
   def ok(ret, fallback \\ nil) do
     with {:ok, val} <- ret do
@@ -499,7 +572,7 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Subscribe to something for realtime updates, like a feed or thread
   """
-  def pubsub_subscribe(topics, socket \\ nil)
+  # def pubsub_subscribe(topics, socket \\ nil)
 
   def pubsub_subscribe(topics, socket) when is_list(topics) do
     Enum.each(topics, &pubsub_subscribe(&1, socket))
@@ -507,19 +580,25 @@ defmodule Bonfire.Common.Utils do
 
   def pubsub_subscribe(topic, socket) when is_binary(topic) and topic !="" do
     # IO.inspect(socket)
-    # if Phoenix.LiveView.connected?(socket) do
+    if Phoenix.LiveView.connected?(socket) do
       Logger.info("pubsub_subscribe: #{inspect topic}")
 
       endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+
+      # endpoint.unsubscribe(maybe_to_string(topic)) # to avoid duplicate subscriptions?
       endpoint.subscribe(topic)
       # Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
-    # else
-    #   Logger.info("LiveView not connect to subscribe to #{topic}")
-    # end
+    else
+      Logger.info("LiveView is not connected and so can't subscribe to #{inspect topic}")
+    end
+  end
+
+  def pubsub_subscribe(topic, socket) when topic !="" do
+    with t when is_binary(t) <- maybe_to_string(topic), do: pubsub_subscribe(t, socket)
   end
 
   def pubsub_subscribe(topic, _) do
-    Logger.info("pubsub did not subscribe to #{topic}")
+    Logger.info("PubSub can not subscribe to a non-string topic: #{inspect topic}")
     false
   end
 
@@ -530,7 +609,7 @@ defmodule Bonfire.Common.Utils do
     Logger.info("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
     do_broadcast(topic, payload)
   end
-  def pubsub_broadcast(topic, data) when not is_nil(topic) and topic !="" and not is_nil(data) do
+  def pubsub_broadcast(topic, data) when (is_atom(topic) or is_binary(topic)) and topic !="" and not is_nil(data) do
     Logger.info("pubsub_broadcast: #{inspect topic}")
     do_broadcast(topic, data)
   end
@@ -539,8 +618,104 @@ defmodule Bonfire.Common.Utils do
   defp do_broadcast(topic, data) do
     # endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
     # endpoint.broadcast_from(self(), topic, step, state)
-    Phoenix.PubSub.broadcast(Bonfire.PubSub, topic, data)
+    Phoenix.PubSub.broadcast(Bonfire.PubSub, maybe_to_string(topic), data)
   end
+
+
+  def assigns_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names) when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
+
+    # subscribe to god-level assign + object ID based assign if ID provided in tuple
+    names_of_assign_topics(assign_names)
+    |> pubsub_subscribe(socket)
+
+    socket
+    |> self_subscribe(assign_names) # also subscribe to assigns for current user
+  end
+
+  @doc "Subscribe to assigns targeted at the current account/user"
+  def self_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names) when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
+
+    with target_ids when is_list(target_ids) and length(target_ids)>0 <- account_and_or_user_ids(socket) do
+      target_ids
+      |> names_of_assign_topics(assign_names)
+      |> pubsub_subscribe(socket)
+    else _ ->
+      IO.inspect(cannot_self_subscribe: socket)
+    end
+
+    socket
+  end
+
+
+  def cast_self(socket, assigns_to_broadcast) do
+    assign_target_ids = account_and_or_user_ids(socket)
+
+    if assign_target_ids do
+      socket |> assign_and_broadcast(assigns_to_broadcast, assign_target_ids)
+    else
+      Logger.info("cast_self: Cannot send via PubSub without an account and/or user in socket. Falling back to only setting an assign.")
+      socket |> assign_global(assigns_to_broadcast)
+    end
+  end
+
+
+  @doc "Warning: this will set assigns for any/all users who subscribe to them. You want to `cast_self/2` instead if dealing with user-specific actions or private data."
+  def cast_public(socket, assigns_to_broadcast) do
+    socket |> assign_and_broadcast(assigns_to_broadcast)
+  end
+
+
+  defp assign_and_broadcast(socket, assigns_to_broadcast, assign_target_ids \\ []) do
+    assigns_broadcast(assigns_to_broadcast, assign_target_ids)
+    socket |> assign_global(assigns_to_broadcast)
+  end
+
+  defp assigns_broadcast(assigns, assign_target_ids \\ [])
+  defp assigns_broadcast(assigns, assign_target_ids) when is_list(assigns) do
+    Enum.each(assigns, &assigns_broadcast(&1, assign_target_ids))
+  end
+  # defp assigns_broadcast({{assign_name, assign_id}, data}, assign_target_ids) do
+  #   names_of_assign_topics([assign_id] ++ assign_target_ids, assign_name)
+  #   |> pubsub_broadcast({:assign, {assign_name, data}})
+  # end
+  defp assigns_broadcast({assign_name, data}, assign_target_ids) do
+    names_of_assign_topics(assign_target_ids, assign_name)
+    |> pubsub_broadcast({:assign, {assign_name, data}})
+  end
+
+  defp names_of_assign_topics(assign_target_ids \\ [], assign_names)
+  defp names_of_assign_topics(assign_target_ids, assign_names) when is_list(assign_names) do
+    Enum.map(assign_names, &names_of_assign_topics(assign_target_ids, &1))
+  end
+  defp names_of_assign_topics(assign_target_ids, {assign_name, assign_id}) do
+    names_of_assign_topics([assign_id] ++ assign_target_ids, assign_name)
+  end
+  defp names_of_assign_topics(assign_target_ids, assign_name) when is_list(assign_target_ids) and length(assign_target_ids)>0 do
+    IO.inspect(assign_identified_object: {assign_name, assign_target_ids})
+    [{:assign, assign_name}] ++ assign_target_ids
+    |> Enum.map(&maybe_to_string/1)
+    |> Enum.join(":")
+  end
+  defp names_of_assign_topics(_, assign_name) do
+    IO.inspect(assign_god_level_object: {assign_name})
+    {:assign, assign_name}
+  end
+
+  def account_and_or_user_ids(%{assigns: assigns}), do: account_and_or_user_ids(assigns)
+  def account_and_or_user_ids(%{current_account: %{id: account_id}, current_user: %{id: user_id}}) do
+    [{:account, account_id}, {:user, user_id}]
+  end
+  def account_and_or_user_ids(%{current_user: %{id: user_id, accounted: %{account_id: account_id}, }}) do
+    [{:account, account_id}, {:user, user_id}]
+  end
+  def account_and_or_user_ids(%{current_user: %{id: user_id}}) do
+    [{:user, user_id}]
+  end
+  def account_and_or_user_ids(%{current_account: %{id: account_id}}) do
+    [{:account, account_id}]
+  end
+  def account_and_or_user_ids(_), do: nil
+
 
   @doc """
   Run a function and expects tuple.
