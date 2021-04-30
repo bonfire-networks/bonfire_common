@@ -1,59 +1,100 @@
+defmodule Bonfire.Common.Hooks.Hook do
+  @moduledoc """
+  Callback module for handling data changes before and after a certain process
+  executes.
+  """
+
+  @type module_and_fn :: {mod_name :: atom, fn_name :: atom}
+
+  @callback do_before(module_and_fn, data :: any) :: {:ok, any} | {:error, term}
+  @callback do_after(module_and_fn, data :: any) :: {:ok, any} | {:error, term}
+
+  defmacro __using__(_opts) do
+    quote do
+      def do_before(_fn_name, data), do: {:ok, data}
+      def do_after(_fn_name, data), do: {:ok, data}
+
+      defoverridable do_before: 2, do_after: 2
+    end
+  end
+end
+
+defmodule Bonfire.Common.Hooks.Target do
+  @moduledoc """
+  Used by the target of a hook, e.g. a context module, to wrap functions with
+  handlers for hooks, calling the before/after functions before and after
+  function exection.
+
+  Usage:
+
+  ```elixir
+  defmodule MyTarget do
+    use Bonfire.Common.Hooks.Target, for: [create: 2]
+
+    def create(user, attrs) do
+      {:ok, Map.put(attrs, :read?, true)}
+    end
+  end
+  ```
+  """
+
+  # FIXME
+  defmacro __using__(for: hook_fns) do
+    for {hook_name, arity} = hook_fn <- hook_fns do
+      context = __CALLER__.module
+      args = Macro.generate_arguments(arity, context)
+
+      if Module.defines?(context, hook_fn) do
+        quote context: context do
+          def unquote(hook_name)(unquote_splicing(args)) do
+            Bonfire.Common.Hooks.run_hooks(unquote(args), :before)
+
+            return = super(unquote_splicing(args))
+            Bonfire.Common.Hooks.run_hooks(return, :after)
+            return
+          end
+
+          defoverridable [unquote(hook_fn)]
+        end
+      end
+    end
+  end
+end
+
 defmodule Bonfire.Common.Hooks do
   require Logger
 
-  defmacro hook_ret(ret) do
-    quote do
-      caller = Bonfire.Common.Hooks.caller()
-
-      unquote(ret)
-      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
-    end
+  def run_hook(hook_module, data, position) do
+    Bonfire.Contexts.run_module_function(
+      hook_module,
+      position_fn(position),
+      [caller(), data],
+      &run_hook_function_error/2
+    )
   end
 
-  defmacro hook_transact_with(fun) do
-    quote do
-      caller = Bonfire.Common.Hooks.caller()
+  def run_hooks(data, position) do
+    hooks = Bonfire.Config.get!([:bonfire, Bonfire.Common.Hooks, :hooks])
 
-      Bonfire.Common.Hooks.maybe_hook(unquote(fun), caller, :before)
-      |> Bonfire.Repo.transact_with()
-      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
-    end
+    Enum.reduce(hooks, %{ok: [], error: []}, fn mod, acc ->
+      case run_hook(mod, data, position) do
+        {:ok, ret} ->
+          put_in(acc, [:ok, mod], ret)
+
+        {:error, reason} ->
+          put_in(acc, [:error, mod], reason)
+      end
+    end)
   end
 
-  defmacro hook_undead(socket, action, attrs, fun, return_key \\ :noreply) do
-    quote do
-      caller = Bonfire.Common.Hooks.caller()
-
-      Bonfire.Common.Hooks.maybe_hook([unquote(action), unquote(attrs)], caller, :before)
-
-      Bonfire.Common.Utils.undead(unquote(socket), unquote(fun), unquote(return_key))
-      |> Bonfire.Common.Hooks.maybe_hook(caller, :after)
-    end
-  end
-
-  def maybe_hook(ret, caller, position \\ :after)
-
-  def maybe_hook(ret, caller, position) do
-    case Bonfire.Common.Config.get([:hooks, caller], %{}) |> Map.get(position) do
-      {module, fun} ->
-        IO.inspect(run_hook_module: module)
-        IO.inspect(run_hook_function: fun)
-        Bonfire.Contexts.run_module_function(module, fun, ret, &run_hook_function_error/2)
-      _ ->
-        IO.inspect("no hook (#{position}): #{inspect caller}")
-        ret
-    end
-  end
+  defp position_fn(:before), do: :do_before
+  defp position_fn(:after), do: :do_after
 
   def caller do
     {callingMod, callingFunc, _callingFuncArity, _} =
       Process.info(self(), :current_stacktrace)
       |> elem(1)
-      # |> IO.inspect
       |> Enum.fetch!(2)
-    # IO.inspect(callingMod: callingMod)
-    # IO.inspect(callingFunc: callingFunc)
-    # IO.inspect(callingFuncArity: callingFuncArity)
     {callingMod, callingFunc}
   end
 
