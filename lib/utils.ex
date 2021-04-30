@@ -253,7 +253,8 @@ defmodule Bonfire.Common.Utils do
 
   def assigns_merge(%Phoenix.LiveView.Socket{} = socket, assigns, new) when is_map(assigns) or is_list(assigns), do: socket |> Phoenix.LiveView.assign(assigns_merge(assigns, new))
   def assigns_merge(assigns, new) when is_map(assigns), do: assigns_merge(Map.to_list(assigns), new)
-  def assigns_merge(assigns, new) do
+  def assigns_merge(assigns, new) when is_map(new), do: assigns_merge(assigns, Map.to_list(new))
+  def assigns_merge(assigns, new) when is_list(assigns) and is_list(new) do
 
     assigns
     |> assigns_clean()
