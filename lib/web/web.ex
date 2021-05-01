@@ -191,6 +191,14 @@ defmodule Bonfire.Web do
       alias Surface.Components.LivePatch
       alias Surface.Components.LiveRedirect
 
+      alias Surface.Components.Form
+      alias Surface.Components.Form.TextArea
+      alias Surface.Components.Form.HiddenInput
+      alias Surface.Components.Form.TextInput
+      alias Surface.Components.Form.Field
+      alias Surface.Components.Form.Inputs
+      alias Surface.Components.Form.Label
+
     end
   end
 
