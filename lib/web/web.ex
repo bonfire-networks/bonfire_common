@@ -72,8 +72,7 @@ defmodule Bonfire.Web do
     quote do
       use Surface.LiveComponent, unquote(opts)
 
-      unquote(view_helpers())
-      unquote(live_view_helpers())
+      unquote(surface_helpers())
 
     end
   end
@@ -85,17 +84,9 @@ defmodule Bonfire.Web do
 
     quote do
 
-      # IO.inspect(unquote(opts))
-
       use Surface.Component, unquote(opts)
 
-      unquote(view_helpers())
-      unquote(live_view_helpers())
-
-      prop globals, :map, default: %{}
-
-      prop current_account, :any
-      prop current_user, :any
+      unquote(surface_helpers())
 
     end
   end
@@ -186,6 +177,23 @@ defmodule Bonfire.Web do
 
     end
   end
+
+  defp surface_helpers do
+    quote do
+
+      unquote(view_helpers())
+      unquote(live_view_helpers())
+
+      prop globals, :map, default: %{}
+      prop current_account, :any
+      prop current_user, :any
+
+      alias Surface.Components.LivePatch
+      alias Surface.Components.LiveRedirect
+
+    end
+  end
+
 
   @doc """
   When used, dispatch to the appropriate controller/view/etc.
