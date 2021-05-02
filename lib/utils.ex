@@ -194,13 +194,14 @@ defmodule Bonfire.Common.Utils do
   end
 
 
-  def assign_global(socket, assigns) when is_list(assigns) or is_map(assigns) do
+  def assign_global(socket, assigns) when is_map(assigns), do: assign_global(socket, Map.to_list(assigns))
+  def assign_global(socket, assigns) when is_list(assigns) do
     socket
-    # |> Phoenix.LiveView.assign(assign, value)
-    |> Phoenix.LiveView.assign(:globals,
-      Map.get(socket.assigns, :globals, %{})
-      |> Map.merge(maybe_to_map(assigns))
-    )
+    |> assigns_merge(socket.assigns, assigns)
+    # |> Phoenix.LiveView.assign(:globals,
+    #   Map.get(socket.assigns, :globals, %{})
+    #   |> Map.merge(maybe_to_map(assigns))
+    # )
 
     # Enum.reduce(assigns, socket, fn {key, value}, acc ->
     #   assign_global(acc, key, value)
