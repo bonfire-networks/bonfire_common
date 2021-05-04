@@ -32,7 +32,6 @@ defmodule Bonfire.Web do
       import Phoenix.Controller,
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
-      unquote(view_helpers())
       unquote(live_view_helpers())
 
     end
@@ -47,7 +46,6 @@ defmodule Bonfire.Web do
     quote do
       use Phoenix.LiveView, unquote(opts)
 
-      unquote(view_helpers())
       unquote(live_view_helpers())
 
     end
@@ -59,7 +57,7 @@ defmodule Bonfire.Web do
       |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveComponent, unquote(opts)
-      unquote(view_helpers())
+
       unquote(live_view_helpers())
 
     end
@@ -98,6 +96,8 @@ defmodule Bonfire.Web do
       import Plug.Conn
       import Phoenix.Controller
       require Logger
+
+      import Bonfire.Common.URIs
     end
   end
 
@@ -155,7 +155,10 @@ defmodule Bonfire.Web do
       import Bonfire.Common.Web.ErrorHelpers
       import Bonfire.Common.Web.Gettext
 
+      # should deprecate use of Phoenix's Helpers
       alias Bonfire.Web.Router.Helpers, as: Routes
+      # use Bonfire's voodoo routing instead, eg: `path(Bonfire.Social.Web.BrowseLive):
+      import Bonfire.Common.URIs
 
       alias Bonfire.Common.Utils
       import Utils
@@ -169,6 +172,8 @@ defmodule Bonfire.Web do
   defp live_view_helpers do
     quote do
 
+      unquote(view_helpers())
+
       # Import LiveView helpers (live_render, live_component, live_patch, etc)
       import Phoenix.LiveView.Helpers
 
@@ -181,7 +186,6 @@ defmodule Bonfire.Web do
   defp surface_helpers do
     quote do
 
-      unquote(view_helpers())
       unquote(live_view_helpers())
 
       prop globals, :map, default: %{}

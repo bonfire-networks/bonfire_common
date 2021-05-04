@@ -197,15 +197,12 @@ defmodule Bonfire.Common.Utils do
   def assign_global(socket, assigns) when is_map(assigns), do: assign_global(socket, Map.to_list(assigns))
   def assign_global(socket, assigns) when is_list(assigns) do
     socket
-    |> assigns_merge(socket.assigns, assigns)
-    # |> Phoenix.LiveView.assign(:globals,
-    #   Map.get(socket.assigns, :globals, %{})
-    #   |> Map.merge(maybe_to_map(assigns))
-    # )
-
-    # Enum.reduce(assigns, socket, fn {key, value}, acc ->
-    #   assign_global(acc, key, value)
-    # end)
+    # |> assigns_merge(socket.assigns, assigns)
+    # being naughty here, let's see how long until Surface breaks it:
+    |> Phoenix.LiveView.assign(:__context__,
+      Map.get(socket.assigns, :__context__, %{})
+      |> Map.merge(maybe_to_map(assigns))
+    )
   end
   def assign_global(socket, {_, _} = assign) do
     assign_global(socket, [assign])
@@ -637,7 +634,7 @@ defmodule Bonfire.Common.Utils do
   @doc "Subscribe to assigns targeted at the current account/user"
   def self_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names) when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
 
-    with target_ids when is_list(target_ids) and length(target_ids)>0 <- account_and_or_user_ids(socket) do
+    with target_ids when is_list(target_ids) and length(target_ids)>0 <- current_account_and_or_user_ids(socket) do
       target_ids
       |> names_of_assign_topics(assign_names)
       |> pubsub_subscribe(socket)
@@ -650,7 +647,7 @@ defmodule Bonfire.Common.Utils do
 
 
   def cast_self(socket, assigns_to_broadcast) do
-    assign_target_ids = account_and_or_user_ids(socket)
+    assign_target_ids = current_account_and_or_user_ids(socket)
 
     if assign_target_ids do
       socket |> assign_and_broadcast(assigns_to_broadcast, assign_target_ids)
@@ -703,20 +700,21 @@ defmodule Bonfire.Common.Utils do
     {:assign, assign_name}
   end
 
-  def account_and_or_user_ids(%{assigns: assigns}), do: account_and_or_user_ids(assigns)
-  def account_and_or_user_ids(%{current_account: %{id: account_id}, current_user: %{id: user_id}}) do
+  def current_account_and_or_user_ids(%{assigns: assigns}), do: current_account_and_or_user_ids(assigns)
+  def current_account_and_or_user_ids(%{current_account: %{id: account_id}, current_user: %{id: user_id}}) do
     [{:account, account_id}, {:user, user_id}]
   end
-  def account_and_or_user_ids(%{current_user: %{id: user_id, accounted: %{account_id: account_id}, }}) do
+  def current_account_and_or_user_ids(%{current_user: %{id: user_id, accounted: %{account_id: account_id}, }}) do
     [{:account, account_id}, {:user, user_id}]
   end
-  def account_and_or_user_ids(%{current_user: %{id: user_id}}) do
+  def current_account_and_or_user_ids(%{current_user: %{id: user_id}}) do
     [{:user, user_id}]
   end
-  def account_and_or_user_ids(%{current_account: %{id: account_id}}) do
+  def current_account_and_or_user_ids(%{current_account: %{id: account_id}}) do
     [{:account, account_id}]
   end
-  def account_and_or_user_ids(_), do: nil
+  def current_account_and_or_user_ids(%{__context__: context}), do: current_account_and_or_user_ids(context)
+  def current_account_and_or_user_ids(_), do: nil
 
 
   @doc """
@@ -816,5 +814,7 @@ defmodule Bonfire.Common.Utils do
     if exception && stacktrace, do: inspect Exception.format_banner(kind, exception, stacktrace),
     else: inspect exception
   end
+
+
 
 end
