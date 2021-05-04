@@ -18,18 +18,15 @@ defmodule Bonfire.Common.Pointers do
   def get(id, filters \\ [])
 
   def get(id, filters) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid?(id) do
-      with {:ok, pointer} <- one(id: id) do
-        get(pointer, filters)
-      end
-    else
-      {:error, :not_found}
+    with {:ok, pointer} <- one(id: id) do
+      get(pointer, filters)
     end
   end
 
   def get(%Pointer{} = pointer, filters) do
-    obj = follow!(pointer, filters)
-    {:ok, obj}
+    with %{id: _} = obj <- follow!(pointer, filters) do
+      {:ok, obj}
+    end
   rescue
     NotFound -> {:error, :not_found}
   end

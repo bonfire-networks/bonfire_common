@@ -475,11 +475,14 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{id: id}), do: Bonfire.Me.Fake.image_url(id) # FIXME when we have uploads
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME when we have uploads
 
-  def current_user(%{assigns: %{current_user: current_user}} = _socket) do
-    current_user
+  def current_user(%{assigns: assigns} = _socket) do
+    current_user(assigns)
   end
   def current_user(%{current_user: current_user} = _assigns) do
     current_user
+  end
+  def current_user(%{__context__: context} = _assigns) do
+    current_user(context)
   end
   def current_user(%{id: %{profile: %{}}} = current_user) do
     current_user
@@ -579,7 +582,7 @@ defmodule Bonfire.Common.Utils do
 
   def pubsub_subscribe(topic, socket) when is_binary(topic) and topic !="" do
     # IO.inspect(socket)
-    if Phoenix.LiveView.connected?(socket) do
+    if socket_connected_or_user?(socket) do
       Logger.info("pubsub_subscribe: #{inspect topic}")
 
       endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
@@ -600,6 +603,10 @@ defmodule Bonfire.Common.Utils do
     Logger.info("PubSub can not subscribe to a non-string topic: #{inspect topic}")
     false
   end
+
+  defp socket_connected_or_user?(%Phoenix.LiveView.Socket{}), do: true
+  defp socket_connected_or_user?(%Bonfire.Data.Identity.User{}), do: true
+  defp socket_connected_or_user?(_), do: false
 
   @doc """
   Broadcast some data for realtime updates, for example to a feed or thread
