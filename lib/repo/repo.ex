@@ -197,7 +197,10 @@ defmodule Bonfire.Repo do
       maybe_do_preload(obj, preloads)
 
     preload_pointers(preloads, preloaded)
-
+  rescue
+    e ->
+      Logger.warn("maybe_preload: #{inspect e}")
+      obj
   end
 
 
@@ -205,10 +208,6 @@ defmodule Bonfire.Repo do
 
   defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     repo().preload(obj, preloads)
-  rescue
-    e ->
-      Logger.warn("maybe_do_preload: #{inspect e}")
-      obj
   end
 
   defp maybe_do_preload(obj, _), do: obj
