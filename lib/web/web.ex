@@ -89,23 +89,35 @@ defmodule Bonfire.Web do
     end
   end
 
-
-  def plug(_opts \\ []) do
+  def live_handler(_opts \\ []) do
     quote do
-      alias Bonfire.Web.Router.Helpers, as: Routes
-      import Plug.Conn
-      import Phoenix.Controller
-      require Logger
+      import Phoenix.LiveView
+      import Phoenix.LiveView.Helpers
 
-      import Bonfire.Common.URIs
+      unquote(view_helpers())
     end
   end
 
   def live_plug(_opts \\ []) do
     quote do
       alias Bonfire.Web.Router.Helpers, as: Routes
+      import Bonfire.Common.URIs
+
       import Phoenix.LiveView
       require Logger
+    end
+  end
+
+  def plug(_opts \\ []) do
+    quote do
+      alias Bonfire.Web.Router.Helpers, as: Routes
+      import Bonfire.Common.URIs
+
+      import Plug.Conn
+      import Phoenix.Controller
+      require Logger
+
+      import Bonfire.Common.URIs
     end
   end
 

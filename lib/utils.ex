@@ -19,27 +19,37 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc "Returns a value from a map, or a fallback if not present"
-  def e({:ok, map}, key, fallback), do: e(map, key, fallback)
+  def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
-  def e(map, key, fallback) do
-    case map do
-      map when is_map(map) -> map_get(map, key, fallback) || fallback # attempt using key as atom or string, fallback if doesn't exist or is nil
-      list when is_list(list) and length(list)==1 -> e(List.first(map), key, fallback)
+  def e(object, key, fallback) do
+    case object do
+      %{__context__: context} = map ->
+        # try searching in Surface's context, if present
+        map_get(map, key, nil) || map_get(context, key, nil) || fallback
+
+      map when is_map(map) ->
+        # attempt using key as atom or string, fallback if doesn't exist or is nil
+        map_get(map, key, nil) || fallback
+
+      list when is_list(list) and length(list)==1 ->
+        # if object is a list with 1 element, try with that
+        e(List.first(list), key, nil) || fallback
+
       _ -> fallback
     end
   end
 
   @doc "Returns a value from a nested map, or a fallback if not present"
-  def e(map, key1, key2, fallback) do
-    e(e(map, key1, %{}), key2, fallback)
+  def e(object, key1, key2, fallback) do
+    e(e(object, key1, %{}), key2, fallback)
   end
 
-  def e(map, key1, key2, key3, fallback) do
-    e(e(map, key1, key2, %{}), key3, fallback)
+  def e(object, key1, key2, key3, fallback) do
+    e(e(object, key1, key2, %{}), key3, fallback)
   end
 
-  def e(map, key1, key2, key3, key4, fallback) do
-    e(e(map, key1, key2, key3, %{}), key4, fallback)
+  def e(object, key1, key2, key3, key4, fallback) do
+    e(e(object, key1, key2, key3, %{}), key4, fallback)
   end
 
   def is_numeric(str) do
@@ -465,6 +475,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
+  def avatar_url(%{icon: url}) when is_binary(url), do: url
   def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME when we have uploads
   def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url() # FIXME when we have uploads
 
@@ -472,6 +483,7 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
+  def image_url(%{image: url}) when is_binary(url), do: url
   def image_url(%{id: id}), do: Bonfire.Me.Fake.image_url(id) # FIXME when we have uploads
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME when we have uploads
 
