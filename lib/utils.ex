@@ -382,7 +382,12 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(other, _), do: other
 
   def input_to_atoms(%{} = data) do
-    data |> Map.drop(["_csrf_token"]) |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
+    # turn any keys into atoms (if such atoms already exist) and discard the rest
+    :maps.filter(fn k, _v -> is_atom(k) end,
+      data
+      |> Map.drop(["_csrf_token"])
+      |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
+    )
   end
   def input_to_atoms(v), do: v
 
