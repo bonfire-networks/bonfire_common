@@ -3,6 +3,9 @@ defmodule Bonfire.Common.Utils do
   require Logger
   alias Bonfire.Web.Router.Helpers, as: Routes
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Extend
+
+  defdelegate module_enabled?(module), to: Extend
 
   def strlen(x) when is_nil(x), do: 0
   def strlen(%{} = obj) when obj == %{}, do: 0
@@ -121,10 +124,10 @@ defmodule Bonfire.Common.Utils do
   def magic_filter_empty(val, map, key, fallback \\ nil)
   def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback) when is_map(map) and is_atom(key) do
     if Bonfire.Common.Config.get!(:env) == :dev do
-      Logger.error("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
+      Logger.warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
     else
-      Logger.warn("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
+      Logger.info("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
       fallback
     end
   end
@@ -438,16 +441,60 @@ defmodule Bonfire.Common.Utils do
 
   def r(html), do: Phoenix.HTML.raw(html)
 
-  def markdown(html), do: r(markdown_to_html(html))
+  def md(content), do: r(markdown_to_html(content))
 
-  def markdown_to_html(nil) do
+  def rich(nothing) when not is_binary(nothing) or nothing=="" do
+    nil
+  end
+  def rich(content) do
+    if is_html?(content), do: r(content),
+    else: md(content)
+  end
+
+  @regex_unchecked ~r/<li>\s\[\s\]/
+  @regex_checked ~r/<li>\s\[[X,x]\]/
+  @checked_box "<li><input type=\'checkbox\' checked=\'checked\'>"
+  @unchecked_box "<li><input type=\'checkbox\'>"
+
+  def markdown_to_html(nothing) when not is_binary(nothing) or nothing=="" do
     nil
   end
 
   def markdown_to_html(content) do
-    content
-    |> Earmark.as_html!()
-    |> external_links()
+    if module_enabled?(Earmark) do
+      content
+      |> Earmark.as_html!()
+      |> markdown_checkboxes()
+      |> external_links()
+    else
+      content
+    end
+  end
+
+  def markdown_checkboxes(text) do
+    text
+    |> replace_checked_boxes
+    |> replace_unchecked_boxes
+  end
+
+  defp replace_checked_boxes(text) do
+    if String.match?(text, @regex_checked) do
+      String.replace(text, @regex_checked, "\r\n " <> @checked_box)
+    else
+      text
+    end
+  end
+
+  defp replace_unchecked_boxes(text) do
+    if String.match?(text, @regex_unchecked) do
+      String.replace(text, @regex_unchecked, "\r\n " <> @unchecked_box)
+    else
+      text
+    end
+  end
+
+  def is_html?(string) do
+    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
   end
 
   # open outside links in a new tab
@@ -539,46 +586,6 @@ defmodule Bonfire.Common.Utils do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
   end
 
-  defdelegate module_enabled?(module), to: Config
-
-  defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
-
-  def quoted_use_if_enabled(module, fallback_module \\ nil)
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
-  def quoted_use_if_enabled(module, fallback_module) do
-    if is_atom(module) and module_enabled?(module) do
-      # Logger.debug("Found module to use: #{module}")
-      quote do
-        use unquote(module)
-      end
-    else
-      Logger.info("Did not find module to use: #{module}")
-      if is_atom(fallback_module) and module_enabled?(fallback_module) do
-        quote do
-          use unquote(fallback_module)
-        end
-      end
-    end
-  end
-
-  defmacro import_if_enabled(module, fallback_module \\ nil), do: quoted_import_if_enabled(module, fallback_module)
-
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> maybe_str_to_module(), fallback_module)
-  def quoted_import_if_enabled(module, fallback_module \\ nil) do
-    if is_atom(module) and module_enabled?(module) do
-      # Logger.debug("Found module to import: #{module}")
-      quote do
-        import unquote(module)
-      end
-    else
-      Logger.info("Did not find module to import: #{module}")
-      if is_atom(fallback_module) and module_enabled?(fallback_module) do
-        quote do
-          import unquote(fallback_module)
-        end
-      end
-    end
-  end
 
   def ok(ret, fallback \\ nil) do
     with {:ok, val} <- ret do

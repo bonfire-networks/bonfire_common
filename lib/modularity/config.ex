@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Extend
 
   def top_level_otp_app do
     get!(:otp_app, :bonfire_common)
@@ -15,11 +16,13 @@ defmodule Bonfire.Common.Config do
     end
   end
 
+  defdelegate module_enabled?(module), to: Extend
+
   @doc """
   Stop if an Elixir module or extension / OTP app doesn't have configuration keys set up
   """
   def require_extension_config!(extension) do
-    if !has_extension_config?(extension) do
+    if !Extend.has_extension_config?(extension) do
       compilation_error(
         "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{
           extension
@@ -27,71 +30,6 @@ defmodule Bonfire.Common.Config do
           extension
         }.exs\"` to your `./config/config.exs`"
       )
-    end
-  end
-
-  @doc """
-  Whether an Elixir module or extension / OTP app has configuration keys set up
-  """
-  def has_extension_config?(module_or_otp_app) do
-    extension = maybe_extension_loaded(module_or_otp_app)
-
-    config = Application.get_all_env(extension)
-    config && config != []
-  end
-
-  @doc """
-  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
-  # TODO: also make it possible to disable individual modules in config
-  """
-  def module_enabled?(module) do
-    module_exists?(module) && extension_enabled?(module)
-  end
-
-  def module_exists?(module) do
-    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
-  end
-
-  @doc """
-  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
-  """
-  def extension_enabled?(module_or_otp_app) when is_atom(module_or_otp_app) do
-    extension = maybe_extension_loaded(module_or_otp_app)
-    extension_loaded?(extension) and !get_ext(extension, :disabled)
-  end
-
-  @doc """
-  Whether an Elixir module or extension / OTP app is present
-  """
-  def extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
-    extension = maybe_extension_loaded(module_or_otp_app)
-
-    module_exists?(extension) or
-      Enum.member?(Application.loaded_applications() |> Enum.map(&elem(&1, 0)), extension)
-  end
-
-  def maybe_extension_loaded(module_or_otp_app) when is_atom(module_or_otp_app) do
-    case maybe_module_loaded(module_or_otp_app) |> Application.get_application() do
-      # if we got an otp_app, assume for now that it's valid & loaded
-      nil -> module_or_otp_app
-      # if we got a module, return the corresponding application
-      otp_app -> otp_app
-    end
-  end
-
-  def maybe_module_loaded(module) do
-    if module_exists?(module), do: module
-  end
-
-  def maybe_schema_or_pointer(schema_module) do
-    module_exists_or(schema_module, Pointers.Pointer)
-  end
-
-  def module_exists_or(module, fallback) do
-    if module_exists?(module) do
-      module
-    else
-      fallback
     end
   end
 
@@ -136,7 +74,7 @@ defmodule Bonfire.Common.Config do
   Get config value for a Bonfire extension or OTP app config key
   """
   def get_ext(module_or_otp_app, key, default \\ nil) do
-    otp_app = maybe_extension_loaded(module_or_otp_app)
+    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
     top_level_otp_app = top_level_otp_app()
     ret = get(key, default, otp_app)
 
@@ -152,7 +90,7 @@ defmodule Bonfire.Common.Config do
   Get all config keys/values for a Bonfire extension or OTP app
   """
   def get_ext(module_or_otp_app) do
-    otp_app = maybe_extension_loaded(module_or_otp_app)
+    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
     Application.get_all_env(otp_app)
   end
 
@@ -161,7 +99,7 @@ defmodule Bonfire.Common.Config do
 
     if value == nil do
       compilation_error(
-        "Missing configuration value for extension #{maybe_extension_loaded(module_or_otp_app)}: #{
+        "Missing configuration value for extension #{Extend.maybe_extension_loaded(module_or_otp_app)}: #{
           inspect(key, pretty: true)
         }"
       )

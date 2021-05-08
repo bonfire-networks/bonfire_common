@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Pointers do
   alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
   alias Pointers.NotFound
-
+  import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]
   require Logger
 
@@ -175,8 +175,9 @@ defmodule Bonfire.Common.Pointers do
 
         import Ecto.Query
 
-        query = from l in schema,
-          where: ^filters
+        query = schema
+          |> where(^override_filters)
+          |> id_filter(id_filters)
 
         {:ok, repo().all(query)}
 
@@ -188,7 +189,17 @@ defmodule Bonfire.Common.Pointers do
     end
   end
 
-  def query_pointer_function_error(error, args, level \\ :warn) do
+  def id_filter(query, [id: ids]) when is_list(ids) do
+    query
+    |> where([p], p.id in ^ids)
+  end
+  def id_filter(query, [id: id]) when is_binary(id) do
+    query
+    |> where([p], p.id == ^id)
+  end
+
+
+  def query_pointer_function_error(error, args, level \\ :info) do
     Logger.log(level, "Pointers.preload!: #{error} with args: (#{inspect args})")
 
     {:error, error}

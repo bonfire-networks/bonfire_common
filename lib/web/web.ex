@@ -2,7 +2,6 @@ defmodule Bonfire.Web do
   @moduledoc false
 
   alias Bonfire.Common.Utils
-  require Utils
 
   def controller(opts \\ []) do
     #IO.inspect(controller: opts)
@@ -133,11 +132,12 @@ defmodule Bonfire.Web do
       import Phoenix.Controller
       import Phoenix.LiveView.Router
 
+      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1]
+
       alias Bonfire.Common.Utils
       import Utils
-      require Utils
 
-      unquote(Utils.quoted_use_if_enabled(Thesis.Router))
+      unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.Router))
 
     end
   end
@@ -174,9 +174,8 @@ defmodule Bonfire.Web do
 
       alias Bonfire.Common.Utils
       import Utils
-      require Utils
 
-      unquote(Utils.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
     end
   end
@@ -190,7 +189,7 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Helpers
 
       # Import Surface if any dep is using it
-      Utils.quoted_import_if_enabled(Surface)
+      Bonfire.Common.Extend.quoted_import_if_enabled(Surface)
 
     end
   end
