@@ -13,10 +13,10 @@ defmodule Bonfire.Common.Utils do
   def strlen(x) when is_binary(x), do: String.length(x)
   def strlen(x) when is_list(x), do: length(x)
   def strlen(x) when x > 0, do: 1
-  # let's say that 0 is nothing
+  # let's just say that 0 is nothing
   def strlen(x) when x == 0, do: 0
 
-  @doc "Returns a value, or a fallback if not present"
+  @doc "Returns a value, or a fallback if nil/false"
   def e(key, fallback) do
     key || fallback
   end
@@ -24,11 +24,34 @@ defmodule Bonfire.Common.Utils do
   @doc "Returns a value from a map, or a fallback if not present"
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
+  def e(object, :current_user = key, fallback) do #temporary
+        IO.inspect(key: key)
+        IO.inspect(e_object: object)
+
+        case object do
+      %{__context__: context} ->
+        IO.inspect(key: key)
+        IO.inspect(e_context: context)
+        # try searching in Surface's context (when object is assigns), if present
+        map_get(object, key, nil) || map_get(context, key, nil) || fallback
+
+      map when is_map(map) ->
+        # attempt using key as atom or string, fallback if doesn't exist or is nil
+        map_get(map, key, nil) || fallback
+
+      list when is_list(list) and length(list)==1 ->
+        # if object is a list with 1 element, try with that
+        e(List.first(list), key, nil) || fallback
+
+      _ -> fallback
+    end
+  end
+
   def e(object, key, fallback) do
     case object do
-      %{__context__: context} = map ->
-        # try searching in Surface's context, if present
-        map_get(map, key, nil) || map_get(context, key, nil) || fallback
+      %{__context__: context} ->
+        # try searching in Surface's context (when object is assigns), if present
+        map_get(object, key, nil) || map_get(context, key, nil) || fallback
 
       map when is_map(map) ->
         # attempt using key as atom or string, fallback if doesn't exist or is nil
@@ -44,15 +67,18 @@ defmodule Bonfire.Common.Utils do
 
   @doc "Returns a value from a nested map, or a fallback if not present"
   def e(object, key1, key2, fallback) do
-    e(e(object, key1, %{}), key2, fallback)
+    e(object, key1, %{})
+    |> e(key2, fallback)
   end
 
   def e(object, key1, key2, key3, fallback) do
-    e(e(object, key1, key2, %{}), key3, fallback)
+    e(object, key1, key2, %{})
+    |> e(key3, fallback)
   end
 
   def e(object, key1, key2, key3, key4, fallback) do
-    e(e(object, key1, key2, key3, %{}), key4, fallback)
+    e(object, key1, key2, key3, %{})
+    |> e(key4, fallback)
   end
 
   def is_numeric(str) do
@@ -150,7 +176,7 @@ defmodule Bonfire.Common.Utils do
     ret
   end
 
-  @doc "Replace a key in a map"
+  @doc "Rename a key in a map"
   def map_key_replace(%{} = map, key, new_key) do
     map
     |> Map.put(new_key, Map.get(map, key))
