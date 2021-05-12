@@ -159,7 +159,9 @@ defmodule Bonfire.Common.Utils do
   end
   def magic_filter_empty(val, _, _, fallback), do: val |> filter_empty(fallback)
 
+  def filter_empty(val, fallback \\ nil)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
+  # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
   def filter_empty(val, fallback), do: val || fallback
 
 
@@ -350,7 +352,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def maybe_to_map(struct = %{__struct__: _}) do
-    Map.from_struct(struct)
+    Map.from_struct(struct) |> map_filter_empty() |> IO.inspect(label: "clean")
   end
   def maybe_to_map(data) when is_tuple(data) do
     data
@@ -363,6 +365,18 @@ defmodule Bonfire.Common.Utils do
   end
   def maybe_to_map(other) do
     other
+  end
+
+  def map_filter_empty(data) when is_map(data) and not is_struct(data) do
+    Enum.map(data, &map_filter_empty/1) |> Map.new()
+  end
+
+  def map_filter_empty({k, v}) do
+    {k, map_filter_empty(v)}
+  end
+
+  def map_filter_empty(v) do
+    filter_empty(v)
   end
 
   @doc """
@@ -794,7 +808,7 @@ defmodule Bonfire.Common.Utils do
       {:error, reason} -> live_exception(socket, return_key, reason)
       {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
       :ok -> {return_key, socket} # shortcut for return nothing
-      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data seems invalid and could not be inserted/updated.", cs)
+      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>Bonfire.Repo.ChangesetErrors.cs_to_string(cs), cs)
       ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
     end
   rescue
@@ -805,7 +819,7 @@ defmodule Bonfire.Common.Utils do
     error in FunctionClauseError ->
       live_exception(socket, return_key, "A function didn't receive the data it expected", error, __STACKTRACE__)
     cs in Ecto.Changeset ->
-        live_exception(socket, return_key, "The data seems invalid and could not be inserted/updated.", cs, nil)
+        live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>Bonfire.Repo.ChangesetErrors.cs_to_string(cs), cs, nil)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch

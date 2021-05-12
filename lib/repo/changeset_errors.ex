@@ -17,7 +17,7 @@ defmodule Bonfire.Repo.ChangesetErrors do
       IO.inspect(v: v)
       joined_errors = do_to_string(v, "; ")
 
-      "#{acc} #{k}: #{joined_errors}"
+      "#{acc} \n#{k}: #{joined_errors}"
     end)
   end
 
