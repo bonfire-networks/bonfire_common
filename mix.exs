@@ -10,6 +10,7 @@ defmodule Bonfire.Common.MixProject do
       start_permanent: Mix.env() == :prod,
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       deps: Mess.deps [
+        {:surface, "~> 0.4", optional: true},
         {:phoenix_live_reload, "~> 1.2", only: :dev},
         {:dbg, "~> 1.0", only: :dev},
         {:zest, "~> 0.1", optional: true}
