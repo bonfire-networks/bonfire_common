@@ -582,16 +582,16 @@ defmodule Bonfire.Common.Utils do
   def current_user(%{assigns: assigns} = _socket) do
     current_user(assigns)
   end
-  def current_user(%{current_user: current_user} = _assigns) do
+  def current_user(%{current_user: current_user} = _assigns) when not is_nil(current_user) do
     current_user
   end
-  def current_user(%{__context__: context} = _assigns) do
-    current_user(context)
-  end
-  def current_user(%{id: %{profile: %{}}} = current_user) do
+  def current_user(%{__context__: %{current_user: current_user}} = _assigns) when not is_nil(current_user) do
     current_user
   end
-  def current_user(%{id: %{character: %{}}} = current_user) do
+  def current_user(%{id: _, profile: _} = current_user) do
+    current_user
+  end
+  def current_user(%{id: _, character: _} = current_user) do
     current_user
   end
   def current_user(_), do: nil
@@ -886,6 +886,7 @@ defmodule Bonfire.Common.Utils do
     else: inspect exception
   end
 
+  def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
 
 end
