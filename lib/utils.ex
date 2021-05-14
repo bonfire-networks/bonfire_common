@@ -24,28 +24,28 @@ defmodule Bonfire.Common.Utils do
   @doc "Returns a value from a map, or a fallback if not present"
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
-  def e(object, :current_user = key, fallback) do #temporary
-        IO.inspect(key: key)
-        IO.inspect(e_object: object)
+  # def e(object, :current_user = key, fallback) do #temporary
+  #       IO.inspect(key: key)
+  #       IO.inspect(e_object: object)
 
-        case object do
-      %{__context__: context} ->
-        IO.inspect(key: key)
-        IO.inspect(e_context: context)
-        # try searching in Surface's context (when object is assigns), if present
-        map_get(object, key, nil) || map_get(context, key, nil) || fallback
+  #       case object do
+  #     %{__context__: context} ->
+  #       IO.inspect(key: key)
+  #       IO.inspect(e_context: context)
+  #       # try searching in Surface's context (when object is assigns), if present
+  #       map_get(object, key, nil) || map_get(context, key, nil) || fallback
 
-      map when is_map(map) ->
-        # attempt using key as atom or string, fallback if doesn't exist or is nil
-        map_get(map, key, nil) || fallback
+  #     map when is_map(map) ->
+  #       # attempt using key as atom or string, fallback if doesn't exist or is nil
+  #       map_get(map, key, nil) || fallback
 
-      list when is_list(list) and length(list)==1 ->
-        # if object is a list with 1 element, try with that
-        e(List.first(list), key, nil) || fallback
+  #     list when is_list(list) and length(list)==1 ->
+  #       # if object is a list with 1 element, try with that
+  #       e(List.first(list), key, nil) || fallback
 
-      _ -> fallback
-    end
-  end
+  #     _ -> fallback
+  #   end
+  # end
 
   def e(object, key, fallback) do
     case object do
@@ -563,21 +563,22 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def avatar_url(%{profile: profile}), do: avatar_url(profile)
+  def avatar_url(%{profile: %{id: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
-  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME when we have uploads
-  def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url() # FIXME when we have uploads
+  def avatar_url(obj), do: image_url(obj)
+  # def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id)
+  # def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url()
 
-  def image_url(%{profile: profile}), do: image_url(profile)
+  def image_url(%{profile: %{id: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{image: url}) when is_binary(url), do: url
-  def image_url(%{id: id}), do: Bonfire.Me.Fake.image_url(id) # FIXME when we have uploads
-  def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME when we have uploads
+  def image_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME?
+  def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME better fallback
 
   def current_user(%{assigns: assigns} = _socket) do
     current_user(assigns)
