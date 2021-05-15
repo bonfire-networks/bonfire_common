@@ -10,4 +10,8 @@ defmodule Bonfire.Common.Web.ErrorLive do
     }
   end
 
+  defdelegate handle_params(params, attrs, socket), to: Bonfire.Web.LiveHandler
+  def handle_event(action, attrs, socket), do: Bonfire.Web.LiveHandler.handle_event(action, attrs, socket, __MODULE__)
+  def handle_info(info, socket), do: Bonfire.Web.LiveHandler.handle_info(info, socket, __MODULE__)
+
 end
