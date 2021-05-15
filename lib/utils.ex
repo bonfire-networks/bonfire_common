@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Utils do
   import Phoenix.LiveView
   require Logger
-  alias Bonfire.Web.Router.Helpers, as: Routes
+  import Bonfire.Common.URIs
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
 
@@ -836,7 +836,7 @@ defmodule Bonfire.Common.Utils do
   end
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      {return_key, put_flash(socket, :error, msg) |> push_patch(to: Routes.live_path(socket, socket.view))}
+      {return_key, put_flash(socket, :error, msg) |> push_patch(to: path(socket.view))}
     end
   rescue
     ArgumentError -> # for cases where the live_path may need param(s) which we don't know about
