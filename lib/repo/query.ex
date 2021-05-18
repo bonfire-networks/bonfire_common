@@ -27,25 +27,12 @@ defmodule Bonfire.Repo.Query do
       import Ecto.Query
 
       # `reusable_join` and `join_preload` helpers
-      import QueryElf.Plugins.ReusableJoin
-      require QueryElf.Plugins.ReusableJoin
-      import QueryElf.Plugins.Preloader
-      require QueryElf.Plugins.Preloader
+      import EctoSparkles.ReusableJoin
+      # require EctoSparkles.ReusableJoin
+      import EctoSparkles.JoinPreload
+      # require EctoSparkles.JoinPreload
 
       require Logger
-
-      if unquote(Keyword.get(opts, :schema)) do
-        use QueryElf,
-          schema: unquote(opts[:schema]),
-          plugins: [
-            {QueryElf.Plugins.AutomaticFilters, fields: unquote(searchable_fields)},
-            {QueryElf.Plugins.AutomaticSorters, fields: unquote(sortable_fields)},
-            # {QueryElf.Plugins.OffsetPagination, default_per_page: unquote(default_per_page)},
-            # put any other plugins to include everywhere here
-          ] ++ unquote(extra_plugins) # adds additional plugins from `use Bonfire.Repo.Query` opts
-      else
-        Logger.error("Must specify a `schema: EctoSchemaModule` option when you `use` Query")
-      end
 
     end
   end
