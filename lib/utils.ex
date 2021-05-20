@@ -2,6 +2,7 @@ defmodule Bonfire.Common.Utils do
   import Phoenix.LiveView
   require Logger
   import Bonfire.Common.URIs
+  alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
 
@@ -352,7 +353,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def maybe_to_map(struct = %{__struct__: _}) do
-    Map.from_struct(struct) |> map_filter_empty() |> IO.inspect(label: "clean")
+    Map.from_struct(struct) |> map_filter_empty() #|> IO.inspect(label: "clean")
   end
   def maybe_to_map(data) when is_tuple(data) do
     data
@@ -481,7 +482,7 @@ defmodule Bonfire.Common.Utils do
 
   def r(html), do: Phoenix.HTML.raw(html)
 
-  def md(content), do: r(markdown_to_html(content))
+  def md(content), do: r(Text.markdown_to_html(content))
 
   def rich(nothing) when not is_binary(nothing) or nothing=="" do
     nil
@@ -491,47 +492,6 @@ defmodule Bonfire.Common.Utils do
     else: md(content)
   end
 
-  @regex_unchecked ~r/<li>\s\[\s\]/
-  @regex_checked ~r/<li>\s\[[X,x]\]/
-  @checked_box "<li><input type=\'checkbox\' checked=\'checked\'>"
-  @unchecked_box "<li><input type=\'checkbox\'>"
-
-  def markdown_to_html(nothing) when not is_binary(nothing) or nothing=="" do
-    nil
-  end
-
-  def markdown_to_html(content) do
-    if module_enabled?(Earmark) do
-      content
-      |> Earmark.as_html!()
-      |> markdown_checkboxes()
-      |> external_links()
-    else
-      content
-    end
-  end
-
-  def markdown_checkboxes(text) do
-    text
-    |> replace_checked_boxes
-    |> replace_unchecked_boxes
-  end
-
-  defp replace_checked_boxes(text) do
-    if String.match?(text, @regex_checked) do
-      String.replace(text, @regex_checked, "\r\n " <> @checked_box)
-    else
-      text
-    end
-  end
-
-  defp replace_unchecked_boxes(text) do
-    if String.match?(text, @regex_unchecked) do
-      String.replace(text, @regex_unchecked, "\r\n " <> @unchecked_box)
-    else
-      text
-    end
-  end
 
   def is_html?(string) do
     Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
