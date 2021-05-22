@@ -150,7 +150,7 @@ defmodule Bonfire.Common.Utils do
 
   def magic_filter_empty(val, map, key, fallback \\ nil)
   def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback) when is_map(map) and is_atom(key) do
-    if Bonfire.Common.Config.get!(:env) == :dev do
+    if Bonfire.Common.Config.get!(:env) == :dev && Bonfire.Common.Config.get(:e_auto_preload, false) do
       Logger.warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
     else

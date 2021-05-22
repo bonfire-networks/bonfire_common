@@ -193,10 +193,10 @@ defmodule Bonfire.Repo do
 
   def maybe_preload({:ok, obj}, preloads), do: {:ok, maybe_preload(obj, preloads)}
   def maybe_preload(obj, preloads) do
-    preloaded =
-      maybe_do_preload(obj, preloads)
 
-    preload_pointers(preloads, preloaded)
+    maybe_preload_pointers(preloads,
+      maybe_do_preload(obj, preloads)
+    )
   rescue
     e ->
       Logger.warn("maybe_preload: #{inspect e}")
@@ -213,20 +213,25 @@ defmodule Bonfire.Repo do
   defp maybe_do_preload(obj, _), do: obj
 
 
-  def preload_pointers(key, preloaded) when is_list(preloaded) do
-    Enum.map(preloaded, fn(row) -> preload_pointers(key, row) end)
+  def maybe_preload_pointers(key, preloaded) when is_list(preloaded) do
+    Enum.map(preloaded, fn(row) -> maybe_preload_pointers(key, row) end)
   end
 
-  # TODO: figure out how to handle nested Pointer preloads
-  # def preload_pointers(keys, preloaded) when is_list(keys) do
+  def maybe_preload_pointers(keys, preloaded) when is_list(keys) and length(keys)==1 do
+    List.first(keys)
+      |> maybe_preload_pointers(preloaded)
+  end
+
+  # TODO: what's this?
+  # def maybe_preload_pointers(keys, preloaded) when is_list(keys) do
   #   IO.inspect(keys)
   #   preloaded
   #   |> Bonfire.Common.Utils.maybe_to_map()
-  #   |> get_and_update_in([Access.all], &{&1, preload_pointer(&1)})
+  #   |> get_and_update_in([Access.all], &{&1, maybe_preload_pointer(&1)})
   # end
 
-  def preload_pointers(key, preloaded) when is_map(preloaded) do
-    case Map.get(preloaded, key) do
+  def maybe_preload_pointers(key, preloaded) when is_map(preloaded) do
+    case preloaded |> Map.get(key) do
       %Pointers.Pointer{} = pointer ->
 
         preloaded
@@ -235,10 +240,10 @@ defmodule Bonfire.Repo do
       _ -> preloaded
     end
   end
-  def preload_pointers(_key, preloaded), do: preloaded
+  def maybe_preload_pointers(_key, preloaded), do: preloaded
 
-  def preload_pointer(preloaded) do
-    IO.inspect(preload_pointer: preloaded)
+  def maybe_preload_pointer(preloaded) do
+    IO.inspect(maybe_preload_pointer: preloaded)
     case preloaded do
       %Pointers.Pointer{} = pointer ->
 

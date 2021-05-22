@@ -17,6 +17,8 @@ defmodule Bonfire.Common.Pointers do
 
   def get(id, filters \\ [])
 
+  def get({:ok, by}, filters), do: get(by, filters)
+
   def get(id, filters) when is_binary(id) do
     with {:ok, pointer} <- one(id: id) do
       get(pointer, filters)
@@ -25,14 +27,16 @@ defmodule Bonfire.Common.Pointers do
 
   def get(%Pointer{} = pointer, filters) do
     with %{id: _} = obj <- follow!(pointer, filters) do
-      {:ok, obj}
+      {:ok,
+        struct(obj, Map.from_struct(pointer)) # adds any assocs preload on pointer to the returned object
+      }
     end
   rescue
     NotFound -> {:error, :not_found}
   end
 
-  def get(%{} = thing, _) do
-    thing
+  def get(_, _) do
+    {:error, :not_found}
   end
 
   def one(id) when is_binary(id) do
