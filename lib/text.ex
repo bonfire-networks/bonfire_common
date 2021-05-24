@@ -47,15 +47,21 @@ defmodule Bonfire.Common.Text do
   end
 
   def list_checked_boxes(text) do
-    Regex.scan(@regex_checked_line, text)
+    regex_list(@regex_checked_line, text)
   end
 
   def list_unchecked_boxes(text) do
-    Regex.scan(@regex_unchecked_line, text)
+    regex_list(@regex_unchecked_line, text)
   end
 
   def list_checkboxes(text) do
-    Regex.scan(@regex_checkbox_line, text)
+    regex_list(@regex_checkbox_line, text)
   end
+
+  def regex_list(regex, text) when is_binary(text) and text !="" do
+    Regex.scan(regex, text)
+  end
+
+  def regex_list(text, regex), do: nil
 
 end
