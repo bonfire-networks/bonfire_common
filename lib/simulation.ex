@@ -58,7 +58,7 @@ defmodule Bonfire.Common.Simulation do
   @doc "Same as future_datetime, but as an ISO8601 formatted string."
   def future_datetime_iso(), do: DateTime.to_iso8601(future_datetime())
   @doc "Generates a random paragraph"
-  def paragraph(), do: Faker.Lorem.paragraph()
+  def paragraph(), do: Faker.Lorem.sentence()
   @doc "Generates random base64 text"
   def base64(), do: Faker.String.base64()
 
