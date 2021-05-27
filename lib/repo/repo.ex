@@ -192,17 +192,23 @@ defmodule Bonfire.Repo do
   # end
 
   def maybe_preload({:ok, obj}, preloads), do: {:ok, maybe_preload(obj, preloads)}
-  def maybe_preload(obj, preloads) do
+  def maybe_preload(obj, preloads) when is_struct(obj) do
+    Logger.info("maybe_preload: trying to preload: #{inspect preloads}")
 
     maybe_preload_pointers(preloads,
       maybe_do_preload(obj, preloads)
     )
   rescue
     e ->
-      Logger.warn("maybe_preload: #{inspect e}")
+      Logger.warn("maybe_preload error: #{inspect e}")
       obj
   end
 
+  def maybe_preload(obj, _) do
+    Logger.info("maybe_preload: Cannot preload from non-struct object")
+
+    obj
+  end
 
   defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
 

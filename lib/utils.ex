@@ -454,12 +454,19 @@ defmodule Bonfire.Common.Utils do
   defp maybe_add_mixin_id(data, parent_id), do: data
 
   def maybe_to_struct(obj, type \\ nil)
-  def maybe_to_struct(%{index_type: type} = obj, nil), do: maybe_to_struct(obj, maybe_str_to_module(type))
-  def maybe_to_struct(obj, type) when is_binary(type), do: maybe_to_struct(obj, maybe_str_to_module(type))
-  def maybe_to_struct(obj, type) when is_atom(type) do
-    if module_enabled?(type), do: Mappable.to_struct(obj, type),
+  def maybe_to_struct(obj, _type) when is_struct(obj), do: obj
+  def maybe_to_struct(obj, type) when is_binary(type) do
+    case maybe_str_to_module(type) do
+      module when is_atom(module) -> maybe_to_struct(obj, module)
+      _ -> obj
+    end
+  end
+  def maybe_to_struct(obj, module) when is_atom(module) do
+    if module_enabled?(module), do: Mappable.to_struct(obj, module),
     else: obj
   end
+  def maybe_to_struct(%{index_type: type} = obj, nil), do: maybe_to_struct(obj, type) # for search results
+  def maybe_to_struct(%{__typename: type} = obj, nil), do: maybe_to_struct(obj, type) # for graphql queries
   def maybe_to_struct(obj, _type), do: obj
 
   def struct_from_map(a_map, as: a_struct) do # MIT licensed function by Kum Sackey
