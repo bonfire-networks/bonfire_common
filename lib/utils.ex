@@ -319,8 +319,10 @@ defmodule Bonfire.Common.Utils do
 
   @doc "Append an item to a list if it is not nil"
   @spec maybe_append([any()], any()) :: [any()]
-  def maybe_append(list, nil), do: list
-  def maybe_append(list, value), do: [value | list]
+  def maybe_append(list, value) when is_nil(value) or value == [], do: list
+  def maybe_append(list, {:ok, value}) when is_nil(value) or value == [], do: list
+  def maybe_append(list, value) when is_list(list), do: [value | list]
+  def maybe_append(obj, value), do: maybe_append([obj], value)
 
   def maybe_str_to_atom(str) when is_binary(str) do
     try do
@@ -352,8 +354,13 @@ defmodule Bonfire.Common.Utils do
     to_string(other)
   end
 
+
+  def struct_to_map(struct = %{__struct__: _}) do
+    Map.from_struct(struct) |> Map.drop([:__meta__]) |> map_filter_empty() #|> IO.inspect(label: "clean")
+  end
+
   def maybe_to_map(struct = %{__struct__: _}) do
-    Map.from_struct(struct) |> map_filter_empty() #|> IO.inspect(label: "clean")
+    struct_to_map(struct)
   end
   def maybe_to_map(data) when is_tuple(data) do
     data
@@ -367,6 +374,21 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_map(other) do
     other
   end
+
+  def nested_struct_to_map(struct = %{__struct__: type}) when type not in [DateTime] do
+    struct_to_map(struct) |> nested_struct_to_map()
+  end
+
+  def nested_struct_to_map(map = %{}) when not is_struct(map) do
+    map
+    |> Enum.map(fn {k, v} -> {k, nested_struct_to_map(v)} end)
+    |> Enum.into(%{})
+  end
+
+  # def nested_struct_to_map(v) when is_tuple(v), do: v |> Tuple.to_list()
+  def nested_struct_to_map(v), do: v
+
+
 
   def map_filter_empty(data) when is_map(data) and not is_struct(data) do
     Enum.map(data, &map_filter_empty/1) |> Map.new()
