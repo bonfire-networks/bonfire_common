@@ -20,7 +20,7 @@ defmodule Bonfire.Common.Pointers do
   def get({:ok, by}, filters), do: get(by, filters)
 
   def get(id, filters) when is_binary(id) do
-    with {:ok, pointer} <- one(id: id) do
+    with {:ok, pointer} <- one(id) do
       get(pointer, filters)
     end
   end
