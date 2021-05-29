@@ -358,6 +358,9 @@ defmodule Bonfire.Common.Utils do
   def struct_to_map(struct = %{__struct__: _}) do
     Map.from_struct(struct) |> Map.drop([:__meta__]) |> map_filter_empty() #|> IO.inspect(label: "clean")
   end
+  def struct_to_map(other) do
+    other
+  end
 
   def maybe_to_map(struct = %{__struct__: _}) do
     struct_to_map(struct)
@@ -391,7 +394,7 @@ defmodule Bonfire.Common.Utils do
 
 
   def map_filter_empty(data) when is_map(data) and not is_struct(data) do
-    Enum.map(data, &map_filter_empty/1) |> Map.new()
+    Enum.map(data, &map_filter_empty/1) |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
   end
 
   def map_filter_empty({k, v}) do

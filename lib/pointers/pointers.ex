@@ -5,7 +5,10 @@ defmodule Bonfire.Common.Pointers do
   alias Pointers.NotFound
   import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]
+  alias Bonfire.Common.Utils
   require Logger
+  use OK.Pipe
+
 
   def get!(id, filters \\ []) do
     with {:ok, obj} <- get(id, filters) do
@@ -28,7 +31,7 @@ defmodule Bonfire.Common.Pointers do
   def get(%Pointer{} = pointer, filters) do
     with %{id: _} = obj <- follow!(pointer, filters) do
       {:ok,
-        struct(obj, Map.from_struct(pointer)) # adds any assocs preload on pointer to the returned object
+        maybe_to_struct(obj, pointer) #|> IO.inspect(label: "Pointers.get")
       }
     end
   rescue
@@ -63,13 +66,6 @@ defmodule Bonfire.Common.Pointers do
   def maybe_forge!(%{__struct__: _} = pointed), do: forge!(pointed)
 
   @doc """
-  Retrieves the Table that a pointer points to
-  Note: Throws an error if the table cannot be found
-  """
-  @spec table!(Pointer.t()) :: Table.t()
-  def table!(%Pointer{table_id: id}), do: Pointers.Tables.table!(id)
-
-  @doc """
   Forge a pointer from a structure that participates in the meta abstraction.
 
   Does not hit the database.
@@ -77,9 +73,9 @@ defmodule Bonfire.Common.Pointers do
   Is safe so long as the provided struct participates in the meta abstraction.
   """
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
-  def forge!(%{__struct__: table_id, id: id} = pointed) do
+  def forge!(%{__struct__: schema, id: id} = pointed) do
     #IO.inspect(forge: pointed)
-    table = Pointers.Tables.table!(table_id)
+    table = Bonfire.Common.Pointers.Tables.table!(schema)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
 
@@ -91,7 +87,7 @@ defmodule Bonfire.Common.Pointers do
   """
   @spec forge!(table_id :: integer | atom, id :: binary) :: %Pointer{}
   def forge!(table_id, id) do
-    table = Pointers.Tables.table!(table_id)
+    table = Bonfire.Common.Pointers.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
@@ -163,29 +159,22 @@ defmodule Bonfire.Common.Pointers do
     Enum.reduce(items, acc, &Map.put(&2, &1.id, &1))
   end
 
-  defp loader(schema, id_filters, override_filters) when not is_atom(schema) do
-    loader(Pointers.Tables.schema!(schema), id_filters, override_filters)
+  defp loader(schema, id_filters, override_filters) when is_atom(schema), do: loader_query(schema, id_filters, override_filters)
+
+  defp loader(table_id, id_filters, override_filters) do
+    schema_or_table = Bonfire.Common.Pointers.Tables.schema_or_table!(table_id) |> IO.inspect
+    loader_query(schema_or_table, id_filters, override_filters)
   end
 
-  defp loader(schema, id_filters, override_filters) do
-    #IO.inspect(schema: schema)
-    query_module = Bonfire.Contexts.run_module_function(schema, :queries_module, [], &query_pointer_function_error/2)
-    case query_module do
+  defp loader_query(schema, id_filters, override_filters) when is_atom(schema) do
+    #IO.inspect(loader_query_schema: schema)
+    # TODO: make the query module configurable
+    case Bonfire.Contexts.run_module_function(schema, :queries_module, [], &query_pointer_function_error/2) do
       {:error, _} ->
 
-        filters = id_filters ++ override_filters
+        cowboy_query(schema, id_filters, override_filters)
 
-        Logger.warn("Pointers.preload!: Attempting cowboy query on #{schema} with filters: #{inspect filters}")
-
-        import Ecto.Query
-
-        query = schema
-          |> where(^override_filters)
-          |> id_filter(id_filters)
-
-        {:ok, repo().all(query)}
-
-      _ ->
+      query_module ->
         filters = filters(schema, id_filters, override_filters)
         #IO.inspect(filters)
         query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
@@ -193,15 +182,48 @@ defmodule Bonfire.Common.Pointers do
     end
   end
 
+  defp loader_query(table_name, id_filters, override_filters) when is_binary(table_name) do
+    # load data from a table without a known schema
+    table_name
+    |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
+    |> cowboy_query(id_filters, override_filters)
+    |> maybe_convert_ulids()
+  end
+
+  defp cowboy_query(schema_or_query, id_filters, override_filters) do
+    filters = id_filters ++ override_filters
+
+    Logger.warn("Pointers.preload!: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
+
+    import Ecto.Query
+
+    query = schema_or_query
+      |> where(^override_filters)
+      |> id_filter(id_filters)
+      # |> IO.inspect
+
+    {:ok, repo().all(query) }
+  end
+
   def id_filter(query, [id: ids]) when is_list(ids) do
     query
-    |> where([p], p.id in ^ids)
+    |> where([p], p.id in ^id_binary(ids))
   end
   def id_filter(query, [id: id]) when is_binary(id) do
     query
-    |> where([p], p.id == ^id)
+    |> where([p], p.id == ^id_binary(id))
+  end
+  def id_filter(query, id) when is_binary(id) do
+    query
+    |> where([p], p.id == ^id_binary(id))
   end
 
+  def id_binary(id) when is_binary(id) do
+    with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
+  end
+  def id_binary(ids) when is_list(ids) do
+    Enum.map(ids, &id_binary/1)
+  end
 
   def query_pointer_function_error(error, args, level \\ :info) do
     Logger.log(level, "Pointers.preload!: #{error} with args: (#{inspect args})")
@@ -217,15 +239,29 @@ defmodule Bonfire.Common.Pointers do
     id_filters ++ override_filters
   end
 
-  @doc "Lists all that Pointers knows about"
-  def list_all(), do: Pointers.Tables.data()
-
-  def list_pointable_schemas() do
-    pointable_tables = list_all()
-
-    Enum.reduce(pointable_tables, [], fn {_id, x}, acc ->
-      Enum.concat(acc, [x.schema])
-    end)
+  def list_ids do
+    many(select: [:id]) ~>> Enum.map(& &1.id)
   end
+
+  def maybe_to_struct(obj1, obj2) when is_struct(obj1), do: struct(obj1, maybe_from_struct(obj2)) # adds any assocs preload on pointer to the returned object
+  def maybe_to_struct(obj1, obj2), do: Utils.struct_to_map(Map.merge(obj2, obj1)) # handle objects queried without schema
+
+  def maybe_from_struct(obj) when is_struct(obj), do: Map.from_struct(obj)
+  def maybe_from_struct(obj), do: obj
+
+  def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)
+
+  def maybe_convert_ulids(%{} = map) do
+    map |> Enum.map(&maybe_convert_ulids/1) |> Map.new
+  end
+  def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
+    with {:ok, ulid} <- Pointers.ULID.load(val) do
+      {key, ulid}
+    else _ ->
+      {key, val}
+    end
+  end
+  def maybe_convert_ulids({:ok, val}), do: {:ok, maybe_convert_ulids(val)}
+  def maybe_convert_ulids(val), do: val
 
 end
