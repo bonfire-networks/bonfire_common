@@ -4,6 +4,7 @@ defmodule Bonfire.Repo do
   """
 
   import Bonfire.Common.Config, only: [repo: 0]
+  alias Bonfire.Common.Utils
 
   use Ecto.Repo,
     otp_app: Bonfire.Common.Config.get!(:otp_app),
@@ -11,7 +12,6 @@ defmodule Bonfire.Repo do
 
   alias Pointers.Changesets
   alias Ecto.Changeset
-
   import Ecto.Query
 
   # import cursor-based pagination helper
@@ -192,12 +192,12 @@ defmodule Bonfire.Repo do
   # end
 
   def maybe_preload({:ok, obj}, preloads), do: {:ok, maybe_preload(obj, preloads)}
-  def maybe_preload(obj, preloads) when is_struct(obj) do
+  def maybe_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     Logger.info("maybe_preload: trying to preload: #{inspect preloads}")
 
-    maybe_preload_pointers(preloads,
+    # Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads,
       maybe_do_preload(obj, preloads)
-    )
+    # )
   rescue
     e ->
       Logger.warn("maybe_preload error: #{inspect e}")
@@ -205,7 +205,7 @@ defmodule Bonfire.Repo do
   end
 
   def maybe_preload(obj, _) do
-    Logger.info("maybe_preload: Cannot preload from non-struct object")
+    Logger.info("maybe_preload: can only preload from struct or list of structs")
 
     obj
   end
@@ -214,50 +214,43 @@ defmodule Bonfire.Repo do
 
   defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     repo().preload(obj, preloads)
+
+  rescue
+    e ->
+      Logger.warn("maybe_do_preload error: #{inspect e}")
+      obj
   end
 
   defp maybe_do_preload(obj, _), do: obj
 
 
-  def maybe_preload_pointers(key, preloaded) when is_list(preloaded) do
-    Enum.map(preloaded, fn(row) -> maybe_preload_pointers(key, row) end)
+  def maybe_preloads_per_schema(objects, path, preloads) when is_list(objects) and is_list(path) and is_list(preloads) do
+    Logger.info("maybe_preloads_per_schema iterate list of preloads")
+    Enum.reduce(preloads, objects, &maybe_preloads_per_schema(&2, path, &1))
   end
 
-  def maybe_preload_pointers(keys, preloaded) when is_list(keys) and length(keys)==1 do
-    List.first(keys)
-      |> maybe_preload_pointers(preloaded)
-  end
+  def maybe_preloads_per_schema(objects, path, {schema, preloads}) when is_list(objects) do
+    Logger.info("maybe_preloads_per_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
 
-  # TODO: what's this?
-  # def maybe_preload_pointers(keys, preloaded) when is_list(keys) do
-  #   IO.inspect(keys)
-  #   preloaded
-  #   |> Bonfire.Common.Utils.maybe_to_map()
-  #   |> get_and_update_in([Access.all], &{&1, maybe_preload_pointer(&1)})
-  # end
-
-  def maybe_preload_pointers(key, preloaded) when is_map(preloaded) do
-    case preloaded |> Map.get(key) do
-      %Pointers.Pointer{} = pointer ->
-
-        preloaded
-        |> Map.put(key, Bonfire.Common.Pointers.follow!(pointer))
-
-      _ -> preloaded
+    with {_old, loaded} <- get_and_update_in(
+      objects,
+      [Access.all()] ++ Enum.map(path, &Access.key!(&1)),
+      &{&1, maybe_preloads_per_schema(&1, {schema, preloads})})
+    do
+      loaded
+      # |> IO.inspect(label: "preloaded")
     end
   end
-  def maybe_preload_pointers(_key, preloaded), do: preloaded
 
-  def maybe_preload_pointer(preloaded) do
-    IO.inspect(maybe_preload_pointer: preloaded)
-    case preloaded do
-      %Pointers.Pointer{} = pointer ->
+  def maybe_preloads_per_schema(object, _, _), do: object
 
-        Bonfire.Common.Pointers.follow!(pointer)
-
-      _ -> preloaded
-    end
+  def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}) when object_schema==schema do
+    Logger.info("maybe_preloads_per_schema preloading schema: #{inspect schema}")
+    maybe_do_preload(object, preloads)
+    # TODO: make one preload per get_and_update_in to avoid n+1
   end
+
+  def maybe_preloads_per_schema(object, _), do: object
 
 
 end

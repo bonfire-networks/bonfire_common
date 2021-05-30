@@ -354,6 +354,16 @@ defmodule Bonfire.Common.Utils do
     to_string(other)
   end
 
+  @doc """
+  Flattens a list by recursively flattening the head and tail of the list
+  """
+  def flatter(list), do: list |> do_flatter() |> List.flatten()
+
+  defp do_flatter([head | tail]), do: [do_flatter(head), do_flatter(tail)]
+  defp do_flatter([]), do: []
+  defp do_flatter([element]), do: do_flatter(element)
+  defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
+  defp do_flatter(element), do: element
 
   def struct_to_map(struct = %{__struct__: _}) do
     Map.from_struct(struct) |> Map.drop([:__meta__]) |> map_filter_empty() #|> IO.inspect(label: "clean")
@@ -362,34 +372,57 @@ defmodule Bonfire.Common.Utils do
     other
   end
 
-  def maybe_to_map(struct = %{__struct__: _}) do
+  def maybe_to_map(obj, recursive \\ false)
+
+  def maybe_to_map(struct = %{__struct__: _}, false) do
     struct_to_map(struct)
   end
-  def maybe_to_map(data) when is_tuple(data) do
+  def maybe_to_map(data, false) when is_tuple(data) do
     data
     |> Enum.chunk_every(2)
     |> Enum.into(%{}, fn [a, b] -> {a, b} end)
   end
-  def maybe_to_map(data) when is_list(data) do
+  def maybe_to_map(data, false) when is_list(data) do
     data
     |> Enum.into(%{})
   end
-  def maybe_to_map(other) do
+  def maybe_to_map(other, false) do
     other
   end
 
-  def nested_struct_to_map(struct = %{__struct__: type}) when type not in [DateTime] do
-    struct_to_map(struct) |> nested_struct_to_map()
+  def maybe_to_map(struct = %{__struct__: _}, true) do
+    struct_to_map(struct)
+    |> maybe_to_map(true)
+  end
+  def maybe_to_map({a, b}, true) do
+    %{a => maybe_to_map(b, true)}
+  end
+  # def maybe_to_map(data, true) when is_list(data) and length(data)==1 do
+  #   data
+  #   |> List.first()
+  #   |> maybe_to_map(true)
+  # end
+  def maybe_to_map(data, true) when is_list(data) do
+    data
+    |> Enum.map(&maybe_to_map(&1, true))
+    |> Enum.into(%{})
+  end
+  def maybe_to_map(other, true) do
+    other
   end
 
-  def nested_struct_to_map(map = %{}) when not is_struct(map) do
+  def nested_structs_to_maps(struct = %{__struct__: type}) when type not in [DateTime] do
+    struct_to_map(struct) |> nested_structs_to_maps()
+  end
+
+  def nested_structs_to_maps(map = %{}) when not is_struct(map) do
     map
-    |> Enum.map(fn {k, v} -> {k, nested_struct_to_map(v)} end)
+    |> Enum.map(fn {k, v} -> {k, nested_structs_to_maps(v)} end)
     |> Enum.into(%{})
   end
 
-  # def nested_struct_to_map(v) when is_tuple(v), do: v |> Tuple.to_list()
-  def nested_struct_to_map(v), do: v
+  # def nested_structs_to_maps(v) when is_tuple(v), do: v |> Tuple.to_list()
+  def nested_structs_to_maps(v), do: v
 
 
 

@@ -162,8 +162,8 @@ defmodule Bonfire.Common.Pointers do
   defp loader(schema, id_filters, override_filters) when is_atom(schema), do: loader_query(schema, id_filters, override_filters)
 
   defp loader(table_id, id_filters, override_filters) do
-    schema_or_table = Bonfire.Common.Pointers.Tables.schema_or_table!(table_id) |> IO.inspect
-    loader_query(schema_or_table, id_filters, override_filters)
+    Bonfire.Common.Pointers.Tables.schema_or_table!(table_id) #|> IO.inspect
+    |> loader_query(id_filters, override_filters)
   end
 
   defp loader_query(schema, id_filters, override_filters) when is_atom(schema) do
@@ -186,7 +186,7 @@ defmodule Bonfire.Common.Pointers do
     # load data from a table without a known schema
     table_name
     |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
-    |> cowboy_query(id_filters, override_filters)
+    |> cowboy_query(id_binary(id_filters), override_filters)
     |> maybe_convert_ulids()
   end
 
@@ -207,17 +207,21 @@ defmodule Bonfire.Common.Pointers do
 
   def id_filter(query, [id: ids]) when is_list(ids) do
     query
-    |> where([p], p.id in ^id_binary(ids))
+    |> where([p], p.id in ^(ids))
   end
   def id_filter(query, [id: id]) when is_binary(id) do
     query
-    |> where([p], p.id == ^id_binary(id))
+    |> where([p], p.id == ^(id))
   end
   def id_filter(query, id) when is_binary(id) do
     query
-    |> where([p], p.id == ^id_binary(id))
+    |> where([p], p.id == ^(id))
   end
 
+
+  def id_binary([id: id]) do
+    id_binary(id)
+  end
   def id_binary(id) when is_binary(id) do
     with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
   end
