@@ -3,6 +3,7 @@ defmodule Bonfire.Common.URIs do
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
   alias Plug.Conn.Query
+  require Logger
 
   def path(view_module_or_path_name, args \\ [])
   def path(view_module_or_path_name, args) when not is_list(args), do: path(view_module_or_path_name, [args])
@@ -42,16 +43,30 @@ defmodule Bonfire.Common.URIs do
     base_url() <> ap_base_path <> "/objects/" <> id
   end
 
+
   def base_url(conn \\ nil)
-  def base_url(%{scheme: :http, host: host, port: 80}), do: "http://"<>host
-  def base_url(%{scheme: :https, host: host, port: 443}), do: "https://"<>host
-  def base_url(%{scheme: scheme, host: host, port: port}), do: "#{scheme}:#{port}//"<>host
+  def base_url(%{scheme: scheme, host: host, port: 80}) when scheme in [:http, "http"], do: "http://"<>host
+  def base_url(%{scheme: scheme, host: host, port: 443}) when scheme in [:https, "https"], do: "https://"<>host
+  def base_url(%{host: host, port: 443}), do: "https://"<>host
+  def base_url(%{scheme: scheme, host: host, port: port}), do: "#{scheme}://#{host}:#{port}"
+  def base_url(%{host: host}), do: "http://#{host}"
+  def base_url(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
+    if Code.ensure_loaded?(endpoint) do
+      endpoint.struct_url() |> base_url()
+    else
+      Logger.info("base_url: endpoint module not found: #{inspect endpoint}")
+      ""
+    end
+  rescue e ->
+    Logger.info("base_url: #{inspect e}")
+    ""
+  end
   def base_url(_) do
-    try do
-      endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
-      if Code.ensure_loaded?(endpoint), do: endpoint.url(), else: "/"
-    rescue _ ->
-      "/"
+    case Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
+      endpoint when is_atom(endpoint) -> base_url(endpoint)
+      _ ->
+        Logger.info("base_url: requires an endpoint module")
+        ""
     end
   end
 
