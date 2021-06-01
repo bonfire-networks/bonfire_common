@@ -195,9 +195,9 @@ defmodule Bonfire.Repo do
   def maybe_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     Logger.info("maybe_preload: trying to preload: #{inspect preloads}")
 
-    # Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads,
       maybe_do_preload(obj, preloads)
-    # )
+      |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
+
   rescue
     e ->
       Logger.warn("maybe_preload error: #{inspect e}")

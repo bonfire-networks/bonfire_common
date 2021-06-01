@@ -425,6 +425,27 @@ defmodule Bonfire.Common.Utils do
   def nested_structs_to_maps(v), do: v
 
 
+  def maybe_merge_to_struct(target, merge) when is_struct(target), do: struct(target, maybe_from_struct(merge))
+  def maybe_merge_to_struct(obj1, obj2), do: struct_to_map(Map.merge(obj2, obj1)) # to handle objects queried without schema
+
+  def maybe_from_struct(obj) when is_struct(obj), do: Map.from_struct(obj)
+  def maybe_from_struct(obj), do: obj
+
+  def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)
+
+  def maybe_convert_ulids(%{} = map) do
+    map |> Enum.map(&maybe_convert_ulids/1) |> Map.new
+  end
+  def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
+    with {:ok, ulid} <- Pointers.ULID.load(val) do
+      {key, ulid}
+    else _ ->
+      {key, val}
+    end
+  end
+  def maybe_convert_ulids({:ok, val}), do: {:ok, maybe_convert_ulids(val)}
+  def maybe_convert_ulids(val), do: val
+
 
   def map_filter_empty(data) when is_map(data) and not is_struct(data) do
     Enum.map(data, &map_filter_empty/1) |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
@@ -512,7 +533,7 @@ defmodule Bonfire.Common.Utils do
   defp maybe_add_mixin_id(data, parent_id), do: data
 
   def maybe_to_struct(obj, type \\ nil)
-  def maybe_to_struct(obj, _type) when is_struct(obj), do: obj
+  def maybe_to_struct(%{__struct__: struct_type} = obj, target_type) when target_type == struct_type, do: obj
   def maybe_to_struct(obj, type) when is_binary(type) do
     case maybe_str_to_module(type) do
       module when is_atom(module) -> maybe_to_struct(obj, module)
@@ -520,11 +541,16 @@ defmodule Bonfire.Common.Utils do
     end
   end
   def maybe_to_struct(obj, module) when is_atom(module) do
-    if module_enabled?(module), do: Mappable.to_struct(obj, module),
-    else: obj
+    Logger.info("to_struct")
+    # if module_enabled?(module) and module_enabled?(Mappable) do
+    #   Mappable.to_struct(obj, module)
+    # else
+      if module_enabled?(module), do: struct(module, obj),
+      else: obj
+    # end
   end
-  def maybe_to_struct(%{index_type: type} = obj, nil), do: maybe_to_struct(obj, type) # for search results
-  def maybe_to_struct(%{__typename: type} = obj, nil), do: maybe_to_struct(obj, type) # for graphql queries
+  def maybe_to_struct(%{index_type: type} = obj, _type), do: maybe_to_struct(obj, type) # for search results
+  def maybe_to_struct(%{__typename: type} = obj, _type), do: maybe_to_struct(obj, type) # for graphql queries
   def maybe_to_struct(obj, _type), do: obj
 
   def struct_from_map(a_map, as: a_struct) do # MIT licensed function by Kum Sackey

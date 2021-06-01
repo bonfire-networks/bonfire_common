@@ -31,7 +31,8 @@ defmodule Bonfire.Common.Pointers do
   def get(%Pointer{} = pointer, filters) do
     with %{id: _} = obj <- follow!(pointer, filters) do
       {:ok,
-        maybe_to_struct(obj, pointer) #|> IO.inspect(label: "Pointers.get")
+        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs preload on pointer to the returned object
+        #|> IO.inspect(label: "Pointers.get")
       }
     end
   rescue
@@ -187,7 +188,7 @@ defmodule Bonfire.Common.Pointers do
     table_name
     |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
     |> cowboy_query(id_binary(id_filters), override_filters)
-    |> maybe_convert_ulids()
+    |> Utils.maybe_convert_ulids()
   end
 
   defp cowboy_query(schema_or_query, id_filters, override_filters) do
@@ -207,26 +208,26 @@ defmodule Bonfire.Common.Pointers do
 
   def id_filter(query, [id: ids]) when is_list(ids) do
     query
-    |> where([p], p.id in ^(ids))
+    |> where([p], p.id in ^ids)
   end
   def id_filter(query, [id: id]) when is_binary(id) do
     query
-    |> where([p], p.id == ^(id))
+    |> where([p], p.id == ^id)
   end
   def id_filter(query, id) when is_binary(id) do
     query
-    |> where([p], p.id == ^(id))
+    |> where([p], p.id == ^id)
   end
 
 
   def id_binary([id: id]) do
-    id_binary(id)
+    [id: id_binary(id)]
+  end
+  def id_binary([id: ids]) when is_list(ids) do
+    [id: Enum.map(ids, &id_binary/1)]
   end
   def id_binary(id) when is_binary(id) do
     with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
-  end
-  def id_binary(ids) when is_list(ids) do
-    Enum.map(ids, &id_binary/1)
   end
 
   def query_pointer_function_error(error, args, level \\ :info) do
@@ -247,25 +248,5 @@ defmodule Bonfire.Common.Pointers do
     many(select: [:id]) ~>> Enum.map(& &1.id)
   end
 
-  def maybe_to_struct(obj1, obj2) when is_struct(obj1), do: struct(obj1, maybe_from_struct(obj2)) # adds any assocs preload on pointer to the returned object
-  def maybe_to_struct(obj1, obj2), do: Utils.struct_to_map(Map.merge(obj2, obj1)) # handle objects queried without schema
-
-  def maybe_from_struct(obj) when is_struct(obj), do: Map.from_struct(obj)
-  def maybe_from_struct(obj), do: obj
-
-  def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)
-
-  def maybe_convert_ulids(%{} = map) do
-    map |> Enum.map(&maybe_convert_ulids/1) |> Map.new
-  end
-  def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
-    with {:ok, ulid} <- Pointers.ULID.load(val) do
-      {key, ulid}
-    else _ ->
-      {key, val}
-    end
-  end
-  def maybe_convert_ulids({:ok, val}), do: {:ok, maybe_convert_ulids(val)}
-  def maybe_convert_ulids(val), do: val
 
 end

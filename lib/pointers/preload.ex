@@ -3,36 +3,51 @@ defmodule Bonfire.Common.Pointers.Preload do
   alias Bonfire.Common.Utils
   require Logger
 
-  def maybe_preload_pointers(keys, preloaded) when is_list(preloaded) do
+  def maybe_preload_pointers(preloaded, keys) when is_list(preloaded) do
     Logger.info("maybe_preload_pointers: iterate list of objects")
-    Enum.map(preloaded, &maybe_preload_pointers(keys, &1))
+    Enum.map(preloaded, &maybe_preload_pointers(&1, keys))
   end
 
-  # def maybe_preload_pointers(keys, preloaded) when is_list(keys) and length(keys)==1 do
-  #   Logger.info("maybe_preload_pointers: just one")
-  #   maybe_preload_pointers(List.first(keys), preloaded)
-  # end
+  def maybe_preload_pointers(preloaded, keys) when is_list(keys) and length(keys)==1 do
+    Logger.info("maybe_preload_pointers: list with one key")
+    maybe_preload_pointers(preloaded, List.first(keys))
+  end
 
-  # def maybe_preload_pointers(keys, preloaded) when is_list(keys) and is_map(preloaded) do
-  #   Logger.info("maybe_preload_pointers: try with list of keys") # FIXME: optimise this based on keys that were preloaded
-  #   for key <- keys, into: %{} do
-  #     Logger.info("maybe_preload_pointers: try with #{inspect key}")
-  #     {key,
-  #       maybe_preload_pointer(Map.get(preloaded, key))
-  #     )}
-  #   end
-  #   |> Map.merge(preloaded)
-  # end
+  def maybe_preload_pointers(preloaded, key) when is_map(preloaded) and is_atom(key) do
+    Logger.info("maybe_preload_pointers: one field")
+    case Map.get(preloaded, key) do
+      %Pointers.Pointer{} = pointer ->
 
-  # FIXME
-  def maybe_preload_pointers(keys, preloaded) when is_list(keys) and length(keys)>0 and not is_nil(preloaded) do
-    Logger.info("maybe_preload_pointers: try with list of keys: #{inspect keys}")
+        preloaded
+        |> Map.put(key, maybe_preload_pointer(pointer))
 
+      _ -> preloaded
+    end
+  end
+
+  def maybe_preload_pointers(preloaded, _keys), do: preloaded
+
+
+  def maybe_preload_nested_pointers(preloaded, keys) when is_list(keys) and length(keys)>0 and is_map(preloaded) do
+    Logger.info("maybe_preload_nested_pointers: try object with list of keys: #{inspect keys}")
+
+    do_maybe_preload_nested_pointers(preloaded, nested_keys(keys))
+  end
+
+  def maybe_preload_nested_pointers(preloaded, keys) when is_list(keys) and length(keys)>0 and is_list(preloaded) do
+    Logger.info("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
+
+    do_maybe_preload_nested_pointers(preloaded, [Access.all()] ++ nested_keys(keys))
+  end
+
+  def maybe_preload_nested_pointers(preloaded, _), do: preloaded
+
+  defp nested_keys(keys) do
     # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
+    keys |> Utils.flatter |> IO.inspect(label: "flatten keys") |> Enum.map(&Access.key!(&1))
+  end
 
-    # keys |> Utils.maybe_to_map(true) |> IO.inspect
-
-    keylist = keys |> Utils.flatter |> IO.inspect(label: "flatten keys") |> Enum.map(&Access.key!(&1))
+  defp do_maybe_preload_nested_pointers(preloaded, keylist) do
 
     with {_old, loaded} <- preloaded
     |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1)})
@@ -42,26 +57,14 @@ defmodule Bonfire.Common.Pointers.Preload do
     end
   end
 
-  def maybe_preload_pointers(key, preloaded) when is_map(preloaded) and is_atom(key) do
-    Logger.info("maybe_preload_pointers: one field")
-    case preloaded |> Map.get(key) do
-      %Pointers.Pointer{} = pointer ->
-
-        preloaded
-        |> Map.put(key, Bonfire.Common.Pointers.follow!(pointer))
-
-      _ -> preloaded
-    end
-  end
-
-  def maybe_preload_pointers(_key, preloaded), do: preloaded
 
   def maybe_preload_pointer(%Pointers.Pointer{} = pointer) do
     Logger.info("maybe_preload_pointer: follow")
 
-    Bonfire.Common.Pointers.follow!(pointer)
+    Bonfire.Common.Pointers.get!(pointer)
   end
 
-  def maybe_preload_pointer(preloaded), do: preloaded #|> IO.inspect(label: "skip")
+  def maybe_preload_pointer(obj), do: obj #|> IO.inspect(label: "skip")
+
 
 end
