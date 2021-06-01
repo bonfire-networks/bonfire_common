@@ -169,6 +169,21 @@ defmodule Bonfire.Web do
   end
 
   if Bonfire.Common.Extend.module_exists?(Surface) do
+    def surface_view(opts \\ []) do
+      opts =
+        opts
+        |> Keyword.put_new(:namespace, Bonfire.Web)
+        |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
+
+      quote do
+
+        use Surface.LiveView, unquote(opts)
+
+        unquote(surface_helpers())
+
+      end
+    end
+
     def stateful_component(opts \\ []) do
       opts =
         opts
