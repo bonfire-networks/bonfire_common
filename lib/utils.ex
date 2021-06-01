@@ -514,6 +514,9 @@ defmodule Bonfire.Common.Utils do
   end
   def input_to_atoms(v), do: v
 
+
+
+
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
   defp maybe_to_structs_recurse(data, parent_id \\ nil)
   defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do

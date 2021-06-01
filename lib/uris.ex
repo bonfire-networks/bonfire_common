@@ -6,11 +6,41 @@ defmodule Bonfire.Common.URIs do
   require Logger
 
   def path(view_module_or_path_name, args \\ [])
+
   def path(view_module_or_path_name, args) when not is_list(args), do: path(view_module_or_path_name, [args])
-  def path(view_module_or_path_name, args) do
+
+  def path(view_module_or_path_name, %{id: id} = args) when not is_struct(args), do: path(view_module_or_path_name, [id])
+
+  def path(view_module_or_path_name, args) when is_atom(view_module_or_path_name) do
     apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name] ++ args)
   end
 
+  def path(%{id: _} = object, args) do
+    args_with_id = [path_id(object)] ++ args
+
+    case Bonfire.Common.Types.object_type(object) do
+      type when is_atom(type) ->
+        path(type, args_with_id)
+
+      none ->
+        Logger.info("path: could not figure out the type of this object: #{inspect none}")
+        path(Bonfire.Social.Web.DiscussionLive, args_with_id)
+    end
+
+  rescue
+    error in FunctionClauseError ->
+    Logger.info("path: could not find a matching route: #{inspect error} for object #{inspect object}")
+    path(Bonfire.Social.Web.DiscussionLive, [path_id(object)] ++ args)
+  end
+
+  def path(id, args) when is_binary(id) do
+    Bonfire.Common.Pointers.get!(id)
+    |> path(args)
+  end
+
+  def path_id(%{username: username}), do: username
+  def path_id(%{character: %{username: username}}), do: username
+  def path_id(%{id: id}), do: id
 
   def canonical_url(%{canonical_url: canonical_url}) when not is_nil(canonical_url) do
     canonical_url
