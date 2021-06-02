@@ -7,9 +7,9 @@ defmodule Bonfire.Common.URIs do
 
   def path(view_module_or_path_name, args \\ [])
 
-  def path(view_module_or_path_name, args) when not is_list(args), do: path(view_module_or_path_name, [args])
-
   def path(view_module_or_path_name, %{id: id} = args) when not is_struct(args), do: path(view_module_or_path_name, [id])
+
+  def path(view_module_or_path_name, args) when not is_list(args), do: path(view_module_or_path_name, [args])
 
   def path(view_module_or_path_name, args) when is_atom(view_module_or_path_name) do
     apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name] ++ args)
