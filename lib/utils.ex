@@ -239,18 +239,17 @@ defmodule Bonfire.Common.Utils do
   def assign_global(socket, assigns) when is_map(assigns), do: assign_global(socket, Map.to_list(assigns))
   def assign_global(socket, assigns) when is_list(assigns) do
     socket
-    # |> assigns_merge(socket.assigns, assigns)
     # being naughty here, let's see how long until Surface breaks it:
     |> Phoenix.LiveView.assign(:__context__,
       Map.get(socket.assigns, :__context__, %{})
       |> Map.merge(maybe_to_map(assigns))
-    )
+    ) #|> IO.inspect(label: "assign_global")
   end
   def assign_global(socket, {_, _} = assign) do
     assign_global(socket, [assign])
   end
   def assign_global(socket, assign, value) do
-    socket |> assign_global({assign, value})
+    assign_global(socket, {assign, value})
   end
   # def assign_global(socket, assign, value) do
   #   socket
@@ -699,28 +698,39 @@ defmodule Bonfire.Common.Utils do
     Enum.each(topics, &pubsub_subscribe(&1, socket))
   end
 
-  def pubsub_subscribe(topic, socket) when is_binary(topic) and topic !="" do
+  def pubsub_subscribe(topic, %Phoenix.LiveView.Socket{} = socket) when is_binary(topic) do
     # IO.inspect(socket)
     if socket_connected_or_user?(socket) do
-      Logger.info("pubsub_subscribe: #{inspect topic}")
-
-      endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
-
-      # endpoint.unsubscribe(maybe_to_string(topic)) # to avoid duplicate subscriptions?
-      endpoint.subscribe(topic)
-      # Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
+      pubsub_subscribe(topic)
     else
-      Logger.info("LiveView is not connected and so can't subscribe to #{inspect topic}")
+      Logger.info("PubSub: LiveView is not connected so we skip subscribing to #{inspect topic}")
     end
   end
 
-  def pubsub_subscribe(topic, socket) when topic !="" do
-    with t when is_binary(t) <- maybe_to_string(topic), do: pubsub_subscribe(t, socket)
+  def pubsub_subscribe(topic, _) when is_binary(topic), do: pubsub_subscribe(topic)
+
+  def pubsub_subscribe(topic, socket) when not is_binary(topic) do
+    with t when is_binary(t) <- maybe_to_string(topic) do
+      Logger.info("PubSub: transformed the topic #{inspect topic} into a string we can subscribe to: #{inspect t}")
+      pubsub_subscribe(t, socket)
+    else _ ->
+      Logger.info("PubSub: could not transform the topic into a string we can subscribe to: #{inspect topic}")
+    end
   end
 
   def pubsub_subscribe(topic, _) do
     Logger.info("PubSub can not subscribe to a non-string topic: #{inspect topic}")
     false
+  end
+
+  defp pubsub_subscribe(topic) when is_binary(topic) and topic !="" do
+    Logger.info("PubSub subscribed to: #{topic}")
+
+    endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+
+    # endpoint.unsubscribe(maybe_to_string(topic)) # to avoid duplicate subscriptions?
+    endpoint.subscribe(topic)
+    # Phoenix.PubSub.subscribe(Bonfire.PubSub, topic)
   end
 
   defp socket_connected_or_user?(%Phoenix.LiveView.Socket{}), do: true
@@ -765,7 +775,8 @@ defmodule Bonfire.Common.Utils do
       |> names_of_assign_topics(assign_names)
       |> pubsub_subscribe(socket)
     else _ ->
-      IO.inspect(cannot_self_subscribe: socket)
+      IO.inspect(cannot_self_subscribe: nil)
+      # IO.inspect(cannot_self_subscribe: socket)
     end
 
     socket

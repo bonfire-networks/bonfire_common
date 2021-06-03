@@ -14,12 +14,16 @@ defmodule Bonfire.Repo do
   alias Ecto.Changeset
   import Ecto.Query
 
-  # import cursor-based pagination helper
-  use Paginator,
+  @pagination_defaults [
     limit: 10,                           # sets the default limit TODO: put in config
-    maximum_limit: 1000,                  # sets the maximum limit TODO: put in config
+    maximum_limit: 200,                  # sets the maximum limit TODO: put in config
     include_total_count: false,           # include total count by default?
     total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
+  ]
+  @default_cursor_fields [cursor_fields: [{:id, :desc}]]
+
+  # import cursor-based pagination helper
+  # use Paginator, @pagination_defaults
 
   require Logger
 
@@ -95,7 +99,7 @@ defmodule Bonfire.Repo do
   @doc """
   Like Repo.one, but returns an ok/error tuple.
   """
-  def single(q), do: do_single(one(q))
+  def single(q), do: do_single(one(q |> limit(1)))
 
   defp do_single(nil), do: {:error, :not_found}
   defp do_single(other), do: {:ok, other}
@@ -132,15 +136,18 @@ defmodule Bonfire.Repo do
     |> all()
   end
 
-  @default_cursor_fields [cursor_fields: [:id]]
+  def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ []) do
+    opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
+    Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
+  end
 
-  def many_paginated(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+  def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
     # IO.inspect(order_by: order)
     queryable
     |>
-    paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
+    paginate(opts, repo_opts)
   end
 
   def many_paginated(queryable, opts, repo_opts) do
@@ -151,7 +158,7 @@ defmodule Bonfire.Repo do
     )
     # |> IO.inspect
     |>
-    paginate(Keyword.merge(@default_cursor_fields, opts), repo_opts)
+    paginate(opts, repo_opts)
   end
 
   defp rollback_error(reason, extra \\ nil) do
