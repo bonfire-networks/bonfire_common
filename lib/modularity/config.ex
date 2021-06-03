@@ -37,7 +37,7 @@ defmodule Bonfire.Common.Config do
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
   """
-  def get(key, default \\ nil, otp_app \\ nil)
+  def get(key, default \\ nil, otp_app \\ top_level_otp_app())
 
   # if no extension is specified, use the top-level Bonfire app
   def get(key, default, nil), do: get(key, default, top_level_otp_app())
@@ -60,11 +60,11 @@ defmodule Bonfire.Common.Config do
     Application.get_env(otp_app, key, default)
   end
 
-  def get!(key, otp_app \\ nil) do
+  def get!(key, otp_app \\ top_level_otp_app()) do
     value = get(key, nil, otp_app)
 
     if value == nil do
-      compilation_error("Missing configuration value: #{inspect(key, pretty: true)}")
+      compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
     else
       value
     end
