@@ -11,7 +11,7 @@ defmodule Bonfire.Web.LiveComponent do
     LivePlugs.live_plug params, session, socket, [
       LivePlugs.LoadSessionAuth,
       LivePlugs.StaticChanged,
-      LivePlugs.Csrf,
+      LivePlugs.Csrf, LivePlugs.Locale,
       &mounted/3,
     ]
   end

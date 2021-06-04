@@ -124,7 +124,7 @@ defmodule Bonfire.Web do
       use Phoenix.Channel, unquote(opts)
       require Logger
 
-      import Bonfire.Common.Web.Gettext
+      import Bonfire.Web.Gettext
     end
   end
 
@@ -139,7 +139,7 @@ defmodule Bonfire.Web do
       import Phoenix.View
 
       import Bonfire.Common.Web.ErrorHelpers
-      import Bonfire.Common.Web.Gettext
+      import Bonfire.Web.Gettext
 
       # should deprecate use of Phoenix's Helpers
       alias Bonfire.Web.Router.Helpers, as: Routes

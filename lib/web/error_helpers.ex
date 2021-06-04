@@ -47,9 +47,9 @@ defmodule Bonfire.Common.Web.ErrorHelpers do
     # should be written to the errors.po file. The :count option is
     # set by Ecto and indicates we should also apply plural rules.
     if count = opts[:count] do
-      Gettext.dngettext(Bonfire.Common.Web.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(Bonfire.Web.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(Bonfire.Common.Web.Gettext, "errors", msg, opts)
+      Gettext.dgettext(Bonfire.Web.Gettext, "errors", msg, opts)
     end
   end
 end
