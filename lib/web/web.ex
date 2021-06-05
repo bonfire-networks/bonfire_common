@@ -78,6 +78,8 @@ defmodule Bonfire.Web do
 
       import Phoenix.LiveView
       require Logger
+
+      import Bonfire.Common.Utils
     end
   end
 
@@ -90,7 +92,7 @@ defmodule Bonfire.Web do
       import Phoenix.Controller
       require Logger
 
-      import Bonfire.Common.URIs
+      import Bonfire.Common.Utils
     end
   end
 
@@ -216,8 +218,8 @@ defmodule Bonfire.Web do
 
         unquote(live_view_helpers())
 
-        prop globals, :map, default: %{}
-        prop current_account, :any
+        # prop globals, :map, default: %{}
+        # prop current_account, :any
         prop current_user, :any
 
         alias Surface.Components.Link

@@ -257,17 +257,23 @@ defmodule Bonfire.Common.Utils do
   #   |> Phoenix.LiveView.assign(:global_assigns, [assign] ++ Map.get(socket.assigns, :global_assigns, []))
   # end
 
+  # TODO: get rid of assigning everything to a component, and then we'll no longer need this
   def assigns_clean(%{} = assigns) when is_map(assigns), do: assigns_clean(Map.to_list(assigns))
   def assigns_clean(assigns) do
+    (
     assigns
+    ++ [{:current_user, e(assigns, :current_user, nil)}]
+    ) # temp workaround
     # |> IO.inspect
     |> Enum.reject( fn
-      {:id, _} -> true
-      {:flash, _} -> true
-      {:__changed__, _} -> true
-      # {:__context_, _} -> true
-      {:__surface__, _} -> true
-      {:socket, _} -> true
+      {key, _} when key in [
+        :id,
+        :flash,
+        :__changed__,
+        # :__context__,
+        :__surface__,
+        :socket
+      ] -> true
       _ -> false
     end)
     # |> IO.inspect
