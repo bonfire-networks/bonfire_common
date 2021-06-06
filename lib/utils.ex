@@ -345,6 +345,7 @@ defmodule Bonfire.Common.Utils do
       other -> maybe_str_to_module("Elixir."<>str)
     end
   end
+  def maybe_str_to_module(atom) when is_atom(atom), do: atom
 
   def maybe_to_string(atom) when is_atom(atom) do
     Atom.to_string(atom)
