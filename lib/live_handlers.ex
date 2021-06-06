@@ -61,9 +61,9 @@ defmodule Bonfire.Common.LiveHandlers do
   defp do_handle_event(_, _, socket), do: empty(socket)
 
   defp do_handle_params(params, uri, socket) when is_map(params) and params !=%{} do
-    # IO.inspect(handle_event: event)
-    case Map.keys(params) |> List.first |> String.split(":", parts: 2) do
-      [mod, action] -> mod_delegate(mod, :handle_params, [params, uri], socket)
+    # IO.inspect(handle_params: params)
+    case Map.keys(params) |> List.first do
+      mod when is_binary(mod) -> mod_delegate(mod, :handle_params, [Map.get(params, mod), uri], socket)
       _ -> empty(socket)
     end
   end
