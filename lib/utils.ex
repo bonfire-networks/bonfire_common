@@ -186,6 +186,14 @@ defmodule Bonfire.Common.Utils do
     |> Map.delete(key)
   end
 
+  def map_key_replace_existing(%{} = map, key, new_key) do
+    if Map.has_key?(map, key) do
+      map_key_replace(map, key, new_key)
+    else
+      map
+    end
+  end
+
   def attr_get_id(attrs, field_name) do
     if is_map(attrs) and Map.has_key?(attrs, field_name) do
       attr = Map.get(attrs, field_name)
