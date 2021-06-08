@@ -1,4 +1,14 @@
 defmodule Bonfire.Common.LiveHandlers do
+  @moduledoc """
+  usage examples:
+
+  phx-submit="Bonfire.Social.Posts:post" will be routed to Bonfire.Social.Posts.LiveHandler.handle_event("post", ...
+
+  Bonfire.Common.Utils.pubsub_broadcast(feed_id, {{Bonfire.Social.Feeds, :new_activity}, activity})  will be routed to Bonfire.Social.Feeds.LiveHandler.handle_info({:new_activity, activity}, ...
+
+  href="?Bonfire.Social.Feeds[after]=<%= e(@page_info, :after, nil) %>" will be routed to Bonfire.Social.Feeds.LiveHandler.handle_params(%{"after" => cursor_after} ...
+
+  """
   use Bonfire.Web, :live_handler
   require Logger
 
