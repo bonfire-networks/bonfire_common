@@ -113,7 +113,7 @@ defmodule Bonfire.Web do
       alias Bonfire.Common.Utils
       import Utils
 
-      unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.Router))
+      # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.Router))
 
     end
   end
@@ -126,7 +126,6 @@ defmodule Bonfire.Web do
       use Phoenix.Channel, unquote(opts)
       require Logger
 
-      import Bonfire.Web.Gettext
     end
   end
 
@@ -141,7 +140,8 @@ defmodule Bonfire.Web do
       import Phoenix.View
 
       import Bonfire.Common.Web.ErrorHelpers
-      import Bonfire.Web.Gettext
+      require Bonfire.Web.Gettext
+      import Bonfire.Web.Gettext.Helpers
 
       # should deprecate use of Phoenix's Helpers
       alias Bonfire.Web.Router.Helpers, as: Routes
@@ -151,7 +151,7 @@ defmodule Bonfire.Web do
       alias Bonfire.Common.Utils
       import Utils
 
-      unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
+      # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
     end
   end
