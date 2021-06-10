@@ -270,7 +270,7 @@ defmodule Bonfire.Common.Utils do
   def assigns_clean(assigns) do
     (
     assigns
-    ++ [{:current_user, e(assigns, :current_user, nil)}]
+    ++ [{:current_user, current_user(assigns)}]
     ) # temp workaround
     # |> IO.inspect
     |> Enum.reject( fn
