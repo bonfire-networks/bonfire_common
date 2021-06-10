@@ -136,6 +136,12 @@ defmodule Bonfire.Repo do
     |> all()
   end
 
+  def delete_many(query) do
+    query
+    |> Ecto.Query.exclude(:order_by)
+    |> delete_all()
+  end
+
   def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ []) do
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
