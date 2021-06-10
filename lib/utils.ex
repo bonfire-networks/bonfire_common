@@ -526,9 +526,8 @@ defmodule Bonfire.Common.Utils do
       |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
     )
   end
+  def input_to_atoms(list) when is_list(list), do: Enum.map(list, &input_to_atoms/1)
   def input_to_atoms(v), do: v
-
-
 
 
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
