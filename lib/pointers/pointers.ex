@@ -194,7 +194,7 @@ defmodule Bonfire.Common.Pointers do
   defp cowboy_query(schema_or_query, id_filters, override_filters) do
     filters = id_filters ++ override_filters
 
-    Logger.warn("Pointers.preload!: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
+    Logger.info("Pointers.preload!: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
 
     import Ecto.Query
 
