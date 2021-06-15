@@ -3,6 +3,8 @@ defmodule Bonfire.Common.Pointers.Queries do
   import Ecto.Query
   alias Pointers.Pointer
 
+  def queries_module, do: Pointer
+
   def query(Pointer) do
     from(p in Pointer, as: :pointer)
   end

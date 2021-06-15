@@ -59,7 +59,7 @@ defmodule Bonfire.Common.Pointers.Preload do
 
 
   def maybe_preload_pointer(%Pointers.Pointer{} = pointer) do
-    Logger.info("maybe_preload_pointer: follow")
+    # Logger.info("maybe_preload_pointer: follow")
 
     Bonfire.Common.Pointers.get!(pointer)
   end

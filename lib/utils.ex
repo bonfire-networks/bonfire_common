@@ -969,4 +969,70 @@ defmodule Bonfire.Common.Utils do
   def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
 
+
+  @doc "Helpers for calling hypothetical functions in other modules"
+  def maybe_apply(
+    module,
+    fun,
+    args \\ [],
+    fallback_fun \\ &apply_error/2
+  )
+
+  def maybe_apply(
+      module,
+      fun,
+      args,
+      fallback_fun
+    )
+    when is_atom(module) and is_atom(fun) and is_list(args) and
+            is_function(fallback_fun) do
+
+    arity = length(args)
+
+    if module_enabled?(module) do
+      if Kernel.function_exported?(module, fun, arity) do
+        #IO.inspect(function_exists_in: module)
+
+        try do
+          apply(module, fun, args)
+        rescue
+          e in FunctionClauseError ->
+            fallback_fun.(
+              "No matching pattern for function #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              args
+            )
+        end
+      else
+        fallback_fun.(
+          "No function defined at #{module}.#{fun}/#{arity}",
+          args
+        )
+      end
+    else
+      fallback_fun.(
+        "No such module (#{module}) could be loaded.",
+        args
+      )
+    end
+  end
+
+  def maybe_apply(
+      module,
+      fun,
+      args,
+      fallback_fun
+    )
+    when is_atom(module) and is_atom(fun) and
+            is_function(fallback_fun), do: maybe_apply(
+      module,
+      fun,
+      [args],
+      fallback_fun
+    )
+
+  def apply_error(error, args, level \\ :error) do
+    Logger.log(level, "maybe_apply: #{error} - with args: (#{inspect args})")
+
+    {:error, error}
+  end
 end

@@ -170,40 +170,46 @@ defmodule Bonfire.Common.Pointers do
   defp loader_query(schema, id_filters, override_filters) when is_atom(schema) do
     #IO.inspect(loader_query_schema: schema)
     # TODO: make the query module configurable
-    case Bonfire.Contexts.run_module_function(schema, :queries_module, [], &query_pointer_function_error/2) do
-      {:error, _} ->
+    query = case Bonfire.Common.QueryModules.maybe_query(schema, filters(schema, id_filters, override_filters)) do
+      query when not is_nil(query) ->
+
+        query
+
+      _ ->
 
         cowboy_query(schema, id_filters, override_filters)
-
-      query_module ->
-        filters = filters(schema, id_filters, override_filters)
-        #IO.inspect(filters)
-        query = Bonfire.Contexts.run_module_function(query_module, :query, [schema, filters])
-        {:ok, repo().all(query)}
     end
+
+    {:ok, query |> repo().all() }
   end
 
   defp loader_query(table_name, id_filters, override_filters) when is_binary(table_name) do
-    # load data from a table without a known schema
+    # load data from a table without a schema module
     table_name
     |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
-    |> cowboy_query(id_binary(id_filters), override_filters)
+    |> cowboy_query_all(id_binary(id_filters), override_filters)
     |> Utils.maybe_convert_ulids()
+  end
+
+  defp cowboy_query_all(schema_or_query, id_filters, override_filters) do
+
+    {:ok, cowboy_query(schema_or_query, id_filters, override_filters) |> repo().all() }
   end
 
   defp cowboy_query(schema_or_query, id_filters, override_filters) do
     filters = id_filters ++ override_filters
 
-    Logger.info("Pointers.preload!: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
+    Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
+
+    # TODO: check boundaries
 
     import Ecto.Query
 
-    query = schema_or_query
+    schema_or_query
       |> where(^override_filters)
       |> id_filter(id_filters)
       # |> IO.inspect
 
-    {:ok, repo().all(query) }
   end
 
   def id_filter(query, [id: ids]) when is_list(ids) do
@@ -230,18 +236,20 @@ defmodule Bonfire.Common.Pointers do
     with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
   end
 
-  def query_pointer_function_error(error, args, level \\ :info) do
-    Logger.log(level, "Pointers.preload!: #{error} with args: (#{inspect args})")
 
-    {:error, error}
-  end
 
   defp filters(schema, id_filters, []) do
-    id_filters ++ Bonfire.Contexts.run_module_function(schema, :follow_filters, [])
+    id_filters ++ follow_filters(schema)
   end
 
   defp filters(_schema, id_filters, override_filters) do
     id_filters ++ override_filters
+  end
+
+  defp follow_filters(schema) do
+    with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, []) do
+      []
+    end
   end
 
   def list_ids do
