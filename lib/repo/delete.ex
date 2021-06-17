@@ -5,6 +5,8 @@ defmodule Bonfire.Repo.Delete do
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
 
+  def federation_module, do: "Delete"
+
   @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Just marks an entry as deleted in the database"
   def soft_delete(it), do: deletion_result(do_soft_delete(it))
