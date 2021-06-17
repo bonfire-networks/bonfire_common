@@ -155,7 +155,7 @@ defmodule Bonfire.Common.QueryModules do
   defp search_path(), do: Application.fetch_env!(:bonfire, :query_modules_search_path)
 
   # called by populate/0
-  defp declares_queries_module?(module), do: function_exported?(module, :queries_module, 0)
+  defp declares_queries_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :queries_module, 0)
 
   # called by populate/0
   defp index(mod, acc), do: index(acc, mod, mod.queries_module())

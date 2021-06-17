@@ -38,7 +38,7 @@ defmodule Bonfire.Common.ContextModules do
 
     if Utils.module_enabled?(schema_or_context) do
 
-      object_context_module = maybe_context_module(schema_or_context) || schema_or_context
+      object_context_module = maybe_context_module(schema_or_context)
 
       Utils.maybe_apply(
         object_context_module,
@@ -139,9 +139,11 @@ defmodule Bonfire.Common.ContextModules do
   def populate() do
     indexed =
       search_path()
-      |> Enum.flat_map(&app_modules/1)
-      |> Enum.filter(&declares_context_module?/1)
       # |> IO.inspect
+      |> Enum.flat_map(&app_modules/1)
+      # |> IO.inspect(limit: :infinity)
+      |> Enum.filter(&declares_context_module?/1)
+      # |> IO.inspect(limit: :infinity)
       |> Enum.reduce(%{}, &index/2)
       # |> IO.inspect
     :persistent_term.put(__MODULE__, indexed)
@@ -156,7 +158,7 @@ defmodule Bonfire.Common.ContextModules do
   defp search_path(), do: Application.fetch_env!(:bonfire, :context_modules_search_path)
 
   # called by populate/0
-  defp declares_context_module?(module), do: function_exported?(module, :context_module, 0)
+  defp declares_context_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :context_module, 0)
 
   # called by populate/0
   defp index(mod, acc), do: index(acc, mod, mod.context_module())
