@@ -102,7 +102,6 @@ defmodule Bonfire.Common.QueryModules do
     end
   end
 
-  @spec query_module!(query) :: Queryable.t
   @doc "Look up a Queryable by name or id, throw :not_found if not found."
   def query_module!(query), do: Map.get(data(), query) || throw(:not_found)
 

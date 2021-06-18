@@ -95,7 +95,7 @@ defmodule Bonfire.Common.ContextModules do
   end
 
   @spec context_module(query :: query) :: {:ok, atom} | {:error, :not_found}
-  @doc "Get a Queryable identified by name or id."
+  @doc "Get a context identified by schema"
   def context_module(query) when is_binary(query) or is_atom(query) do
     case Map.get(data(), query) do
       nil -> {:error, :not_found}
@@ -103,12 +103,11 @@ defmodule Bonfire.Common.ContextModules do
     end
   end
 
-  @spec context_module!(query) :: Queryable.t
-  @doc "Look up a Queryable by name or id, throw :not_found if not found."
+  @doc "Look up a context, throw :not_found if not found."
   def context_module!(query), do: Map.get(data(), query) || throw(:not_found)
 
   @spec context_modules([binary | atom]) :: [binary]
-  @doc "Look up many ids at once, throw :not_found if any of them are not found"
+  @doc "Look up many contexts at once, throw :not_found if any of them are not found"
   def context_modules(modules) do
     data = data()
     Enum.map(modules, &Map.get(data, &1))
