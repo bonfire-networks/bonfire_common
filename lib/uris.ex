@@ -5,14 +5,14 @@ defmodule Bonfire.Common.URIs do
   alias Plug.Conn.Query
   require Logger
 
-  def path(view_module_or_path_name, args \\ [])
+  def path(view_module_or_path_name_or_object, args \\ [])
 
-  def path(view_module_or_path_name, %{id: id} = args) when not is_struct(args), do: path(view_module_or_path_name, [id])
+  def path(view_module_or_path_name_or_object, %{id: id} = args) when not is_struct(args), do: path(view_module_or_path_name_or_object, [id])
 
-  def path(view_module_or_path_name, args) when not is_list(args), do: path(view_module_or_path_name, [args])
+  def path(view_module_or_path_name_or_object, args) when not is_list(args), do: path(view_module_or_path_name_or_object, [args])
 
-  def path(view_module_or_path_name, args) when is_atom(view_module_or_path_name) do
-    apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name] ++ args)
+  def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) do
+    apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name_or_object] ++ args)
   end
 
   def path(%{id: _} = object, args) do
@@ -20,7 +20,7 @@ defmodule Bonfire.Common.URIs do
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) ->
-        Logger.info("path: resolving with type: #{inspect type}")
+        Logger.debug("path: resolving with type: #{inspect type}")
         path(type, args_with_id)
 
       none ->
@@ -30,8 +30,8 @@ defmodule Bonfire.Common.URIs do
 
   rescue
     error in FunctionClauseError ->
-    Logger.info("path: could not find a matching route: #{inspect error} for object #{inspect object}")
-    path(Bonfire.Social.Web.DiscussionLive, [path_id(object)] ++ args)
+      Logger.info("path: could not find a matching route: #{inspect error} for object #{inspect object}")
+      path(Bonfire.Social.Web.DiscussionLive, [path_id(object)] ++ args)
   end
 
   def path(id, args) when is_binary(id) do
@@ -39,21 +39,29 @@ defmodule Bonfire.Common.URIs do
     |> path(args)
   end
 
-  def path_id(%{username: username}), do: username
-  def path_id(%{character: %{username: username}}), do: username
-  def path_id(%{id: id}), do: id
+  defp path_id(%{username: username}), do: username
+  defp path_id(%{character: %{username: username}}), do: username
+  defp path_id(%{id: id}), do: id
 
+  def url(view_module_or_path_name_or_object, args \\ []) do
+    base_url()<>path(view_module_or_path_name_or_object, args)
+  end
+
+  def canonical_url(%{canonical_uri: canonical_url}) when not is_nil(canonical_url) do
+    # TODO preload new Peered.canonical_uri
+    canonical_url
+  end
+  def canonical_url(%{peered: %{canonical_uri: canonical_url}}) when not is_nil(canonical_url) do
+    canonical_url
+  end
   def canonical_url(%{canonical_url: canonical_url}) when not is_nil(canonical_url) do
     canonical_url
   end
-
-  # def canonical_url(%{character: _character} = thing) do
-  # Do we store the URL somewhere?
-  #   repo().maybe_preload(thing, :character)
-  #   canonical_url(Map.get(thing, :character))
-  # end
-
-  def canonical_url(object) do
+  def canonical_url(%{peered: _not_loaded} = object) do
+    Bonfire.Repo.maybe_preload(object, :peered)
+    |> Utils.e(:peered, :canonical_uri, generate_canonical_url(object))
+  end
+  def canonical_url(object) do # fallback, only works for local objects
       generate_canonical_url(object)
   end
 
@@ -71,7 +79,8 @@ defmodule Bonfire.Common.URIs do
 
   defp generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
-    base_url() <> ap_base_path <> "/objects/" <> id
+    prefix = if Utils.is_ulid?(id), do: "/objects/", else: "/actors/"
+    base_url() <> ap_base_path <> prefix <> id
   end
 
 
