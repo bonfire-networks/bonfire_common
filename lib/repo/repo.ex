@@ -204,20 +204,24 @@ defmodule Bonfire.Repo do
   #   CommonsPub.Contexts.prepare_context(obj)
   # end
 
-  def maybe_preload({:ok, obj}, preloads), do: {:ok, maybe_preload(obj, preloads)}
-  def maybe_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
-    Logger.info("maybe_preload: trying to preload: #{inspect preloads}")
+  def maybe_preload(obj, preloads, follow_pointers? \\ true)
+
+  def maybe_preload({:ok, obj}, preloads, follow_pointers?), do: {:ok, maybe_preload(obj, preloads, follow_pointers?)}
+
+  def maybe_preload(obj, preloads, true = follow_pointers?) when is_struct(obj) or is_list(obj) do
+    Logger.info("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
 
       maybe_do_preload(obj, preloads)
       |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
 
-  rescue
-    e ->
-      Logger.warn("maybe_preload error: #{inspect e}")
-      obj
+  end
+  def maybe_preload(obj, preloads, false = follow_pointers?) when is_struct(obj) or is_list(obj) do
+    Logger.info("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
+
+      maybe_do_preload(obj, preloads)
   end
 
-  def maybe_preload(obj, _) do
+  def maybe_preload(obj, _, _) do
     Logger.info("maybe_preload: can only preload from struct or list of structs")
 
     obj
