@@ -238,8 +238,11 @@ defmodule Bonfire.Repo do
   defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     repo().preload(obj, preloads)
   rescue
+    e in ArgumentError ->
+      Logger.debug("maybe_preload skipped: #{inspect e}")
+      obj
     e ->
-      Logger.warn("maybe_do_preload error: #{inspect e}")
+      Logger.warn("maybe_preload skipped: #{inspect e}")
       obj
   end
 

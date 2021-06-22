@@ -54,11 +54,10 @@ defmodule Bonfire.Repo.Query do
   end
 
   defmacro match_admin() do
-    # FIXME
-    # quote do
-    #   %CommonsPub.Users.User{
-    #     local_user: %CommonsPub.Users.LocalUser{is_instance_admin: true}
-    #   }
-    # end
+    quote do
+      %{
+        instance_admin: %{is_instance_admin: true}
+      }
+    end
   end
 end

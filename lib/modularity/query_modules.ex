@@ -24,36 +24,30 @@ defmodule Bonfire.Common.QueryModules do
   alias Bonfire.Common.Utils
 
   def maybe_query(
-        schema_or_query_module,
+        schema,
         filters \\ [],
         fallback_fun \\ &apply_error/2
       )
 
-  def maybe_query(schema_or_query_module, args, fallback_fun)
-      when is_atom(schema_or_query_module)
+  def maybe_query(schema, args, fallback_fun)
+      when is_atom(schema)
       and ( is_list(args) or is_map(args) or is_atom(args) or is_tuple(args) )
       and is_function(fallback_fun) do
 
-    if Utils.module_enabled?(schema_or_query_module) do
+    case maybe_query_module(schema) do
+      query_module when is_atom(query_module) and not is_nil(query_module) ->
 
-      query_module = maybe_query_module(schema_or_query_module) || schema_or_query_module
+        Utils.maybe_apply(
+          query_module,
+          :query,
+          args,
+          fallback_fun
+        )
 
-      # IO.inspect(try_query: query_module)
-      # IO.inspect(args, label: "filters")
-
-      Utils.maybe_apply(
-        query_module,
-        :query,
-        args,
-        fallback_fun
-      )
-
-    else
-      fallback_fun.(
-        "QueryModules: Module could not be found: #{schema_or_query_module}",
-        args
-      )
+      not_found ->
+        query_function_error("No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect not_found})", args, :warn)
     end
+
   end
 
   def maybe_query(
@@ -64,13 +58,13 @@ defmodule Bonfire.Common.QueryModules do
     maybe_query(schema, args, fallback_fun)
   end
 
-  def maybe_query(object_schema_or_query_module, args, fallback_fun)
+  def maybe_query(object_schema, args, fallback_fun)
       when not is_list(args) do
-    maybe_query(object_schema_or_query_module, [args], fallback_fun)
+    maybe_query(object_schema, [args], fallback_fun)
   end
 
   def apply_error(error, args, level \\ :error) do
-    Logger.log(level, "QueryModules - could not query: #{error} - with args: (#{inspect args})")
+    Logger.log(level, "QueryModules - could not query: #{error} - Query args: #{inspect args}")
 
     nil
   end
@@ -114,6 +108,7 @@ defmodule Bonfire.Common.QueryModules do
 
   def maybe_query_module(query) do
     with {:ok, module} <- query_module(query) do
+      # IO.inspect(maybe_query_module: module)
       module
     else _ ->
       Utils.maybe_apply(query, :queries_module, [], &query_function_error/2)
@@ -121,7 +116,7 @@ defmodule Bonfire.Common.QueryModules do
   end
 
   def query_function_error(error, _args, level \\ :info) do
-    Logger.log(level, "QueryModules - there's no query module declared for this schema: 1) No function queries_module/0 that returns this schema atom. 2) #{error}")
+    Logger.log(level, "QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2) #{error}")
 
     nil
   end
@@ -141,7 +136,7 @@ defmodule Bonfire.Common.QueryModules do
       |> Enum.filter(&declares_queries_module?/1)
       # |> IO.inspect
       |> Enum.reduce(%{}, &index/2)
-      # |> IO.inspect
+      # |> IO.inspect(label: "Query modules")
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
@@ -161,10 +156,11 @@ defmodule Bonfire.Common.QueryModules do
 
   # called by index/2
   defp index(acc, declaring_module, query_module) do
-    Map.merge(acc, %{declaring_module => query_module, query_module => declaring_module})
+    Map.merge(acc, %{
+      declaring_module => query_module,
+      query_module => declaring_module
+      })
   end
-
-
 
 
 end

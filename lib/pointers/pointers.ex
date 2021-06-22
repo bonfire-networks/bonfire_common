@@ -168,7 +168,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader_query(schema, id_filters, override_filters) when is_atom(schema) do
-    #IO.inspect(loader_query_schema: schema)
+    # IO.inspect(loader_query_schema: schema)
     # TODO: make the query module configurable
     query = case Bonfire.Common.QueryModules.maybe_query(schema, filters(schema, id_filters, override_filters)) do
       query when not is_nil(query) ->
@@ -247,9 +247,15 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp follow_filters(schema) do
-    with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, []) do
+    with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, [], &follow_function_error/2) do
       []
     end
+  end
+
+  def follow_function_error(error, _args, level \\ :info) do
+    Logger.log(level, "Pointer.follow - there's no follow_filters/0 function declared for the pointable schema module #{error}")
+
+    []
   end
 
   def list_ids do

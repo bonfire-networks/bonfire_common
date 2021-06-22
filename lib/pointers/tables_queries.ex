@@ -7,6 +7,8 @@ defmodule Bonfire.Common.Pointers.Tables.Queries do
     from(p in Table, as: :table)
   end
 
+  def query(filters), do: filter(Table, filters)
+
   def query(q, filters), do: filter(query(q), filters)
 
   @spec filter(
