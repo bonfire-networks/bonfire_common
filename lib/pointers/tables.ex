@@ -21,7 +21,7 @@ defmodule Bonfire.Common.Pointers.Tables do
 
   def one!(filters), do: repo().one!(Queries.query(Table, filters))
 
-  def many(filters \\ []), do: {:ok, repo().all(Queries.query(Table, filters))}
+  def many(filters \\ []), do: {:ok, repo().many(Queries.query(Table, filters))}
 
 
   @doc """
@@ -59,7 +59,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   def list_tables(:code), do: Pointers.Tables.data()
 
   def list_tables(:db) do
-    repo().all(Pointers.Table)
+    repo().many(Pointers.Table)
     |> Enum.reduce(%{}, fn t, acc ->
       Map.merge(acc, %{t.table => t})
     end)

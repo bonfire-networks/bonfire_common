@@ -55,7 +55,7 @@ defmodule Bonfire.Common.Pointers do
 
   def one!(filters), do: repo().one!(Queries.query(Pointer, filters))
 
-  def many(filters \\ []), do: {:ok, repo().all(Queries.query(Pointer, filters))}
+  def many(filters \\ []), do: {:ok, repo().many(Queries.query(Pointer, filters))}
 
   # already have a pointer - just return it
   def maybe_forge!(%Pointer{} = pointer), do: pointer
@@ -180,7 +180,7 @@ defmodule Bonfire.Common.Pointers do
         cowboy_query(schema, id_filters, override_filters)
     end
 
-    {:ok, query |> repo().all() }
+    {:ok, query |> repo().many() }
   end
 
   defp loader_query(table_name, id_filters, override_filters) when is_binary(table_name) do
@@ -193,7 +193,7 @@ defmodule Bonfire.Common.Pointers do
 
   defp cowboy_query_all(schema_or_query, id_filters, override_filters) do
 
-    {:ok, cowboy_query(schema_or_query, id_filters, override_filters) |> repo().all() }
+    {:ok, cowboy_query(schema_or_query, id_filters, override_filters) |> repo().many() }
   end
 
   defp cowboy_query(schema_or_query, id_filters, override_filters) do

@@ -99,19 +99,21 @@ defmodule Bonfire.Repo do
   @doc """
   Like Repo.one, but returns an ok/error tuple.
   """
-  def single(q), do: do_single(one(q |> limit(1)))
+  def single(q) do
+    one(q |> limit(1)) |> ret_single()
+  end
 
-  defp do_single(nil), do: {:error, :not_found}
-  defp do_single(other), do: {:ok, other}
+  defp ret_single(nil), do: {:error, :not_found}
+  defp ret_single(other), do: {:ok, other}
 
   @doc """
   Like Repo.single, except on failure, adds an error to the changeset
   """
-  def find(q, changeset, field \\ :form), do: do_find(one(q), changeset, field)
+  def find(q, changeset, field \\ :form), do: ret_find(one(q), changeset, field)
 
-  defp do_find(nil, changeset, field),
+  defp ret_find(nil, changeset, field),
     do: {:error, Changeset.add_error(changeset, field, "not_found")}
-  defp do_find(other, _changeset, _field), do: {:ok, other}
+  defp ret_find(other, _changeset, _field), do: {:ok, other}
 
   @doc "Like Repo.get, but returns an ok/error tuple"
   @spec fetch(atom, integer | binary) :: {:ok, atom} | {:error, :not_found}
@@ -145,6 +147,10 @@ defmodule Bonfire.Repo do
   def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ []) do
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
+  end
+
+  def many(query, opts \\ []) do
+    all(query, opts)
   end
 
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
@@ -189,7 +195,7 @@ defmodule Bonfire.Repo do
     transaction(fn -> Enum.map(queries, &transact/1) end)
   end
 
-  defp transact({:all, q}), do: all(q)
+  defp transact({:all, q}), do: many(q)
   defp transact({:count, q}), do: aggregate(q, :count)
   defp transact({:one, q}), do: one(q)
 
@@ -231,7 +237,6 @@ defmodule Bonfire.Repo do
 
   defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
     repo().preload(obj, preloads)
-
   rescue
     e ->
       Logger.warn("maybe_do_preload error: #{inspect e}")
