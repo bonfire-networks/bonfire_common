@@ -9,7 +9,7 @@ defmodule Bonfire.Common.Pointers.Queries do
     from(p in Pointer, as: :pointer)
   end
 
-  def query(filters), do: filter(Pointer, filters)
+  def query(filters), do: query(Pointer, filters)
 
   def query(q, filters), do: filter(query(q), filters)
 
