@@ -21,3 +21,5 @@ paginator = "~> 1.0.4" # paginate queries
 earmark = "~> 1.4"
 # to convert between map/struct/keyword list
 mappable = "~> 0.2.0"
+# UI icons:
+surface_heroicons = "~> 0.5"

@@ -151,6 +151,10 @@ defmodule Bonfire.Web do
       alias Bonfire.Common.Utils
       import Utils
 
+      # icons
+      alias Heroicons.Solid
+      alias Heroicons.Outline
+
       # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
     end
@@ -211,7 +215,6 @@ defmodule Bonfire.Web do
 
       end
     end
-
 
     defp surface_helpers do
       quote do
