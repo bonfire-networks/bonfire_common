@@ -21,9 +21,12 @@ defmodule Bonfire.Repo.LogSlow do
     :telemetry.attach_many("#{@otp_app}-instrumenter", events, &handle_event/4, nil)
   end
 
+  def handle_event([@otp_app, :repo, :query], %{query_time: query_time, decode_time: decode_time} = measurements, %{query: query, source: source} = metadata, _config) when source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+    trace(System.convert_time_unit(query_time, :native, :millisecond)+System.convert_time_unit(decode_time, :native, :millisecond), measurements, metadata)
+  end
 
-  def handle_event([@otp_app, :repo, :query], %{total_time: time} = measurements, %{query: query, source: source} = metadata, _config) when source not in ["oban_jobs"] and query not in ["commit", "begin"] do
-    trace(System.convert_time_unit(time, :native, :millisecond), measurements, metadata)
+  def handle_event([@otp_app, :repo, :query], %{query_time: query_time} = measurements, %{query: query, source: source} = metadata, _config) when source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+    trace(System.convert_time_unit(query_time, :native, :millisecond), measurements, metadata)
   end
 
   def handle_event(_, _measurements, _metadata, _config) do
@@ -32,7 +35,7 @@ defmodule Bonfire.Repo.LogSlow do
   end
 
 
-  def trace(duration_in_ms, _measurements,  %{query: query} = _metadata) do # when duration_in_ms > 5 do
+  def trace(duration_in_ms, _measurements,  %{query: query} = _metadata) when duration_in_ms > 10 do
 
     slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Repo, :slow_query_ms], 100)
 
