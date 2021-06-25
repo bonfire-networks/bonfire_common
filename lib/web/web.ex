@@ -76,6 +76,9 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Router.Helpers, as: Routes
       import Bonfire.Common.URIs
 
+      require Bonfire.Web.Gettext
+      import Bonfire.Web.Gettext.Helpers
+
       import Phoenix.LiveView
       require Logger
 
@@ -87,6 +90,9 @@ defmodule Bonfire.Web do
     quote do
       alias Bonfire.Web.Router.Helpers, as: Routes
       import Bonfire.Common.URIs
+
+      require Bonfire.Web.Gettext
+      import Bonfire.Web.Gettext.Helpers
 
       import Plug.Conn
       import Phoenix.Controller
@@ -140,6 +146,7 @@ defmodule Bonfire.Web do
       import Phoenix.View
 
       import Bonfire.Common.Web.ErrorHelpers
+
       require Bonfire.Web.Gettext
       import Bonfire.Web.Gettext.Helpers
 
