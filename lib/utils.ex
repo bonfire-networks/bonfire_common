@@ -647,6 +647,7 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME?
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME better fallback
 
+
   def current_user(%{assigns: assigns} = _socket) do
     current_user(assigns)
   end
@@ -663,6 +664,21 @@ defmodule Bonfire.Common.Utils do
     current_user
   end
   def current_user(_), do: nil
+
+
+  def current_account(%{assigns: assigns} = _socket) do
+    current_account(assigns)
+  end
+  def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do
+    current_account
+  end
+  def current_account(%{__context__: %{current_account: current_account}} = _assigns) when not is_nil(current_account) do
+    current_account
+  end
+  def current_account(%Bonfire.Data.Identity.Account{id: _} = current_account) do
+    current_account
+  end
+  def current_account(_), do: nil
 
 
   # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
