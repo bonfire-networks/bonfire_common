@@ -368,6 +368,9 @@ defmodule Bonfire.Common.Utils do
     to_string(other)
   end
 
+  def maybe_flatten(list) when is_list(list), do: List.flatten(list)
+  def maybe_flatten(other), do: other
+
   @doc """
   Flattens a list by recursively flattening the head and tail of the list
   """

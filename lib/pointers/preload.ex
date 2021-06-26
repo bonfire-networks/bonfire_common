@@ -61,7 +61,7 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   defp nested_keys(keys) do
     # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
-    keys |> Utils.flatter |> IO.inspect(label: "flatten keys") |> Enum.map(&Access.key!(&1))
+    keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> IO.inspect(label: "flatten nested keys")
   end
 
   defp do_maybe_preload_nested_pointers(object, keylist) do
