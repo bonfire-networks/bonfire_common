@@ -59,9 +59,11 @@ defmodule Bonfire.Common.Utils do
         map_get(map, key, nil) || fallback
 
       list when is_list(list) and length(list)==1 ->
-        # if object is a list with 1 element, try with that
+        # if object is a list with 1 element, look inside
         e(List.first(list), key, nil) || fallback
 
+      list when is_list(list) ->
+        list |> Enum.into(%{}) |> e(key, fallback)
       _ -> fallback
     end
   end
