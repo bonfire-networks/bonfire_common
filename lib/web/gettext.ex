@@ -58,13 +58,13 @@ defmodule Bonfire.Web.Gettext.Helpers do
 
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
-        IO.inspect(msgid, label: "domain based on module #{inspect mod}: #{inspect otp_app}")
+        # IO.inspect(msgid, label: "domain based on module #{inspect mod}: #{inspect otp_app}")
 
         quote do: dgettext(unquote(Atom.to_string(otp_app)), unquote(msgid), unquote(bindings))
 
       _ ->
 
-        IO.inspect(msgid, label: "no domain or context / #{inspect mod}")
+        # IO.inspect(msgid, label: "no domain or context / #{inspect mod}")
 
         quote do: gettext(unquote(msgid), unquote(bindings))
     end
@@ -74,27 +74,27 @@ defmodule Bonfire.Web.Gettext.Helpers do
     case Application.get_application(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
-        IO.inspect(msgid, label: "custom context #{context} + domain based on module #{inspect otp_app}")
+        # IO.inspect(msgid, label: "custom context #{context} + domain based on module #{inspect otp_app}")
 
         quote do: dpgettext(unquote(Atom.to_string(otp_app)), unquote(context), unquote(msgid), unquote(bindings))
 
       _ ->
 
-        IO.inspect(msgid, label: "custom context #{context} - no domain")
+        # IO.inspect(msgid, label: "custom context #{context} - no domain")
 
         quote do: pgettext(unquote(context), unquote(msgid), unquote(bindings))
     end
   end
 
   defmacro l(msgid, bindings, nil, domain) when is_binary(domain) and is_list(bindings) or is_map(bindings) and is_binary(msgid) do
-    IO.inspect(msgid, label: "custom domain #{domain}")
+    # IO.inspect(msgid, label: "custom domain #{domain}")
 
     quote do: dgettext(unquote(domain), unquote(msgid), unquote(bindings))
   end
 
   defmacro l(msgid, bindings, context, domain) when is_binary(domain) and is_binary(context) and is_list(bindings) or is_map(bindings) and is_binary(msgid) do
 
-    IO.inspect(msgid, label: "custom context #{context} + domain #{domain}")
+    # IO.inspect(msgid, label: "custom context #{context} + domain #{domain}")
 
     quote do: dpgettext(unquote(domain), unquote(context), unquote(msgid), unquote(bindings))
   end
@@ -111,13 +111,13 @@ defmodule Bonfire.Web.Gettext.Helpers do
 
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
-        IO.inspect(msgid, label: "plural: domain based on module #{inspect mod}: #{inspect otp_app}")
+        # IO.inspect(msgid, label: "plural: domain based on module #{inspect mod}: #{inspect otp_app}")
 
         quote do: dngettext(unquote(Atom.to_string(otp_app)), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
 
       _ ->
 
-        IO.inspect(msgid, label: "plural: no domain or context / #{inspect mod}")
+        # IO.inspect(msgid, label: "plural: no domain or context / #{inspect mod}")
 
         quote do: ngettext(unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
     end
@@ -127,13 +127,13 @@ defmodule Bonfire.Web.Gettext.Helpers do
     case Application.get_application(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
-        IO.inspect(msgid, label: "plural: custom context #{context} + domain based on module #{inspect otp_app}")
+        # IO.inspect(msgid, label: "plural: custom context #{context} + domain based on module #{inspect otp_app}")
 
         quote do: dpngettext(unquote(Atom.to_string(otp_app)), unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
 
       _ ->
 
-        IO.inspect(msgid, label: "plural: custom context #{context} - no domain")
+        # IO.inspect(msgid, label: "plural: custom context #{context} - no domain")
 
         quote do: pngettext(unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
     end
@@ -141,14 +141,14 @@ defmodule Bonfire.Web.Gettext.Helpers do
 
   defmacro lp(msgid, msgid_plural, n, bindings, nil, domain) when is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and is_list(bindings) or is_map(bindings) and is_binary(domain)  do
 
-    IO.inspect(msgid, label: "plural: custom domain #{domain}")
+    # IO.inspect(msgid, label: "plural: custom domain #{domain}")
 
     quote do: dngettext(unquote(domain), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
   end
 
   defmacro lp(msgid, msgid_plural, n, bindings, context, domain) when is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and is_list(bindings) or is_map(bindings) and is_binary(context) and is_binary(domain)  do
 
-    IO.inspect(msgid, label: "plural: custom context #{context} + domain #{domain}")
+    # IO.inspect(msgid, label: "plural: custom context #{context} + domain #{domain}")
 
     quote do: dpngettext(unquote(domain), unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
   end
