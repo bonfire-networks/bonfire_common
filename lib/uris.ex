@@ -11,7 +11,7 @@ defmodule Bonfire.Common.URIs do
 
   def path(view_module_or_path_name_or_object, args) when not is_list(args), do: path(view_module_or_path_name_or_object, [args])
 
-  def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) do
+  def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) do
     apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name_or_object] ++ args)
   end
 
@@ -35,8 +35,18 @@ defmodule Bonfire.Common.URIs do
   end
 
   def path(id, args) when is_binary(id) do
-    Bonfire.Common.Pointers.get!(id)
-    |> path(args)
+    if Utils.is_ulid?(id) do
+      Bonfire.Common.Pointers.get!(id)
+      |> path(args)
+    else
+      Logger.error("path: could not find a matching route for #{id}")
+      "#unrecognised-"<>id
+    end
+  end
+
+  def path(other, _) do
+    Logger.error("path: could not find a matching route for #{inspect other}")
+    "#unrecognised-#{inspect other}"
   end
 
   defp path_id(%{username: username}), do: username
