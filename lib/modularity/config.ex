@@ -26,9 +26,7 @@ defmodule Bonfire.Common.Config do
       compilation_error(
         "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{
           extension
-        }/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository, and then customise the copied config as necessary and finally add a line with `import_config \"#{
-          extension
-        }.exs\"` to your `./config/config.exs`"
+        }/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository and then customise the copied config as necessary"
       )
     end
   end
