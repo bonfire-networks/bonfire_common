@@ -109,6 +109,7 @@ defmodule Bonfire.Common.Utils do
   def is_ulid?(_), do: false
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
+  def ulid(ids) when is_list(ids), do: Enum.map(ids, &ulid/1)
   def ulid(id) do
     if is_ulid?(id) do
       id
