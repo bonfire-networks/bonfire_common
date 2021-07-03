@@ -687,10 +687,6 @@ defmodule Bonfire.Common.Utils do
   def current_account(_), do: nil
 
 
-  # def paginate_next(fetch_function, %{assigns: assigns} = socket) do
-  #   {:noreply, socket |> assign(page: assigns.page + 1) |> fetch_function.(assigns)}
-  # end
-
   # defdelegate content(conn, name, type, opts \\ [do: ""]), to: Bonfire.Common.Web.ContentAreas
 
   @doc """
