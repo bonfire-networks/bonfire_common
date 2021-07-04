@@ -45,7 +45,7 @@ defmodule Bonfire.Common.QueryModules do
         )
 
       not_found ->
-        query_function_error("No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect not_found})", args, :warn)
+        query_function_error("No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect not_found})", args, :info)
     end
 
   end
