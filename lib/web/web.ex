@@ -23,8 +23,8 @@ defmodule Bonfire.Web do
   def view(opts \\ []) do
     opts =
       opts
-      |> Keyword.put_new(:root, "lib/web/views")
-      |> Keyword.put_new(:namespace, Bonfire.Web)
+      |> Keyword.put_new(:root, "lib")
+      |> Keyword.put_new(:namespace, Bonfire)
     quote do
       use Phoenix.View, unquote(opts)
       # Import convenience functions from controllers
@@ -41,7 +41,7 @@ defmodule Bonfire.Web do
     opts =
       opts
       |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
-      |> Keyword.put_new(:namespace, Bonfire.Web)
+      |> Keyword.put_new(:namespace, Bonfire)
     quote do
       use Phoenix.LiveView, unquote(opts)
 
