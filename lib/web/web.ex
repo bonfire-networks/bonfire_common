@@ -4,11 +4,10 @@ defmodule Bonfire.Web do
   alias Bonfire.Common.Utils
 
   def controller(opts \\ []) do
-    #IO.inspect(controller: opts)
-
     opts =
       opts
-      |> Keyword.put_new(:namespace, Bonfire.Web)
+      |> Keyword.put_new(:namespace, Bonfire.Common.Config.get!(:default_web_namespace))
+
     quote do
       use Phoenix.Controller, unquote(opts)
       import Plug.Conn
@@ -24,7 +23,7 @@ defmodule Bonfire.Web do
     opts =
       opts
       |> Keyword.put_new(:root, "lib")
-      |> Keyword.put_new(:namespace, Bonfire)
+      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "app.html"})
     quote do
       use Phoenix.View, unquote(opts)
       # Import convenience functions from controllers
@@ -41,7 +40,6 @@ defmodule Bonfire.Web do
     opts =
       opts
       |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
-      |> Keyword.put_new(:namespace, Bonfire)
     quote do
       use Phoenix.LiveView, unquote(opts)
 
@@ -51,9 +49,6 @@ defmodule Bonfire.Web do
   end
 
   def live_component(opts \\ []) do
-    opts =
-      opts
-      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.LiveComponent, unquote(opts)
 
@@ -103,9 +98,6 @@ defmodule Bonfire.Web do
   end
 
   def router(opts \\ []) do
-    opts =
-      opts
-      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Router, unquote(opts)
       require Logger
@@ -125,9 +117,6 @@ defmodule Bonfire.Web do
   end
 
   def channel(opts \\ []) do
-    opts =
-      opts
-      |> Keyword.put_new(:namespace, Bonfire.Web)
     quote do
       use Phoenix.Channel, unquote(opts)
       require Logger
@@ -185,7 +174,6 @@ defmodule Bonfire.Web do
     def surface_view(opts \\ []) do
       opts =
         opts
-        |> Keyword.put_new(:namespace, Bonfire.Web)
         |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), "live.html"})
 
       quote do
@@ -198,9 +186,6 @@ defmodule Bonfire.Web do
     end
 
     def stateful_component(opts \\ []) do
-      opts =
-        opts
-        |> Keyword.put_new(:namespace, Bonfire.Web)
       quote do
         use Surface.LiveComponent, unquote(opts)
 
@@ -210,10 +195,6 @@ defmodule Bonfire.Web do
     end
 
     def stateless_component(opts \\ []) do
-      opts =
-        opts
-        |> Keyword.put_new(:namespace, Bonfire.Web)
-
       quote do
 
         use Surface.Component, unquote(opts)
