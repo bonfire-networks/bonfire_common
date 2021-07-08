@@ -905,7 +905,7 @@ defmodule Bonfire.Common.Utils do
       {:error, reason} -> live_exception(socket, return_key, reason)
       {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
       :ok -> {return_key, socket} # shortcut for return nothing
-      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>Bonfire.Repo.ChangesetErrors.cs_to_string(cs), cs)
+      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs)
       ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
     end
   rescue
@@ -916,7 +916,7 @@ defmodule Bonfire.Common.Utils do
     error in FunctionClauseError ->
       live_exception(socket, return_key, "A function didn't receive the data it expected", error, __STACKTRACE__)
     cs in Ecto.Changeset ->
-        live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>Bonfire.Repo.ChangesetErrors.cs_to_string(cs), cs, nil)
+        live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs, nil)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
@@ -925,11 +925,19 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp live_exception(socket, return_key, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+
   defp live_exception(socket, {:mount, return_key}, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
       {return_key, put_flash(socket, :error, error_msg(msg)) |> push_redirect(to: "/error")}
     end
   end
+
+  defp live_exception(%{assigns: %{__context__: %{current_url: current_url}}} = socket, return_key, msg, exception, stacktrace, kind) when is_binary(current_url) do
+    with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
+      {return_key, put_flash(socket, :error, error_msg(msg)) |> push_patch(to: current_url)}
+    end
+  end
+
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
       {return_key, put_flash(socket, :error, error_msg(msg)) |> push_patch(to: path(socket.view))}
@@ -983,6 +991,7 @@ defmodule Bonfire.Common.Utils do
     else: inspect exception
   end
 
+  def error_msg(%Ecto.Changeset{} = cs), do: Bonfire.Repo.ChangesetErrors.cs_to_string(cs)
   def error_msg(%{message: message}), do: message
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect message

@@ -14,22 +14,26 @@ defmodule Bonfire.Common.LiveHandlers do
 
   def handle_params(params, uri, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_params via #{inspect source_module}")
+      Logger.info("LiveHandler: handle_params via #{source_module || "delegation"}")
       ## IO.inspect(params: params)
-      do_handle_params(params, uri, socket |> assign_global(current_url: URI.parse(uri) |> maybe_get(:path)))
+      do_handle_params(params, uri, socket
+                                    |> assign_global(
+                                      current_url: URI.parse(uri)
+                                                   |> maybe_get(:path)
+                                    ))
     end)
   end
 
   def handle_event(action, attrs, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_event via #{inspect source_module}")
+      Logger.info("LiveHandler: handle_event via #{source_module || "delegation"}")
       do_handle_event(action, attrs, socket)
     end)
   end
 
   def handle_info(blob, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_info via #{inspect source_module}")
+      Logger.info("LiveHandler: handle_info via #{source_module || "delegation"}")
       do_handle_info(blob, socket)
     end)
   end
@@ -73,7 +77,7 @@ defmodule Bonfire.Common.LiveHandlers do
   defp do_handle_params(params, uri, socket) when is_map(params) and params !=%{} do
     # IO.inspect(handle_params: params)
     case Map.keys(params) |> List.first do
-      mod when is_binary(mod) -> mod_delegate(mod, :handle_params, [Map.get(params, mod), uri], socket)
+      mod when is_binary(mod) and mod not in ["id"] -> mod_delegate(mod, :handle_params, [Map.get(params, mod), uri], socket)
       _ -> empty(socket)
     end
   end
@@ -82,7 +86,7 @@ defmodule Bonfire.Common.LiveHandlers do
 
 
   defp mod_delegate(mod, fun, params, socket) do
-    Logger.info("LiveHandler: #{inspect fun} in #{inspect mod}...")
+    Logger.info("LiveHandler: attempt delegating to #{inspect fun} in #{inspect mod}...")
 
     case maybe_str_to_module("#{mod}.LiveHandler") || maybe_str_to_module(mod) do
       module when is_atom(module) ->
