@@ -153,7 +153,7 @@ defmodule Bonfire.Common.Utils do
 
   def magic_filter_empty(val, map, key, fallback \\ nil)
   def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback) when is_map(map) and is_atom(key) do
-    if Bonfire.Common.Config.get!(:env) == :dev && Bonfire.Common.Config.get(:e_auto_preload, false) do
+    if Config.get!(:env) == :dev && Config.get(:e_auto_preload, false) do
       Logger.warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
     else
@@ -199,17 +199,16 @@ defmodule Bonfire.Common.Utils do
 
   def attr_get_id(attrs, field_name) do
     if is_map(attrs) and Map.has_key?(attrs, field_name) do
-      attr = Map.get(attrs, field_name)
-
-      maybe_get_id(attr)
+      Map.get(attrs, field_name)
+      |> maybe_get_id()
     end
   end
 
   def maybe_get_id(attr) do
-    if is_map(attr) and Map.has_key?(attr, :id) do
-      attr.id
-    else
-      attr
+    case attr do
+      %{id: id} -> id
+      id when is_binary(id) -> if is_ulid?(id), do: id
+      _ -> nil
     end
   end
 
@@ -758,7 +757,7 @@ defmodule Bonfire.Common.Utils do
   defp pubsub_subscribe(topic) when is_binary(topic) and topic !="" do
     Logger.info("PubSub subscribed to: #{topic}")
 
-    endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
 
     # endpoint.unsubscribe(maybe_to_string(topic)) # to avoid duplicate subscriptions?
     endpoint.subscribe(topic)
@@ -783,7 +782,7 @@ defmodule Bonfire.Common.Utils do
   def pubsub_broadcast(_, _), do: Logger.info("pubsub did not broadcast")
 
   defp do_broadcast(topic, data) do
-    # endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    # endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
     # endpoint.broadcast_from(self(), topic, step, state)
     Phoenix.PubSub.broadcast(Bonfire.PubSub, maybe_to_string(topic), data)
   end
@@ -928,16 +927,16 @@ defmodule Bonfire.Common.Utils do
   defp live_exception(socket, return_key, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
   defp live_exception(socket, {:mount, return_key}, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
+      {return_key, put_flash(socket, :error, error_msg(msg)) |> push_redirect(to: "/error")}
     end
   end
   defp live_exception(socket, return_key, msg, exception, stacktrace, kind) do
     with {:error, msg} <- debug_exception(msg, exception, stacktrace, kind) do
-      {return_key, put_flash(socket, :error, msg) |> push_patch(to: path(socket.view))}
+      {return_key, put_flash(socket, :error, error_msg(msg)) |> push_patch(to: path(socket.view))}
     end
   rescue
-    ArgumentError -> # for cases where the live_path may need param(s) which we don't know about
-      {return_key, put_flash(socket, :error, msg) |> push_redirect(to: "/error")}
+    FunctionClauseError -> # for cases where the live_path may need param(s) which we don't know about
+      {return_key, put_flash(socket, :error, error_msg(msg)) |> push_redirect(to: "/error")}
   end
 
   defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
@@ -950,14 +949,14 @@ defmodule Bonfire.Common.Utils do
 
     debug_log(msg, exception, stacktrace, kind)
 
-    if Bonfire.Common.Config.get!(:env) == :dev do
+    if Config.get!(:env) == :dev do
 
       exception = if exception, do: debug_banner(kind, exception, stacktrace)
       stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
-      {:error, Enum.join([msg, exception, stacktrace] |> Enum.filter(& &1), " - ") |> String.slice(0..1000) }
+      {:error, Enum.join([error_msg(msg), exception, stacktrace] |> Enum.filter(& &1), " - ") |> String.slice(0..1000) }
     else
-      {:error, msg}
+      {:error, error_msg(msg)}
     end
   end
 
@@ -969,7 +968,7 @@ defmodule Bonfire.Common.Utils do
     # if exception, do: IO.puts(Exception.format_exit(exception))
     if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
-    if exception && stacktrace && Bonfire.Common.Utils.module_enabled?(Sentry), do: Sentry.capture_exception(
+    if exception && stacktrace && module_enabled?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
     )
@@ -984,8 +983,11 @@ defmodule Bonfire.Common.Utils do
     else: inspect exception
   end
 
-  def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
+  def error_msg(%{message: message}), do: message
+  def error_msg(message) when is_binary(message), do: message
+  def error_msg(message), do: inspect message
 
+  def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
 
   @doc "Helpers for calling hypothetical functions in other modules"
