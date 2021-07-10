@@ -145,6 +145,13 @@ defmodule Bonfire.Common.Utils do
     ) |> magic_filter_empty(map, key, fallback)
   end
 
+  #doc "Try with each key in list"
+  def map_get(map, keys, fallback) when is_list(keys) do
+    Enum.map(keys, &map_get(map, &1, nil))
+    |> Enum.filter(&(&1))
+    || fallback
+  end
+
   def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
