@@ -43,6 +43,25 @@ defmodule Bonfire.Common.Extend do
   end
 
 
+  def loaded_deps() do
+    if module_enabled?(Mix.Dep) do
+      {func, args} = loaded_deps_func_name()
+      apply(Mix.Dep, func, args)
+      # |> IO.inspect
+    else
+      # TODO: cache this at compile-time so it is available in releases
+      []
+    end
+  end
+
+  defp loaded_deps_func_name() do
+    if Keyword.has_key?(Mix.Dep.__info__(:functions), :cached) do
+      {:cached, []}
+    else
+      {:loaded, [[]]}
+    end
+  end
+
   @doc """
   Whether an Elixir module or extension / OTP app has configuration keys set up
   """
