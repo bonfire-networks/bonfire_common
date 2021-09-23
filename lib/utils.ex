@@ -454,7 +454,7 @@ defmodule Bonfire.Common.Utils do
   def maybe_merge_to_struct(target, merge) when is_struct(target), do: struct(target, maybe_from_struct(merge))
   def maybe_merge_to_struct(obj1, obj2), do: struct_to_map(Map.merge(obj2, obj1)) # to handle objects queried without schema
 
-  def maybe_from_struct(obj) when is_struct(obj), do: Map.from_struct(obj)
+  def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
   def maybe_from_struct(obj), do: obj
 
   def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)

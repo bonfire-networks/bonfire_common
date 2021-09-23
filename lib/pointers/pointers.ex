@@ -31,7 +31,7 @@ defmodule Bonfire.Common.Pointers do
   def get(%Pointer{} = pointer, filters) do
     with %{id: _} = obj <- follow!(pointer, filters) do
       {:ok,
-        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs preload on pointer to the returned object
+        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs preloaded on pointer to the returned object
         #|> IO.inspect(label: "Pointers.get")
       }
     end
@@ -174,6 +174,7 @@ defmodule Bonfire.Common.Pointers do
       query when not is_nil(query) ->
 
         query
+        # |> IO.inspect
 
       _ ->
 
