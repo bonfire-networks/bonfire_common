@@ -108,7 +108,7 @@ defmodule Bonfire.Common.URIs do
       ""
     end
   rescue e ->
-    Logger.info("base_url: #{inspect e}")
+    Logger.info("base_url: could not get struct_url from endpoint: #{inspect e}")
     ""
   end
   def base_url(_) do

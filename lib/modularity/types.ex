@@ -12,6 +12,7 @@ defmodule Bonfire.Common.Types do
   def object_type(type) when type in [ValueFlows.EconomicResource, "EconomicResource"], do: ValueFlows.EconomicResource
   def object_type(type) when type in [ValueFlows.Planning.Intent, "Intent", "1NTENTC0V1DBEAN0FFER0RNEED"], do: ValueFlows.Planning.Intent
   def object_type(type) when type in [ValueFlows.Process, "Process"], do: ValueFlows.Process
+  def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
 
   def object_type(type) when is_binary(type) or is_atom(type) do
     with {:ok, %{schema: schema}} <- Pointers.Tables.table(type) do

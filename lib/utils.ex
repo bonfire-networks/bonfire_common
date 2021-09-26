@@ -1003,7 +1003,6 @@ defmodule Bonfire.Common.Utils do
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect message
 
-  def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
 
   @doc "Helpers for calling hypothetical functions in other modules"
