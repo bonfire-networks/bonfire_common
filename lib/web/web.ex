@@ -61,6 +61,7 @@ defmodule Bonfire.Web do
     quote do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
+      alias Bonfire.Common.Web.ComponentID
 
       unquote(view_helpers())
     end
@@ -163,6 +164,7 @@ defmodule Bonfire.Web do
 
       # Import LiveView helpers (live_render, live_component, live_patch, etc)
       import Phoenix.LiveView.Helpers
+      alias Bonfire.Common.Web.ComponentID
 
       # Import Surface if any dep is using it
       Bonfire.Common.Extend.quoted_import_if_enabled(Surface)

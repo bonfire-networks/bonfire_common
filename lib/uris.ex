@@ -15,7 +15,7 @@ defmodule Bonfire.Common.URIs do
     apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name_or_object] ++ args)
   end
 
-  def path(%{id: _} = object, args) do
+  def path(%{id: id} = object, args) do
     args_with_id = [path_id(object)] ++ args
 
     case Bonfire.Common.Types.object_type(object) do
@@ -24,8 +24,9 @@ defmodule Bonfire.Common.URIs do
         path(type, args_with_id)
 
       none ->
-        Logger.info("path: could not figure out the type of this object: #{inspect none}")
-        path(Bonfire.Social.Web.DiscussionLive, args_with_id)
+        Logger.info("path: could not figure out the type of this object, gonna try fetching it from DB: #{inspect none}")
+        path(id, args)
+        path_by_id(id, args, object)
     end
 
   rescue
@@ -35,21 +36,38 @@ defmodule Bonfire.Common.URIs do
   end
 
   def path(id, args) when is_binary(id) do
-    if Utils.is_ulid?(id) do
-      Bonfire.Common.Pointers.get!(id)
-      |> path(args)
-    else
-      Logger.error("path: could not find a matching route for #{id}")
-      "#unrecognised-"<>id
-    end
+    path_by_id(id, args)
   end
 
   def path(other, _) do
-    Logger.error("path: could not find a matching route for #{inspect other}")
+    Logger.error("path: could not find any matching route for #{inspect other}")
     "#unrecognised-#{inspect other}"
   end
 
+  def fallback(id, args) do
+    path(Bonfire.Social.Web.DiscussionLive, args)
+  end
+
+  def path_by_id(id, args, object \\ %{}) when is_binary(id) do
+    if Utils.is_ulid?(id) do
+      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id) do
+        object
+        |> Map.merge(pointer)
+        |> path(args)
+      else _ ->
+        Logger.error("path: could not find a Pointer with id #{id}")
+        fallback(id, args)
+      end
+    else
+      Logger.error("path: could not find a matching route for #{id}")
+      fallback(id, args)
+    end
+  end
+
+
   defp path_id(%{username: username}), do: username
+  defp path_id(%{display_username: "@"<>username}), do: username
+  defp path_id(%{display_username: username}), do: username
   defp path_id(%{character: %{username: username}}), do: username
   defp path_id(%{id: id}), do: id
 

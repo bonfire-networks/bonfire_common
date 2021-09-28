@@ -172,6 +172,8 @@ defmodule Bonfire.Common.Utils do
 
   def filter_empty(val, fallback \\ nil)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
+  def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback
+  def filter_empty(list, fallback) when is_list(list) and length(list)==0, do: fallback
   # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
   def filter_empty(val, fallback), do: val || fallback
 
@@ -921,7 +923,16 @@ defmodule Bonfire.Common.Utils do
     error in Ecto.ConstraintError ->
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
     error in FunctionClauseError ->
-      live_exception(socket, return_key, "A function didn't receive the data it expected", error, __STACKTRACE__)
+      IO.inspect(error)
+      with %{
+        arity: arity,
+        function: function,
+        module: module
+      } <- error do
+        live_exception(socket, return_key, "The function #{function}/#{arity} in module #{module} didn't receive data in a format it can recognise", error, __STACKTRACE__)
+      else error ->
+        live_exception(socket, return_key, "A function didn't receive data in a format it can recognise", error, __STACKTRACE__)
+      end
     cs in Ecto.Changeset ->
         live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs, nil)
     error ->
