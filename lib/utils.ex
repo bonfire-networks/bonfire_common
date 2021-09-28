@@ -232,7 +232,8 @@ defmodule Bonfire.Common.Utils do
   end
   def deep_merge(left, right) when is_list(left) and is_list(right) do
     if Keyword.keyword?(left) and Keyword.keyword?(right), do: Keyword.merge(left, right), # this includes dups :/ maybe switch to https://github.com/PragTob/deep_merge ?
-    else: left ++ right # this includes dups
+    else: right # do not merge lists
+    # else: left ++ right # this includes dups
   end
   def deep_merge(%{} = left, right) when is_list(right) do
     deep_merge(Map.to_list(left), right)
