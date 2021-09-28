@@ -10,9 +10,14 @@ defmodule Bonfire.Common.Web.ComponentID do
 
     component_id
   end
-  def new(component_module, %{id: object_id}) when is_binary(object_id) do
+  def new(component_module, %{id: object_id}) do
     new(component_module, object_id)
   end
+  def new(component_module, _) do
+    Logger.error("ComponentID: not object ID known for #{component_module}")
+    Pointers.ULID.generate()
+  end
+
 
   def send_updates(component_module, object_id, assigns) do
     Logger.info("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
