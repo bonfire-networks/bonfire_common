@@ -63,7 +63,7 @@ defmodule Bonfire.Common.Utils do
         e(List.first(list), key, nil) || fallback
 
       list when is_list(list) ->
-        list |> Enum.into(%{}) |> e(key, fallback)
+        list |> Enum.reject(&is_nil/1) |> Enum.map(&(e(&1, key, fallback)))
       _ -> fallback
     end
   end
