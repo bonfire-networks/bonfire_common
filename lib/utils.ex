@@ -1027,17 +1027,22 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_apply(
       module,
-      fun,
+      funs,
       args,
       fallback_fun
     )
-    when is_atom(module) and is_atom(fun) and is_list(args) and
+    when is_atom(module) and is_list(funs) and is_list(args) and
             is_function(fallback_fun) do
 
     arity = length(args)
 
     if module_enabled?(module) do
-      if Kernel.function_exported?(module, fun, arity) do
+
+      available_funs = funs |> Enum.reject(fn f -> not Kernel.function_exported?(module, f, arity) end) |> IO.inspect
+
+      fun = List.first(available_funs)
+
+      if fun do
         #IO.inspect(function_exists_in: module)
 
         try do
@@ -1051,7 +1056,7 @@ defmodule Bonfire.Common.Utils do
         end
       else
         fallback_fun.(
-          "No function defined at #{module}.#{fun}/#{arity}",
+          "None of the functions #{inspect funs} are defined at #{module} with arity #{arity}",
           args
         )
       end
@@ -1069,13 +1074,32 @@ defmodule Bonfire.Common.Utils do
       args,
       fallback_fun
     )
-    when is_atom(module) and is_atom(fun) and
-            is_function(fallback_fun), do: maybe_apply(
+    when not is_list(args), do: maybe_apply(
       module,
       fun,
       [args],
       fallback_fun
     )
+
+  def maybe_apply(
+      module,
+      fun,
+      args,
+      fallback_fun
+    )
+    when not is_list(fun), do: maybe_apply(
+      module,
+      [fun],
+      args,
+      fallback_fun
+    )
+
+  def maybe_apply(
+      module,
+      fun,
+      args,
+      fallback_fun
+    ), do: apply_error("invalid function call", args)
 
   def apply_error(error, args, level \\ :error) do
     Logger.log(level, "maybe_apply: #{error} - with args: (#{inspect args})")

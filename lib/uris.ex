@@ -32,7 +32,12 @@ defmodule Bonfire.Common.URIs do
   rescue
     error in FunctionClauseError ->
       Logger.info("path: could not find a matching route: #{inspect error} for object #{inspect object}")
-      path(Bonfire.Social.Web.DiscussionLive, [path_id(object)] ++ args)
+      case object do
+        %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
+        %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
+        %{id: id} -> fallback(id, args)
+        _ -> fallback(object, args)
+      end
   end
 
   def path(id, args) when is_binary(id) do
@@ -45,7 +50,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def fallback(id, args) do
-    path(Bonfire.Social.Web.DiscussionLive, args)
+    path(Bonfire.Social.Web.DiscussionLive, [id] ++ args)
   end
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
