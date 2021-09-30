@@ -1038,7 +1038,7 @@ defmodule Bonfire.Common.Utils do
 
     if module_enabled?(module) do
 
-      available_funs = funs |> Enum.reject(fn f -> not Kernel.function_exported?(module, f, arity) end) |> IO.inspect
+      available_funs = funs |> Enum.reject(fn f -> not Kernel.function_exported?(module, f, arity) end)
 
       fun = List.first(available_funs)
 
