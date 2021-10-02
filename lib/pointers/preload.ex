@@ -51,10 +51,13 @@ defmodule Bonfire.Common.Pointers.Preload do
     do_maybe_preload_nested_pointers(object, nested_keys(keys))
   end
 
-  def maybe_preload_nested_pointers(object, keys) when is_list(keys) and length(keys)>0 and is_list(object) do
+  def maybe_preload_nested_pointers(object, keys) when is_list(keys) and length(keys)>0 and is_list(object) and length(object)>0 do
     Logger.info("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
 
-    do_maybe_preload_nested_pointers(object, [Access.all()] ++ nested_keys(keys))
+    do_maybe_preload_nested_pointers(
+      object |> Enum.reject(&(&1==[])),
+      [Access.all()] ++ nested_keys(keys)
+    )
   end
 
   def maybe_preload_nested_pointers(object, _), do: object
@@ -64,10 +67,11 @@ defmodule Bonfire.Common.Pointers.Preload do
     keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> IO.inspect(label: "flatten nested keys")
   end
 
-  defp do_maybe_preload_nested_pointers(object, keylist) do
+  defp do_maybe_preload_nested_pointers(object, keylist) when keylist !=[] do
 
     with {_old, loaded} <- object
-    |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1)})
+                          # |> IO.inspect(label: "object")
+                          |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1)})
     do
       loaded
       # |> IO.inspect(label: "object")
