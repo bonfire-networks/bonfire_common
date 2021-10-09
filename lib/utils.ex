@@ -192,15 +192,15 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc "Rename a key in a map"
-  def map_key_replace(%{} = map, key, new_key) do
+  def map_key_replace(%{} = map, key, new_key, new_value \\ nil) do
     map
-    |> Map.put(new_key, Map.get(map, key))
+    |> Map.put(new_key, new_value || Map.get(map, key))
     |> Map.delete(key)
   end
 
-  def map_key_replace_existing(%{} = map, key, new_key) do
+  def map_key_replace_existing(%{} = map, key, new_key, new_value \\ nil) do
     if Map.has_key?(map, key) do
-      map_key_replace(map, key, new_key)
+      map_key_replace(map, key, new_key, new_value)
     else
       map
     end
