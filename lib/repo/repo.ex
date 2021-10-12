@@ -174,7 +174,7 @@ defmodule Bonfire.Repo do
   end
 
   defp rollback_error(reason, extra \\ nil) do
-    Logger.debug(transact_with_error: reason)
+    Logger.error(transact_with_error: reason)
     if extra, do: Logger.debug(transact_with_error_extra: extra)
     rollback(reason)
   end

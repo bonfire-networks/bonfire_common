@@ -255,7 +255,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def follow_function_error(error, _args, level \\ :info) do
-    Logger.log(level, "Pointer.follow - there's no follow_filters/0 function declared for the pointable schema module #{error}")
+    Logger.log(level, "Pointer.follow - there's no follow_filters/0 function declared for the pointable schema module -- #{error}")
 
     []
   end
