@@ -59,11 +59,22 @@ defmodule Bonfire.Common.Utils do
         map_get(map, key, nil) || fallback
 
       list when is_list(list) and length(list)==1 ->
-        # if object is a list with 1 element, look inside
-        e(List.first(list), key, nil) || fallback
+
+        if not Keyword.keyword?(list) do
+          # if object is a list with 1 element, look inside
+          e(List.first(list), key, nil) || fallback
+        else
+          list |> Map.new() |> e(key, fallback)
+        end
 
       list when is_list(list) ->
-        list |> Enum.reject(&is_nil/1) |> Enum.map(&(e(&1, key, fallback)))
+
+        if not Keyword.keyword?(list) do
+          list |> Enum.reject(&is_nil/1) |> Enum.map(&(e(&1, key, fallback)))
+        else
+          list |> Map.new() |> e(key, fallback)
+        end
+
       _ -> fallback
     end
   end
