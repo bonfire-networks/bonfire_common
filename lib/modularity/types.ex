@@ -8,6 +8,9 @@ defmodule Bonfire.Common.Types do
   def object_type(%{object: object}), do: object_type(object) # for activities
   def object_type(%{__struct__: schema}) when schema !=Pointers.Pointer, do: object_type(schema)
 
+
+  def object_type(%{display_username: "@"<>_}), do: Bonfire.Data.Identity.User
+
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
   def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
