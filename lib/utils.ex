@@ -369,6 +369,15 @@ defmodule Bonfire.Common.Utils do
   end
   def maybe_str_to_atom(other), do: other
 
+  def maybe_str_to_atom!(str) when is_binary(str) do
+    try do
+      String.to_existing_atom(str)
+    rescue
+      ArgumentError -> nil
+    end
+  end
+  def maybe_str_to_atom!(_), do: nil
+
   def maybe_str_to_module(str) when is_binary(str) do
     case maybe_str_to_atom(str) do
       module when is_atom(module) -> module
@@ -544,17 +553,21 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(nil, value), do: value
   def replace_nil(other, _), do: other
 
+
   def input_to_atoms(%{} = data) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
     :maps.filter(fn k, _v -> is_atom(k) end,
       data
       |> Map.drop(["_csrf_token"])
-      |> Map.new(fn {k, v} -> {maybe_str_to_atom(k), input_to_atoms(v)} end)
+      |> Map.new(fn {k, v} -> {maybe_str_to_atom!(maybe_to_snake(k)), input_to_atoms(v)} end)
     )
   end
   def input_to_atoms(list) when is_list(list), do: Enum.map(list, &input_to_atoms/1)
   def input_to_atoms(v), do: v
 
+  def maybe_to_snake(string) do
+    Recase.to_snake("#{string}")
+  end
 
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
   defp maybe_to_structs_recurse(data, parent_id \\ nil)
@@ -1061,7 +1074,7 @@ defmodule Bonfire.Common.Utils do
         rescue
           e in FunctionClauseError ->
             fallback_fun.(
-              "No matching pattern for function #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
               args
             )
         end
