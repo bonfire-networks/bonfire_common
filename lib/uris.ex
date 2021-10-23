@@ -116,6 +116,9 @@ defmodule Bonfire.Common.URIs do
     base_url() <> ap_base_path <> prefix <> id
   end
 
+  defp generate_canonical_url(_) do
+    nil
+  end
 
   def base_url(conn \\ nil)
   def base_url(%{scheme: scheme, host: host, port: 80}) when scheme in [:http, "http"], do: "http://"<>host

@@ -120,6 +120,7 @@ defmodule Bonfire.Common.Utils do
   def is_ulid?(_), do: false
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
+  def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
   def ulid(ids) when is_list(ids), do: Enum.map(ids, &ulid/1)
   def ulid(id) do
     if is_ulid?(id) do
@@ -559,7 +560,7 @@ defmodule Bonfire.Common.Utils do
     :maps.filter(fn k, _v -> is_atom(k) end,
       data
       |> Map.drop(["_csrf_token"])
-      |> Map.new(fn {k, v} -> {maybe_str_to_atom!(maybe_to_snake(k)), input_to_atoms(v)} end)
+      |> Map.new(fn {k, v} -> {maybe_to_snake_atom(k), input_to_atoms(v)} end)
     )
   end
   def input_to_atoms(list) when is_list(list), do: Enum.map(list, &input_to_atoms/1)
@@ -567,6 +568,10 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_to_snake(string) do
     Recase.to_snake("#{string}")
+  end
+
+  def maybe_to_snake_atom(string) do
+    maybe_str_to_atom!(maybe_to_snake(string))
   end
 
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
