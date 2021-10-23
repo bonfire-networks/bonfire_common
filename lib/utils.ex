@@ -346,6 +346,13 @@ defmodule Bonfire.Common.Utils do
     change_fn.(val)
   end
 
+  def maybe_list(val, change_fn) when is_list(val) do
+    change_fn.(val)
+  end
+  def maybe_list(val, _) do
+    val
+  end
+
   @spec maybe_ok_error(any, any) :: any
   @doc "Applies change_fn if the first parameter is an {:ok, val} tuple, else returns the value"
   def maybe_ok_error({:ok, val}, change_fn) do
@@ -1078,6 +1085,7 @@ defmodule Bonfire.Common.Utils do
           apply(module, fun, args)
         rescue
           e in FunctionClauseError ->
+            Logger.error(e)
             fallback_fun.(
               "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
               args
