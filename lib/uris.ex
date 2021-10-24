@@ -15,6 +15,7 @@ defmodule Bonfire.Common.URIs do
     apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name_or_object] ++ args)
   end
 
+  def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
     args_with_id = [path_id(object)] ++ args
 
@@ -40,9 +41,7 @@ defmodule Bonfire.Common.URIs do
       end
   end
 
-  def path(id, args) when is_binary(id) do
-    path_by_id(id, args)
-  end
+  def path(id, args) when is_binary(id), do: path_by_id(id, args)
 
   def path(other, _) do
     Logger.error("path: could not find any matching route for #{inspect other}")
@@ -115,6 +114,9 @@ defmodule Bonfire.Common.URIs do
     prefix = if Utils.is_ulid?(id), do: "/objects/", else: "/actors/"
     base_url() <> ap_base_path <> prefix <> id
   end
+
+  defp generate_canonical_url(%{"id" => id}), do: generate_canonical_url(id)
+  defp generate_canonical_url(%{"username" => id}), do: generate_canonical_url(id)
 
   defp generate_canonical_url(_) do
     nil
