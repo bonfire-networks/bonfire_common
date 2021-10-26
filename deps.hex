@@ -23,3 +23,5 @@ earmark = "~> 1.4"
 mappable = "~> 0.2.0"
 # UI icons:
 surface_heroicons = "~> 0.5"
+# html sanitation
+html_sanitize_ex = "~> 1.4"

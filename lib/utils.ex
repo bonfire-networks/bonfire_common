@@ -271,10 +271,11 @@ defmodule Bonfire.Common.Utils do
   def assign_global(socket, assigns) when is_map(assigns), do: assign_global(socket, Map.to_list(assigns))
   def assign_global(socket, assigns) when is_list(assigns) do
     socket
+    |> Phoenix.LiveView.assign(assigns)
     # being naughty here, let's see how long until Surface breaks it:
     |> Phoenix.LiveView.assign(:__context__,
-      Map.get(socket.assigns, :__context__, %{})
-      |> Map.merge(maybe_to_map(assigns))
+                          Map.get(socket.assigns, :__context__, %{})
+                          |> Map.merge(maybe_to_map(assigns))
     ) #|> IO.inspect(label: "assign_global")
   end
   def assign_global(socket, {_, _} = assign) do
@@ -650,6 +651,9 @@ defmodule Bonfire.Common.Utils do
     else: md(content)
   end
 
+  def text_only(html) do
+    HtmlSanitizeEx.strip_tags(html)
+  end
 
   def is_html?(string) do
     Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)

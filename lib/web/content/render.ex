@@ -82,7 +82,7 @@ defmodule Bonfire.Common.Web.ContentAreas.Render do
     "background-image: url(#{escape_entities(content)})"
   end
 
-  defp escape_entities(unsafe) do
+  def escape_entities(unsafe) do
     unsafe
     |> html_escape
     |> safe_to_string
