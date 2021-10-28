@@ -609,7 +609,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
   def maybe_to_struct(obj, module) when is_atom(module) do
-    Logger.info("to_struct")
+    Logger.info("to_struct with module #{module}")
     # if module_enabled?(module) and module_enabled?(Mappable) do
     #   Mappable.to_struct(obj, module)
     # else
