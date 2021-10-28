@@ -4,19 +4,19 @@ defmodule Bonfire.Common.Pointers.Preload do
   require Logger
 
   def maybe_preload_pointers(object, keys) when is_list(object) do
-    Logger.info("maybe_preload_pointers: iterate list of objects")
+    Logger.debug("maybe_preload_pointers: iterate list of objects")
     Enum.map(object, &maybe_preload_pointers(&1, keys))
   end
 
   def maybe_preload_pointers(object, keys) when is_list(keys) and length(keys)==1 do
     # TODO: handle any size list and merge with accelerator?
     key = List.first(keys)
-    Logger.info("maybe_preload_pointers: list with one key: #{inspect key}")
+    Logger.debug("maybe_preload_pointers: list with one key: #{inspect key}")
     maybe_preload_pointers(object, key)
   end
 
   def maybe_preload_pointers(object, key) when is_struct(object) and is_map(object) and is_atom(key) do
-    Logger.info("maybe_preload_pointers: one field: #{inspect key}")
+    Logger.debug("maybe_preload_pointers: one field: #{inspect key}")
     case Map.get(object, key) do
       %Pointers.Pointer{} = pointer ->
 
@@ -29,7 +29,7 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   def maybe_preload_pointers(object, {key, nested_keys}) when is_struct(object) do
 
-    Logger.info("maybe_preload_pointers: key #{key} with nested keys #{inspect nested_keys}")
+    Logger.debug("maybe_preload_pointers: key #{key} with nested keys #{inspect nested_keys}")
     object
     |> maybe_preload_pointer()
     # |> IO.inspect
@@ -40,7 +40,7 @@ defmodule Bonfire.Common.Pointers.Preload do
   end
 
   def maybe_preload_pointers(object, keys) do
-    Logger.info("maybe_preload_pointers: ignore #{inspect keys}")
+    Logger.debug("maybe_preload_pointers: ignore #{inspect keys}")
     object
   end
 

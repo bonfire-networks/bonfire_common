@@ -215,20 +215,20 @@ defmodule Bonfire.Repo do
   def maybe_preload({:ok, obj}, preloads, follow_pointers?), do: {:ok, maybe_preload(obj, preloads, follow_pointers?)}
 
   def maybe_preload(obj, preloads, true = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    Logger.info("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
+    Logger.debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
 
       maybe_do_preload(obj, preloads)
       |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
 
   end
   def maybe_preload(obj, preloads, false = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    Logger.info("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
+    Logger.debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
 
       maybe_do_preload(obj, preloads)
   end
 
   def maybe_preload(obj, _, _) do
-    Logger.info("maybe_preload: can only preload from struct or list of structs")
+    Logger.debug("maybe_preload: can only preload from struct or list of structs")
 
     obj
   end
