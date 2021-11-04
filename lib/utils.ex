@@ -563,6 +563,9 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(other, _), do: other
 
 
+  def input_to_atoms(data) when is_struct(data) do # skip structs
+    data
+  end
   def input_to_atoms(%{} = data) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
     :maps.filter(fn k, _v -> is_atom(k) end,

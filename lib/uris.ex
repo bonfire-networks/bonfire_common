@@ -83,6 +83,9 @@ defmodule Bonfire.Common.URIs do
     # TODO preload new Peered.canonical_uri
     canonical_url
   end
+  def canonical_url(%{"canonicalUrl"=> canonical_url}) when not is_nil(canonical_url) do
+    canonical_url
+  end
   def canonical_url(%{peered: %{canonical_uri: canonical_url}}) when not is_nil(canonical_url) do
     canonical_url
   end
@@ -94,7 +97,7 @@ defmodule Bonfire.Common.URIs do
     |> Utils.e(:peered, :canonical_uri, generate_canonical_url(object))
   end
   def canonical_url(object) do # fallback, only works for local objects
-      generate_canonical_url(object)
+    generate_canonical_url(object)
   end
 
   defp generate_canonical_url(%{id: id} = thing) when is_binary(id) do
@@ -117,6 +120,9 @@ defmodule Bonfire.Common.URIs do
 
   defp generate_canonical_url(%{"id" => id}), do: generate_canonical_url(id)
   defp generate_canonical_url(%{"username" => id}), do: generate_canonical_url(id)
+  defp generate_canonical_url(%{username: id}), do: generate_canonical_url(id)
+  defp generate_canonical_url(%{"displayUsername" => id}), do: generate_canonical_url(id)
+  defp generate_canonical_url(%{"preferredUsername" => id}), do: generate_canonical_url(id)
 
   defp generate_canonical_url(_) do
     nil
