@@ -1093,6 +1093,7 @@ defmodule Bonfire.Common.Utils do
         rescue
           e in FunctionClauseError ->
             Logger.error(e)
+            # Logger.error(Exception.format_stacktrace())
             fallback_fun.(
               "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
               args

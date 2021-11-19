@@ -97,7 +97,11 @@ defmodule Bonfire.Common.URIs do
     |> Utils.e(:peered, :canonical_uri, generate_canonical_url(object))
   end
   def canonical_url(object) do # fallback, only works for local objects
-    generate_canonical_url(object)
+    if Utils.module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
+      Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object) || generate_canonical_url(object)
+    else
+      generate_canonical_url(object)
+    end
   end
 
   defp generate_canonical_url(%{id: id} = thing) when is_binary(id) do
