@@ -23,7 +23,7 @@ defmodule Bonfire.Common.Web.ComponentID do
     Logger.info("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
 
     for component_id <- ids(component_module, object_id) do
-      Logger.info("ComponentID: #{component_id}")
+      Logger.info("ComponentID: try stateful component with ID #{component_id}")
       Phoenix.LiveView.send_update(component_module, [id: component_id] ++ assigns)
     end
   end
@@ -34,7 +34,8 @@ defmodule Bonfire.Common.Web.ComponentID do
     |>
     send_updates(id, set)
 
-    {:noreply, Phoenix.LiveView.assign(socket, set)}
+    # {:noreply, Phoenix.LiveView.assign(socket, set)}
+    {:noreply, socket}
   end
 
 

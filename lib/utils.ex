@@ -644,7 +644,8 @@ defmodule Bonfire.Common.Utils do
 
   def r(html), do: Phoenix.HTML.raw(html)
 
-  def md(content), do: r(Text.markdown_to_html(content))
+  def md(content), do: r(markdown(content)) # for use in views
+  def markdown(content), do: Text.markdown_to_html(content)
 
   def rich(nothing) when not is_binary(nothing) or nothing=="" do
     nil
@@ -659,7 +660,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def is_html?(string) do
-    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
+    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> IO.inspect(label: "is_html?")
   end
 
   # open outside links in a new tab

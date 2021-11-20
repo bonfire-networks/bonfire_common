@@ -111,6 +111,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_to_html(content) do
+    # IO.inspect(to_md: content)
     if module_enabled?(Earmark) do
       content
       |> Earmark.as_html!()
