@@ -26,7 +26,7 @@ defmodule Bonfire.Common.LiveHandlers do
 
   def handle_event(action, attrs, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_event via #{source_module || "delegation"}")
+      Logger.info("LiveHandler: handle_event #{action} via #{source_module || "delegation"}")
       do_handle_event(action, attrs, socket)
     end)
   end
@@ -38,9 +38,9 @@ defmodule Bonfire.Common.LiveHandlers do
     end)
   end
 
-
   # global handler to set a view's assigns from a component
   defp do_handle_info({:assign, {assign, value}}, socket) do
+    Logger.info("LiveHandler: do_handle_info, assign data with {:assign, {#{assign}, value}}")
     undead(socket, fn ->
       IO.inspect(handle_info_set_assign: assign)
       {:noreply,
@@ -52,17 +52,27 @@ defmodule Bonfire.Common.LiveHandlers do
   end
 
   defp do_handle_info({{mod, name}, data}, socket) do
+    Logger.info("LiveHandler: do_handle_info with {{#{mod}, #{name}}, data}")
     mod_delegate(mod, :handle_info, [{name, data}], socket)
   end
 
   defp do_handle_info({info, data}, socket) when is_binary(info) do
+    Logger.info("LiveHandler: do_handle_info with {#{info}, data}")
     case String.split(info, ":", parts: 2) do
       [mod, name] -> mod_delegate(mod, :handle_info, [{name, data}], socket)
       _ -> empty(socket)
     end
   end
 
-  defp do_handle_info(_, socket), do: empty(socket)
+  defp do_handle_info({mod, data}, socket) do
+    Logger.info("LiveHandler: do_handle_info with {#{mod}, data}")
+    mod_delegate(mod, :handle_info, [data], socket)
+  end
+
+  defp do_handle_info(_, socket) do
+    Logger.warn("LiveHandler: could not find info handler")
+    empty(socket)
+  end
 
   defp do_handle_event(event, attrs, socket) when is_binary(event) do
     # IO.inspect(handle_event: event)
@@ -72,7 +82,10 @@ defmodule Bonfire.Common.LiveHandlers do
     end
   end
 
-  defp do_handle_event(_, _, socket), do: empty(socket)
+  defp do_handle_event(_, _, socket) do
+    Logger.warn("LiveHandler: could not find event handler")
+    empty(socket)
+  end
 
   defp do_handle_params(params, uri, socket) when is_map(params) and params !=%{} do
     # IO.inspect(handle_params: params)

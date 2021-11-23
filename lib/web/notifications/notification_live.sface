@@ -1,0 +1,6 @@
+<div id="notification" phx-hook="Notification" class="alert alert-info" role="alert" phx-click="lv:clear-flash">
+<div :if={@notification}>
+  <h3>{e(@notification, :title, "Notification")}</h3>
+  <p>{e(@notification, :message, "")}</p>
+</div>
+</div>
