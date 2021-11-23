@@ -585,7 +585,7 @@ defmodule Bonfire.Common.Utils do
     maybe_str_to_atom!(maybe_to_snake(string))
   end
 
-  def maybe_to_structs(v) when is_struct(), do: v
+  def maybe_to_structs(v) when is_struct(v), do: v
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
   defp maybe_to_structs_recurse(data, parent_id \\ nil)
   defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do
