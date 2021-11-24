@@ -234,14 +234,18 @@ defmodule Bonfire.Common.Pointers do
 
 
   def only_visible_for(q, user_or_conn_or_socket \\ nil) do
-    user = Utils.current_user(user_or_conn_or_socket)
 
-    cs = can_see?(:pointable, user)
+    if module_enabled?(Bonfire.Boundaries.Queries) do
+      user = Utils.current_user(user_or_conn_or_socket)
 
-    q
-    |> join(:left_lateral, [], cs in ^cs, as: :cs)
-    |> where([cs: cs], cs.can_see == true)
+      cs = can_see?(:pointable, user)
 
+      q
+      |> join(:left_lateral, [], cs in ^cs, as: :cs)
+      |> where([cs: cs], cs.can_see == true)
+    else
+      q
+    end
   end
 
   def id_filter(query, [id: ids]) when is_list(ids) do

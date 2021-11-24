@@ -13,7 +13,8 @@ defmodule Bonfire.Common.MixProject do
         {:surface, "~> 0.4", optional: true},
         {:phoenix_live_reload, "~> 1.2", only: :dev},
         {:dbg, "~> 1.0", only: :dev},
-        {:zest, "~> 0.1", optional: true}
+        {:zest, "~> 0.1", optional: true},
+        # {:bonfire_boundaries, git: "https://github.com/bonfire-networks/bonfire_boundaries#main", optional: true}
       ]
     ]
   end
