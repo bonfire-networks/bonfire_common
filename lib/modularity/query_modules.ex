@@ -37,12 +37,27 @@ defmodule Bonfire.Common.QueryModules do
     case maybe_query_module(schema) do
       query_module when is_atom(query_module) and not is_nil(query_module) ->
 
-        Utils.maybe_apply(
-          query_module,
-          :query,
-          args,
-          fallback_fun
-        )
+        # IO.inspect(args: args)
+
+        case args[:paginate] do
+          paginate when not is_nil(paginate) and paginate != %{} ->
+
+            Utils.maybe_apply(
+              query_module,
+              :query_paginated,
+              args,
+              fallback_fun
+            )
+
+          _ ->
+            Utils.maybe_apply(
+              query_module,
+              :query,
+              args,
+              fallback_fun
+            )
+        end
+
 
       not_found ->
         query_function_error("No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect not_found})", args, :info)

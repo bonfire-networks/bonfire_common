@@ -144,9 +144,14 @@ defmodule Bonfire.Repo do
     |> delete_all()
   end
 
-  def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ []) do
+  def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+  def paginate(queryable, opts, repo_opts) when is_list(opts) do
+    # IO.inspect(paginate: opts)
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
+  end
+  def paginate(queryable, opts, repo_opts) do
+    paginate(queryable, Keyword.new(opts), repo_opts)
   end
 
   def many(query, opts \\ []) do

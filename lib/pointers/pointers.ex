@@ -1,14 +1,19 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Pointers do
+
+  use OK.Pipe
+  require Logger
+  import Ecto.Query
+
+  import Bonfire.Common.Config, only: [repo: 0]
+  import Bonfire.Common.Extend
+  import_if_enabled Bonfire.Boundaries.Queries
+
   alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
   alias Pointers.NotFound
-  import Ecto.Query
-  import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
-  require Logger
-  use OK.Pipe
-
+  alias Bonfire.Common.ContextModules
 
   def get!(id, filters \\ []) do
     with {:ok, obj} <- get(id, filters) do
@@ -169,18 +174,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader_query(schema, id_filters, override_filters) when is_atom(schema) do
-    # IO.inspect(loader_query_schema: schema)
-    # TODO: make the query module configurable
-    query = case Bonfire.Common.QueryModules.maybe_query(schema, filters(schema, id_filters, override_filters)) do
-      query when not is_nil(query) ->
-
-        query
-        # |> IO.inspect
-
-      _ ->
-
-        cowboy_query(schema, id_filters, override_filters)
-    end
+    query = query(schema, id_filters, override_filters)
 
     {:ok, query |> repo().many() }
   end
@@ -198,19 +192,55 @@ defmodule Bonfire.Common.Pointers do
     {:ok, cowboy_query(schema_or_query, id_filters, override_filters) |> repo().many() }
   end
 
+  defp cowboy_query(schema, id_filters, override_filters) when is_atom(schema) do
+    schema
+    (from m in schema, as: :pointable)
+    |> cowboy_query(id_filters, override_filters)
+  end
+
   defp cowboy_query(schema_or_query, id_filters, override_filters) do
     filters = id_filters ++ override_filters
 
-    Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters}")
+    Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check")
 
     # TODO: check boundaries
 
-    import Ecto.Query
-
     schema_or_query
+      |> only_visible_for()
       |> where(^override_filters)
       |> id_filter(id_filters)
       # |> IO.inspect
+
+  end
+
+  def query(schema, id_filters, override_filters \\ [])
+
+  def query(schema, id_filters, override_filters) when is_atom(schema) and is_list(id_filters) do
+      query = case Bonfire.Common.QueryModules.maybe_query(schema, filters(schema, id_filters, override_filters)) do
+      query when not is_nil(query) ->
+
+        query
+        # |> IO.inspect
+
+      _ ->
+
+        cowboy_query(schema, id_filters, override_filters)
+    end
+  end
+
+  def query(schema, id_filters, override_filters) when is_atom(schema) and is_map(id_filters) do
+      query(schema, Map.to_list(id_filters), override_filters)
+  end
+
+
+  def only_visible_for(q, user_or_conn_or_socket \\ nil) do
+    user = Utils.current_user(user_or_conn_or_socket)
+
+    cs = can_see?(:pointable, user)
+
+    q
+    |> join(:left_lateral, [], cs in ^cs, as: :cs)
+    |> where([cs: cs], cs.can_see == true)
 
   end
 
@@ -222,11 +252,27 @@ defmodule Bonfire.Common.Pointers do
     query
     |> where([p], p.id == ^id)
   end
+  def id_filter(query, [paginate: pagination]) do
+    limit = pagination[:limit] || 10
+
+    query
+    |> limit(^limit)
+    # TODO: support pagination (before/after)
+  end
   def id_filter(query, id) when is_binary(id) do
     query
     |> where([p], p.id == ^id)
   end
-
+  def id_filter(query, [filter]) when is_tuple(filter) do
+    # TODO: support several filters
+    with {field, val} <- filter do
+      query
+      |> where([p], field(p, ^field) == ^val)
+    end
+  end
+  def id_filter(query, []) do
+    query
+  end
 
   def id_binary([id: id]) do
     [id: id_binary(id)]
@@ -239,30 +285,39 @@ defmodule Bonfire.Common.Pointers do
   end
 
 
+  def filters(schema, id_filters, override_filters \\ [])
 
-  defp filters(schema, id_filters, []) do
+  def filters(schema, id_filters, []) do
     id_filters ++ follow_filters(schema)
   end
 
-  defp filters(_schema, id_filters, override_filters) do
+  def filters(_schema, id_filters, override_filters) do
     id_filters ++ override_filters
   end
 
   defp follow_filters(schema) do
-    with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, [], &follow_function_error/2) do
+    with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, [], &follow_function_error/2),
+         {:error, _} <- ContextModules.maybe_apply(schema, :follow_filters, [], &follow_function_error/2) do
+        Logger.log(:warn, "Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module")
+        # TODO: apply a boundary check by default
       []
     end
   end
 
   def follow_function_error(error, _args, level \\ :info) do
-    Logger.log(level, "Pointer.follow - there's no follow_filters/0 function declared for the pointable schema module -- #{error}")
-
-    []
+    Logger.log(level, error)
+    {:error, error}
   end
 
   def list_ids do
     many(select: [:id]) ~>> Enum.map(& &1.id)
   end
 
+  @doc """
+  Batch loading of associations for GraphQL API
+  """
+  def dataloader() do
+    Dataloader.Ecto.new(repo(), query: &Bonfire.Common.Pointers.query/2)
+  end
 
 end
