@@ -708,13 +708,8 @@ defmodule Bonfire.Common.Utils do
   def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME better fallback
 
 
-  def current_user(%{assigns: assigns} = _socket) do
-    current_user(assigns)
-  end
+
   def current_user(%{current_user: current_user} = _assigns) when not is_nil(current_user) do
-    current_user
-  end
-  def current_user(%{__context__: %{current_user: current_user}} = _assigns) when not is_nil(current_user) do
     current_user
   end
   def current_user(%{id: _, profile: _} = current_user) do
@@ -723,7 +718,22 @@ defmodule Bonfire.Common.Utils do
   def current_user(%{id: _, character: _} = current_user) do
     current_user
   end
-  def current_user(_), do: nil
+  def current_user(%{context: context} = _api_opts) do
+    current_user(context)
+  end
+  def current_user(%{__context__: context} = _assigns) do
+    current_user(context)
+  end
+  def current_user(%{assigns: assigns} = _socket) do
+    current_user(assigns)
+  end
+  def current_user(list) when is_list(list) do
+    current_user(Map.new(list))
+  end
+  def current_user(other) do
+    Logger.debug("No current_user found in #{inspect other}")
+    nil
+  end
 
 
   def current_account(%{assigns: assigns} = _socket) do
@@ -1076,10 +1086,12 @@ defmodule Bonfire.Common.Utils do
       args,
       fallback_fun
     )
-    when is_atom(module) and is_list(funs) and is_list(args) and
-            is_function(fallback_fun) do
+    when is_atom(module) and is_list(funs) and is_list(args) do
 
     arity = length(args)
+
+    fallback_fun = if not is_function(fallback_fun), do: &apply_error/2, else: fallback_fun
+    fallback_return = if not is_function(fallback_fun), do: fallback_fun
 
     if module_enabled?(module) do
 
@@ -1096,22 +1108,25 @@ defmodule Bonfire.Common.Utils do
           e in FunctionClauseError ->
             Logger.error(e)
             # Logger.error(Exception.format_stacktrace())
-            fallback_fun.(
+            e = fallback_fun.(
               "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
               args
             )
+            fallback_return || e
         end
       else
-        fallback_fun.(
+        e = fallback_fun.(
           "None of the functions #{inspect funs} are defined at #{module} with arity #{arity}",
           args
         )
+        fallback_return || e
       end
     else
-      fallback_fun.(
+      e = fallback_fun.(
         "No such module (#{module}) could be loaded.",
         args
       )
+      fallback_return || e
     end
   end
 
@@ -1146,7 +1161,7 @@ defmodule Bonfire.Common.Utils do
       fun,
       args,
       fallback_fun
-    ), do: apply_error("invalid function call", args)
+    ), do: apply_error("invalid function call for #{inspect fun} on #{inspect module}", args)
 
   def apply_error(error, args, level \\ :error) do
     Logger.log(level, "maybe_apply: #{error} - with args: (#{inspect args})")

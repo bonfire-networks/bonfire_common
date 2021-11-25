@@ -45,33 +45,37 @@ defmodule Bonfire.Common.Pointers.Preload do
   end
 
 
-  def maybe_preload_nested_pointers(object, keys) when is_list(keys) and length(keys)>0 and is_map(object) do
+  def maybe_preload_nested_pointers(object, keys, opts \\ [])
+
+    def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_map(object) do
     Logger.info("maybe_preload_nested_pointers: try object with list of keys: #{inspect keys}")
 
-    do_maybe_preload_nested_pointers(object, nested_keys(keys))
+    do_maybe_preload_nested_pointers(object, nested_keys(keys), opts)
   end
 
-  def maybe_preload_nested_pointers(object, keys) when is_list(keys) and length(keys)>0 and is_list(object) and length(object)>0 do
+  def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_list(object) and length(object)>0 do
     Logger.info("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
 
     do_maybe_preload_nested_pointers(
       object |> Enum.reject(&(&1==[])),
-      [Access.all()] ++ nested_keys(keys)
+      [Access.all()] ++ nested_keys(keys),
+      opts
     )
   end
 
-  def maybe_preload_nested_pointers(object, _), do: object
+  def maybe_preload_nested_pointers(object, _, _opts), do: object
 
   defp nested_keys(keys) do
     # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
     keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> IO.inspect(label: "flatten nested keys")
   end
 
-  defp do_maybe_preload_nested_pointers(object, keylist) when keylist !=[] do
+  defp do_maybe_preload_nested_pointers(object, keylist, opts) when keylist !=[] do
+    Logger.info("do_maybe_preload_nested_pointers: try with get_and_update_in")
 
     with {_old, loaded} <- object
                           # |> IO.inspect(label: "object")
-                          |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1)})
+                          |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1, opts)})
     do
       loaded
       # |> IO.inspect(label: "object")
@@ -79,18 +83,18 @@ defmodule Bonfire.Common.Pointers.Preload do
   end
 
 
-  def maybe_preload_pointer(%Pointers.Pointer{} = pointer) do
+  def maybe_preload_pointer(%Pointers.Pointer{} = pointer, opts \\ []) do
     Logger.info("maybe_preload_pointer: follow")
 
-    with {:ok, obj} <- Bonfire.Common.Pointers.get(pointer) do
+    with {:ok, obj} <- Bonfire.Common.Pointers.get(pointer, opts) do
       obj
-    else _e ->
-      Logger.info("maybe_preload_pointer: not found")
+    else e ->
+      Logger.info("maybe_preload_pointer: could not fetch pointer: #{inspect e} #{inspect pointer}")
       pointer
     end
   end
 
-  def maybe_preload_pointer(obj), do: obj #|> IO.inspect(label: "skip")
+  def maybe_preload_pointer(obj, _opts), do: obj #|> IO.inspect(label: "skip")
 
 
 end

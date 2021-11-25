@@ -150,10 +150,12 @@ defmodule Bonfire.Repo do
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
   end
-  def paginate(queryable, opts, repo_opts) do
+  def paginate(queryable, opts, repo_opts) when is_map(opts) do
     paginate(queryable, Keyword.new(opts), repo_opts)
   end
-
+  def paginate(queryable, _, repo_opts) do
+    paginate(queryable, @default_cursor_fields, repo_opts)
+  end
   def many(query, opts \\ []) do
     all(query, opts)
   end
@@ -254,33 +256,35 @@ defmodule Bonfire.Repo do
   defp maybe_do_preload(obj, _), do: obj
 
 
-  def maybe_preloads_per_schema(objects, path, preloads) when is_list(objects) and is_list(path) and is_list(preloads) do
-    Logger.info("maybe_preloads_per_schema iterate list of preloads")
-    Enum.reduce(preloads, objects, &maybe_preloads_per_schema(&2, path, &1))
+  def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
+
+  def maybe_preloads_per_nested_schema(objects, path, preloads, opts) when is_list(objects) and is_list(path) and is_list(preloads) do
+    Logger.info("maybe_preloads_per_nested_schema iterate list of preloads")
+    Enum.reduce(preloads, objects, &maybe_preloads_per_nested_schema(&2, path, &1, opts))
   end
 
-  def maybe_preloads_per_schema(objects, path, {schema, preloads}) when is_list(objects) do
-    Logger.info("maybe_preloads_per_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
+  def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts) when is_list(objects) do
+    Logger.info("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
 
     with {_old, loaded} <- get_and_update_in(
       objects,
       [Access.all()] ++ Enum.map(path, &Access.key!(&1)),
-      &{&1, maybe_preloads_per_schema(&1, {schema, preloads})})
+      &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)})
     do
       loaded
       # |> IO.inspect(label: "preloaded")
     end
   end
 
-  def maybe_preloads_per_schema(object, _, _), do: object
+  def maybe_preloads_per_schema(object, _, _, _opts), do: object
 
-  def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}) when object_schema==schema do
+  def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}, opts \\ []) when object_schema==schema do
     Logger.info("maybe_preloads_per_schema preloading schema: #{inspect schema}")
     maybe_do_preload(object, preloads)
     # TODO: make one preload per get_and_update_in to avoid n+1
   end
 
-  def maybe_preloads_per_schema(object, _), do: object
+  def maybe_preloads_per_schema(object, _, _opts), do: object
 
 
 end
