@@ -799,7 +799,7 @@ defmodule Bonfire.Common.Utils do
     if socket_connected_or_user?(socket) do
       pubsub_subscribe(topic)
     else
-      Logger.info("PubSub: LiveView is not connected so we skip subscribing to #{inspect topic}")
+      Logger.debug("PubSub: LiveView is not connected so we skip subscribing to #{inspect topic}")
     end
   end
 
@@ -807,20 +807,20 @@ defmodule Bonfire.Common.Utils do
 
   def pubsub_subscribe(topic, socket) when not is_binary(topic) do
     with t when is_binary(t) <- maybe_to_string(topic) do
-      Logger.info("PubSub: transformed the topic #{inspect topic} into a string we can subscribe to: #{inspect t}")
+      Logger.debug("PubSub: transformed the topic #{inspect topic} into a string we can subscribe to: #{inspect t}")
       pubsub_subscribe(t, socket)
     else _ ->
-      Logger.info("PubSub: could not transform the topic into a string we can subscribe to: #{inspect topic}")
+      Logger.warn("PubSub: could not transform the topic into a string we can subscribe to: #{inspect topic}")
     end
   end
 
   def pubsub_subscribe(topic, _) do
-    Logger.info("PubSub can not subscribe to a non-string topic: #{inspect topic}")
+    Logger.warn("PubSub can not subscribe to a non-string topic: #{inspect topic}")
     false
   end
 
   defp pubsub_subscribe(topic) when is_binary(topic) and topic !="" do
-    Logger.info("PubSub subscribed to: #{topic}")
+    Logger.debug("PubSub subscribed to: #{topic}")
 
     endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
 
@@ -837,14 +837,14 @@ defmodule Bonfire.Common.Utils do
   Broadcast some data for realtime updates, for example to a feed or thread
   """
   def pubsub_broadcast(topic, {payload_type, _data} = payload) do
-    Logger.info("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
+    Logger.debug("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
     do_broadcast(topic, payload)
   end
   def pubsub_broadcast(topic, data) when (is_atom(topic) or is_binary(topic)) and topic !="" and not is_nil(data) do
-    Logger.info("pubsub_broadcast: #{inspect topic}")
+    Logger.debug("pubsub_broadcast: #{inspect topic}")
     do_broadcast(topic, data)
   end
-  def pubsub_broadcast(_, _), do: Logger.info("pubsub did not broadcast")
+  def pubsub_broadcast(_, _), do: Logger.warn("pubsub did not broadcast")
 
   defp do_broadcast(topic, data) do
     # endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
