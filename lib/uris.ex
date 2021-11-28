@@ -54,7 +54,7 @@ defmodule Bonfire.Common.URIs do
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
-      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id) do
+      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
         object
         |> Map.merge(pointer)
         |> path(args)

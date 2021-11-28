@@ -6,10 +6,12 @@ defmodule Bonfire.Common.Pointers.Queries do
   def queries_module, do: Pointer
 
   def query(Pointer) do
-    from(p in Pointer, as: :pointer)
+    from(p in Pointer, as: :main_object)
   end
 
-  def query(filters), do: query(Pointer, filters)
+  def query(filters), do: query(Pointer) |> query(filters)
+
+  def query(nil, filters), do: filter(query(Pointer), filters)
 
   def query(q, filters), do: filter(query(q), filters)
 
@@ -31,25 +33,31 @@ defmodule Bonfire.Common.Pointers.Queries do
   ## by fields
 
   def filter(q, {:id, id}) when is_binary(id) do
-    where(q, [pointer: p], p.id == ^id)
+    where(q, [main_object: p], p.id == ^id)
   end
 
   def filter(q, {:id, ids}) when is_list(ids) do
-    where(q, [pointer: p], p.id in ^ids)
+    where(q, [main_object: p], p.id in ^ids)
   end
 
-  def filter(q, {:table, id}) when is_binary(id), do: where(q, [pointer: p], p.table_id == ^id)
+  def filter(q, {:table, id}) when is_binary(id), do:
+    where(q, [main_object: p], p.table_id == ^id)
 
   def filter(q, {:table, name}) when is_atom(name),
     do: filter(q, {:table, Pointers.Tables.id!(name)})
 
   def filter(q, {:table, tables}) when is_list(tables) do
     tables = Pointers.Tables.ids!(tables)
-    where(q, [pointer: p], p.table_id in ^tables)
+    where(q, [main_object: p], p.table_id in ^tables)
   end
 
   # what fields
   def filter(q, {:select, fields}) when is_list(fields) do
     select(q, ^fields)
   end
+
+  def filter(q, _)  do
+    q
+  end
+
 end

@@ -64,11 +64,40 @@ defmodule Bonfire.Common.Pointers do
 
   # TODO: boundary check by default in one and many?
 
-  def one(filters, opts), do: repo().single(Queries.query(Pointer, filters))
+  def one(filters, opts), do: pointer_query(filters, opts) |> repo().single()
 
-  def one!(filters, opts \\ []), do: repo().one!(Queries.query(Pointer, filters))
+  def one!(filters, opts \\ []), do: pointer_query(filters, opts) |> repo().one!()
 
-  def many(filters \\ [], opts \\ []), do: {:ok, repo().many(Queries.query(Pointer, filters))}
+  def list!(pointers)
+      when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
+    # means we're already being passed pointers? instead of ids
+    Pointers.follow!(pointers)
+  end
+
+  def list!(ids) when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
+    with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: Pointers.follow!(ptrs)
+  end
+
+  def many(filters \\ [], opts \\ []), do: {:ok, pointer_query(filters, opts) |> repo().many() }
+  def many!(filters \\ [], opts \\ []), do: pointer_query(filters, opts) |> repo().many()
+
+
+  defp pointer_query(filters, opts) do
+
+    q = Queries.query(nil, filters)
+
+    if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
+      Logger.info("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
+
+      q
+
+    else
+      Logger.info("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
+
+      Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [q, opts], q)
+    end
+  end
+
 
   # already have a pointer - just return it
   def maybe_forge!(%Pointer{} = pointer), do: pointer
@@ -220,7 +249,7 @@ defmodule Bonfire.Common.Pointers do
       |> id_filter(id_filters)
       # |> IO.inspect
     else
-      if Keyword.get(opts, :skip_boundary_check) do
+      if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
         Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
 
         schema_or_query
