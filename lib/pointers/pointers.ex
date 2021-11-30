@@ -219,7 +219,7 @@ defmodule Bonfire.Common.Pointers do
 
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
     Logger.debug("Pointers: loading data from a table without a schema module")
-    table_name
+    (from m in table_name, as: :main_object)
     |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
     |> cowboy_query_all(id_binary(id_filters), opts)
     |> Utils.maybe_convert_ulids()

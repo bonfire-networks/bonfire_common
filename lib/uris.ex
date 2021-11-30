@@ -25,14 +25,12 @@ defmodule Bonfire.Common.URIs do
         path(type, args_with_id)
 
       none ->
-        Logger.info("path: could not figure out the type of this object, gonna try fetching it from DB: #{inspect none}")
-        path(id, args)
-        path_by_id(id, args, object)
+        path_maybe_lookup_pointer(object, args)
     end
 
   rescue
     error in FunctionClauseError ->
-      Logger.info("path: could not find a matching route: #{inspect error} for object #{inspect object}")
+      Logger.warn("path: could not find a matching route: #{inspect error} for object #{inspect object}")
       case object do
         %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
         %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
@@ -48,6 +46,16 @@ defmodule Bonfire.Common.URIs do
     "#unrecognised-#{inspect other}"
   end
 
+  defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args) do
+    Logger.error("path: could not figure out the type of this pointer: #{inspect object}")
+    fallback(id, args)
+  end
+
+  defp path_maybe_lookup_pointer(%{id: id} = object, args) do
+    Logger.debug("path: could not figure out the type of this object, gonna try checking the pointer table")
+    path_by_id(id, args, object)
+  end
+
   def fallback(id, args) do
     path(Bonfire.Social.Web.DiscussionLive, [id] ++ args)
   end
@@ -55,6 +63,7 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
       with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
+        Logger.debug("path: found a pointer #{inspect pointer}")
         object
         |> Map.merge(pointer)
         |> path(args)
