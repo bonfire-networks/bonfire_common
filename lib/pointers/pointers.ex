@@ -78,6 +78,11 @@ defmodule Bonfire.Common.Pointers do
     with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: Pointers.follow!(ptrs)
   end
 
+  def list!(ids) do
+    Logger.warn("Pointers.list: expected a list of pointers or ULIDs, got #{inspect ids}")
+    []
+  end
+
   def many(filters \\ [], opts \\ []), do: {:ok, pointer_query(filters, opts) |> repo().many() }
   def many!(filters \\ [], opts \\ []), do: pointer_query(filters, opts) |> repo().many()
 
@@ -87,12 +92,12 @@ defmodule Bonfire.Common.Pointers do
     q = Queries.query(nil, filters)
 
     if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
-      Logger.info("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
+      Logger.debug("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
 
       q
 
     else
-      Logger.info("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
+      Logger.debug("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
 
       Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [q, opts], q)
     end
@@ -242,7 +247,7 @@ defmodule Bonfire.Common.Pointers do
     filters = id_filters ++ filters_override
 
     if filters_override && filters_override !=[] do
-      Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} (provided by opts.filters_override)")
+      Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} (provided by opts.filters_override)")
 
       schema_or_query
       |> where(^filters_override)
@@ -250,13 +255,13 @@ defmodule Bonfire.Common.Pointers do
       # |> IO.inspect
     else
       if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
-        Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
+        Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
 
         schema_or_query
         |> id_filter(id_filters)
         # |> IO.inspect
       else
-        Logger.info("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
+        Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
 
         Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [schema_or_query, opts], schema_or_query)
           |> where(^filters_override)
@@ -275,7 +280,7 @@ defmodule Bonfire.Common.Pointers do
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
       query = case Bonfire.Common.QueryModules.maybe_query(schema, [filters(schema, filters, opts), opts]) do
       query when not is_nil(query) ->
-        Logger.info("Pointers: using the QueryModule associated with #{schema}")
+        Logger.debug("Pointers: using the QueryModule associated with #{schema}")
 
         query
         # |> IO.inspect

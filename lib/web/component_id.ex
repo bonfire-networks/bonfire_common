@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Web.ComponentID do
 
   def new(component_module, object_id) when is_binary(object_id) do
     component_id = Pointers.ULID.generate()
-    Logger.info("ComponentID: stateless component #{component_module} for object id #{object_id} now has ID: #{component_id}")
+    Logger.debug("ComponentID: stateless component #{component_module} for object id #{object_id} now has ID: #{component_id}")
 
     save(component_module, object_id, component_id)
 
@@ -20,10 +20,10 @@ defmodule Bonfire.Common.Web.ComponentID do
 
 
   def send_updates(component_module, object_id, assigns) do
-    Logger.info("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
+    Logger.debug("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
 
     for component_id <- ids(component_module, object_id) do
-      Logger.info("ComponentID: try stateful component with ID #{component_id}")
+      Logger.debug("ComponentID: try stateful component with ID #{component_id}")
       Phoenix.LiveView.send_update(component_module, [id: component_id] ++ assigns)
     end
   end
@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Web.ComponentID do
 
     Process.put(dictionary_key_id,
       (ids(dictionary_key_id) ++ [component_id])
-      |> IO.inspect()
+      #|> IO.inspect()
     )
   end
 

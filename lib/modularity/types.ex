@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Utils
+  require Logger
 
   def object_type(%{__typename: type}), do: object_type(type) # for graphql queries
   def object_type(%{table_id: type}), do: object_type(type) # for schema-less queries
@@ -30,7 +31,8 @@ defmodule Bonfire.Common.Types do
   end
 
   def object_type(type) do
-    type
+    Logger.error("Type.object_type: could not search for a type for #{inspect type}")
+    nil
   end
 
 end

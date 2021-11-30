@@ -259,12 +259,12 @@ defmodule Bonfire.Repo do
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts) when is_list(objects) and is_list(path) and is_list(preloads) do
-    Logger.info("maybe_preloads_per_nested_schema iterate list of preloads")
+    Logger.debug("maybe_preloads_per_nested_schema iterate list of preloads")
     Enum.reduce(preloads, objects, &maybe_preloads_per_nested_schema(&2, path, &1, opts))
   end
 
   def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts) when is_list(objects) do
-    Logger.info("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
+    Logger.debug("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
 
     with {_old, loaded} <- get_and_update_in(
       objects,
@@ -279,7 +279,7 @@ defmodule Bonfire.Repo do
   def maybe_preloads_per_schema(object, _, _, _opts), do: object
 
   def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}, opts \\ []) when object_schema==schema do
-    Logger.info("maybe_preloads_per_schema preloading schema: #{inspect schema}")
+    Logger.debug("maybe_preloads_per_schema preloading schema: #{inspect schema}")
     maybe_do_preload(object, preloads)
     # TODO: make one preload per get_and_update_in to avoid n+1
   end

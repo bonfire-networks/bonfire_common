@@ -48,13 +48,13 @@ defmodule Bonfire.Common.Pointers.Preload do
   def maybe_preload_nested_pointers(object, keys, opts \\ [])
 
     def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_map(object) do
-    Logger.info("maybe_preload_nested_pointers: try object with list of keys: #{inspect keys}")
+    Logger.debug("maybe_preload_nested_pointers: try object with list of keys: #{inspect keys}")
 
     do_maybe_preload_nested_pointers(object, nested_keys(keys), opts)
   end
 
   def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_list(object) and length(object)>0 do
-    Logger.info("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
+    Logger.debug("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
 
     do_maybe_preload_nested_pointers(
       object |> Enum.reject(&(&1==[])),
@@ -71,7 +71,7 @@ defmodule Bonfire.Common.Pointers.Preload do
   end
 
   defp do_maybe_preload_nested_pointers(object, keylist, opts) when keylist !=[] do
-    Logger.info("do_maybe_preload_nested_pointers: try with get_and_update_in")
+    Logger.debug("do_maybe_preload_nested_pointers: try with get_and_update_in")
 
     with {_old, loaded} <- object
                           # |> IO.inspect(label: "object")
@@ -84,12 +84,12 @@ defmodule Bonfire.Common.Pointers.Preload do
 
 
   def maybe_preload_pointer(%Pointers.Pointer{} = pointer, opts \\ []) do
-    Logger.info("maybe_preload_pointer: follow")
+    Logger.debug("maybe_preload_pointer: follow")
 
     with {:ok, obj} <- Bonfire.Common.Pointers.get(pointer, opts) do
       obj
     else e ->
-      Logger.info("maybe_preload_pointer: could not fetch pointer: #{inspect e} #{inspect pointer}")
+      Logger.debug("maybe_preload_pointer: could not fetch pointer: #{inspect e} #{inspect pointer}")
       pointer
     end
   end
