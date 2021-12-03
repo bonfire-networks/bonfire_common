@@ -2,6 +2,11 @@ defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Utils
   require Logger
 
+  def object_type(%Ecto.Association.NotLoaded{}) do
+    Logger.error("Types.object_type: cannot detect the type on an association that wasn't preloaded")
+    nil
+  end
+
   def object_type(%{__typename: type}), do: object_type(type) # for graphql queries
   def object_type(%{table_id: type}), do: object_type(type) # for schema-less queries
   def object_type(%{pointer_id: type}), do: object_type(type) # for AP objects
