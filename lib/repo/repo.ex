@@ -151,7 +151,7 @@ defmodule Bonfire.Repo do
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
   end
   def paginate(queryable, opts, repo_opts) when is_map(opts) do
-    paginate(queryable, Keyword.new(opts), repo_opts)
+    paginate(queryable, opts |> Utils.input_to_atoms() |> Keyword.new(), repo_opts)
   end
   def paginate(queryable, _, repo_opts) do
     paginate(queryable, @default_cursor_fields, repo_opts)
