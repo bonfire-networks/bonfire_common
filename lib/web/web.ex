@@ -107,7 +107,7 @@ defmodule Bonfire.Web do
       import Phoenix.Controller
       import Phoenix.LiveView.Router
 
-      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1]
+      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1, require_if_enabled: 1]
 
       alias Bonfire.Common.Utils
       import Utils

@@ -100,7 +100,7 @@ defmodule Bonfire.Common.Extend do
         use unquote(module)
       end
     else
-      Logger.debug("Did not find module to use: #{module}")
+      Logger.debug("Did not find module to use: #{inspect module}")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           use unquote(fallback_module)
@@ -119,7 +119,7 @@ defmodule Bonfire.Common.Extend do
         import unquote(module)
       end
     else
-      Logger.info("Did not find module to import: #{module}")
+      Logger.debug("Did not find module to import: #{inspect module}")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
@@ -127,5 +127,25 @@ defmodule Bonfire.Common.Extend do
       end
     end
   end
+
+  defmacro require_if_enabled(module, fallback_module \\ nil), do: quoted_require_if_enabled(module, fallback_module)
+
+  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_require_if_enabled(module_name_ast |> Macro.to_string() |> IO.inspect |> Utils.maybe_str_to_module() |> IO.inspect, fallback_module)
+  def quoted_require_if_enabled(module, fallback_module \\ nil) do
+    if is_atom(module) and module_enabled?(module) do
+      # Logger.debug("Found module to require: #{module}")
+      quote do
+        require unquote(module)
+      end
+    else
+      Logger.debug("Did not find module to require: #{inspect module}")
+      if is_atom(fallback_module) and module_enabled?(fallback_module) do
+        quote do
+          require unquote(fallback_module)
+        end
+      end
+    end
+  end
+
 
 end
