@@ -27,10 +27,7 @@ defmodule Bonfire.Repo.Query do
       import Ecto.Query
 
       # `reusable_join` and `join_preload` helpers
-      import EctoSparkles.ReusableJoin
-      # require EctoSparkles.ReusableJoin
-      import EctoSparkles.JoinPreload
-      # require EctoSparkles.JoinPreload
+      import EctoSparkles
 
       require Logger
 
