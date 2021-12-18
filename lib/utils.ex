@@ -1024,7 +1024,7 @@ defmodule Bonfire.Common.Utils do
   defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
   defp debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind) do
-    debug_exception(Bonfire.Repo.ChangesetErrors.cs_to_string(cs), exception, stacktrace, kind)
+    debug_exception(EctoSparkles.Changesets.Errors.cs_to_string(cs), exception, stacktrace, kind)
   end
 
   defp debug_exception(msg, exception, stacktrace, kind) do
@@ -1057,7 +1057,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp debug_banner(_kind, %Ecto.Changeset{} = cs, _) do
-    Bonfire.Repo.ChangesetErrors.cs_to_string(cs)
+    EctoSparkles.Changesets.Errors.cs_to_string(cs)
   end
 
   defp debug_banner(kind, exception, stacktrace) do
@@ -1065,7 +1065,7 @@ defmodule Bonfire.Common.Utils do
     else: inspect exception
   end
 
-  def error_msg(%Ecto.Changeset{} = cs), do: Bonfire.Repo.ChangesetErrors.cs_to_string(cs)
+  def error_msg(%Ecto.Changeset{} = cs), do: EctoSparkles.Changesets.Errors.cs_to_string(cs)
   def error_msg(%{message: message}), do: message
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect message

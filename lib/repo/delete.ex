@@ -15,7 +15,20 @@ defmodule Bonfire.Repo.Delete do
   @doc "Marks an entry as deleted in the database or throws an error"
   def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
 
-  defp do_soft_delete(it), do: repo().update(Bonfire.Repo.Changeset.soft_delete_changeset(it))
+  defp do_soft_delete(it), do: repo().update(soft_delete_changeset(it))
+
+  #  @spec soft_delete_changeset(Changeset.t(), atom, any) :: Changeset.t()
+  @doc "Creates a changeset for deleting an entity"
+  def soft_delete_changeset(it, column \\ :deleted_at, error \\ "was already deleted") do
+    cs = Changeset.cast(it, %{}, [])
+
+    case Changeset.fetch_field(cs, column) do
+      :error -> Changeset.change(cs, [{column, DateTime.utc_now()}])
+      {_, nil} -> Changeset.change(cs, [{column, DateTime.utc_now()}])
+      {_, _} -> Changeset.add_error(cs, column, error)
+    end
+  end
+
 
   @spec hard_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Actually deletes an entry from the database"
