@@ -21,6 +21,7 @@ defmodule Bonfire.Common.Types do
 
   def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
 
+  # TODO: autogenerate from config/pointer tables/API schema, etc?
   def object_type(type) when type in [ValueFlows.EconomicEvent, "EconomicEvent", "2CTVA10BSERVEDF10WS0FVA1VE"], do: ValueFlows.EconomicEvent
   def object_type(type) when type in [ValueFlows.EconomicResource, "EconomicResource"], do: ValueFlows.EconomicResource
   def object_type(type) when type in [ValueFlows.Planning.Intent, "Intent", "ValueFlows.Planning.Offer", "ValueFlows.Planning.Need", "1NTENTC0V1DBEAN0FFER0RNEED"], do: ValueFlows.Planning.Intent
