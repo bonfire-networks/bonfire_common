@@ -27,6 +27,23 @@ defmodule Bonfire.Repo do
 
   require Logger
 
+  defmacro __using__(opts) do
+    quote do
+      # import the repo() function
+      import Bonfire.Common.Config, only: [repo: 0]
+
+      # import ecto `from` etc
+      import Ecto.Query
+
+      # for `reusable_join` and `join_preload` helpers
+      import EctoSparkles
+
+      require Logger
+
+    end
+  end
+
+
   # @doc """
   # Dynamically loads the repository url from the
   # DATABASE_URL environment variable.
