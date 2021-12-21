@@ -87,7 +87,7 @@ defmodule Bonfire.Common.Pointers do
   def many!(filters \\ [], opts \\ []), do: pointer_query(filters, opts) |> repo().many()
 
 
-  defp pointer_query(filters, opts) do
+  def pointer_query(filters, opts) do
 
     q = Queries.query(nil, filters)
 

@@ -70,8 +70,8 @@ defmodule Bonfire.Common.Pointers.Preload do
     keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> IO.inspect(label: "flatten nested keys")
   end
 
-  defp do_maybe_preload_nested_pointers(object, keylist, opts) when keylist !=[] do
-    Logger.debug("do_maybe_preload_nested_pointers: try with get_and_update_in")
+  defp do_maybe_preload_nested_pointers(object, keylist, opts) when is_struct(object) or is_list(object) and not is_nil(keylist) and keylist !=[] do
+    Logger.debug("do_maybe_preload_nested_pointers: try with get_and_update_in for #{inspect object}")
 
     with {_old, loaded} <- object
                           # |> IO.inspect(label: "object")

@@ -727,6 +727,9 @@ defmodule Bonfire.Common.Utils do
   def current_user(%{assigns: assigns} = _socket) do
     current_user(assigns)
   end
+  def current_user(%{socket: socket} = _socket) do
+    current_user(socket)
+  end
   def current_user(list) when is_list(list) do
     current_user(Map.new(list))
   end
@@ -736,20 +739,29 @@ defmodule Bonfire.Common.Utils do
   end
 
 
-  def current_account(%{assigns: assigns} = _socket) do
-    current_account(assigns)
-  end
+
   def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do
-    current_account
-  end
-  def current_account(%{__context__: %{current_account: current_account}} = _assigns) when not is_nil(current_account) do
     current_account
   end
   def current_account(%Bonfire.Data.Identity.Account{id: _} = current_account) do
     current_account
   end
-  def current_account(_), do: nil
-
+  def current_account(%{context: context} = _api_opts) do
+    current_account(context)
+  end
+  def current_account(%{__context__: context} = _assigns) do
+    current_account(context)
+  end
+  def current_account(%{assigns: assigns} = _socket) do
+    current_account(assigns)
+  end
+  def current_account(%{socket: socket} = _socket) do
+    current_account(socket)
+  end
+  def current_account(other) do
+    Logger.debug("No current_account found in #{inspect other}")
+    nil
+  end
 
   # defdelegate content(conn, name, type, opts \\ [do: ""]), to: Bonfire.Common.Web.ContentAreas
 
