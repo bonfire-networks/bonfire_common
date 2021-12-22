@@ -1,12 +1,20 @@
+defmodule Bonfire.Web.Gettext.Plural do
+  @moduledoc """
+  Defines a plural forms module for Gettext that uses CLDR plural rules
+  https://cldr.unicode.org/index/cldr-spec/plural-rules
+  """
+  use Cldr.Gettext.Plural, cldr_backend: Bonfire.Web.Cldr
+end
 defmodule Bonfire.Web.Gettext do
-  @default_locale "en" # TODO: configurable?
-
+  @moduledoc """
+  Gettext module.
+  It is recommended to use the macros in `Bonfire.Web.Gettext.Helpers` instead.
+  """
   use Gettext,
     otp_app: :bonfire_common,
-    default_locale: @default_locale,
+    default_locale: Bonfire.Common.Config.get(:default_locale, "en"),
+    plural_forms: Bonfire.Web.Gettext.Plural,
     priv: Bonfire.Common.Config.get!(:localisation_path)
-
-  def default_locale, do: @default_locale
 
 end
 defmodule Bonfire.Web.Gettext.Helpers do

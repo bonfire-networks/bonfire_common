@@ -1,27 +1,19 @@
-# bonfire_data_access_control = "~> 0.1"
-# bonfire_data_activity_pub = "~> 0.1"
-# bonfire_data_identity = "~> 0.1"
-# bonfire_data_social = "~> 0.1"
-gettext = "~> 0.11"
-jason = "~> 1.0"
+gettext = "~> 0.11" # localisation 
+ex_cldr_languages, "~> 0.2.0" # localise language names
+ex_cldr = "~> 2.23" # internationalisation
+timex = "~> 3.6" # date/times
+recase = "~> 0.5" # string recasing
+jason = "~> 1.0" # json parsing
+# phoenix framework
 phoenix = "~> 1.5"
 phoenix_ecto = "~> 4.1"
 phoenix_html = "~> 2.11"
 phoenix_live_dashboard = "~> 0.2"
 phoenix_live_view = "~> 0.14"
 plug_cowboy = "~> 2.0"
-recase = "~> 0.5" # string recasing
-timex = "~> 3.6" # date/times
-# fake data generation, mostly for tests
-faker = "~> 0.12"
-# specific for Publisher:Thesis extension
-# thesis = "~> 0.3"
 paginator = "~> 1.0.4" # paginate queries
-# to handle markdown:
-earmark = "~> 1.4"
-# to convert between map/struct/keyword list
-mappable = "~> 0.2.0"
-# UI icons:
-surface_heroicons = "~> 0.5"
-# html sanitation
-html_sanitize_ex = "~> 1.4"
+faker = "~> 0.12" # fake data generation, mostly for tests
+earmark = "~> 1.4" # handle markdown
+mappable = "~> 0.2.0" # convert between map/struct/keyword list
+surface_heroicons = "~> 0.5" # icons for UI
+html_sanitize_ex = "~> 1.4" # html sanitation
