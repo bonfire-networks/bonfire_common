@@ -148,6 +148,8 @@ defmodule Bonfire.Web do
       alias Bonfire.Common.Utils
       import Utils
 
+      import Bonfire.Common.Config, only: [repo: 0]
+
       # icons
       alias Heroicons.Solid
       alias Heroicons.Outline

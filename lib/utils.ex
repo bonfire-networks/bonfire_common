@@ -690,22 +690,26 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def avatar_url(%{profile: %{id: _} = profile}), do: avatar_url(profile)
+  def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
-  def avatar_url(obj), do: image_url(obj)
-  # def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id)
-  # def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url()
+  def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.avatar_url(id)
+  def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128"
+  def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Repo.maybe_preload(user, :shared_user) |> avatar_url()
+  # def avatar_url(obj), do: image_url(obj)
+  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id)
+  def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url()
 
-  def image_url(%{profile: %{id: _} = profile}), do: image_url(profile)
+  def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{image: url}) when is_binary(url), do: url
-  def image_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # FIXME?
-  def image_url(_obj), do: Bonfire.Me.Fake.image_url() # FIXME better fallback
+  def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225"
+  def image_url(_obj), do: "https://picsum.photos/600/225"
+  # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 
 
 
@@ -746,6 +750,9 @@ defmodule Bonfire.Common.Utils do
   def current_account(%Bonfire.Data.Identity.Account{id: _} = current_account) do
     current_account
   end
+  def current_account(%{accounted: %{account: account}} = _user) when is_map(account) do
+    account
+  end
   def current_account(%{context: context} = _api_opts) do
     current_account(context)
   end
@@ -757,6 +764,21 @@ defmodule Bonfire.Common.Utils do
   end
   def current_account(%{socket: socket} = _socket) do
     current_account(socket)
+  end
+  def current_account(other) when is_map(other) do
+    case current_user(other) do
+      nil ->
+
+        Logger.debug("No current_account found in #{inspect other}")
+        nil
+
+      user ->
+        case user
+        |> Bonfire.Repo.maybe_preload(accounted: :account) do
+          %{accounted: %{account: account}} -> account
+          _ -> nil
+        end
+    end
   end
   def current_account(other) do
     Logger.debug("No current_account found in #{inspect other}")
