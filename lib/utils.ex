@@ -423,8 +423,11 @@ defmodule Bonfire.Common.Utils do
   defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter(element), do: element
 
-  def struct_to_map(struct = %{__struct__: _}) do
-    Map.from_struct(struct) |> Map.drop([:__meta__]) |> map_filter_empty() #|> IO.inspect(label: "clean")
+  def struct_to_map(struct = %{__struct__: type}) do
+    Map.from_struct(struct)
+    |> Map.drop([:__meta__])
+    |> Map.put_new(:__typename, type)
+    |> map_filter_empty() #|> IO.inspect(label: "clean")
   end
   def struct_to_map(other) do
     other
@@ -485,6 +488,10 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_merge_to_struct(target, merge) when is_struct(target), do: struct(target, maybe_from_struct(merge))
   def maybe_merge_to_struct(obj1, obj2), do: struct_to_map(Map.merge(obj2, obj1)) # to handle objects queried without schema
+
+  def merge_structs_as_map(%{__typename: type} = target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge) |> Map.put(:__typename, type)
+  def merge_structs_as_map(target, merge) when is_struct(target) or is_struct(merge), do: merge_structs_as_map(maybe_from_struct(target), maybe_from_struct(merge))
+  def merge_structs_as_map(target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge)
 
   def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
   def maybe_from_struct(obj), do: obj
@@ -750,7 +757,7 @@ defmodule Bonfire.Common.Utils do
   def current_account(%Bonfire.Data.Identity.Account{id: _} = current_account) do
     current_account
   end
-  def current_account(%{accounted: %{account: account}} = _user) when is_map(account) do
+  def current_account(%{accounted: %{account: %{id: _} = account}} = _user) do
     account
   end
   def current_account(%{context: context} = _api_opts) do
