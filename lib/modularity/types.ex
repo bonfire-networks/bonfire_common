@@ -29,17 +29,22 @@ defmodule Bonfire.Common.Types do
   def object_type(type) when type in [ValueFlows.Process, "Process"], do: ValueFlows.Process
 
 
-  def object_type(type) when is_binary(type) or is_atom(type) do
-    with {:ok, %{schema: schema}} <- Pointers.Tables.table(type) do
+  def object_type(type) when is_binary(type) do
+    with {:ok, schema} <- Pointers.Tables.schema(type) do
       schema
     else _ ->
-      Logger.error("Type.object_type: could not find a type for #{inspect type}")
-      type
+      Logger.error("Types.object_type: could not find a Pointers.Table schema for #{inspect type}")
+      nil
     end
   end
 
+  def object_type(type) when is_atom(type) do
+    Logger.debug("Types.object_type: atom might be a schema type: #{inspect type}")
+    type
+  end
+
   def object_type(type) do
-    Logger.error("Type.object_type: not pattern matched for #{inspect type}")
+    Logger.error("Types.object_type: no pattern matched for #{inspect type}")
     nil
   end
 
