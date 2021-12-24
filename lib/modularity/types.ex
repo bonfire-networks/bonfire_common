@@ -19,6 +19,7 @@ defmodule Bonfire.Common.Types do
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
+  def object_type(type) when type in [Bonfire.Data.Identity.User, "5EVSER1S0STENS1B1YHVMAN01D", "Person", "Organization"], do: Bonfire.Data.Identity.User
   def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
 
   # TODO: autogenerate from config/pointer tables/API schema, etc?
@@ -32,12 +33,13 @@ defmodule Bonfire.Common.Types do
     with {:ok, %{schema: schema}} <- Pointers.Tables.table(type) do
       schema
     else _ ->
+      Logger.error("Type.object_type: could not find a type for #{inspect type}")
       type
     end
   end
 
   def object_type(type) do
-    Logger.error("Type.object_type: could not search for a type for #{inspect type}")
+    Logger.error("Type.object_type: not pattern matched for #{inspect type}")
     nil
   end
 
