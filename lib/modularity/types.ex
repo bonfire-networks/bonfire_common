@@ -1,5 +1,7 @@
 defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Utils
+  alias Pointers.Pointer
+
   require Logger
 
   def object_type(%Ecto.Association.NotLoaded{}) do
@@ -7,7 +9,7 @@ defmodule Bonfire.Common.Types do
     nil
   end
 
-  def object_type(%{__typename: type}), do: object_type(type) # for graphql queries
+  def object_type(%{__typename: type}) when type !=Pointer, do: object_type(type) # for graphql queries
   def object_type(%{table_id: type}), do: object_type(type) # for schema-less queries
   def object_type(%{pointer_id: type}), do: object_type(type) # for AP objects
   def object_type(%{index_type: type}), do: object_type(Utils.maybe_str_to_atom(type)) # for search results
@@ -19,7 +21,8 @@ defmodule Bonfire.Common.Types do
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
-  def object_type(type) when type in [Bonfire.Data.Identity.User, "5EVSER1S0STENS1B1YHVMAN01D", "Person", "Organization"], do: Bonfire.Data.Identity.User
+  def object_type(type) when type in [Bonfire.Data.Identity.User, "5EVSER1S0STENS1B1YHVMAN01D", "User", "Person", "Organization"], do: Bonfire.Data.Identity.User
+  def object_type(type) when type in [Bonfire.Data.Social.Post, "30NF1REP0STTAB1ENVMBER0NEE", "Post"], do: Bonfire.Data.Social.Post
   def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
 
   # TODO: autogenerate from config/pointer tables/API schema, etc?

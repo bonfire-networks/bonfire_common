@@ -126,7 +126,7 @@ defmodule Bonfire.Common.Utils do
     if is_ulid?(id) do
       id
     else
-      Logger.error("Expected ULID ID, got #{inspect id}")
+      Logger.error("ulid/1: Expected ULID ID, got #{inspect id}")
       nil
     end
   end
