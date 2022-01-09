@@ -167,7 +167,7 @@ defmodule Bonfire.Repo do
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
   end
-  def paginate(queryable, opts, repo_opts) when is_map(opts) do
+  def paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
     paginate(queryable, opts |> Utils.input_to_atoms() |> Keyword.new(), repo_opts)
   end
   def paginate(queryable, _, repo_opts) do
