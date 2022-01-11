@@ -15,7 +15,7 @@ defmodule Bonfire.Repo do
   import Ecto.Query
 
   @pagination_defaults [
-    limit: 10,                           # sets the default limit TODO: put in config
+    limit: (if Bonfire.Common.Config.get(:env)== :dev, do: 5, else: 40),                           # sets the default limit TODO: put in config
     maximum_limit: 200,                  # sets the maximum limit TODO: put in config
     include_total_count: false,           # include total count by default?
     total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
