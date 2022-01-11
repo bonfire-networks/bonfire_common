@@ -20,7 +20,7 @@ defmodule Bonfire.Common.Extend do
   """
   def extension_enabled?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    Config.get_ext(extension, :disabled) |> IO.inspect(label: "#{inspect extension} disabled?") != true and extension_loaded?(extension)
+    Config.get_ext(extension, :disabled) != true and extension_loaded?(extension)
   end
 
   @doc """

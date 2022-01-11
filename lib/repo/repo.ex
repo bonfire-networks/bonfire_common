@@ -38,6 +38,8 @@ defmodule Bonfire.Repo do
       # for `reusable_join` and `join_preload` helpers
       import EctoSparkles
 
+      alias Ecto.Changeset
+
       require Logger
 
     end
