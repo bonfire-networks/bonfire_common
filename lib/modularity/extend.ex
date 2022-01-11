@@ -8,7 +8,7 @@ defmodule Bonfire.Common.Extend do
   # TODO: also make it possible to disable individual modules in config
   """
   def module_enabled?(module) do
-    module_exists?(module) && extension_enabled?(module)
+    module_exists?(module) and extension_enabled?(module)
   end
 
   def module_exists?(module) do
@@ -20,7 +20,7 @@ defmodule Bonfire.Common.Extend do
   """
   def extension_enabled?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    extension_loaded?(extension) and !Config.get_ext(extension, :disabled)
+    Config.get_ext(extension, :disabled) |> IO.inspect(label: "#{inspect extension} disabled?") != true and extension_loaded?(extension)
   end
 
   @doc """
