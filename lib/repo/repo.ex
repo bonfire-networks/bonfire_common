@@ -108,11 +108,11 @@ defmodule Bonfire.Repo do
     end
   end
 
-  def upsert(q) do
-    insert!(
-      q,
-      on_conflict: :nothing
-    )
+  def upsert(cs) do
+    cs
+    |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
+    # |> IO.inspect(label: "upsert cs")
+    |> insert(on_conflict: :nothing)
   end
 
   @doc """
