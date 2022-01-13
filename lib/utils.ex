@@ -1072,7 +1072,7 @@ defmodule Bonfire.Common.Utils do
 
     debug_log(msg, exception, stacktrace, kind)
 
-    if Config.get!(:env) == :dev do
+    if Config.get!(:env) == :dev and Config.get(:show_debug_errors_in_dev) !=false do
 
       exception = if exception, do: debug_banner(kind, exception, stacktrace)
       stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
