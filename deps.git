@@ -5,4 +5,4 @@ bonfire_data_social = "https://github.com/bonfire-networks/bonfire_data_social#m
 # bonfire_mailer = "https://github.com/bonfire-networks/bonfire_mailer#main"
 surface_heroicons = "https://github.com/rocketinsights/surface_heroicons"
 ecto_sparkles = "https://github.com/bonfire-networks/ecto_sparkles#main"
-phoenix_gon = "https://github.com/khusnetdinov/phoenix_gon"
+phoenix_gon = "https://github.com/bonfire-networks/phoenix_gon"
