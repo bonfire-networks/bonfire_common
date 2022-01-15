@@ -35,6 +35,10 @@ defmodule Bonfire.Web do
     end
   end
 
+  def layout_view(opts \\ []) do
+    view(opts)
+  end
+
   def live_view(opts \\ []) do
     #IO.inspect(live_view: opts)
     opts =
