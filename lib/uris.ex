@@ -21,7 +21,7 @@ defmodule Bonfire.Common.URIs do
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) ->
-        Logger.debug("path: resolving with type: #{inspect type}")
+        Logger.debug("path: detected object_type #{inspect type}")
         path(type, args_with_id)
 
       none ->
