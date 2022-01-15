@@ -703,7 +703,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.avatar_url(id)
-  def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128"
+  def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128?blur"
   def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Repo.maybe_preload(user, :shared_user) |> avatar_url()
   # def avatar_url(obj), do: image_url(obj)
   def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id)
@@ -714,8 +714,11 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{image: url}) when is_binary(url), do: url
-  def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225"
-  def image_url(_obj), do: "https://picsum.photos/600/225"
+  def image_url(%{profile: profile}), do: image_url(profile)
+  def image_url(%{name: name}) when is_binary(name), do: "https://loremflickr.com/600/225/#{name}/all?lock=1"
+  def image_url(%{note: note}) when is_binary(note), do: "https://loremflickr.com/600/225/#{note}/all?lock=1"
+  def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225?blur"
+  def image_url(_obj), do: "https://picsum.photos/600/225?blur"
   # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 
 
