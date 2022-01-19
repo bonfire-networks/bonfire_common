@@ -17,7 +17,9 @@ defmodule Bonfire.Common.Types do
   def object_type(%{__struct__: schema}) when schema !=Pointers.Pointer, do: object_type(schema)
 
 
-  def object_type(%{display_username: "@"<>_}), do: Bonfire.Data.Identity.User
+  def object_type(%{display_username: display_username}), do: object_type(display_username)
+  def object_type("@"<>_), do: Bonfire.Data.Identity.User
+  def object_type("%40"<>_), do: Bonfire.Data.Identity.User
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 

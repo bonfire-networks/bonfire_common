@@ -17,7 +17,7 @@ defmodule Bonfire.Common.URIs do
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
-    args_with_id = [path_id(object)] ++ args
+    args_with_id = ([path_id(object)] ++ args) |> Enum.filter(& &1) #|> IO.inspect()
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) ->
@@ -63,26 +63,35 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
       with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
-        Logger.debug("path: found a pointer #{inspect pointer}")
+        Logger.debug("path_by_id: found a pointer #{inspect pointer}")
         object
         |> Map.merge(pointer)
         |> path(args)
       else _ ->
-        Logger.error("path: could not find a Pointer with id #{id}")
+        Logger.error("path_by_id: could not find a Pointer with id #{id}")
         fallback(id, args)
       end
     else
-      Logger.error("path: could not find a matching route for #{id}")
-      fallback(id, args)
+      case path_id(id) do
+        maybe_username when is_binary(maybe_username) and not is_nil(maybe_username) ->
+          Logger.debug("path_by_id: possibly found a username #{inspect maybe_username}")
+          path(Bonfire.Data.Identity.User, maybe_username)
+
+        _ ->
+          Logger.error("path_by_id: could not find a matching route for #{id}")
+          fallback(id, args)
+      end
+
     end
   end
 
 
+  # defp path_id("@"<>username), do: username
   defp path_id(%{username: username}), do: username
-  defp path_id(%{display_username: "@"<>username}), do: username
-  defp path_id(%{display_username: username}), do: username
-  defp path_id(%{character: %{username: username}}), do: username
+  defp path_id(%{display_username: display_username}), do: path_id(display_username)
+  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Repo.maybe_preload(:character) |> Utils.e(:character, nil) |> path_id()
   defp path_id(%{id: id}), do: id
+  defp path_id(other), do: other
 
   def url(view_module_or_path_name_or_object, args \\ []) do
     base_url()<>path(view_module_or_path_name_or_object, args)
