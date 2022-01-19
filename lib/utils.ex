@@ -1088,7 +1088,7 @@ defmodule Bonfire.Common.Utils do
 
   defp debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
 
-    Logger.error(msg)
+    Logger.error("#{inspect msg}")
 
     if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
