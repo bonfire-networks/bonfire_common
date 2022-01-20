@@ -17,6 +17,18 @@ defmodule Bonfire.Common.Utils do
   # let's just say that 0 is nothing
   def strlen(x) when x == 0, do: 0
 
+  defp debug_label(caller, label, _opts) do
+    case caller.function do
+      {fun, arity} -> "[#{caller.module}:#{fun}/#{arity}:#{caller.line}] #{label}"
+      _ -> "[#{caller.file}:#{caller.line}] #{label}"
+    end
+  end
+
+  defmacro debug(thing, label \\ "", opts \\ []) do
+    label = debug_label(__CALLER__, label, opts)
+    quote do: IO.inspect(unquote(thing), label: unquote(label))
+  end
+
   @doc "Returns a value, or a fallback if nil/false"
   def e(key, fallback) do
     key || fallback
@@ -126,8 +138,9 @@ defmodule Bonfire.Common.Utils do
     if is_ulid?(id) do
       id
     else
-      Logger.error("ulid/1: Expected ULID ID, got #{inspect id}")
-      nil
+      throw id
+      # Logger.error("ulid/1: Expected ULID ID, got #{inspect id}")
+      # nil
     end
   end
 
@@ -1002,11 +1015,9 @@ defmodule Bonfire.Common.Utils do
   def undead_params(socket, fun), do: undead(socket, fun, {:mount, :noreply})
 
   def undead(socket, fun, return_key \\ :noreply) do
-    ret = fun.()
-
-    #IO.inspect(undead_ret: ret)
-
-    case ret do
+    fun.()
+    # |> IO.inspect(label: :undead)
+    |> case do
       {:ok, socket} -> {:ok, socket}
       {:ok, socket, data} -> {:ok, socket, data}
       {:noreply, socket} -> {:noreply, socket}

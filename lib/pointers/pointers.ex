@@ -1,19 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Pointers do
 
-  use OK.Pipe
+  use Arrows
   require Logger
-  import Ecto.Query
-
   import Bonfire.Common.Config, only: [repo: 0]
   import Bonfire.Common.Extend
   import_if_enabled Bonfire.Boundaries.Queries
+  import Ecto.Query
 
-  alias Pointers.Pointer
   alias Bonfire.Common.Pointers.Queries
-  alias Pointers.NotFound
   alias Bonfire.Common.Utils
   alias Bonfire.Common.ContextModules
+  alias Pointers.{NotFound, Pointer, Tables}
 
   def get!(id, opts \\ []) do
     with {:ok, obj} <- get(id, opts) do
@@ -27,13 +25,7 @@ defmodule Bonfire.Common.Pointers do
 
   def get({:ok, by}, opts), do: get(by, opts)
   def get(%{pointer_id: by}, opts), do: get(by, opts)
-
-  def get(id, opts) when is_binary(id) do
-    with {:ok, pointer} <- one(id, opts) do
-      get(pointer, opts)
-    end
-  end
-
+  def get(id, opts) when is_binary(id), do: one(id, opts) ~> get(opts)
   def get(%Pointer{} = pointer, opts) do
     with %{id: _} = obj <- follow!(pointer, opts) do
       {:ok,
@@ -47,34 +39,27 @@ defmodule Bonfire.Common.Pointers do
   rescue
     NotFound -> {:error, :not_found}
   end
-
-  def get(_, _) do
-    {:error, :not_found}
-  end
+  def get(_, _), do: {:error, :not_found}
 
   def one(id, opts \\ [])
-
   def one(id, opts) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid?(id) do
-      one([id: id], opts)
-    else
-      {:error, :not_found}
-    end
+    if Bonfire.Common.Utils.is_ulid?(id),
+      do: one([id: id], opts),
+      else: {:error, :not_found}
   end
-
   # TODO: boundary check by default in one and many?
-
   def one(filters, opts), do: pointer_query(filters, opts) |> repo().single()
 
   def one!(filters, opts \\ []), do: pointer_query(filters, opts) |> repo().one!()
 
   def list!(pointers)
-      when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
+  when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
     Pointers.follow!(pointers)
   end
 
-  def list!(ids) when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
+  def list!(ids)
+  when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
     with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: Pointers.follow!(ptrs)
   end
 
@@ -84,37 +69,40 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def many(filters \\ [], opts \\ []), do: {:ok, pointer_query(filters, opts) |> repo().many() }
+
   def many!(filters \\ [], opts \\ []), do: pointer_query(filters, opts) |> repo().many()
 
 
   def pointer_query(filters, opts) do
-
     q = Queries.query(nil, filters)
-
     if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
       Logger.debug("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
-
       q
-
     else
       Logger.debug("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
-
       Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [q, opts], q)
     end
   end
 
+  @doc "Turns a thing into a pointer if it is not already or returns nil"
+  def maybe_forge(%Pointer{}=thing), do: thing
+  def maybe_forge(%_{}=thing), do: if is_pointable?(thing), do: thing
+  def maybe_forge(_), do: nil
 
-  # already have a pointer - just return it
-  def maybe_forge!(%Pointer{} = pointer), do: pointer
+  @doc "Turns a thing into a pointer if it is not already. Errors if it cannot be performed"
+  def maybe_forge!(thing) do
+    case {thing, is_pointable?(thing)} do
+      {%Pointer{}, _} -> thing
+      {%_{}, true} -> forge!(thing)
+      {%_{pointer_id: pointer_id}, false} -> one!(id: pointer_id) # AP objects like ActivityPub.Actor
+    end        
+  end
 
-  # for ActivityPub objects (like ActivityPub.Actor)
-  def maybe_forge!(%{pointer_id: pointer_id} = _ap_object), do: one!(id: pointer_id)
-
-  # forge a pointer
-  def maybe_forge!(%{__struct__: _} = pointed), do: forge!(pointed)
+  defp is_pointable?(%struct{}), do: function_exported?(struct, :__pointers__, 1) && (struct.__pointers__(:role) == :pointable)
+  defp is_pointable?(_), do: false
 
   @doc """
-  Forge a pointer from a structure that participates in the meta abstraction.
+  Forge a pointer from a pointable object
 
   Does not hit the database.
 
