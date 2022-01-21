@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Pointers.Tables do
+  use Arrows
+  import Ecto.Query
+  import Bonfire.Common.Config, only: [repo: 0]
+
   alias Pointers.Pointer
   alias Pointers.Table
   alias Pointers.NotFound
   alias Bonfire.Common.Pointers.Tables.Queries
-  import Ecto.Query
-  import Bonfire.Common.Config, only: [repo: 0]
   require Logger
-  use OK.Pipe
 
   def one(id) when is_binary(id) do
     if Bonfire.Common.Utils.is_ulid?(id) do
@@ -66,7 +67,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   end
 
   def list_ids do
-    many(select: [:id]) ~>> Enum.map(& &1.id)
+    many(select: [:id]) ~> Enum.map(& &1.id)
   end
 
   def list_schemas() do

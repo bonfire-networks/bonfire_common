@@ -6,6 +6,20 @@ defmodule Bonfire.Common.Utils do
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
 
+  defmacro __using__(opts) do
+    quote do
+      alias Bonfire.Common.Utils
+      alias Bonfire.Common.Config
+      alias Bonfire.Common.Extend
+
+      require Utils
+      import Utils, unquote(opts) # can import specific functions with `only` or `except`
+
+      require Logger
+
+    end
+  end
+
   defdelegate module_enabled?(module), to: Extend
 
   def strlen(x) when is_nil(x), do: 0
@@ -38,13 +52,13 @@ defmodule Bonfire.Common.Utils do
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
   # def e(object, :current_user = key, fallback) do #temporary
-  #       IO.inspect(key: key)
-  #       IO.inspect(e_object: object)
+  #       debug(key: key)
+  #       debug(e_object: object)
 
   #       case object do
   #     %{__context__: context} ->
-  #       IO.inspect(key: key)
-  #       IO.inspect(e_context: context)
+  #       debug(key: key)
+  #       debug(e_context: context)
   #       # try searching in Surface's context (when object is assigns), if present
   #       map_get(object, key, nil) || map_get(context, key, nil) || fallback
 
@@ -133,14 +147,15 @@ defmodule Bonfire.Common.Utils do
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
-  def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1)
+  def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> Enum.filter(& &1)
   def ulid(id) do
     if is_ulid?(id) do
       id
     else
-      throw id
-      # Logger.error("ulid/1: Expected ULID ID, got #{inspect id}")
-      # nil
+      e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect id}"
+      # throw {:error, e}
+      Logger.error(e)
+      nil
     end
   end
 
@@ -289,7 +304,7 @@ defmodule Bonfire.Common.Utils do
     |> Phoenix.LiveView.assign(:__context__,
                           Map.get(socket.assigns, :__context__, %{})
                           |> Map.merge(maybe_to_map(assigns))
-    ) #|> IO.inspect(label: "assign_global")
+    ) #|> debug("assign_global")
   end
   def assign_global(socket, {_, _} = assign) do
     assign_global(socket, [assign])
@@ -440,7 +455,7 @@ defmodule Bonfire.Common.Utils do
     Map.from_struct(struct)
     |> Map.drop([:__meta__])
     |> Map.put_new(:__typename, type)
-    |> map_filter_empty() #|> IO.inspect(label: "clean")
+    |> map_filter_empty() #|> debug("clean")
   end
   def struct_to_map(other) do
     other
@@ -681,7 +696,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def is_html?(string) do
-    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> IO.inspect(label: "is_html?")
+    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
   end
 
   # open outside links in a new tab
@@ -830,7 +845,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def macro_inspect(fun) do
-      fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> IO.inspect(label: "Macro:")
+      fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> debug("Macro:")
   end
 
 
@@ -852,7 +867,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def pubsub_subscribe(topic, %Phoenix.LiveView.Socket{} = socket) when is_binary(topic) do
-    # IO.inspect(socket)
+    # debug(socket)
     if socket_connected_or_user?(socket) do
       pubsub_subscribe(topic)
     else
@@ -928,8 +943,8 @@ defmodule Bonfire.Common.Utils do
       |> names_of_assign_topics(assign_names)
       |> pubsub_subscribe(socket)
     else _ ->
-      IO.inspect(cannot_self_subscribe: nil)
-      # IO.inspect(cannot_self_subscribe: socket)
+      debug(cannot_self_subscribe: nil)
+      # debug(cannot_self_subscribe: socket)
     end
 
     socket
@@ -980,13 +995,13 @@ defmodule Bonfire.Common.Utils do
     names_of_assign_topics([assign_id] ++ assign_target_ids, assign_name)
   end
   defp names_of_assign_topics(assign_target_ids, assign_name) when is_list(assign_target_ids) and length(assign_target_ids)>0 do
-    IO.inspect(assign_identified_object: {assign_name, assign_target_ids})
+    debug(assign_identified_object: {assign_name, assign_target_ids})
     [{:assign, assign_name}] ++ assign_target_ids
     |> Enum.map(&maybe_to_string/1)
     |> Enum.join(":")
   end
   defp names_of_assign_topics(_, assign_name) do
-    IO.inspect(assign_god_level_object: {assign_name})
+    debug(assign_god_level_object: {assign_name})
     {:assign, assign_name}
   end
 
@@ -1016,7 +1031,7 @@ defmodule Bonfire.Common.Utils do
 
   def undead(socket, fun, return_key \\ :noreply) do
     fun.()
-    # |> IO.inspect(label: :undead)
+    # |> debug(:undead)
     |> case do
       {:ok, socket} -> {:ok, socket}
       {:ok, socket, data} -> {:ok, socket, data}
@@ -1034,7 +1049,7 @@ defmodule Bonfire.Common.Utils do
     error in Ecto.ConstraintError ->
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
     error in FunctionClauseError ->
-      IO.inspect(error)
+      debug(error)
       with %{
         arity: arity,
         function: function,
@@ -1049,7 +1064,12 @@ defmodule Bonfire.Common.Utils do
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
+    :exit, error ->
+      live_exception(socket, return_key, "An exceptional error caused the operation to stop", error, __STACKTRACE__)
+    :throw, error ->
+      live_exception(socket, return_key, "An exceptional error was thrown", error, __STACKTRACE__)
     error ->
+      debug(error)
       live_exception(socket, return_key, "An exceptional error occured", error, __STACKTRACE__)
   end
 
@@ -1155,7 +1175,7 @@ defmodule Bonfire.Common.Utils do
       fun = List.first(available_funs)
 
       if fun do
-        #IO.inspect(function_exists_in: module)
+        #debug(function_exists_in: module)
 
         try do
           apply(module, fun, args)

@@ -95,7 +95,7 @@ defmodule Bonfire.Common.Pointers do
       {%Pointer{}, _} -> thing
       {%_{}, true} -> forge!(thing)
       {%_{pointer_id: pointer_id}, false} -> one!(id: pointer_id) # AP objects like ActivityPub.Actor
-    end        
+    end
   end
 
   defp is_pointable?(%struct{}), do: function_exported?(struct, :__pointers__, 1) && (struct.__pointers__(:role) == :pointable)
@@ -350,7 +350,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def list_ids do
-    many(select: [:id]) ~>> Enum.map(& &1.id)
+    many(select: [:id]) ~> Enum.map(& &1.id)
   end
 
   @doc """
