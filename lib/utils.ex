@@ -32,15 +32,16 @@ defmodule Bonfire.Common.Utils do
   def strlen(x) when x == 0, do: 0
 
   defp debug_label(caller, label, _opts) do
+    file = Path.relative_to_cwd(caller.file)
     case caller.function do
-      {fun, arity} -> "[#{caller.module}:#{fun}/#{arity}:#{caller.line}] #{label}"
-      _ -> "[#{caller.file}:#{caller.line}] #{label}"
+      {fun, arity} -> "#{module_to_str(caller.module)}:#{fun}:/#{arity} - #{file}:#{caller.line} - "
+      _ -> "#{file}:#{caller.line} - "
     end
   end
 
   defmacro debug(thing, label \\ "", opts \\ []) do
-    label = debug_label(__CALLER__, label, opts)
-    quote do: IO.inspect(unquote(thing), label: unquote(label))
+    label =
+    quote do: IO.inspect(unquote(thing), label: "[inspect] "<>unquote(debug_label(__CALLER__, label, opts)<>label))
   end
 
   @doc "Returns a value, or a fallback if nil/false"
@@ -110,15 +111,21 @@ defmodule Bonfire.Common.Utils do
     e(object, key1, %{})
     |> e(key2, fallback)
   end
-
   def e(object, key1, key2, key3, fallback) do
     e(object, key1, key2, %{})
     |> e(key3, fallback)
   end
-
   def e(object, key1, key2, key3, key4, fallback) do
     e(object, key1, key2, key3, %{})
     |> e(key4, fallback)
+  end
+  def e(object, key1, key2, key3, key4, key5, fallback) do
+    e(object, key1, key2, key3, key4, %{})
+    |> e(key5, fallback)
+  end
+  def e(object, key1, key2, key3, key4, key5, key6, fallback) do
+    e(object, key1, key2, key3, key4, key5, %{})
+    |> e(key6, fallback)
   end
 
   def is_numeric(str) do
@@ -154,7 +161,7 @@ defmodule Bonfire.Common.Utils do
     else
       e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect id}"
       # throw {:error, e}
-      Logger.error(e)
+      Logger.warn(e)
       nil
     end
   end
@@ -423,6 +430,14 @@ defmodule Bonfire.Common.Utils do
     end
   end
   def maybe_str_to_module(atom) when is_atom(atom), do: atom
+
+  def module_to_str(str) when is_binary(str) do
+    case str do
+      "Elixir."<>name -> name
+      other -> other
+    end
+  end
+  def module_to_str(atom) when is_atom(atom), do: maybe_to_string(atom) |> module_to_str()
 
   def maybe_to_string(atom) when is_atom(atom) do
     Atom.to_string(atom)

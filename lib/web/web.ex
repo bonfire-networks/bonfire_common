@@ -73,48 +73,30 @@ defmodule Bonfire.Web do
 
   def live_plug(_opts \\ []) do
     quote do
-      alias Bonfire.Web.Router.Helpers, as: Routes
-      import Bonfire.Common.URIs
-
-      require Bonfire.Web.Gettext
-      import Bonfire.Web.Gettext.Helpers
+      unquote(common_helpers())
 
       import Phoenix.LiveView
-      require Logger
-
-      import Bonfire.Common.Utils
     end
   end
 
   def plug(_opts \\ []) do
     quote do
-      alias Bonfire.Web.Router.Helpers, as: Routes
-      import Bonfire.Common.URIs
-
-      require Bonfire.Web.Gettext
-      import Bonfire.Web.Gettext.Helpers
+      unquote(common_helpers())
 
       import Plug.Conn
       import Phoenix.Controller
-      require Logger
 
-      import Bonfire.Common.Utils
     end
   end
 
   def router(opts \\ []) do
     quote do
       use Phoenix.Router, unquote(opts)
-      require Logger
+      unquote(common_helpers())
 
       import Plug.Conn
       import Phoenix.Controller
       import Phoenix.LiveView.Router
-
-      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1, require_if_enabled: 1]
-
-      alias Bonfire.Common.Utils
-      import Utils
 
       # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.Router))
 
@@ -129,30 +111,39 @@ defmodule Bonfire.Web do
     end
   end
 
-  defp view_helpers do
+
+  defp common_helpers do
     quote do
       require Logger
+
+      use Bonfire.Common.Utils
+
+      # localisation
+      require Bonfire.Web.Gettext
+      import Bonfire.Web.Gettext.Helpers
+
+      # deprecated: Phoenix's Helpers
+      alias Bonfire.Web.Router.Helpers, as: Routes
+      # use instead: Bonfire's voodoo routing, eg: `path(Bonfire.Social.Web.BrowseLive):
+      import Bonfire.Common.URIs
+
+      import Bonfire.Common.Config, only: [repo: 0]
+
+      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1, require_if_enabled: 1]
+
+      import Bonfire.Common.Web.ErrorHelpers
+    end
+  end
+
+  defp view_helpers do
+    quote do
+      unquote(common_helpers())
 
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
 
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
-
-      import Bonfire.Common.Web.ErrorHelpers
-
-      require Bonfire.Web.Gettext
-      import Bonfire.Web.Gettext.Helpers
-
-      # should deprecate use of Phoenix's Helpers
-      alias Bonfire.Web.Router.Helpers, as: Routes
-      # use Bonfire's voodoo routing instead, eg: `path(Bonfire.Social.Web.BrowseLive):
-      import Bonfire.Common.URIs
-
-      alias Bonfire.Common.Utils
-      import Utils
-
-      import Bonfire.Common.Config, only: [repo: 0]
 
       # icons
       alias Heroicons.Solid
