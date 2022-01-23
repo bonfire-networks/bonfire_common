@@ -17,7 +17,7 @@ defmodule Bonfire.Common.URIs do
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
-    args_with_id = ([path_id(object)] ++ args) |> Enum.filter(& &1) #|> IO.inspect()
+    args_with_id = ([path_id(object)] ++ args) |> Utils.filter_empty() #|> IO.inspect()
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) ->
