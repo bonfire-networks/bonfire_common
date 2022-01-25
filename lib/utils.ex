@@ -1069,7 +1069,7 @@ defmodule Bonfire.Common.Utils do
     error in Ecto.ConstraintError ->
       live_exception(socket, return_key, "You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__)
     error in FunctionClauseError ->
-      debug(error)
+      # debug(error)
       with %{
         arity: arity,
         function: function,
@@ -1078,6 +1078,14 @@ defmodule Bonfire.Common.Utils do
         live_exception(socket, return_key, "The function #{function}/#{arity} in module #{module} didn't receive data in a format it can recognise", error, __STACKTRACE__)
       else error ->
         live_exception(socket, return_key, "A function didn't receive data in a format it can recognise", error, __STACKTRACE__)
+      end
+    error in WithClauseError ->
+      with %{
+        term: provided
+      } <- error do
+        live_exception(socket, return_key, "A 'with condition' didn't receive data in a format it can recognise", provided, __STACKTRACE__)
+      else error ->
+        live_exception(socket, return_key, "A 'with condition' didn't receive data in a format it can recognise", error, __STACKTRACE__)
       end
     cs in Ecto.Changeset ->
         live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs, nil)
@@ -1137,7 +1145,9 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  defp debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error) do
+  defp debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+
+  defp debug_log(msg, exception, stacktrace, kind) do
 
     Logger.error("#{inspect msg}")
 
@@ -1145,19 +1155,38 @@ defmodule Bonfire.Common.Utils do
     # if exception, do: IO.puts(Exception.format_exit(exception))
     if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
-    if exception && stacktrace && module_enabled?(Sentry), do: Sentry.capture_exception(
+    debug_maybe_sentry(exception, stacktrace)
+  end
+
+  defp debug_maybe_sentry({:error, %_{} = exception}, stacktrace), do: debug_maybe_sentry(exception, stacktrace)
+  defp debug_maybe_sentry(%_{} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
+    if module_enabled?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
     )
+  end
+  defp debug_maybe_sentry(msg, stacktrace) do
+    if module_enabled?(Sentry), do: Sentry.capture_message(
+      msg,
+      stacktrace: stacktrace
+    )
+  end
+  defp debug_maybe_sentry(_exception, _stacktrace), do: nil
+
+  defp debug_banner(kind, {:error, error}, stacktrace) do
+    debug_banner(kind, error, stacktrace)
   end
 
   defp debug_banner(_kind, %Ecto.Changeset{} = cs, _) do
     EctoSparkles.Changesets.Errors.cs_to_string(cs)
   end
 
-  defp debug_banner(kind, exception, stacktrace) do
-    if exception && stacktrace, do: inspect Exception.format_banner(kind, exception, stacktrace),
-    else: inspect exception
+  defp debug_banner(kind, %_{} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
+    inspect Exception.format_banner(kind, exception, stacktrace)
+  end
+
+  defp debug_banner(_kind, exception, _stacktrace) do
+    inspect exception
   end
 
   def error_msg(%Ecto.Changeset{} = cs), do: EctoSparkles.Changesets.Errors.cs_to_string(cs)
