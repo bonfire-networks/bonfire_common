@@ -1159,7 +1159,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp debug_maybe_sentry({:error, %_{} = exception}, stacktrace), do: debug_maybe_sentry(exception, stacktrace)
-  defp debug_maybe_sentry(%_{} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
+  defp debug_maybe_sentry(%{__exception__: true} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
     if module_enabled?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
@@ -1167,7 +1167,7 @@ defmodule Bonfire.Common.Utils do
   end
   defp debug_maybe_sentry(msg, stacktrace) do
     if module_enabled?(Sentry), do: Sentry.capture_message(
-      msg,
+      inspect msg,
       stacktrace: stacktrace
     )
   end
