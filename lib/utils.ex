@@ -8,12 +8,16 @@ defmodule Bonfire.Common.Utils do
 
   defmacro __using__(opts) do
     quote do
-      alias Bonfire.Common.Utils
-      alias Bonfire.Common.Config
-      alias Bonfire.Common.Extend
+      alias Bonfire.Common
+      alias Common.Utils
+      alias Common.Config
+      alias Common.Extend
 
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
+
+      require Bonfire.Web.Gettext
+      import Bonfire.Web.Gettext.Helpers
 
       require Logger
 

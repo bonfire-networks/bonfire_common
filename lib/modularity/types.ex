@@ -9,13 +9,12 @@ defmodule Bonfire.Common.Types do
     nil
   end
 
-  def object_type(%{__typename: type}) when type !=Pointer, do: object_type(type) # for graphql queries
   def object_type(%{table_id: type}), do: object_type(type) # for schema-less queries
+  def object_type(%{__typename: type}) when type !=Pointer, do: object_type(type) # for graphql queries
   def object_type(%{pointer_id: type}), do: object_type(type) # for AP objects
   def object_type(%{index_type: type}), do: object_type(Utils.maybe_str_to_atom(type)) # for search results
   def object_type(%{object: object}), do: object_type(object) # for activities
-  def object_type(%{__struct__: schema}) when schema !=Pointers.Pointer, do: object_type(schema)
-
+  def object_type(%{__struct__: schema}) when schema !=Pointer, do: object_type(schema)
 
   def object_type(%{display_username: display_username}), do: object_type(display_username)
   def object_type("@"<>_), do: Bonfire.Data.Identity.User
@@ -43,7 +42,7 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  def object_type(type) when is_atom(type) do
+  def object_type(type) when is_atom(type) and not is_nil(type) do
     Logger.debug("Types.object_type: atom might be a schema type: #{inspect type}")
     type
   end

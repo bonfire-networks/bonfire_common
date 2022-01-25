@@ -3,6 +3,11 @@ defmodule Bonfire.Web.Localise do
   Various helpers for localisation
   """
 
+  defmacro __using__(_opts) do
+    require Bonfire.Web.Gettext
+    import Bonfire.Web.Gettext.Helpers
+  end
+
   def default_locale, do: Bonfire.Common.Config.get(:default_locale, "en")
 
   def known_locales, do: [default_locale] ++ Gettext.known_locales(Bonfire.Web.Gettext)

@@ -20,7 +20,7 @@ defmodule Bonfire.Common.URIs do
     args_with_id = ([path_id(object)] ++ args) |> Utils.filter_empty() #|> IO.inspect()
 
     case Bonfire.Common.Types.object_type(object) do
-      type when is_atom(type) ->
+      type when is_atom(type) and not is_nil(type) ->
         Logger.debug("path: detected object_type #{inspect type}")
         path(type, args_with_id)
 

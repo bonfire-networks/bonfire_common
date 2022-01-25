@@ -40,6 +40,8 @@ defmodule Bonfire.Repo do
 
       alias Ecto.Changeset
 
+      alias Bonfire.Repo
+
       require Logger
 
     end
