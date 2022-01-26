@@ -1,10 +1,11 @@
 defmodule Bonfire.Common.Utils do
-  import Phoenix.LiveView
-  require Logger
   import Bonfire.Common.URIs
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
+  use Arrows
+  import Phoenix.LiveView
+  require Logger
 
   defmacro __using__(opts) do
     quote do
@@ -20,7 +21,6 @@ defmodule Bonfire.Common.Utils do
       import Bonfire.Web.Gettext.Helpers
 
       require Logger
-
     end
   end
 
@@ -477,62 +477,34 @@ defmodule Bonfire.Common.Utils do
     |> Map.put_new(:__typename, type)
     |> map_filter_empty() #|> debug("clean")
   end
-  def struct_to_map(other) do
-    other
-  end
+  def struct_to_map(other), do: other
 
   def maybe_to_map(obj, recursive \\ false)
-
-  def maybe_to_map(struct = %{__struct__: _}, false) do
-    struct_to_map(struct)
-  end
-  def maybe_to_map(data, false) when is_tuple(data) do
+  def maybe_to_map(struct = %{__struct__: _}, false), do: struct_to_map(struct)
+  def maybe_to_map(data, false) when is_list(data), do: Enum.into(data, %{})
+  def maybe_to_map(data, false) when not is_tuple(data), do: data
+  def maybe_to_map(data, false) do
     data
     |> Enum.chunk_every(2)
     |> Enum.into(%{}, fn [a, b] -> {a, b} end)
   end
-  def maybe_to_map(data, false) when is_list(data) do
-    data
-    |> Enum.into(%{})
-  end
-  def maybe_to_map(other, false) do
-    other
-  end
-
-  def maybe_to_map(struct = %{__struct__: _}, true) do
-    struct_to_map(struct)
-    |> maybe_to_map(true)
-  end
-  def maybe_to_map({a, b}, true) do
-    %{a => maybe_to_map(b, true)}
-  end
-  # def maybe_to_map(data, true) when is_list(data) and length(data)==1 do
-  #   data
-  #   |> List.first()
-  #   |> maybe_to_map(true)
-  # end
-  def maybe_to_map(data, true) when is_list(data) do
+  def maybe_to_map(struct = %{__struct__: _}, true), do: maybe_to_map(struct_to_map(struct), true)
+  def maybe_to_map({a, b}, true), do: %{a => maybe_to_map(b, true)}
+  def maybe_to_map(data, true) when not is_list(data), do: data
+  def maybe_to_map(data, true) do
     data
     |> Enum.map(&maybe_to_map(&1, true))
     |> Enum.into(%{})
   end
-  def maybe_to_map(other, true) do
-    other
-  end
 
-  def nested_structs_to_maps(struct = %{__struct__: type}) when type not in [DateTime] do
-    struct_to_map(struct) |> nested_structs_to_maps()
-  end
-
-  def nested_structs_to_maps(map = %{}) when not is_struct(map) do
+  def nested_structs_to_maps(struct = %type{}) when not type == DateTime,
+    do: nested_structs_to_maps(struct_to_map(struct))
+  def nested_structs_to_maps(v) when not is_map(v), do: v
+  def nested_structs_to_maps(map = %{}) do
     map
     |> Enum.map(fn {k, v} -> {k, nested_structs_to_maps(v)} end)
     |> Enum.into(%{})
   end
-
-  # def nested_structs_to_maps(v) when is_tuple(v), do: v |> Tuple.to_list()
-  def nested_structs_to_maps(v), do: v
-
 
   def maybe_merge_to_struct(target, merge) when is_struct(target), do: struct(target, maybe_from_struct(merge))
   def maybe_merge_to_struct(obj1, obj2), do: struct_to_map(Map.merge(obj2, obj1)) # to handle objects queried without schema
@@ -632,16 +604,13 @@ defmodule Bonfire.Common.Utils do
   def input_to_atoms(list) when is_list(list), do: Enum.map(list, &input_to_atoms/1)
   def input_to_atoms(v), do: v
 
-  def maybe_to_snake(string) do
-    Recase.to_snake("#{string}")
-  end
+  def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
-  def maybe_to_snake_atom(string) do
-    maybe_str_to_atom!(maybe_to_snake(string))
-  end
+  def maybe_to_snake_atom(string), do: maybe_str_to_atom!(maybe_to_snake(string))
 
   def maybe_to_structs(v) when is_struct(v), do: v
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
+
   defp maybe_to_structs_recurse(data, parent_id \\ nil)
   defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do
     data
@@ -681,21 +650,16 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_struct(obj, _type), do: obj
 
   def struct_from_map(a_map, as: a_struct) do # MIT licensed function by Kum Sackey
-    # Find the keys within the map
-    keys = Map.keys(a_struct)
-            |> Enum.filter(fn x -> x != :__struct__ end)
+    keys = Map.keys(Map.delete(a_struct, :__struct__))
     # Process map, checking for both string / atom keys
-    processed_map =
-    for key <- keys, into: %{} do
-        value = Map.get(a_map, key) || Map.get(a_map, to_string(key))
-        {key, value}
-      end
-    a_struct = Map.merge(a_struct, processed_map)
-    a_struct
+    for(key <- keys, into: %{}, do: {key, Map.get(a_map, key) || Map.get(a_map, to_string(key))})
+    |> Map.merge(a_struct, ...)
   end
 
   def random_string(length) do
-    :crypto.strong_rand_bytes(length) |> Base.url_encode64() |> binary_part(0, length)
+    :crypto.strong_rand_bytes(length)
+    |> Base.url_encode64()
+    |> binary_part(0, length)
   end
 
   def r(html), do: Phoenix.HTML.raw(html)
@@ -703,46 +667,36 @@ defmodule Bonfire.Common.Utils do
   def md(content), do: r(markdown(content)) # for use in views
   def markdown(content), do: Text.markdown_to_html(content)
 
-  def rich(nothing) when not is_binary(nothing) or nothing=="" do
-    nil
-  end
   def rich(content) do
-    if is_html?(content), do: r(content),
-    else: md(content)
+    cond do
+      not is_binary(content) or content=="" -> nil
+      is_html?(content) -> r(content)
+      true -> md(content)
+    end
   end
 
-  def text_only(html) do
-    HtmlSanitizeEx.strip_tags(html)
-  end
+  def text_only(html), do: HtmlSanitizeEx.strip_tags(html)
 
-  def is_html?(string) do
-    Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
-  end
+  def is_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
 
   # open outside links in a new tab
-  def external_links(content) do
-    Regex.replace(~r/(<a href=\"http.+\")>/U, content, "\\1 target=\"_blank\">")
-  end
+  def external_links(content),
+    do: Regex.replace(~r/(<a href=\"http.+\")>/U, content, "\\1 target=\"_blank\">")
 
-  def date_from_now(%{id: id}) do
-    date_from_pointer(id)
-  end
-
+  def date_from_now(%{id: id}), do: date_from_pointer(id)
   def date_from_now(date) do
-    with {:ok, from_now} <-
-           Timex.shift(date, minutes: -3)
-           |> Timex.format("{relative}", :relative) do
+    Timex.shift(date, minutes: -3)
+    |> Timex.format("{relative}", :relative)
+    |> with({:ok, from_now} <- ...) do
       from_now
     else
-      _ ->
-        ""
+      _ -> ""
     end
   end
 
   def date_from_pointer(id) do
-    with {:ok, ts} <- Pointers.ULID.timestamp(id) do
-      date_from_now(ts)
-    end
+    Pointers.ULID.timestamp(id)
+    ~> date_from_now()
   end
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
@@ -769,38 +723,37 @@ defmodule Bonfire.Common.Utils do
   def image_url(_obj), do: "https://picsum.photos/600/225?blur"
   # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 
-
-
-  def current_user(%{current_user: current_user} = _assigns) when not is_nil(current_user) do
-    current_user
-  end
-  def current_user(%{id: _, profile: _} = current_user) do
-    current_user
-  end
-  def current_user(%{id: _, character: _} = current_user) do
-    current_user
-  end
-  def current_user(%{context: context} = _api_opts) do
-    current_user(context)
-  end
-  def current_user(%{__context__: context} = _assigns) do
-    current_user(context)
-  end
-  def current_user(%{assigns: assigns} = _socket) do
-    current_user(assigns)
-  end
-  def current_user(%{socket: socket} = _socket) do
-    current_user(socket)
-  end
-  def current_user(list) when is_list(list) do
-    current_user(Map.new(list))
-  end
-  def current_user(other) do
-    Logger.debug("No current_user found in #{inspect other}")
-    nil
+  def current_user(current_user_or_socket_or_opts) do
+    case current_user_or_socket_or_opts do
+      %{current_user: %{}=user} = _options  -> user
+      %{context: context}       = _api_opts -> current_user(context)
+      %{__context__: context}   = _assigns  -> current_user(context)
+      %{assigns: assigns}       = _socket   -> current_user(assigns)
+      %{socket: socket}         = _socket   -> current_user(socket)      
+      %{id: _, profile: _}      = user      -> user
+      %{id: _, character: _}    = user      -> user
+      options when is_list(options)         -> current_user(Map.new(options))
+      other ->
+        Logger.debug("No current_user found in #{inspect other}")
+        nil
+    end
   end
 
-
+  def to_options(current_user_or_socket_or_opts) do
+    case current_user_or_socket_or_opts do
+      %{current_user: %{}=user} = _options  -> [current_user: user]
+      %{context: context}       = _api_opts -> to_options(context)
+      %{__context__: context}   = _assigns  -> to_options(context)
+      %{assigns: assigns}       = _socket   -> to_options(assigns)
+      %{socket: socket}         = _socket   -> to_options(socket)      
+      %{id: _, profile: _}      = user      -> [current_user: user]
+      %{id: _, character: _}    = user      -> [current_user: user]
+      list when is_list(list)               -> list
+      other ->
+        Logger.debug("No current_user found in #{inspect other}")
+        nil
+    end
+  end
 
   def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do
     current_account
@@ -826,10 +779,8 @@ defmodule Bonfire.Common.Utils do
   def current_account(other) when is_map(other) do
     case current_user(other) do
       nil ->
-
         Logger.debug("No current_account found in #{inspect other}")
         nil
-
       user ->
         case user
         |> Bonfire.Repo.maybe_preload(accounted: :account) do
@@ -867,7 +818,6 @@ defmodule Bonfire.Common.Utils do
   def macro_inspect(fun) do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> debug("Macro:")
   end
-
 
   def ok(ret, fallback \\ nil) do
     with {:ok, val} <- ret do
