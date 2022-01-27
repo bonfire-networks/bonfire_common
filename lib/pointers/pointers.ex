@@ -29,7 +29,7 @@ defmodule Bonfire.Common.Pointers do
   def get(%Pointer{} = pointer, opts) do
     with %{id: _} = obj <- follow!(pointer, opts) do
       {:ok,
-        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs preloaded on pointer to the returned object
+        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs previously preloaded on pointer to the returned object
         #|> IO.inspect(label: "Pointers.get")
       }
     else e ->

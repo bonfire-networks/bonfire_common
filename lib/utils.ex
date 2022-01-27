@@ -471,6 +471,9 @@ defmodule Bonfire.Common.Utils do
   defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter(element), do: element
 
+  def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
+  def maybe_from_struct(obj), do: obj
+
   def struct_to_map(struct = %{__struct__: type}) do
     Map.from_struct(struct)
     |> Map.drop([:__meta__])
@@ -506,15 +509,24 @@ defmodule Bonfire.Common.Utils do
     |> Enum.into(%{})
   end
 
-  def maybe_merge_to_struct(target, merge) when is_struct(target), do: struct(target, maybe_from_struct(merge))
-  def maybe_merge_to_struct(obj1, obj2), do: struct_to_map(Map.merge(obj2, obj1)) # to handle objects queried without schema
+  def maybe_merge_to_struct(first, precedence) when is_struct(first), do: struct(first, maybe_from_struct(precedence))
+  def maybe_merge_to_struct(%{} = first, precedence) do
+    merged = merge_structs_as_map(first, precedence)
+    # |> debug()
+
+    case Bonfire.Common.Types.object_type(first) || Bonfire.Common.Types.object_type(precedence) do
+      type when is_atom(type) and not is_nil(type) ->
+        Logger.debug("maybe_merge_to_struct yes: #{inspect type}")
+        struct(type, merged)
+      other ->
+        Logger.debug("maybe_merge_to_struct no: #{inspect other}")
+        merged
+    end
+  end
 
   def merge_structs_as_map(%{__typename: type} = target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge) |> Map.put(:__typename, type)
   def merge_structs_as_map(target, merge) when is_struct(target) or is_struct(merge), do: merge_structs_as_map(maybe_from_struct(target), maybe_from_struct(merge))
   def merge_structs_as_map(target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge)
-
-  def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
-  def maybe_from_struct(obj), do: obj
 
   def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)
 

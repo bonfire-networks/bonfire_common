@@ -22,11 +22,17 @@ defmodule Bonfire.Common.Types do
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
+  # Pointables
   def object_type(type) when type in [Bonfire.Data.Identity.User, "5EVSER1S0STENS1B1YHVMAN01D", "User", "Person", "Organization"], do: Bonfire.Data.Identity.User
   def object_type(type) when type in [Bonfire.Data.Social.Post, "30NF1REP0STTAB1ENVMBER0NEE", "Post"], do: Bonfire.Data.Social.Post
   def object_type(type) when type in [Bonfire.Classify.Category, "Category", "Topic", :Category, :Topic], do: Bonfire.Classify.Category
 
-  # TODO: autogenerate from config/pointer tables/API schema, etc?
+  # Edges / verbs
+  def object_type(type) when type in [Bonfire.Data.Social.Follow, "70110WTHE1EADER1EADER1EADE", "Follow", :follow], do: Bonfire.Data.Social.Follow
+  def object_type(type) when type in [Bonfire.Data.Social.Like, "11KES11KET0BE11KEDY0VKN0WS", "Like", :like], do: Bonfire.Data.Social.Like
+  def object_type(type) when type in [Bonfire.Data.Social.Boost, "300STANN0VNCERESHARESH0VTS", "Boost", :boost], do: Bonfire.Data.Social.Boost
+
+  # VF
   def object_type(type) when type in [ValueFlows.EconomicEvent, "EconomicEvent", "2CTVA10BSERVEDF10WS0FVA1VE"], do: ValueFlows.EconomicEvent
   def object_type(type) when type in [ValueFlows.EconomicResource, "EconomicResource"], do: ValueFlows.EconomicResource
   def object_type(type) when type in [ValueFlows.Planning.Intent, "Intent", "ValueFlows.Planning.Offer", "ValueFlows.Planning.Need", "1NTENTC0V1DBEAN0FFER0RNEED"], do: ValueFlows.Planning.Intent
