@@ -878,6 +878,10 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Broadcast some data for realtime updates, for example to a feed or thread
   """
+  def pubsub_broadcast(topics, payload) when is_list(topics) do
+    Enum.each(topics, &pubsub_broadcast(&1, payload))
+  end
+
   def pubsub_broadcast(topic, {payload_type, _data} = payload) do
     Logger.debug("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
     do_broadcast(topic, payload)
