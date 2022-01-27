@@ -1,14 +1,14 @@
 defmodule Bonfire.Notifications do
   use Bonfire.Web, :live_handler
 
-  def notify_users(inbox_ids, title, message) do
-    pubsub_broadcast(inbox_ids, {Bonfire.Notifications, %{title: title, message: text_only(message)}})
+  def notify_users(feed_ids, title, message) do
+    pubsub_broadcast(feed_ids, {Bonfire.Notifications, %{title: title, message: text_only(message)}})
   end
 
   def notify(title, message, socket \\ nil) do
     do_notify(
       %{title: title, message: message}
-      |> IO.inspect(label: "notify"),
+      |> debug(),
     socket)
   end
 
@@ -23,12 +23,11 @@ defmodule Bonfire.Notifications do
     {:noreply,
       socket
       |> assign(notification: attrs)
-      # |> IO.inspect
       |> push_event("notify", attrs)
     }
   end
 
-  def process_state(pid) when is_pid(pid), do: :sys.get_state(pid)
+  # def process_state(pid) when is_pid(pid), do: :sys.get_state(pid)
 
 
 end

@@ -6,11 +6,11 @@ defmodule Bonfire.Common.Web.NotificationLive do
   prop notification, :any
 
   def mount(socket) do
-    inbox_id = Bonfire.Social.Feeds.my_feed_id(:inbox, socket)
-    if inbox_id do
-        pubsub_subscribe(inbox_id, socket)
+    feed_id = Bonfire.Social.Feeds.my_feed_id(:notifications, socket)
+    if feed_id do
+        pubsub_subscribe(feed_id, socket)
     else
-      Logger.info("not subscribing to notifications")
+      Logger.info("NotificationLive: no feed_id so not subscribing to push notifications")
     end
 
     {:ok, socket}

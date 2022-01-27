@@ -38,7 +38,7 @@ defmodule Bonfire.Common.Utils do
   defp debug_label(caller, label, _opts) do
     file = Path.relative_to_cwd(caller.file)
     case caller.function do
-      {fun, arity} -> "#{module_to_str(caller.module)}:#{fun}:/#{arity} - #{file}:#{caller.line} - "
+      {fun, arity} -> "#{file}:#{caller.line} - #{module_to_str(caller.module)}:#{fun}:/#{arity} - "
       _ -> "#{file}:#{caller.line} - "
     end
   end
@@ -215,7 +215,7 @@ defmodule Bonfire.Common.Utils do
       Logger.warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
     else
-      Logger.info("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
+      Logger.debug("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
       fallback
     end
   end
@@ -729,7 +729,7 @@ defmodule Bonfire.Common.Utils do
       %{context: context}       = _api_opts -> current_user(context)
       %{__context__: context}   = _assigns  -> current_user(context)
       %{assigns: assigns}       = _socket   -> current_user(assigns)
-      %{socket: socket}         = _socket   -> current_user(socket)      
+      %{socket: socket}         = _socket   -> current_user(socket)
       %{id: _, profile: _}      = user      -> user
       %{id: _, character: _}    = user      -> user
       options when is_list(options)         -> current_user(Map.new(options))
@@ -745,7 +745,7 @@ defmodule Bonfire.Common.Utils do
       %{context: context}       = _api_opts -> to_options(context)
       %{__context__: context}   = _assigns  -> to_options(context)
       %{assigns: assigns}       = _socket   -> to_options(assigns)
-      %{socket: socket}         = _socket   -> to_options(socket)      
+      %{socket: socket}         = _socket   -> to_options(socket)
       %{id: _, profile: _}      = user      -> [current_user: user]
       %{id: _, character: _}    = user      -> [current_user: user]
       list when is_list(list)               -> list
