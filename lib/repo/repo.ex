@@ -312,5 +312,7 @@ defmodule Bonfire.Repo do
 
   def maybe_preloads_per_schema(object, _, _opts), do: object
 
-
+  def sql(raw_sql, data \\ [], opts \\ []) do
+    Ecto.Adapters.SQL.query!(__MODULE__, raw_sql, data, opts)
+  end
 end
