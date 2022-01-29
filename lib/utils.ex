@@ -831,7 +831,7 @@ defmodule Bonfire.Common.Utils do
       fun.() |> Macro.expand(__ENV__) |> Macro.to_string |> debug("Macro:")
   end
 
-  def ok(ret, fallback \\ nil) do
+  def ok_or(ret, fallback \\ nil) do
     with {:ok, val} <- ret do
       val
     else _ ->
