@@ -16,7 +16,7 @@ defmodule Bonfire.Notifications do
   def do_notify(attrs, socket \\ nil)
 
   def do_notify(attrs, nil) do
-    send_update(Bonfire.Common.Web.NotificationLive, Map.merge(%{id: :notification}, attrs))
+    send_update(Bonfire.Common.Web.NotificationLive, Map.merge(%{id: "notification"}, attrs))
   end
 
   def do_notify(attrs, socket) do
