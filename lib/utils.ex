@@ -1090,13 +1090,13 @@ defmodule Bonfire.Common.Utils do
       {return_key, put_flash(socket, :error, error_msg(msg)) |> push_redirect(to: "/error")}
   end
 
-  defp debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+  def debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
-  defp debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind) do
+  def debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind) do
     debug_exception(EctoSparkles.Changesets.Errors.cs_to_string(cs), exception, stacktrace, kind)
   end
 
-  defp debug_exception(msg, exception, stacktrace, kind) do
+  def debug_exception(msg, exception, stacktrace, kind) do
 
     debug_log(msg, exception, stacktrace, kind)
 
@@ -1111,9 +1111,9 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  defp debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+  def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
-  defp debug_log(msg, exception, stacktrace, kind) do
+  def debug_log(msg, exception, stacktrace, kind) do
 
     Logger.error("#{inspect msg}")
 
@@ -1121,23 +1121,25 @@ defmodule Bonfire.Common.Utils do
     # if exception, do: IO.puts(Exception.format_exit(exception))
     if stacktrace, do: Logger.warn(Exception.format_stacktrace(stacktrace))
 
-    debug_maybe_sentry(exception, stacktrace)
+    debug_maybe_sentry(msg, exception, stacktrace)
   end
 
-  defp debug_maybe_sentry({:error, %_{} = exception}, stacktrace), do: debug_maybe_sentry(exception, stacktrace)
-  defp debug_maybe_sentry(%{__exception__: true} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
-    if module_enabled?(Sentry), do: Sentry.capture_exception(
-      exception,
-      stacktrace: stacktrace
-    )
-  end
-  defp debug_maybe_sentry(msg, stacktrace) do
+  defp debug_maybe_sentry(msg, {:error, %_{} = exception}, stacktrace), do: debug_maybe_sentry(msg, exception, stacktrace)
+  # defp debug_maybe_sentry(msg, exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] and is_exception(exception) do # FIXME: sentry lib often crashes
+  #   if module_enabled?(Sentry), do: Sentry.capture_exception(
+  #     exception,
+  #     stacktrace: stacktrace,
+  #     extra: inspect msg
+  #   )
+  # end
+  defp debug_maybe_sentry(msg, error, stacktrace) do
     if module_enabled?(Sentry), do: Sentry.capture_message(
-      inspect msg,
-      stacktrace: stacktrace
+      inspect error,
+      stacktrace: stacktrace,
+      extra: inspect msg
     )
   end
-  defp debug_maybe_sentry(_exception, _stacktrace), do: nil
+  defp debug_maybe_sentry(_, _, _stacktrace), do: nil
 
   defp debug_banner(kind, {:error, error}, stacktrace) do
     debug_banner(kind, error, stacktrace)
