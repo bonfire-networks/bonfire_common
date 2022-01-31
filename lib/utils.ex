@@ -83,7 +83,10 @@ defmodule Bonfire.Common.Utils do
     case object do
       %{__context__: context} ->
         # try searching in Surface's context (when object is assigns), if present
-        map_get(object, key, nil) || map_get(context, key, nil) || fallback
+        case map_get(object, key, nil) do
+          result when is_nil(result) or result==fallback -> map_get(context, key, fallback)
+          result -> result
+        end
 
       map when is_map(map) ->
         # attempt using key as atom or string, fallback if doesn't exist or is nil
