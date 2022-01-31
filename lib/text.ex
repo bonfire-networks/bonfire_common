@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Text do
-  import Bonfire.Common.Utils
+  use Bonfire.Common.Utils
   require Logger
 
   @add_to_end "..."
