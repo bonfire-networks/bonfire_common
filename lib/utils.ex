@@ -35,17 +35,32 @@ defmodule Bonfire.Common.Utils do
   # let's just say that 0 is nothing
   def strlen(x) when x == 0, do: 0
 
-  defp debug_label(caller, label, _opts) do
+  defp debug_label(caller, _opts) do
     file = Path.relative_to_cwd(caller.file)
     case caller.function do
-      {fun, arity} -> "#{file}:#{caller.line} - #{module_to_str(caller.module)}:#{fun}:/#{arity} - "
-      _ -> "#{file}:#{caller.line} - "
+      {fun, arity} -> "#{file}:#{caller.line} - #{module_to_str(caller.module)}:#{inspect(fun)}:/#{arity} -"
+      _ -> "#{file}:#{caller.line} -"
     end
   end
 
   defmacro debug(thing, label \\ "", opts \\ []) do
-    label =
-    quote do: IO.inspect(unquote(thing), label: "[inspect] "<>unquote(debug_label(__CALLER__, label, opts)<>label))
+    label2 = debug_label(__CALLER__, opts)
+    quote do: IO.inspect(unquote(thing), label: "#{unquote(label2)} #{unquote(label)}", pretty: true, printable_limit: :infinity)
+  end
+
+  defmacro log_debug(thing, label \\ "", opts \\ []) do
+    label2 = debug_label(__CALLER__, opts)
+    quote do: Logger.debug("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
+  end
+
+  defmacro log_warn(thing, label \\ "", opts \\ []) do
+    label2 = debug_label(__CALLER__, opts)
+    quote do: Logger.warn("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
+  end
+
+  defmacro log_error(thing, label \\ "", opts \\ []) do
+    label2 = debug_label(__CALLER__, opts)
+    quote do: Logger.error("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
   end
 
   @doc "Returns a value, or a fallback if nil/false"
