@@ -4,6 +4,7 @@ defmodule Bonfire.Repo.Delete do
 
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
+  alias Ecto.Changeset
 
   def federation_module, do: "Delete"
 
