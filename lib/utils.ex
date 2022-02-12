@@ -713,21 +713,21 @@ defmodule Bonfire.Common.Utils do
   def external_links(content),
     do: Regex.replace(~r/(<a href=\"http.+\")>/U, content, "\\1 target=\"_blank\">")
 
-  def date_from_now(%{id: id}), do: date_from_pointer(id)
-  def date_from_now(date) do
-    Timex.shift(date, minutes: -3)
+  def date_relative(%{id: id}), do: date_from_pointer(id) |> date_relative()
+  def date_relative(date) do
+    date
     |> Timex.format("{relative}", :relative)
-    |> with({:ok, from_now} <- ...) do
-      from_now
+    |> with({:ok, relative} <- ...) do
+      relative
     else
       _ -> ""
     end
   end
 
-  def date_from_pointer(id) do
-    Pointers.ULID.timestamp(id)
-    ~> date_from_now()
-  end
+  def date_from_now(date), do: date_relative(date)
+
+  def date_from_pointer(%{id: id}), do: date_from_pointer(id)
+  def date_from_pointer(id) when is_binary(id), do: Pointers.ULID.timestamp(id) |> ok_or()
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
