@@ -781,7 +781,7 @@ defmodule Bonfire.Common.Utils do
       list when is_list(list)               -> list
       other ->
         Logger.debug("No current_user found in #{inspect other}")
-        nil
+        []
     end
   end
 
