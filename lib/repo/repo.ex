@@ -117,6 +117,10 @@ defmodule Bonfire.Repo do
     |> insert(on_conflict: :nothing)
   end
 
+  def insert_all_or_ignore(schema, data) do
+    repo().insert_all(schema, data, on_conflict: :nothing)
+  end
+
   @doc """
   Like Repo.one, but returns an ok/error tuple.
   """
