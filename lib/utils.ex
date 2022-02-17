@@ -177,6 +177,7 @@ defmodule Bonfire.Common.Utils do
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
   def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty()
+  def ulid({:ok, other}), do: ulid(other)
   def ulid(id) do
     if is_ulid?(id) do
       id
