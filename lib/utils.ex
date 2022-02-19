@@ -463,6 +463,10 @@ defmodule Bonfire.Common.Utils do
   end
   def module_to_str(atom) when is_atom(atom), do: maybe_to_string(atom) |> module_to_str()
 
+  def module_to_human_readable(module) do
+    module |> module_to_str() |> String.split(".") |> List.last() |> Recase.to_sentence()
+  end
+
   def maybe_to_string(atom) when is_atom(atom) do
     Atom.to_string(atom)
   end
