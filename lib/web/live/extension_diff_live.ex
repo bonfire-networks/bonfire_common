@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Web.ExtensionDiffLive do
   use Bonfire.Web, {:live_view, [layout: {Bonfire.UI.Social.Web.LayoutView, "without_sidebar.html"}]}
   import Bonfire.Common.Extensions.Diff
-  require Logger
+  import Where
   alias Bonfire.Web.LivePlugs
 
   def mount(params, session, socket) do
@@ -33,10 +33,10 @@ defmodule Bonfire.Common.Web.ExtensionDiffLive do
       patches
     else
       {:error, error} ->
-        Logger.error(inspect(error))
+        error(inspect(error))
         []
       error ->
-        Logger.error(inspect(error))
+        error(inspect(error))
         []
     end
     # TODO: handle errors

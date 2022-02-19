@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Extensions.Diff do
 
-  require Logger
+  import Where
 
   def generate_diff(package, repo_path) do
     case repo_latest_diff(package, repo_path) do
@@ -40,7 +40,7 @@ defmodule Bonfire.Common.Extensions.Diff do
           IO.binwrite(file, html_patch)
 
         error ->
-          Logger.error("Failed to parse diff stream of #{package} at #{repo_path} with: #{inspect(error)}")
+          error("Failed to parse diff stream of #{package} at #{repo_path} with: #{inspect(error)}")
           throw({:error, :invalid_diff})
       end)
     end)
@@ -63,7 +63,7 @@ defmodule Bonfire.Common.Extensions.Diff do
 
     else
       error ->
-        Logger.error("Failed to create diff of #{inspect package} for #{repo_path} at #{path_diff} with: #{inspect(error)}")
+        error("Failed to create diff of #{inspect package} for #{repo_path} at #{path_diff} with: #{inspect(error)}")
         :error
     end
   end
@@ -124,7 +124,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   end
 
   def git!(args, repo_path \\ ".", into \\ default_into()) do
-    Logger.info(inspect %{repo: repo_path, git: args, cwd: File.cwd()})
+    debug(inspect %{repo: repo_path, git: args, cwd: File.cwd()})
 
     File.cd!(repo_path, fn ->
 

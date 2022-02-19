@@ -25,7 +25,7 @@ defmodule Bonfire.Repo do
   # import cursor-based pagination helper
   # use Paginator, @pagination_defaults
 
-  require Logger
+  import Where
 
   defmacro __using__(opts) do
     quote do
@@ -42,7 +42,7 @@ defmodule Bonfire.Repo do
 
       alias Bonfire.Repo
 
-      require Logger
+      import Where
 
     end
   end
@@ -113,7 +113,7 @@ defmodule Bonfire.Repo do
   def upsert(cs) do
     cs
     |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
-    # |> IO.inspect(label: "upsert cs")
+    # |> debug(label: "upsert cs")
     |> insert(on_conflict: :nothing)
   end
 
@@ -171,7 +171,7 @@ defmodule Bonfire.Repo do
 
   def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
   def paginate(queryable, opts, repo_opts) when is_list(opts) do
-    # IO.inspect(paginate: opts)
+    # debug(paginate: opts)
     opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
   end
@@ -188,7 +188,7 @@ defmodule Bonfire.Repo do
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
-    # IO.inspect(order_by: order)
+    # debug(order_by: order)
     queryable
     |>
     paginate(opts, repo_opts)
@@ -206,13 +206,13 @@ defmodule Bonfire.Repo do
   end
 
   defp rollback_error(reason, extra \\ nil) do
-    Logger.error(transact_with_error: reason)
-    if extra, do: Logger.debug(transact_with_error_extra: extra)
+    error(transact_with_error: reason)
+    if extra, do: debug(transact_with_error_extra: extra)
     rollback(reason)
   end
 
   defp rollback_unexpected(ret) do
-    Logger.error(
+    error(
       "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{
         inspect(ret)
       }"
@@ -247,20 +247,20 @@ defmodule Bonfire.Repo do
   def maybe_preload({:ok, obj}, preloads, follow_pointers?), do: {:ok, maybe_preload(obj, preloads, follow_pointers?)}
 
   def maybe_preload(obj, preloads, true = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    Logger.debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
+    debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
 
       maybe_do_preload(obj, preloads)
       |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
 
   end
   def maybe_preload(obj, preloads, false = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    Logger.debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
+    debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
 
       maybe_do_preload(obj, preloads)
   end
 
   def maybe_preload(obj, _, _) do
-    Logger.debug("maybe_preload: can only preload from struct or list of structs")
+    debug("maybe_preload: can only preload from struct or list of structs")
 
     obj
   end
@@ -271,16 +271,16 @@ defmodule Bonfire.Repo do
     repo().preload(obj, preloads)
   rescue
     e in ArgumentError ->
-      Logger.debug("maybe_preload skipped due to wrong argument: #{inspect e}")
+      debug("maybe_preload skipped due to wrong argument: #{inspect e}")
       obj
     e ->
-      Logger.warn("maybe_preload skipped with rescue: #{inspect e}")
+      warn("maybe_preload skipped with rescue: #{inspect e}")
       obj
   catch
     :exit, e ->
-      Logger.warn("maybe_preload skipped with catch exit: #{inspect e}")
+      warn("maybe_preload skipped with catch exit: #{inspect e}")
     e ->
-      Logger.warn("maybe_preload skipped with catch: #{inspect e}")
+      warn("maybe_preload skipped with catch: #{inspect e}")
   end
 
   defp maybe_do_preload(obj, _), do: obj
@@ -289,12 +289,12 @@ defmodule Bonfire.Repo do
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts) when is_list(objects) and is_list(path) and is_list(preloads) do
-    Logger.debug("maybe_preloads_per_nested_schema iterate list of preloads")
+    debug("maybe_preloads_per_nested_schema iterate list of preloads")
     Enum.reduce(preloads, objects, &maybe_preloads_per_nested_schema(&2, path, &1, opts))
   end
 
   def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts) when is_list(objects) do
-    Logger.debug("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
+    debug("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
 
     with {_old, loaded} <- get_and_update_in(
       objects,
@@ -302,14 +302,14 @@ defmodule Bonfire.Repo do
       &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)})
     do
       loaded
-      # |> IO.inspect(label: "preloaded")
+      # |> debug(label: "preloaded")
     end
   end
 
   def maybe_preloads_per_schema(object, _, _, _opts), do: object
 
   def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}, opts \\ []) when object_schema==schema do
-    Logger.debug("maybe_preloads_per_schema preloading schema: #{inspect schema}")
+    debug("maybe_preloads_per_schema preloading schema: #{inspect schema}")
     maybe_do_preload(object, preloads)
     # TODO: make one preload per get_and_update_in to avoid n+1
   end

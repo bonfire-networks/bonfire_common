@@ -10,12 +10,12 @@ defmodule Bonfire.Common.LiveHandlers do
 
   """
   use Bonfire.Web, :live_handler
-  require Logger
+  import Where
 
   def handle_params(params, uri, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_params for #{inspect uri} via #{source_module || "delegation"}")
-      ## IO.inspect(params: params)
+      debug("LiveHandler: handle_params for #{inspect uri} via #{source_module || "delegation"}")
+      ## debug(params: params)
       do_handle_params(params, uri, socket
                                     |> assign_global(
                                       current_url: URI.parse(uri)
@@ -26,38 +26,38 @@ defmodule Bonfire.Common.LiveHandlers do
 
   def handle_event(action, attrs, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_event #{action} via #{source_module || "delegation"}")
+      debug("LiveHandler: handle_event #{action} via #{source_module || "delegation"}")
       do_handle_event(action, attrs, socket)
     end)
   end
 
   def handle_info(blob, socket, source_module \\ nil) do
     undead(socket, fn ->
-      Logger.info("LiveHandler: handle_info via #{source_module || "delegation"}")
+      debug("LiveHandler: handle_info via #{source_module || "delegation"}")
       do_handle_info(blob, socket)
     end)
   end
 
   # global handler to set a view's assigns from a component
   defp do_handle_info({:assign, {assign, value}}, socket) do
-    Logger.info("LiveHandler: do_handle_info, assign data with {:assign, {#{assign}, value}}")
+    debug("LiveHandler: do_handle_info, assign data with {:assign, {#{assign}, value}}")
     undead(socket, fn ->
-      IO.inspect(handle_info_set_assign: assign)
+      debug(handle_info_set_assign: assign)
       {:noreply,
         socket
         |> assign_global(assign, value)
-        # |> IO.inspect(limit: :infinity)
+        # |> debug(limit: :infinity)
       }
     end)
   end
 
   defp do_handle_info({{mod, name}, data}, socket) do
-    Logger.info("LiveHandler: do_handle_info with {{#{mod}, #{name}}, data}")
+    debug("LiveHandler: do_handle_info with {{#{mod}, #{name}}, data}")
     mod_delegate(mod, :handle_info, [{name, data}], socket)
   end
 
   defp do_handle_info({info, data}, socket) when is_binary(info) do
-    Logger.info("LiveHandler: do_handle_info with {#{info}, data}")
+    debug("LiveHandler: do_handle_info with {#{info}, data}")
     case String.split(info, ":", parts: 2) do
       [mod, name] -> mod_delegate(mod, :handle_info, [{name, data}], socket)
       _ -> empty(socket)
@@ -65,17 +65,17 @@ defmodule Bonfire.Common.LiveHandlers do
   end
 
   defp do_handle_info({mod, data}, socket) do
-    Logger.info("LiveHandler: do_handle_info with {#{mod}, data}")
+    debug("LiveHandler: do_handle_info with {#{mod}, data}")
     mod_delegate(mod, :handle_info, [data], socket)
   end
 
   defp do_handle_info(_, socket) do
-    Logger.warn("LiveHandler: could not find info handler")
+    warn("LiveHandler: could not find info handler")
     empty(socket)
   end
 
   defp do_handle_event(event, attrs, socket) when is_binary(event) do
-    # IO.inspect(handle_event: event)
+    # debug(handle_event: event)
     case String.split(event, ":", parts: 2) do
       [mod, action] -> mod_delegate(mod, :handle_event, [action, attrs], socket)
       _ -> empty(socket)
@@ -83,12 +83,12 @@ defmodule Bonfire.Common.LiveHandlers do
   end
 
   defp do_handle_event(_, _, socket) do
-    Logger.warn("LiveHandler: could not find event handler")
+    warn("LiveHandler: could not find event handler")
     empty(socket)
   end
 
   defp do_handle_params(params, uri, socket) when is_map(params) and params !=%{} do
-    # IO.inspect(handle_params: params)
+    # debug(handle_params: params)
     case Map.keys(params) |> List.first do
       mod when is_binary(mod) and mod not in ["id"] -> mod_delegate(mod, :handle_params, [Map.get(params, mod), uri], socket)
       _ -> empty(socket)
@@ -99,11 +99,11 @@ defmodule Bonfire.Common.LiveHandlers do
 
 
   defp mod_delegate(mod, fun, params, socket) do
-    Logger.info("LiveHandler: attempt delegating to #{inspect fun} in #{inspect mod}...")
+    debug("LiveHandler: attempt delegating to #{inspect fun} in #{inspect mod}...")
 
     case maybe_str_to_module("#{mod}.LiveHandler") || maybe_str_to_module(mod) do
       module when is_atom(module) ->
-        # IO.inspect(module)
+        # debug(module)
         if module_enabled?(module), do: apply(module, fun, params ++ [socket]),
         else: empty(socket)
       _ -> empty(socket)

@@ -36,7 +36,7 @@ defmodule Bonfire.Web.LivePlugs do
 
   defp apply_undead(socket, fun, args) do
      # needed if using Surface in a normal LiveView
-    #  IO.inspect(surfacing: Utils.module_enabled?(Surface))
+    #  debug(surfacing: Utils.module_enabled?(Surface))
     (if Utils.module_enabled?(Surface), do: Surface.init(socket), else: socket)
     |> Utils.undead_mount(fn ->
       apply(fun, args)

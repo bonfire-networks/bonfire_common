@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Utils do
   use Arrows
   import Where
   import Phoenix.LiveView
-  require Logger
+  import Where
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
@@ -161,7 +161,7 @@ defmodule Bonfire.Common.Utils do
     else
       e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect id}"
       # throw {:error, e}
-      Logger.warn(e)
+      warn(e)
       nil
     end
   end
@@ -208,10 +208,10 @@ defmodule Bonfire.Common.Utils do
   def magic_filter_empty(val, map, key, fallback \\ nil)
   def magic_filter_empty(%Ecto.Association.NotLoaded{}, %{__struct__: schema} = map, key, fallback) when is_map(map) and is_atom(key) do
     if Config.get!(:env) == :dev && Config.get(:e_auto_preload, false) do
-      Logger.warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
+      warn("The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query...")
       Bonfire.Repo.maybe_preload(map, key) |> Map.get(key, fallback) |> filter_empty(fallback)
     else
-      Logger.debug("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
+      debug("e() requested #{key} of #{schema} but that was not preloaded in the original query.")
       fallback
     end
   end
@@ -516,10 +516,10 @@ defmodule Bonfire.Common.Utils do
 
     case Bonfire.Common.Types.object_type(first) || Bonfire.Common.Types.object_type(precedence) do
       type when is_atom(type) and not is_nil(type) ->
-        Logger.debug("maybe_merge_to_struct yes: #{inspect type}")
+        debug("maybe_merge_to_struct yes: #{inspect type}")
         struct(type, merged)
       other ->
-        Logger.debug("maybe_merge_to_struct no: #{inspect other}")
+        debug("maybe_merge_to_struct no: #{inspect other}")
         merged
     end
   end
@@ -649,7 +649,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
   def maybe_to_struct(obj, module) when is_atom(module) do
-    Logger.info("to_struct with module #{module}")
+    debug("to_struct with module #{module}")
     # if module_enabled?(module) and module_enabled?(Mappable) do
     #   Mappable.to_struct(obj, module)
     # else
@@ -746,7 +746,7 @@ defmodule Bonfire.Common.Utils do
       %{id: _, character: _}    = user      -> user
       options when is_list(options)         -> current_user(Map.new(options))
       other ->
-        Logger.debug("No current_user found in #{inspect other}")
+        debug("No current_user found in #{inspect other}")
         nil
     end
   end
@@ -762,7 +762,7 @@ defmodule Bonfire.Common.Utils do
       %{id: _, character: _}    = user      -> [current_user: user]
       list when is_list(list)               -> list
       other ->
-        Logger.debug("No current_user found in #{inspect other}")
+        debug("No current_user found in #{inspect other}")
         []
     end
   end
@@ -791,7 +791,7 @@ defmodule Bonfire.Common.Utils do
   def current_account(other) when is_map(other) do
     case current_user(other) do
       nil ->
-        Logger.debug("No current_account found in #{inspect other}")
+        debug("No current_account found in #{inspect other}")
         nil
       user ->
         case user
@@ -802,7 +802,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
   def current_account(other) do
-    Logger.debug("No current_account found in #{inspect other}")
+    debug("No current_account found in #{inspect other}")
     nil
   end
 
@@ -853,7 +853,7 @@ defmodule Bonfire.Common.Utils do
     if socket_connected_or_user?(socket) do
       pubsub_subscribe(topic)
     else
-      Logger.debug("PubSub: LiveView is not connected so we skip subscribing to #{inspect topic}")
+      debug("PubSub: LiveView is not connected so we skip subscribing to #{inspect topic}")
     end
   end
 
@@ -861,20 +861,20 @@ defmodule Bonfire.Common.Utils do
 
   def pubsub_subscribe(topic, socket) when not is_binary(topic) do
     with t when is_binary(t) <- maybe_to_string(topic) do
-      Logger.debug("PubSub: transformed the topic #{inspect topic} into a string we can subscribe to: #{inspect t}")
+      debug("PubSub: transformed the topic #{inspect topic} into a string we can subscribe to: #{inspect t}")
       pubsub_subscribe(t, socket)
     else _ ->
-      Logger.warn("PubSub: could not transform the topic into a string we can subscribe to: #{inspect topic}")
+      warn("PubSub: could not transform the topic into a string we can subscribe to: #{inspect topic}")
     end
   end
 
   def pubsub_subscribe(topic, _) do
-    Logger.warn("PubSub can not subscribe to a non-string topic: #{inspect topic}")
+    warn("PubSub can not subscribe to a non-string topic: #{inspect topic}")
     false
   end
 
   defp pubsub_subscribe(topic) when is_binary(topic) and topic !="" do
-    Logger.debug("PubSub subscribed to: #{topic}")
+    debug("PubSub subscribed to: #{topic}")
 
     endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
 
@@ -895,14 +895,14 @@ defmodule Bonfire.Common.Utils do
   end
 
   def pubsub_broadcast(topic, {payload_type, _data} = payload) do
-    Logger.debug("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
+    debug("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
     do_broadcast(topic, payload)
   end
   def pubsub_broadcast(topic, data) when (is_atom(topic) or is_binary(topic)) and topic !="" and not is_nil(data) do
-    Logger.debug("pubsub_broadcast: #{inspect topic}")
+    debug("pubsub_broadcast: #{inspect topic}")
     do_broadcast(topic, data)
   end
-  def pubsub_broadcast(_, _), do: Logger.warn("pubsub did not broadcast")
+  def pubsub_broadcast(_, _), do: warn("pubsub did not broadcast")
 
   defp do_broadcast(topic, data) do
     # endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
@@ -943,7 +943,7 @@ defmodule Bonfire.Common.Utils do
     if assign_target_ids do
       socket |> assign_and_broadcast(assigns_to_broadcast, assign_target_ids)
     else
-      Logger.info("cast_self: Cannot send via PubSub without an account and/or user in socket. Falling back to only setting an assign.")
+      debug("cast_self: Cannot send via PubSub without an account and/or user in socket. Falling back to only setting an assign.")
       socket |> assign_global(assigns_to_broadcast)
     end
   end
@@ -1115,7 +1115,7 @@ defmodule Bonfire.Common.Utils do
 
   def debug_log(msg, exception, stacktrace, kind) do
 
-    Logger.error("#{inspect msg}")
+    error(msg)
 
     if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
@@ -1198,8 +1198,8 @@ defmodule Bonfire.Common.Utils do
           apply(module, fun, args)
         rescue
           e in FunctionClauseError ->
-            Logger.error(e)
-            # Logger.error(Exception.format_stacktrace())
+            error(e)
+            # error(Exception.format_stacktrace())
             e = fallback_fun.(
               "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
               args
@@ -1255,8 +1255,8 @@ defmodule Bonfire.Common.Utils do
       fallback_fun
     ), do: apply_error("invalid function call for #{inspect fun} on #{inspect module}", args)
 
-  def apply_error(error, args, level \\ :error) do
-    Logger.log(level, "maybe_apply: #{error} - with args: (#{inspect args})")
+  def apply_error(error, args) do
+    error("maybe_apply: #{error} - with args: (#{inspect args})")
 
     {:error, error}
   end

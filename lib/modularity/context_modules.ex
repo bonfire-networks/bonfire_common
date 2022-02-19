@@ -19,7 +19,7 @@ defmodule Bonfire.Common.ContextModules do
   local garbage collection.
   """
 
-  require Logger
+  import Where
   alias Bonfire.Common.Utils
 
   @doc """
@@ -69,8 +69,8 @@ defmodule Bonfire.Common.ContextModules do
     maybe_apply(object_schema_or_context, fun, [args], fallback_fun)
   end
 
-  def apply_error(error, args, level \\ :error) do
-    Logger.log(level, "Bonfire.Common.ContextModules: Error running function: #{error} with args: (#{inspect args})")
+  def apply_error(error, args) do
+    error("Bonfire.Common.ContextModules: Error running function: #{error} with args: (#{inspect args})")
 
     {:error, error}
   end
@@ -121,8 +121,8 @@ defmodule Bonfire.Common.ContextModules do
     end
   end
 
-  def context_function_error(error, _args, level \\ :info) do
-    Logger.log(level, "ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2) #{error}")
+  def context_function_error(error, _args) do
+    warn("ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2) #{error}")
 
     nil
   end

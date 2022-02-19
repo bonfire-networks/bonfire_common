@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Web.NotificationLive do
   use Bonfire.Web, :stateful_component
   alias Bonfire.Web.LivePlugs
-  require Logger
+  import Where
 
   prop notification, :any
 
@@ -10,7 +10,7 @@ defmodule Bonfire.Common.Web.NotificationLive do
     if feed_id do
         pubsub_subscribe(feed_id, socket)
     else
-      Logger.info("NotificationLive: no feed_id so not subscribing to push notifications")
+      debug("NotificationLive: no feed_id so not subscribing to push notifications")
     end
 
     {:ok, socket}

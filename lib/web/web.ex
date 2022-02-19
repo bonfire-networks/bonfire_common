@@ -106,7 +106,7 @@ defmodule Bonfire.Web do
   def channel(opts \\ []) do
     quote do
       use Phoenix.Channel, unquote(opts)
-      require Logger
+      import Where
 
     end
   end
@@ -114,7 +114,7 @@ defmodule Bonfire.Web do
 
   defp common_helpers do
     quote do
-      require Logger
+      import Where
 
       use Bonfire.Common.Utils
 

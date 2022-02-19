@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Text do
   use Bonfire.Common.Utils
-  require Logger
+  import Where
 
   @add_to_end "..."
   @sentence_seperator " "
@@ -45,26 +45,26 @@ defmodule Bonfire.Common.Text do
 
     case input do
       <<result::binary-size(length_minus_1), @sentence_seperator, _::binary>> ->
-        # Logger.info("the substring ends with seperator (eg. -)")
+        # debug("the substring ends with seperator (eg. -)")
         # i. e. "abc-def-ghi", 8 or "abc-def-", 8 -> "abc-def"
         result
 
       <<result::binary-size(length), @sentence_seperator, _::binary>> ->
-        #  Logger.info("the next char after the substring is seperator")
+        #  debug("the next char after the substring is seperator")
         # i. e. "abc-def-ghi", 7 or "abc-def-", 7 -> "abc-def"
         result
 
       <<_::binary-size(length)>> ->
-        # Logger.info("it is the exact length string")
+        # debug("it is the exact length string")
         # i. e. "abc-def", 7 -> "abc-def"
         input
 
       _ when length <= 1 ->
-        # Logger.info("return an empty string if we reached the beginning of the string")
+        # debug("return an empty string if we reached the beginning of the string")
         ""
 
       _ ->
-        # Logger.info("otherwise look into shorter substring")
+        # debug("otherwise look into shorter substring")
         do_sentence_truncate(input, length_minus_1)
     end
   end
@@ -82,26 +82,26 @@ defmodule Bonfire.Common.Text do
 
     case input do
       <<result::binary-size(length_minus_1), "_", _::binary>> ->
-        # Logger.info("the substring ends with seperator (eg. -)")
+        # debug("the substring ends with seperator (eg. -)")
         # i. e. "abc-def-ghi", 8 or "abc-def-", 8 -> "abc-def"
         result
 
       <<result::binary-size(length), "_", _::binary>> ->
-        #  Logger.info("the next char after the substring is seperator")
+        #  debug("the next char after the substring is seperator")
         # i. e. "abc-def-ghi", 7 or "abc-def-", 7 -> "abc-def"
         result
 
       <<_::binary-size(length)>> ->
-        # Logger.info("it is the exact length string")
+        # debug("it is the exact length string")
         # i. e. "abc-def", 7 -> "abc-def"
         input
 
       _ when length <= 1 ->
-        # Logger.info("return an empty string if we reached the beginning of the string")
+        # debug("return an empty string if we reached the beginning of the string")
         ""
 
       _ ->
-        # Logger.info("otherwise look into shorter substring")
+        # debug("otherwise look into shorter substring")
         do_underscore_truncate(input, length_minus_1)
     end
   end

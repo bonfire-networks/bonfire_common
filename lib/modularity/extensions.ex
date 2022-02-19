@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Extensions do
   @prefix "bonfire_"
   @prefix_data "bonfire_data_"
 
-  require Logger
+  import Where
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
   def data() do

@@ -2,10 +2,10 @@ defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Utils
   alias Pointers.Pointer
 
-  require Logger
+  import Where
 
   def object_type(%Ecto.Association.NotLoaded{}) do
-    Logger.error("Types.object_type: cannot detect the type on an association that wasn't preloaded")
+    error("Types.object_type: cannot detect the type on an association that wasn't preloaded")
     nil
   end
 
@@ -43,18 +43,18 @@ defmodule Bonfire.Common.Types do
     with {:ok, schema} <- Pointers.Tables.schema(type) do
       schema
     else _ ->
-      Logger.error("Types.object_type: could not find a Pointers.Table schema for #{inspect type}")
+      error("Types.object_type: could not find a Pointers.Table schema for #{inspect type}")
       nil
     end
   end
 
   def object_type(type) when is_atom(type) and not is_nil(type) do
-    Logger.debug("Types.object_type: atom might be a schema type: #{inspect type}")
+    debug("Types.object_type: atom might be a schema type: #{inspect type}")
     type
   end
 
   def object_type(type) do
-    Logger.error("Types.object_type: no pattern matched for #{inspect type}")
+    error("Types.object_type: no pattern matched for #{inspect type}")
     nil
   end
 

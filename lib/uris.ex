@@ -3,7 +3,7 @@ defmodule Bonfire.Common.URIs do
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
   alias Plug.Conn.Query
-  require Logger
+  import Where
 
   def path(view_module_or_path_name_or_object, args \\ [])
 
@@ -21,7 +21,7 @@ defmodule Bonfire.Common.URIs do
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) and not is_nil(type) ->
-        Logger.debug("path: detected object_type #{inspect type}")
+        debug("path: detected object_type #{inspect type}")
         path(type, args_with_id)
 
       none ->
@@ -30,7 +30,7 @@ defmodule Bonfire.Common.URIs do
 
   rescue
     error in FunctionClauseError ->
-      Logger.warn("path: could not find a matching route: #{inspect error} for object #{inspect object}")
+      warn("path: could not find a matching route: #{inspect error} for object #{inspect object}")
       case object do
         %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
         %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
@@ -42,17 +42,17 @@ defmodule Bonfire.Common.URIs do
   def path(id, args) when is_binary(id), do: path_by_id(id, args)
 
   def path(other, _) do
-    Logger.error("path: could not find any matching route for #{inspect other}")
+    error("path: could not find any matching route for #{inspect other}")
     "#unrecognised-#{inspect other}"
   end
 
   defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args) do
-    Logger.error("path: could not figure out the type of this pointer: #{inspect object}")
+    error("path: could not figure out the type of this pointer: #{inspect object}")
     fallback(id, args)
   end
 
   defp path_maybe_lookup_pointer(%{id: id} = object, args) do
-    Logger.debug("path: could not figure out the type of this object, gonna try checking the pointer table")
+    debug("path: could not figure out the type of this object, gonna try checking the pointer table")
     path_by_id(id, args, object)
   end
 
@@ -63,22 +63,22 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
       with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
-        Logger.debug("path_by_id: found a pointer #{inspect pointer}")
+        debug("path_by_id: found a pointer #{inspect pointer}")
         object
         |> Map.merge(pointer)
         |> path(args)
       else _ ->
-        Logger.error("path_by_id: could not find a Pointer with id #{id}")
+        error("path_by_id: could not find a Pointer with id #{id}")
         fallback(id, args)
       end
     else
       case path_id(id) do
         maybe_username when is_binary(maybe_username) and not is_nil(maybe_username) ->
-          Logger.debug("path_by_id: possibly found a username #{inspect maybe_username}")
+          debug("path_by_id: possibly found a username #{inspect maybe_username}")
           path(Bonfire.Data.Identity.User, maybe_username)
 
         _ ->
-          Logger.error("path_by_id: could not find a matching route for #{id}")
+          error("path_by_id: could not find a matching route for #{id}")
           fallback(id, args)
       end
 
@@ -160,18 +160,18 @@ defmodule Bonfire.Common.URIs do
     if Code.ensure_loaded?(endpoint) do
       endpoint.struct_url() |> base_url()
     else
-      Logger.info("base_url: endpoint module not found: #{inspect endpoint}")
+      debug("base_url: endpoint module not found: #{inspect endpoint}")
       ""
     end
   rescue e ->
-    Logger.info("base_url: could not get struct_url from endpoint: #{inspect e}")
+    debug("base_url: could not get struct_url from endpoint: #{inspect e}")
     ""
   end
   def base_url(_) do
     case Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
       endpoint when is_atom(endpoint) -> base_url(endpoint)
       _ ->
-        Logger.info("base_url: requires an endpoint module")
+        debug("base_url: requires an endpoint module")
         ""
     end
   end

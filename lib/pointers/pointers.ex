@@ -2,7 +2,7 @@
 defmodule Bonfire.Common.Pointers do
 
   use Arrows
-  require Logger
+  import Where
   import Bonfire.Common.Config, only: [repo: 0]
   import Bonfire.Common.Extend
   import_if_enabled Bonfire.Boundaries.Queries
@@ -30,10 +30,10 @@ defmodule Bonfire.Common.Pointers do
     with %{id: _} = obj <- follow!(pointer, opts) do
       {:ok,
         Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs previously preloaded on pointer to the returned object
-        #|> IO.inspect(label: "Pointers.get")
+        #|> debug(label: "Pointers.get")
       }
     else e ->
-      Logger.debug("Pointers: could not get: #{inspect e}")
+      debug("Pointers: could not get: #{inspect e}")
       {:error, :not_found}
     end
   rescue
@@ -64,7 +64,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def list!(ids) do
-    Logger.warn("Pointers.list: expected a list of pointers or ULIDs, got #{inspect ids}")
+    warn("Pointers.list: expected a list of pointers or ULIDs, got #{inspect ids}")
     []
   end
 
@@ -76,10 +76,10 @@ defmodule Bonfire.Common.Pointers do
   def pointer_query(filters, opts) do
     q = Queries.query(nil, filters)
     if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
-      Logger.debug("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
+      debug("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
       q
     else
-      Logger.debug("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
+      debug("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
       Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [q, opts], q)
     end
   end
@@ -110,7 +110,7 @@ defmodule Bonfire.Common.Pointers do
   """
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: schema, id: id} = pointed) do
-    #IO.inspect(forge: pointed)
+    #debug(forge: pointed)
     table = Bonfire.Common.Pointers.Tables.table!(schema)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
@@ -143,13 +143,13 @@ defmodule Bonfire.Common.Pointers do
   def preload!(pointer_or_pointers, opts \\ [])
 
   def preload!(%Pointer{id: id, table_id: table_id} = pointer, opts) do
-    #IO.inspect(pointer)
+    #debug(pointer)
 
     if is_nil(pointer.pointed) or Keyword.get(opts, :force) do
       with {:ok, [pointed]} <- loader(table_id, [id: id], opts) do
         %{pointer | pointed: pointed}
       else e ->
-        Logger.debug("Pointers: could not load: #{inspect e}")
+        debug("Pointers: could not load: #{inspect e}")
         pointer
       end
     else
@@ -205,13 +205,13 @@ defmodule Bonfire.Common.Pointers do
 
   defp loader_query(schema, id_filters, opts) when is_atom(schema) do
     query = query(schema, id_filters, opts)
-    Logger.debug("Pointers: query with #{inspect query}")
+    debug("Pointers: query with #{inspect query}")
 
     {:ok, query |> repo().many() }
   end
 
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
-    Logger.debug("Pointers: loading data from a table without a schema module")
+    debug("Pointers: loading data from a table without a schema module")
     (from m in table_name, as: :main_object)
     |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
     |> cowboy_query_all(id_binary(id_filters), opts)
@@ -235,7 +235,7 @@ defmodule Bonfire.Common.Pointers do
     filters = id_filters ++ filters_override
 
     if filters_override && filters_override !=[] do
-      Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} (provided by opts.filters_override)")
+      debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} (provided by opts.filters_override)")
 
       schema_or_query
       |> where(^filters_override)
@@ -243,13 +243,13 @@ defmodule Bonfire.Common.Pointers do
       # |> IO.inspect
     else
       if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
-        Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
+        debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
 
         schema_or_query
         |> id_filter(id_filters)
         # |> IO.inspect
       else
-        Logger.debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
+        debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
 
         Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [schema_or_query, opts], schema_or_query)
           |> where(^filters_override)
@@ -268,7 +268,7 @@ defmodule Bonfire.Common.Pointers do
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
       query = case Bonfire.Common.QueryModules.maybe_query(schema, [filters(schema, filters, opts), opts]) do
       query when not is_nil(query) ->
-        Logger.debug("Pointers: using the QueryModule associated with #{schema}")
+        debug("Pointers: using the QueryModule associated with #{schema}")
 
         query
         # |> IO.inspect
@@ -338,14 +338,14 @@ defmodule Bonfire.Common.Pointers do
   defp follow_filters(schema) do
     with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, [], &follow_function_error/2),
          {:error, _} <- ContextModules.maybe_apply(schema, :follow_filters, [], &follow_function_error/2) do
-        Logger.log(:warn, "Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module")
+        warn("Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module")
         # TODO: apply a boundary check by default?
       []
     end
   end
 
-  def follow_function_error(error, _args, level \\ :info) do
-    Logger.log(level, error)
+  def follow_function_error(error, _args) do
+    debug(error)
     {:error, error}
   end
 

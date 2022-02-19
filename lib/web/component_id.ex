@@ -1,10 +1,10 @@
 defmodule Bonfire.Common.Web.ComponentID do
-  require Logger
+  import Where
   alias Bonfire.Common.Utils
 
   def new(component_module, object_id) when is_binary(object_id) do
     component_id = Pointers.ULID.generate()
-    Logger.debug("ComponentID: stateless component #{component_module} for object id #{object_id} now has ID: #{component_id}")
+    debug("ComponentID: stateless component #{component_module} for object id #{object_id} now has ID: #{component_id}")
 
     save(component_module, object_id, component_id)
 
@@ -14,16 +14,16 @@ defmodule Bonfire.Common.Web.ComponentID do
     new(component_module, object_id)
   end
   def new(component_module, _) do
-    Logger.error("ComponentID: not object ID known for #{component_module}")
+    error("ComponentID: not object ID known for #{component_module}")
     Pointers.ULID.generate()
   end
 
 
   def send_updates(component_module, object_id, assigns) do
-    Logger.debug("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
+    debug("ComponentID: try to send_updates to #{component_module} for object id #{object_id}")
 
     for component_id <- ids(component_module, object_id) do
-      Logger.debug("ComponentID: try stateful component with ID #{component_id}")
+      debug("ComponentID: try stateful component with ID #{component_id}")
       Phoenix.LiveView.send_update(component_module, [id: component_id] ++ assigns)
     end
   end
@@ -46,7 +46,7 @@ defmodule Bonfire.Common.Web.ComponentID do
   end
 
 
-  defp dictionary_key_id(component_module, object_id), do: "cid_"<>to_string(component_module)<>"_"<>object_id #|> IO.inspect()
+  defp dictionary_key_id(component_module, object_id), do: "cid_"<>to_string(component_module)<>"_"<>object_id #|> debug()
 
 
   defp save(component_module, object_id, component_id) when is_binary(object_id) and is_binary(component_id) do
@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Web.ComponentID do
 
     Process.put(dictionary_key_id,
       (ids(dictionary_key_id) ++ [component_id])
-      #|> IO.inspect()
+      #|> debug()
     )
   end
 

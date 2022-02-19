@@ -20,7 +20,7 @@ defmodule Bonfire.Common.QueryModules do
   local garbage collection.
   """
 
-  require Logger
+  import Where
   alias Bonfire.Common.Utils
 
   def maybe_query(
@@ -78,8 +78,8 @@ defmodule Bonfire.Common.QueryModules do
     maybe_query(object_schema, [args], fallback_fun)
   end
 
-  def apply_error(error, args, level \\ :error) do
-    Logger.log(level, "QueryModules - could not query: #{error} - Query args: #{inspect args}")
+  def apply_error(error, args) do
+    warn("QueryModules - could not query: #{error} - Query args: #{inspect args}")
 
     nil
   end
@@ -131,7 +131,7 @@ defmodule Bonfire.Common.QueryModules do
   end
 
   def query_function_error(error, _args, level \\ :info) do
-    Logger.log(level, "QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2) #{error}")
+    warn("QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2) #{error}")
 
     nil
   end

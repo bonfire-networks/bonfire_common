@@ -1,6 +1,6 @@
 defmodule Bonfire.Repo.Delete do
 
-  require Logger
+  import Where
 
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
