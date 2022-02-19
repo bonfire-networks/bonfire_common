@@ -1,11 +1,12 @@
 defmodule Bonfire.Common.Utils do
   import Bonfire.Common.URIs
+  use Arrows
+  import Where
+  import Phoenix.LiveView
+  require Logger
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
-  use Arrows
-  import Phoenix.LiveView
-  require Logger
 
   defmacro __using__(opts) do
     quote do
@@ -17,6 +18,10 @@ defmodule Bonfire.Common.Utils do
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
 
+      import Where
+      use Arrows
+
+      # localisation
       require Bonfire.Web.Gettext
       import Bonfire.Web.Gettext.Helpers
 
@@ -34,34 +39,6 @@ defmodule Bonfire.Common.Utils do
   def strlen(x) when x > 0, do: 1
   # let's just say that 0 is nothing
   def strlen(x) when x == 0, do: 0
-
-  defp debug_label(caller, _opts) do
-    file = Path.relative_to_cwd(caller.file)
-    case caller.function do
-      {fun, arity} -> "#{file}:#{caller.line} - #{module_to_str(caller.module)}:#{inspect(fun)}:/#{arity} -"
-      _ -> "#{file}:#{caller.line} -"
-    end
-  end
-
-  defmacro debug(thing, label \\ "", opts \\ []) do
-    label2 = debug_label(__CALLER__, opts)
-    quote do: IO.inspect(unquote(thing), label: "#{unquote(label2)} #{unquote(label)}", pretty: true, printable_limit: :infinity)
-  end
-
-  defmacro log_debug(thing, label \\ "", opts \\ []) do
-    label2 = debug_label(__CALLER__, opts)
-    quote do: Logger.debug("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
-  end
-
-  defmacro log_warn(thing, label \\ "", opts \\ []) do
-    label2 = debug_label(__CALLER__, opts)
-    quote do: Logger.warn("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
-  end
-
-  defmacro log_error(thing, label \\ "", opts \\ []) do
-    label2 = debug_label(__CALLER__, opts)
-    quote do: Logger.error("#{unquote(label2)} #{unquote(label)}: #{inspect(unquote(thing), pretty: true, printable_limit: :infinity)}")
-  end
 
   @doc "Returns a value, or a fallback if nil/false"
   def e(key, fallback) do
