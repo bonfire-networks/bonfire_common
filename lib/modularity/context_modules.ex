@@ -20,7 +20,6 @@ defmodule Bonfire.Common.ContextModules do
   """
 
   import Where
-  alias Bonfire.Common.Utils
 
   @doc """
   Given an object or schema module name, run a function on the associated context module.
@@ -90,7 +89,7 @@ defmodule Bonfire.Common.ContextModules do
   def data(), do: :persistent_term.get(__MODULE__) #, data_init())
 
   defp data_init() do
-    Logger.error "The ContextModules service was not started. Please add it to your Application."
+    error "The ContextModules service was not started. Please add it to your Application."
     populate()
   end
 

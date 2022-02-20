@@ -98,7 +98,7 @@ defmodule Bonfire.Common.QueryModules do
   def data(), do: :persistent_term.get(__MODULE__) #, data_init())
 
   defp data_init() do
-    Logger.error "The QueryModules was not started. Please add it to your Application."
+    error "The QueryModules was not started. Please add it to your Application."
     populate()
   end
 
