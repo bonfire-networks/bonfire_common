@@ -1,9 +1,8 @@
 defmodule Bonfire.Common.Utils do
-  import Bonfire.Common.URIs
   use Arrows
+  import Bonfire.Common.URIs
   import Where
   import Phoenix.LiveView
-  import Where
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
@@ -24,8 +23,6 @@ defmodule Bonfire.Common.Utils do
       # localisation
       require Bonfire.Web.Gettext
       import Bonfire.Web.Gettext.Helpers
-
-      require Logger
     end
   end
 

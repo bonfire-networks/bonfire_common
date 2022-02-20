@@ -1,5 +1,6 @@
 defmodule Bonfire.Notifications do
   use Bonfire.Web, :live_handler
+  import Where
 
   def notify_users(feed_ids, title, message) do
     pubsub_broadcast(feed_ids, {Bonfire.Notifications, %{title: title, message: text_only(message)}})
