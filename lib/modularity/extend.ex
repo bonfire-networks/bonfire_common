@@ -114,7 +114,7 @@ defmodule Bonfire.Common.Extend do
   def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_str_to_module(), fallback_module)
   def quoted_import_if_enabled(module, fallback_module \\ nil) do
     if is_atom(module) and module_enabled?(module) do
-      debug(module, "Found module to import")
+      # debug(module, "Found module to import")
       quote do
         import unquote(module)
       end
