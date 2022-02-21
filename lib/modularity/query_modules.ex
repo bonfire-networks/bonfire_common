@@ -20,8 +20,7 @@ defmodule Bonfire.Common.QueryModules do
   local garbage collection.
   """
 
-  import Where
-  alias Bonfire.Common.Utils
+  use Bonfire.Common.Utils, only: []
 
   def maybe_query(
         schema,

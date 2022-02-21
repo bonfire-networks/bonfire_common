@@ -19,7 +19,7 @@ defmodule Bonfire.Common.ContextModules do
   local garbage collection.
   """
 
-  import Where
+  use Bonfire.Common.Utils, only: []
 
   @doc """
   Given an object or schema module name, run a function on the associated context module.
