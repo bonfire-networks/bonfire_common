@@ -6,6 +6,7 @@ defmodule Bonfire.Common.Utils do
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
+  require Logger
 
   defmacro __using__(opts) do
     quote do

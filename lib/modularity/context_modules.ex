@@ -121,7 +121,7 @@ defmodule Bonfire.Common.ContextModules do
   end
 
   def context_function_error(error, _args) do
-    warn("ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2) #{error}")
+    warn(error, "ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2)")
 
     nil
   end
