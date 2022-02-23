@@ -163,6 +163,8 @@ defmodule Bonfire.Web do
       import Phoenix.LiveView.Helpers
       alias Bonfire.Common.Web.ComponentID
 
+      alias Phoenix.LiveView.JS
+
       # Import Surface if any dep is using it
       Bonfire.Common.Extend.quoted_import_if_enabled(Surface)
 
