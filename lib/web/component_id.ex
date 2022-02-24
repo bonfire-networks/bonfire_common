@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Web.ComponentID do
 
   def send_assigns(component_module, id, set, socket) do
 
-    Utils.maybe_str_to_atom(component_module)
+    Utils.maybe_to_atom(component_module)
     |>
     send_updates(id, set)
 

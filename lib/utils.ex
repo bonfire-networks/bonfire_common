@@ -183,7 +183,7 @@ defmodule Bonfire.Common.Utils do
         Recase.to_camel(key),
         Map.get(
           map,
-          maybe_str_to_atom(key),
+          maybe_to_atom(key),
           fallback
         )
       )
@@ -403,26 +403,26 @@ defmodule Bonfire.Common.Utils do
   def maybe_append(list, value) when is_list(list), do: [value | list]
   def maybe_append(obj, value), do: maybe_append([obj], value)
 
-  def maybe_str_to_atom(str) when is_binary(str) do
+  def maybe_to_atom(str) when is_binary(str) do
     try do
       String.to_existing_atom(str)
     rescue
       ArgumentError -> str
     end
   end
-  def maybe_str_to_atom(other), do: other
+  def maybe_to_atom(other), do: other
 
-  def maybe_str_to_atom!(str) when is_binary(str) do
+  def maybe_to_atom!(str) when is_binary(str) do
     try do
       String.to_existing_atom(str)
     rescue
       ArgumentError -> nil
     end
   end
-  def maybe_str_to_atom!(_), do: nil
+  def maybe_to_atom!(_), do: nil
 
   def maybe_str_to_module(str) when is_binary(str) do
-    case maybe_str_to_atom(str) do
+    case maybe_to_atom(str) do
       module when is_atom(module) -> module
       "Elixir."<>_ -> nil # doesn't exist
       other -> maybe_str_to_module("Elixir."<>str)
@@ -616,7 +616,7 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
-  def maybe_to_snake_atom(string), do: maybe_str_to_atom!(maybe_to_snake(string))
+  def maybe_to_snake_atom(string), do: maybe_to_atom!(maybe_to_snake(string))
 
   def maybe_to_structs(v) when is_struct(v), do: v
   def maybe_to_structs(v), do: v |> input_to_atoms() |> maybe_to_structs_recurse()
