@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Web.ComponentID do
   import Where
   alias Bonfire.Common.Utils
 
-  def new(component_module, object_id) when is_binary(object_id) do
+  def new(component_module, object_id) when is_binary(object_id) or is_number(object_id) do
     component_id = Pointers.ULID.generate()
     debug("ComponentID: stateless component #{component_module} for object id #{object_id} now has ID: #{component_id}")
 
@@ -10,11 +10,11 @@ defmodule Bonfire.Common.Web.ComponentID do
 
     component_id
   end
-  def new(component_module, %{id: object_id}) do
-    new(component_module, object_id)
+  def new(component_module, object) do
+    new(component_module, Utils.ulid(object))
   end
   def new(component_module, _) do
-    error("ComponentID: not object ID known for #{component_module}")
+    error("ComponentID: you need to provid an object_id for #{component_module}, generating a random one instead...")
     Pointers.ULID.generate()
   end
 
