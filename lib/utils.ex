@@ -151,7 +151,7 @@ defmodule Bonfire.Common.Utils do
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
-  def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty()
+  def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
   def ulid({:ok, other}), do: ulid(other)
   def ulid(id) do
     if is_ulid?(id) do
@@ -215,7 +215,7 @@ defmodule Bonfire.Common.Utils do
   end
   def magic_filter_empty(val, _, _, fallback), do: val |> filter_empty(fallback)
 
-  def filter_empty(val, fallback \\ nil)
+  def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback
   def filter_empty([], fallback), do: fallback
@@ -553,7 +553,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def map_filter_empty(v) do
-    filter_empty(v)
+    filter_empty(v, nil)
   end
 
   @doc """
@@ -1105,7 +1105,7 @@ defmodule Bonfire.Common.Utils do
       exception = if exception, do: debug_banner(kind, exception, stacktrace)
       stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
-      {:error, Enum.join([error_msg(msg), exception, stacktrace] |> filter_empty(), " - ") |> String.slice(0..1000) }
+      {:error, Enum.join([error_msg(msg), exception, stacktrace] |> filter_empty(""), " - ") |> String.slice(0..1000) }
     else
       {:error, error_msg(msg)}
     end
