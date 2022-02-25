@@ -218,11 +218,13 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(val, fallback \\ nil)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback
-  def filter_empty(list, fallback) when is_list(list) and length(list)==0, do: fallback
-  def filter_empty(list, _fallback) when is_list(list), do: list |> Enum.filter(& &1) # FIXME: use fallback if result is empty []
+  def filter_empty([], fallback), do: fallback
+  def filter_empty(list, fallback) when is_list(list), do: list |> Enum.filter(& &1) |> re_filter_empty(fallback)
   # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
   def filter_empty(val, fallback), do: val || fallback
 
+  defp re_filter_empty([], fallback), do: fallback
+  defp re_filter_empty(list, _fallback), do: list
 
   def put_new_in(%{} = map, [key], val) do
     Map.put_new(map, key, val)
