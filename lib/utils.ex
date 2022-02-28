@@ -839,6 +839,10 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  def elem_or(verb, index, _fallback) when is_tuple(verb), do: elem(verb, index)
+  def elem_or(_verb, _index, fallback), do: fallback
+
+
   @doc """
   Subscribe to something for realtime updates, like a feed or thread
   """

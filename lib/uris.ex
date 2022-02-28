@@ -97,56 +97,69 @@ defmodule Bonfire.Common.URIs do
     base_url()<>path(view_module_or_path_name_or_object, args)
   end
 
-  def canonical_url(%{canonical_uri: canonical_url}) when not is_nil(canonical_url) do
-    # TODO preload new Peered.canonical_uri
-    canonical_url
-  end
-  def canonical_url(%{"canonicalUrl"=> canonical_url}) when not is_nil(canonical_url) do
-    canonical_url
-  end
-  def canonical_url(%{peered: %{canonical_uri: canonical_url}}) when not is_nil(canonical_url) do
+  def canonical_url(%{canonical_uri: canonical_url}) when is_binary(canonical_url) do
     canonical_url
   end
   def canonical_url(%{canonical_url: canonical_url}) when not is_nil(canonical_url) do
     canonical_url
   end
+  def canonical_url(%{"canonicalUrl"=> canonical_url}) when is_binary(canonical_url) do
+    canonical_url
+  end
+  def canonical_url(%{peered: %{canonical_uri: canonical_url}}) when is_binary(canonical_url) do
+    canonical_url
+  end
   def canonical_url(%{peered: _not_loaded} = object) do
     Bonfire.Repo.maybe_preload(object, :peered)
-    |> Utils.e(:peered, :canonical_uri, generate_canonical_url(object))
+    |> Utils.e(:peered, :canonical_uri, nil)
+        ||
+       maybe_generate_canonical_url(object)
   end
-  def canonical_url(object) do # fallback, only works for local objects
-    if Utils.module_enabled?(Bonfire.Federate.ActivityPub.Actors) do
-      Bonfire.Federate.ActivityPub.Actors.get_canonical_uri(object) || generate_canonical_url(object)
+  def canonical_url(%{created: _not_loaded} = object) do
+    Bonfire.Repo.maybe_preload(object, [created: [:peered]])
+    |> Utils.e(:created, :peered, :canonical_uri, nil)
+        ||
+       maybe_generate_canonical_url(object)
+  end
+  def canonical_url(%{character: _not_loaded} = object) do
+    Bonfire.Repo.maybe_preload(object, [character: [:peered]])
+    |> Utils.e(:character, :peered, :canonical_uri, nil)
+        ||
+       maybe_generate_canonical_url(object)
+  end
+  def canonical_url(object) do
+    if Utils.module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
+      Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object) || maybe_generate_canonical_url(object)
     else
-      generate_canonical_url(object)
+      maybe_generate_canonical_url(object)
     end
   end
 
-  defp generate_canonical_url(%{id: id} = thing) when is_binary(id) do
+  defp maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
     if Utils.module_enabled?(Characters) do
       # check if object is a Character (in which case use actor URL)
       case Characters.character_url(thing) do
-        nil -> generate_canonical_url(id)
+        nil -> maybe_generate_canonical_url(id)
         character_url -> character_url
       end
     else
-      generate_canonical_url(id)
+      maybe_generate_canonical_url(id)
     end
   end
 
-  defp generate_canonical_url(id) when is_binary(id) do
+  defp maybe_generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
     prefix = if Utils.is_ulid?(id), do: "/objects/", else: "/actors/"
     base_url() <> ap_base_path <> prefix <> id
   end
 
-  defp generate_canonical_url(%{"id" => id}), do: generate_canonical_url(id)
-  defp generate_canonical_url(%{"username" => id}), do: generate_canonical_url(id)
-  defp generate_canonical_url(%{username: id}), do: generate_canonical_url(id)
-  defp generate_canonical_url(%{"displayUsername" => id}), do: generate_canonical_url(id)
-  defp generate_canonical_url(%{"preferredUsername" => id}), do: generate_canonical_url(id)
+  defp maybe_generate_canonical_url(%{"id" => id}), do: maybe_generate_canonical_url(id)
+  defp maybe_generate_canonical_url(%{"username" => id}), do: maybe_generate_canonical_url(id)
+  defp maybe_generate_canonical_url(%{username: id}), do: maybe_generate_canonical_url(id)
+  defp maybe_generate_canonical_url(%{"displayUsername" => id}), do: maybe_generate_canonical_url(id)
+  defp maybe_generate_canonical_url(%{"preferredUsername" => id}), do: maybe_generate_canonical_url(id)
 
-  defp generate_canonical_url(_) do
+  defp maybe_generate_canonical_url(_) do
     nil
   end
 
