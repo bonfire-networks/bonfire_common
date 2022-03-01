@@ -842,6 +842,9 @@ defmodule Bonfire.Common.Utils do
   def elem_or(verb, index, _fallback) when is_tuple(verb), do: elem(verb, index)
   def elem_or(_verb, _index, fallback), do: fallback
 
+  def contains?(string, substring) when is_binary(string) and is_binary(substring), do: string =~ substring
+  def contains?(_, _), do: nil
+
 
   @doc """
   Subscribe to something for realtime updates, like a feed or thread
