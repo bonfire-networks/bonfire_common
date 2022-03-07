@@ -31,6 +31,21 @@ defmodule Bonfire.Common.Config do
     end
   end
 
+  @doc """
+  Get config value for a Bonfire extension or OTP app config key
+  """
+  def get_ext(module_or_otp_app, key, default \\ nil) do
+    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
+    top_level_otp_app = top_level_otp_app()
+    ret = get(key, default, otp_app)
+
+    if default == ret and otp_app != top_level_otp_app do
+      # fallback to checking for the same config in top-level Bonfire app
+      get(key, default, top_level_otp_app)
+    else
+      ret
+    end
+  end
 
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
@@ -65,22 +80,6 @@ defmodule Bonfire.Common.Config do
       compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
     else
       value
-    end
-  end
-
-  @doc """
-  Get config value for a Bonfire extension or OTP app config key
-  """
-  def get_ext(module_or_otp_app, key, default \\ nil) do
-    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
-    top_level_otp_app = top_level_otp_app()
-    ret = get(key, default, otp_app)
-
-    if default == ret and otp_app != top_level_otp_app do
-      # fallback to checking for the same config in top-level Bonfire app
-      get(key, default, top_level_otp_app)
-    else
-      ret
     end
   end
 
