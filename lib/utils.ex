@@ -711,7 +711,7 @@ defmodule Bonfire.Common.Utils do
   def date_from_now(date), do: date_relative(date)
 
   def date_from_pointer(%{id: id}), do: date_from_pointer(id)
-  def date_from_pointer(id) when is_binary(id), do: Pointers.ULID.timestamp(id) ~> DateTime.from_unix(:millisecond) |> ok_or()
+  def date_from_pointer(id) when is_binary(id), do: Pointers.ULID.timestamp(id) ~> DateTime.from_unix(:second) |> ok_or()
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
