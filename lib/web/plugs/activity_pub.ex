@@ -12,10 +12,15 @@ defmodule Bonfire.Web.Plugs.ActivityPub do
   end
 
   def with_headers(conn, %{"accept" => "application/activity+json"}, _opts) do
-    url = Bonfire.Common.URIs.canonical_url(conn.params)
-    conn
-    |> Phoenix.Controller.redirect(external: url)
-    |> halt()
+    url =
+    case Bonfire.Common.URIs.canonical_url(conn.params) do
+      url when is_binary(url) ->
+        conn
+        |> Phoenix.Controller.redirect(external: url)
+        |> halt()
+      _ ->
+        conn
+    end
   end
 
   def with_headers(conn, _, _opts) do
