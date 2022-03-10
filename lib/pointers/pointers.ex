@@ -24,7 +24,7 @@ defmodule Bonfire.Common.Pointers do
   def get(id, opts \\ [])
 
   def get({:ok, by}, opts), do: get(by, opts)
-  def get(%{pointer_id: by}, opts), do: get(by, opts)
+  def get(%{pointer_id: by}, opts) when is_binary(by), do: get(by, opts)
   def get(id, opts) when is_binary(id), do: one(id, opts) ~> get(opts)
   def get(%Pointer{} = pointer, opts) do
     with %{id: _} = obj <- follow!(pointer, opts) do
@@ -33,13 +33,18 @@ defmodule Bonfire.Common.Pointers do
         #|> debug(label: "Pointers.get")
       }
     else e ->
-      debug("Pointers: could not get: #{inspect e}")
+      error(pointer, "Could not follow - #{inspect e}")
       {:error, :not_found}
     end
   rescue
-    NotFound -> {:error, :not_found}
+    NotFound ->
+      error("Pointer raised NotFound")
+      {:error, :not_found}
   end
-  def get(_, _), do: {:error, :not_found}
+  def get(other, _) do
+    error("Cannot get a pointer with #{inspect other}")
+    {:error, :not_found}
+  end
 
   def one(id, opts \\ [])
   def one(id, opts) when is_binary(id) do
