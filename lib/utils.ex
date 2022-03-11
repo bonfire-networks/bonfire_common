@@ -6,6 +6,7 @@ defmodule Bonfire.Common.Utils do
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
   alias Bonfire.Common.Extend
+  alias Ecto.Changeset
   require Logger
 
   defmacro __using__(opts) do
@@ -150,6 +151,7 @@ defmodule Bonfire.Common.Utils do
   def is_ulid?(_), do: false
 
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
+  def ulid(%Changeset{}=cs), do: ulid(Changeset.get_field(cs, :id))
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
   def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
   def ulid({:ok, other}), do: ulid(other)
