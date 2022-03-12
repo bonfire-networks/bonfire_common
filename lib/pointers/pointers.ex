@@ -57,14 +57,12 @@ defmodule Bonfire.Common.Pointers do
 
   def one!(filters, opts \\ []), do: pointer_query(filters, opts) |> repo().one!()
 
-  def list!(pointers)
-  when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
+  def list!(pointers) when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
     Pointers.follow!(pointers)
   end
 
-  def list!(ids)
-  when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
+  def list!(ids) when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
     with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: Pointers.follow!(ptrs)
   end
 
@@ -80,13 +78,8 @@ defmodule Bonfire.Common.Pointers do
 
   def pointer_query(filters, opts) do
     q = Queries.query(nil, filters)
-    if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
-      debug("Pointers: query with filters: #{inspect filters} and NO boundary check (because of opts.skip_boundary_check)")
-      q
-    else
-      debug("Pointers: query with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
-      Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [q, opts], q)
-    end
+    q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
+    if opts[:log_query], do: dump(q), else: q
   end
 
   @doc "Turns a thing into a pointer if it is not already or returns nil"
@@ -256,10 +249,13 @@ defmodule Bonfire.Common.Pointers do
       else
         debug("Pointers: Attempting cowboy query on #{inspect schema_or_query} with filters: #{inspect filters} + boundary check (if Bonfire.Boundaries extension available)")
 
-        Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_only_visible_for, [schema_or_query, opts], schema_or_query)
+       q = schema_or_query
           |> where(^filters_override)
           |> id_filter(id_filters)
           # |> IO.inspect
+
+        Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
+
       end
     end
   end
@@ -343,7 +339,7 @@ defmodule Bonfire.Common.Pointers do
   defp follow_filters(schema) do
     with {:error, _} <- Utils.maybe_apply(schema, :follow_filters, [], &follow_function_error/2),
          {:error, _} <- ContextModules.maybe_apply(schema, :follow_filters, [], &follow_function_error/2) do
-        warn("Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module")
+        debug(schema, "Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module")
         # TODO: apply a boundary check by default?
       []
     end
