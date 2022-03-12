@@ -173,18 +173,33 @@ defmodule Bonfire.Common.URIs do
     if Code.ensure_loaded?(endpoint) do
       endpoint.struct_url() |> base_url()
     else
-      debug("base_url: endpoint module not found: #{inspect endpoint}")
+      error("endpoint module not found: #{inspect endpoint}")
       ""
     end
   rescue e ->
-    debug("base_url: could not get struct_url from endpoint: #{inspect e}")
+    error("could not get struct_url from endpoint: #{inspect e}")
     ""
   end
   def base_url(_) do
     case Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
-      endpoint when is_atom(endpoint) -> base_url(endpoint)
+      endpoint when is_atom(endpoint) ->
+        if Utils.module_enabled?(endpoint) do
+          base_url(endpoint)
+        else
+          error("endpoint module #{endpoint} not available")
+          ""
+        end
       _ ->
-        debug("base_url: requires an endpoint module")
+        error("requires a conn or endpoint module")
+        ""
+    end
+  end
+
+  def instance_domain(endpoint_or_conn \\ nil) do
+    case base_url(endpoint_or_conn) |> URI.parse do
+      %{host: host} -> host
+      other ->
+        error(other, "base_url returned no host")
         ""
     end
   end
@@ -196,6 +211,7 @@ defmodule Bonfire.Common.URIs do
   def copy_go(_), do: ""
 
   # TODO: should we preserve query strings?
+  def go_query(url) when is_binary(url), do: "?" <> Query.encode(go: url)
   def go_query(conn), do: "?" <> Query.encode(go: conn.request_path)
 
   # TODO: we should validate this a bit harder. Phoenix will prevent
@@ -204,12 +220,12 @@ defmodule Bonfire.Common.URIs do
   def valid_go_path?("/" <> _), do: true
   def valid_go_path?(_), do: false
 
-  def go_where?(_conn, %Ecto.Changeset{}, default) do
-    default
+  def go_where?(_conn, %Ecto.Changeset{}=cs, default) do
+    go_where?(_conn, cs.changes, default)
   end
 
   def go_where?(_conn, params, default) do
-    go = params[:go] || params["go"]
+    go = Utils.e(params |> dump, :go, default) |> dump
     if valid_go_path?(go), do: go, else: default
   end
 end
