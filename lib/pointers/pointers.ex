@@ -79,7 +79,7 @@ defmodule Bonfire.Common.Pointers do
   def pointer_query(filters, opts) do
     q = Queries.query(nil, filters)
     q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
-    if opts[:log_query], do: dump(q), else: q
+    if Utils.e(opts, :log_query, nil), do: dump(q), else: q
   end
 
   @doc "Turns a thing into a pointer if it is not already or returns nil"

@@ -17,26 +17,29 @@ defmodule Bonfire.Common.URIs do
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
-    args_with_id = ([path_id(object)] ++ args) |> Utils.filter_empty([]) #|> IO.inspect()
+    args_with_id = ([path_id(object)] ++ args)
+    |> Utils.filter_empty([])
+    |> debug("args")
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) and not is_nil(type) ->
-        debug("path: detected object_type #{inspect type}")
+        debug(type, "detected object_type for object")
         path(type, args_with_id)
 
       none ->
+        debug(none, "path_maybe_lookup_pointer")
         path_maybe_lookup_pointer(object, args)
     end
 
-  rescue
-    error in FunctionClauseError ->
-      warn("path: could not find a matching route: #{inspect error} for object #{inspect object}")
-      case object do
-        %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
-        %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
-        %{id: id} -> fallback(id, args)
-        _ -> fallback(object, args)
-      end
+  # rescue
+  #   error in FunctionClauseError ->
+  #     warn("path: could not find a matching route: #{inspect error} for object #{inspect object}")
+  #     case object do
+  #       %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
+  #       %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
+  #       %{id: id} -> fallback(id, args)
+  #       _ -> fallback(object, args)
+  #     end
   end
 
   def path(id, args) when is_binary(id), do: path_by_id(id, args)
@@ -89,7 +92,7 @@ defmodule Bonfire.Common.URIs do
   # defp path_id("@"<>username), do: username
   defp path_id(%{username: username}), do: username
   defp path_id(%{display_username: display_username}), do: path_id(display_username)
-  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Repo.maybe_preload(:character) |> Utils.e(:character, nil) |> path_id()
+  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Repo.maybe_preload(:character) |> Utils.e(:character, obj.id) |> path_id()
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 
