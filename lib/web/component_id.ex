@@ -10,8 +10,8 @@ defmodule Bonfire.Common.Web.ComponentID do
 
     component_id
   end
-  def new(component_module, object) do
-    new(component_module, Utils.ulid(object))
+  def new(component_module, object) when is_map(object) or is_list(object) or is_tuple(object) do
+    new(component_module, Utils.ulid(object) || Pointers.ULID.generate())
   end
   def new(component_module, _) do
     error("ComponentID: you need to provid an object_id for #{component_module}, generating a random one instead...")
