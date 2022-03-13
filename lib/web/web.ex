@@ -249,6 +249,8 @@ defmodule Bonfire.Web do
         alias Surface.Components.Form.FileInput
         alias Surface.Components.Form.TextArea
 
+        alias Bonfire.Common.Web.LazyImage
+
       end
     end
   end

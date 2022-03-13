@@ -1,0 +1,8 @@
+
+<img 
+  class={@class}
+  x-data={"{src: '#{Bonfire.Files.blurred(@src)}' }"}
+  x-intersect.once={"src = '#{@src}'"}
+  x-bind:src="src"
+  onerror="this.style.background='#6AA4DA'"
+  />
