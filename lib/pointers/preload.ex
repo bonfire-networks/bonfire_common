@@ -67,18 +67,18 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   defp nested_keys(keys) do
     # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
-    keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> debug(label: "flatten nested keys")
+    keys |> Utils.flatter |> Enum.map(&Access.key!(&1)) # |> debug("flatten nested keys")
   end
 
   defp do_maybe_preload_nested_pointers(object, keylist, opts) when is_struct(object) or is_list(object) and not is_nil(keylist) and keylist !=[] do
     debug("do_maybe_preload_nested_pointers: try with get_and_update_in for #{inspect object}")
 
     with {_old, loaded} <- object
-                          # |> debug(label: "object")
+                          # |> debug("object")
                           |> get_and_update_in(keylist, &{&1, maybe_preload_pointer(&1, opts)})
     do
       loaded
-      # |> debug(label: "object")
+      # |> debug("object")
     end
   end
 
@@ -94,7 +94,7 @@ defmodule Bonfire.Common.Pointers.Preload do
     end
   end
 
-  def maybe_preload_pointer(obj, _opts), do: obj #|> debug(label: "skip")
+  def maybe_preload_pointer(obj, _opts), do: obj #|> debug("skip")
 
 
 end

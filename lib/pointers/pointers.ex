@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Pointers do
     with %{id: _} = obj <- follow!(pointer, opts) do
       {:ok,
         Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs previously preloaded on pointer to the returned object
-        #|> debug(label: "Pointers.get")
+        #|> debug("Pointers.get")
       }
     else e ->
       error(pointer, "Could not follow - #{inspect e}")

@@ -113,7 +113,7 @@ defmodule Bonfire.Repo do
   def upsert(cs) do
     cs
     |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
-    # |> debug(label: "upsert cs")
+    # |> debug("upsert cs")
     |> insert(on_conflict: :nothing)
   end
 
@@ -302,7 +302,7 @@ defmodule Bonfire.Repo do
       &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)})
     do
       loaded
-      # |> debug(label: "preloaded")
+      # |> debug("preloaded")
     end
   end
 
