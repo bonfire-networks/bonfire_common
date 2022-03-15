@@ -5,3 +5,9 @@ destroyed() {
     Cookie.set("locale", this.el.value)
 }
 }
+
+let ChangeLocaleHooks = {};
+
+ChangeLocaleHooks.ChangeLocaleHook = ChangeLocaleHook;
+
+export { ChangeLocaleHooks } 

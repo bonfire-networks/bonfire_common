@@ -1,0 +1,9 @@
+{
+  "version": "0.0.0",
+  "dependencies": {
+    "@yaireo/tagify": "^4.9.4"
+  },
+  "devDependencies": {
+    "prop-types": "^15.8.0"
+  }
+}
