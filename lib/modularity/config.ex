@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Extend
+  import Bonfire.Common.Extend
 
   def top_level_otp_app do
     get!(:otp_app, :bonfire_common)
@@ -22,7 +22,7 @@ defmodule Bonfire.Common.Config do
   Stop if an Elixir module or extension / OTP app doesn't have configuration keys set up
   """
   def require_extension_config!(extension) do
-    if !Extend.has_extension_config?(extension) do
+    if !has_extension_config?(extension) do
       compilation_error(
         "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{
           extension
@@ -35,7 +35,7 @@ defmodule Bonfire.Common.Config do
   Get config value for a Bonfire extension or OTP app config key
   """
   def get_ext(module_or_otp_app, key, default \\ nil) do
-    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
+    otp_app = maybe_extension_loaded(module_or_otp_app)
     top_level_otp_app = top_level_otp_app()
     ret = get(key, default, otp_app)
 
@@ -87,7 +87,7 @@ defmodule Bonfire.Common.Config do
   Get all config keys/values for a Bonfire extension or OTP app
   """
   def get_ext(module_or_otp_app) do
-    otp_app = Extend.maybe_extension_loaded(module_or_otp_app)
+    otp_app = maybe_extension_loaded(module_or_otp_app)
     Application.get_all_env(otp_app)
   end
 
@@ -96,7 +96,7 @@ defmodule Bonfire.Common.Config do
 
     if value == nil do
       compilation_error(
-        "Missing configuration value for extension #{Extend.maybe_extension_loaded(module_or_otp_app)}: #{
+        "Missing configuration value for extension #{maybe_extension_loaded(module_or_otp_app)}: #{
           inspect(key, pretty: true)
         }"
       )

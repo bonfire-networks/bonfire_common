@@ -129,7 +129,7 @@ defmodule Bonfire.Web do
 
       import Bonfire.Common.Config, only: [repo: 0]
 
-      import Bonfire.Common.Extend, only: [use_if_enabled: 1, import_if_enabled: 1, require_if_enabled: 1]
+      import Bonfire.Common.Extend
 
       import Bonfire.Common.Web.ErrorHelpers
     end

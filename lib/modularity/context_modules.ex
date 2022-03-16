@@ -35,7 +35,7 @@ defmodule Bonfire.Common.ContextModules do
       when is_atom(schema_or_context) and is_atom(fun) and is_list(args) and
              is_function(fallback_fun) do
 
-    if Utils.module_enabled?(schema_or_context) do
+    if module_enabled?(schema_or_context) do
 
       object_context_module = maybe_context_module(schema_or_context)
 

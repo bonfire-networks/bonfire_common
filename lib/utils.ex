@@ -1,11 +1,12 @@
 defmodule Bonfire.Common.Utils do
   use Arrows
   import Bonfire.Common.URIs
+  import Bonfire.Common.Extend
   import Where
   import Phoenix.LiveView
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Extend
+  import Bonfire.Common.Extend
   alias Ecto.Changeset
   require Logger
 
@@ -19,6 +20,8 @@ defmodule Bonfire.Common.Utils do
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
 
+      import Extend
+
       import Where
       use Arrows
 
@@ -27,8 +30,6 @@ defmodule Bonfire.Common.Utils do
       import Bonfire.Web.Gettext.Helpers
     end
   end
-
-  defdelegate module_enabled?(module), to: Extend
 
   def strlen(x) when is_nil(x), do: 0
   def strlen(%{} = obj) when obj == %{}, do: 0
@@ -707,7 +708,7 @@ defmodule Bonfire.Common.Utils do
       relative
     else
       other ->
-        error(other)
+        error(date, inspect other)
         ""
     end
   end
@@ -715,7 +716,15 @@ defmodule Bonfire.Common.Utils do
   def date_from_now(date), do: date_relative(date)
 
   def date_from_pointer(%{id: id}), do: date_from_pointer(id)
-  def date_from_pointer(id) when is_binary(id), do: Pointers.ULID.timestamp(id) ~> DateTime.from_unix(:second) |> ok_or()
+  def date_from_pointer(id) when is_binary(id) do
+    with {:ok, ts} <- Pointers.ULID.timestamp(id) |> dump,
+    {:ok, date} <- DateTime.from_unix(ts, :second) do
+      date
+    else e ->
+      error(e)
+      nil
+    end
+  end
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url

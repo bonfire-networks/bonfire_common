@@ -3,7 +3,7 @@ defmodule Bonfire.Repo.Delete do
   import Where
 
   import Bonfire.Common.Config, only: [repo: 0]
-  alias Bonfire.Common.Utils
+  use Bonfire.Common.Utils
   alias Ecto.Changeset
 
   def federation_module, do: "Delete"
@@ -77,7 +77,7 @@ defmodule Bonfire.Repo.Delete do
   defp maybe_creator_allow_delete?(_, _), do: false
 
   def deletion_result({:error, e}) do
-    if Utils.module_enabled?(Bonfire.Fail) do
+    if module_enabled?(Bonfire.Fail) do
       {:error, Bonfire.Fail.fail(:deletion_error, e)}
     else
       {:error, :deletion_error}

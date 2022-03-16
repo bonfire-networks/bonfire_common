@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.URIs do
 
   alias Bonfire.Common.Utils
+  import Bonfire.Common.Extend
   alias Bonfire.Me.Characters
   alias Plug.Conn.Query
   import Where
@@ -131,7 +132,7 @@ defmodule Bonfire.Common.URIs do
        maybe_generate_canonical_url(object)
   end
   def canonical_url(object) do
-    if Utils.module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
+    if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
       Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object) || maybe_generate_canonical_url(object)
     else
       maybe_generate_canonical_url(object)
@@ -139,7 +140,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
-    if Utils.module_enabled?(Characters) do
+    if module_enabled?(Characters) do
       # check if object is a Character (in which case use actor URL)
       case Characters.character_url(thing) do
         nil -> maybe_generate_canonical_url(id)
@@ -186,7 +187,7 @@ defmodule Bonfire.Common.URIs do
   def base_url(_) do
     case Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
       endpoint when is_atom(endpoint) ->
-        if Utils.module_enabled?(endpoint) do
+        if module_enabled?(endpoint) do
           base_url(endpoint)
         else
           error("endpoint module #{endpoint} not available")
