@@ -28,10 +28,7 @@ defmodule Bonfire.Common.Pointers do
   def get(id, opts) when is_binary(id), do: one(id, opts) ~> get(opts)
   def get(%Pointer{} = pointer, opts) do
     with %{id: _} = obj <- follow!(pointer, opts) do
-      {:ok,
-        Utils.maybe_merge_to_struct(obj, pointer) # adds any assocs previously preloaded on pointer to the returned object
-        #|> debug("Pointers.get")
-      }
+      {:ok, obj}
     else e ->
       error(pointer, "Could not follow - #{inspect e}")
       {:error, :not_found}
@@ -59,11 +56,11 @@ defmodule Bonfire.Common.Pointers do
 
   def list!(pointers) when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
-    Pointers.follow!(pointers)
+    follow!(pointers)
   end
 
   def list!(ids) when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
-    with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: Pointers.follow!(ptrs)
+    with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: follow!(ptrs)
   end
 
   def list!(ids) do
@@ -125,10 +122,35 @@ defmodule Bonfire.Common.Pointers do
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
-  def follow!(pointer_or_pointers, opts \\ []) do
+  def follow!(pointer_or_pointers, opts \\ [])
+
+  def follow!(%Pointer{table_id: table_id} = pointer, opts) do
+    with {:ok, schema} <- Pointers.Tables.schema(table_id),
+      :virtual <- schema.__pointers__(:role) do
+
+      # dump(table_id, "virtual - skip following ")
+      struct(schema, Utils.maybe_from_struct(pointer))
+
+    else e ->
+
+      # dump(e, "not a virtual")
+      do_follow!(pointer, opts)
+
+    end
+  end
+
+  def follow!(pointers, opts) do
+    do_follow!(pointers, opts)
+  end
+
+  defp do_follow!(pointer_or_pointers, opts \\ []) do
     case preload!(pointer_or_pointers, opts) do
-      %Pointer{} = pointer -> pointer.pointed
-      pointers -> Enum.map(pointers, & &1.pointed)
+      %{pointed: followed_pointer} ->
+        # merge any assocs previously preloaded on pointer to the returned object
+        Utils.maybe_merge_to_struct(followed_pointer, pointer_or_pointers)
+
+      followed_pointers when is_list(followed_pointers) ->
+        Enum.map(followed_pointers, & &1.pointed)
     end
   end
 
@@ -165,12 +187,12 @@ defmodule Bonfire.Common.Pointers do
 
   def preload!(%{__struct__: _} = pointed, _), do: pointed
 
-  defp preload_collate(loaded, pointers), do: Enum.map(pointers, &collate(loaded, &1))
+  defp preload_collate(loaded, pointers) when is_list(pointers), do: Enum.map(pointers, &collate(loaded, &1))
 
   defp collate(_, nil), do: nil
   defp collate(loaded, %{} = p), do: %{p | pointed: Map.get(loaded, p.id, %{})}
 
-  defp preload_load(pointers, opts) do
+  defp preload_load(pointers, opts) when is_list(pointers) do
     force = Keyword.get(opts, :force, false)
 
     pointers
@@ -190,8 +212,9 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp preload_per_table({table_id, ids}, acc, opts) do
-    {:ok, items} = loader(table_id, [id: ids], opts)
-    Enum.reduce(items, acc, &Map.put(&2, &1.id, &1))
+    with {:ok, items} when is_list(items) <- loader(table_id, [id: ids], opts) do
+      Enum.reduce(items, acc, &Map.put(&2, &1.id, &1))
+    end
   end
 
   defp loader(schema, id_filters, opts) when is_atom(schema), do: loader_query(schema, id_filters, opts)
