@@ -1,4 +1,4 @@
-defmodule IExWatchTests do
+defmodule Bonfire.Common.Test.Interactive do
   @moduledoc """
   This utility allows to get the same effect of using
   `fcwatch | mix test --stale --listen-on-stdin` to watch for
@@ -10,18 +10,18 @@ defmodule IExWatchTests do
 
   To use it, in your project's `.iex` file add:
   ```
-  unless GenServer.whereis(IExWatchTests) do
-    {:ok, pid} = IExWatchTests.start_link()
+  unless GenServer.whereis(Bonfire.Common.Test.Interactive) do
+    {:ok, pid} = Bonfire.Common.Test.Interactive.start_link()
     # Process will not exit when the iex goes out
     Process.unlink(pid)
   end
-  import IExWatchTests.Helpers
+  import Bonfire.Common.Test.Interactive.Helpers
   ```
   Then to call `iex` and run tests just do:
   ```
   MIX_ENV=test iex -S mix
   ```
-  The `IExWatchTests.Helpers` allows to call `f` and `s` and `a`
+  The `Bonfire.Common.Test.Interactive.Helpers` allows to call `f` and `s` and `a`
   to run failed, stale and all tests respectively.
   You can call `w` to watch tests and `uw` to unwatch.
   There is a really simple throttle mecanism that disallow running the suite concurrently.
@@ -30,13 +30,13 @@ defmodule IExWatchTests do
   use GenServer
 
   defmodule Helpers do
-    defdelegate t, to: IExWatchTests, as: :run_all_tests
-    defdelegate f, to: IExWatchTests, as: :run_failed_tests
-    defdelegate s, to: IExWatchTests, as: :run_stale_tests
-    defdelegate w, to: IExWatchTests, as: :watch_tests
-    defdelegate uw, to: IExWatchTests, as: :unwatch_tests
+    defdelegate ta(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_all_tests
+    defdelegate f(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_failed_tests
+    defdelegate s(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_stale_tests
+    defdelegate w(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :watch_tests
+    defdelegate uw, to: Bonfire.Common.Test.Interactive, as: :unwatch_tests
 
-    def ready, do: IO.puts "IExWatchTests is ready... Enter `w` to start watching for changes and `uw` to unwatch. Or run tests manually with `f` for previously-failed tests, `s` for stale ones, and `t` for everything."
+    def ready, do: IO.puts "Test.Interactive is ready... Enter `w` to start watching for changes and `uw` to unwatch. Or run tests manually with `f` for previously-failed tests, `s` for stale ones, and `ta` to run all tests. Note that you can pass a path as argument to limit testing to specific test file(s)."
   end
 
   defmodule Observer do
@@ -49,7 +49,7 @@ defmodule IExWatchTests do
 
     @impl true
     def handle_cast({:suite_finished, _times_us}, config) do
-      IExWatchTests.unlock()
+      Bonfire.Common.Test.Interactive.unlock()
       {:noreply, config}
     end
 
@@ -63,24 +63,24 @@ defmodule IExWatchTests do
     GenServer.start_link(__MODULE__, %{watcher: nil, lock: false}, name: __MODULE__)
   end
 
-  def watch_tests do
-    GenServer.cast(__MODULE__, :watch_tests)
+  def watch_tests(args) do
+    GenServer.cast(__MODULE__, {:watch_tests, args})
   end
 
   def unwatch_tests do
     GenServer.cast(__MODULE__, :unwatch_tests)
   end
 
-  def run_all_tests do
-    GenServer.call(__MODULE__, {:run, :all}, :infinity)
+  def run_all_tests(args) do
+    GenServer.call(__MODULE__, {:run, :all, args}, :infinity)
   end
 
-  def run_failed_tests do
-    GenServer.call(__MODULE__, {:run, :failed}, :infinity)
+  def run_failed_tests(args) do
+    GenServer.call(__MODULE__, {:run, :failed, args}, :infinity)
   end
 
-  def run_stale_tests do
-    GenServer.call(__MODULE__, {:run, :stale}, :infinity)
+  def run_stale_tests(args) do
+    GenServer.call(__MODULE__, {:run, :stale, args}, :infinity)
   end
 
   def unlock do
@@ -90,17 +90,17 @@ defmodule IExWatchTests do
   @impl true
   def init(state) do
     Process.flag(:trap_exit, true)
-    ExUnit.start(autorun: false, formatters: [ExUnit.CLIFormatter, IExWatchTests.Observer])
+    ExUnit.start(autorun: false, formatters: [ExUnit.CLIFormatter, Bonfire.Common.Test.Interactive.Observer])
     {:ok, state}
   end
 
   @impl true
-  def handle_cast(:watch_tests, state) do
+  def handle_cast({:watch_tests, only}, state) do
     {:ok, pid} =
       Task.start(fn ->
         cmd = "fswatch lib test forks/*/test forks/*/lib"
         port = Port.open({:spawn, cmd}, [:binary, :exit_status])
-        watch_loop(port)
+        watch_loop(port, only)
       end)
 
     {:noreply, %{state | watcher: pid}}
@@ -118,13 +118,13 @@ defmodule IExWatchTests do
   end
 
   @impl true
-  def handle_cast({:run, mode}, %{lock: false} = state) do
-    do_run_tests(mode)
+  def handle_cast({:run, mode, only}, %{lock: false} = state) do
+    do_run_tests(mode, only)
     {:noreply, %{state | lock: true}}
   end
 
   @impl true
-  def handle_cast({:run, _mode}, %{lock: true} = state) do
+  def handle_cast({:run, _mode, _}, %{lock: true} = state) do
     {:noreply, state}
   end
 
@@ -134,13 +134,13 @@ defmodule IExWatchTests do
   end
 
   @impl true
-  def handle_call({:run, _mode}, _from, %{lock: true} = state) do
+  def handle_call({:run, _mode, _}, _from, %{lock: true} = state) do
     {:reply, :locked, state}
   end
 
   @impl true
-  def handle_call({:run, mode}, _from, %{lock: false} = state) do
-    do_run_tests(mode)
+  def handle_call({:run, mode, args}, _from, %{lock: false} = state) do
+    do_run_tests(mode, args)
     {:reply, :ok, %{state | lock: true}}
   end
 
@@ -149,15 +149,15 @@ defmodule IExWatchTests do
     {:noreply, state}
   end
 
-  defp watch_loop(port) do
+  defp watch_loop(port, only) do
     receive do
       {^port, {:data, _msg}} ->
-        GenServer.cast(__MODULE__, {:run, :stale})
-        watch_loop(port)
+        GenServer.cast(__MODULE__, {:run, :stale, only})
+        watch_loop(port, only)
     end
   end
 
-  defp do_run_tests(mode) do
+  defp do_run_tests(mode, only) do
     IEx.Helpers.recompile()
 
     # Reset config
@@ -171,16 +171,27 @@ defmodule IExWatchTests do
     |> Enum.filter(&String.ends_with?(&1, "_test.exs"))
     |> Code.unrequire_files()
 
+    args = ["--max-cases", "1"]
+
     args =
       case mode do
         :all ->
-          []
+          args
 
         :failed ->
-          ["--failed"]
+          args ++ ["--failed"]
 
         :stale ->
-          ["--stale"]
+          args ++ ["--stale"]
+      end
+
+    args =
+      case only do
+        _ when is_binary(only) ->
+          args ++ [only]
+
+        _ ->
+          args
       end
 
     result =
@@ -190,9 +201,20 @@ defmodule IExWatchTests do
 
     # if result =~ ~r/No stale tests/ or
     #      result =~ ~r/There are no tests to run/ do
-      IExWatchTests.unlock()
+      Bonfire.Common.Test.Interactive.unlock()
     # end
 
     IO.puts(result)
+  end
+
+  def setup_test_repo(tags) do
+
+    share_and_persit? = System.get_env("START_SERVER")=="true"
+
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Repo, sandbox: not share_and_persit?)
+
+    if !tags[:async] || share_and_persit? do
+      Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Repo, {:shared, self()})
+    end
   end
 end

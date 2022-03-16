@@ -26,10 +26,10 @@ defmodule Bonfire.Common.TestSummary do
   def handle_cast({:suite_finished, times_us}, config) do
     dump(times_us, "Tests finished")
 
-    select_all = :ets.fun2ms(&(&1))
-    :ets.select(@ets_table_name, select_all)
-    |> dump("ETS")
-    |> Enum.each(&( IO.puts(elem(&1, 1)) ))
+    # select_all = :ets.fun2ms(&(&1))
+    # :ets.select(@ets_table_name, select_all)
+    # |> dump("ETS")
+    # |> Enum.each(&( IO.puts(elem(&1, 1)) ))
 
     {:noreply, config}
   end
