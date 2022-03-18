@@ -137,7 +137,7 @@ defmodule Bonfire.Common.URIs do
 
   defp query_or_generate_canonical_url(object) do
     if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
-      dump("attempt to query Peered")
+      # dump("attempt to query Peered")
       Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object) || maybe_generate_canonical_url(object)
     else
       maybe_generate_canonical_url(object)
