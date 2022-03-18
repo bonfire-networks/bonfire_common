@@ -262,15 +262,7 @@ defmodule Bonfire.Common.Utils do
   def attr_get_id(attrs, field_name) do
     if is_map(attrs) and Map.has_key?(attrs, field_name) do
       Map.get(attrs, field_name)
-      |> maybe_get_id()
-    end
-  end
-
-  def maybe_get_id(attr) do
-    case attr do
-      %{id: id} -> id
-      id when is_binary(id) -> if is_ulid?(id), do: id
-      _ -> nil
+      |> ulid()
     end
   end
 
@@ -724,6 +716,10 @@ defmodule Bonfire.Common.Utils do
       error(e)
       nil
     end
+  end
+  def date_from_pointer(other) do
+    error(other, "no pattern match")
+    nil
   end
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
@@ -1221,18 +1217,18 @@ defmodule Bonfire.Common.Utils do
       if fun do
         #debug(function_exists_in: module)
 
-        try do
+        # try do
           apply(module, fun, args)
-        rescue
-          e in FunctionClauseError ->
-            error(e)
-            # error(Exception.format_stacktrace())
-            e = fallback_fun.(
-              "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
-              args
-            )
-            fallback_return || e
-        end
+        # rescue
+        #   e in FunctionClauseError ->
+        #     error(e)
+        #     # error(Exception.format_stacktrace())
+        #     e = fallback_fun.(
+        #       "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+        #       args
+        #     )
+        #     fallback_return || e
+        # end
       else
         e = fallback_fun.(
           "None of the functions #{inspect funs} are defined at #{module} with arity #{arity}",
