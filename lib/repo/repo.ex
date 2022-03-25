@@ -10,7 +10,7 @@ defmodule Bonfire.Repo do
     otp_app: Bonfire.Common.Config.get!(:otp_app),
     adapter: Ecto.Adapters.Postgres
 
-  alias Pointers.Changesets
+  alias Pointers.{Changesets, Pointer}
   alias Ecto.Changeset
   import Ecto.Query
 
@@ -236,7 +236,6 @@ defmodule Bonfire.Repo do
     ret
   end
 
-
   # def maybe_preload(obj, :context) do
   # # follow the context Pointer
   #   CommonsPub.Contexts.prepare_context(obj)
@@ -248,10 +247,8 @@ defmodule Bonfire.Repo do
 
   def maybe_preload(obj, preloads, true = follow_pointers?) when is_struct(obj) or is_list(obj) do
     debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
-
-      maybe_do_preload(obj, preloads)
-      |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
-
+    maybe_do_preload(obj, preloads)
+    |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
   end
   def maybe_preload(obj, preloads, false = follow_pointers?) when is_struct(obj) or is_list(obj) do
     debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")

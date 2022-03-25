@@ -445,6 +445,7 @@ defmodule Bonfire.Common.Utils do
     Atom.to_string(atom)
   end
   def maybe_to_string(list) when is_list(list) do
+    IO.inspect(list, label: "list")
     List.to_string(list)
   end
   def maybe_to_string({key, val}) do
@@ -710,7 +711,7 @@ defmodule Bonfire.Common.Utils do
   def date_from_pointer(%{id: id}), do: date_from_pointer(id)
   def date_from_pointer(id) when is_binary(id) do
     with {:ok, ts} <- Pointers.ULID.timestamp(id) |> dump,
-    {:ok, date} <- DateTime.from_unix(ts, :second) do
+    {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
       date
     else e ->
       error(e)
@@ -916,7 +917,8 @@ defmodule Bonfire.Common.Utils do
     debug("pubsub_broadcast: #{inspect topic} / #{inspect payload_type}")
     do_broadcast(topic, payload)
   end
-  def pubsub_broadcast(topic, data) when (is_atom(topic) or is_binary(topic)) and topic !="" and not is_nil(data) do
+  def pubsub_broadcast(topic, data)
+  when (is_atom(topic) or is_binary(topic)) and topic !="" and not is_nil(data) do
     debug("pubsub_broadcast: #{inspect topic}")
     do_broadcast(topic, data)
   end
@@ -929,7 +931,8 @@ defmodule Bonfire.Common.Utils do
   end
 
 
-  def assigns_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names) when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
+  def assigns_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names)
+  when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
 
     # subscribe to god-level assign + object ID based assign if ID provided in tuple
     names_of_assign_topics(assign_names)
@@ -940,17 +943,16 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc "Subscribe to assigns targeted at the current account/user"
-  def self_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names) when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
-
-    with target_ids when is_list(target_ids) and length(target_ids)>0 <- current_account_and_or_user_ids(socket) do
+  def self_subscribe(%Phoenix.LiveView.Socket{} = socket, assign_names)
+  when is_list(assign_names) or is_atom(assign_names) or is_binary(assign_names) do
+    target_ids = current_account_and_or_user_ids(socket)
+    if is_list(target_ids) and target_ids != [] do
       target_ids
       |> names_of_assign_topics(assign_names)
       |> pubsub_subscribe(socket)
-    else _ ->
-      debug(cannot_self_subscribe: nil)
-      # debug(cannot_self_subscribe: socket)
+    else
+      debug(target_ids, "cannot_self_subscribe")
     end
-
     socket
   end
 
