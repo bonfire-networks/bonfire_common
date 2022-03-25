@@ -521,6 +521,8 @@ defmodule Bonfire.Common.Utils do
         merged
     end
   end
+  def maybe_merge_to_struct(nil, precedence), do: precedence
+  def maybe_merge_to_struct(first, nil), do: first
 
   def merge_structs_as_map(%{__typename: type} = target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge) |> Map.put(:__typename, type)
   def merge_structs_as_map(target, merge) when is_struct(target) or is_struct(merge), do: merge_structs_as_map(maybe_from_struct(target), maybe_from_struct(merge))
