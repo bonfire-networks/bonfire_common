@@ -6,13 +6,13 @@ defmodule Bonfire.Common.TestSummary do
   @ets_table_name __MODULE__
 
   def init(opts) do
-    dump(opts, "TestSummary init")
+    # dump(opts, "TestSummary init")
     :ets.new(@ets_table_name, [:named_table, :ordered_set, :private])
     {:ok, opts}
   end
 
   def handle_cast({:suite_started, _opts}, config) do
-    dump(config, "Tests started, with config:")
+    # dump(config, "Tests started, with config:")
 
     {:noreply, config}
   end
@@ -24,7 +24,7 @@ defmodule Bonfire.Common.TestSummary do
   end
 
   def handle_cast({:suite_finished, times_us}, config) do
-    dump(times_us, "Tests finished")
+    # dump(times_us, "Tests finished")
 
     # select_all = :ets.fun2ms(&(&1))
     # :ets.select(@ets_table_name, select_all)
