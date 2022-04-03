@@ -92,6 +92,7 @@ defmodule Bonfire.Common.URIs do
 
   # defp path_id("@"<>username), do: username
   defp path_id(%{username: username}), do: username
+  defp path_id(%{display_username: "@"<>display_username}), do: path_id(display_username)
   defp path_id(%{display_username: display_username}), do: path_id(display_username)
   defp path_id(%{character: character} = obj), do: obj |> Bonfire.Repo.maybe_preload(:character) |> Utils.e(:character, obj.id) |> path_id()
   defp path_id(%{id: id}), do: id
