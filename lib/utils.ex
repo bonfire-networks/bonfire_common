@@ -441,11 +441,11 @@ defmodule Bonfire.Common.Utils do
     module |> module_to_str() |> String.split(".") |> List.last() |> Recase.to_sentence()
   end
 
-  def maybe_to_string(atom) when is_atom(atom) do
+  def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
     Atom.to_string(atom)
   end
   def maybe_to_string(list) when is_list(list) do
-    IO.inspect(list, label: "list")
+    # IO.inspect(list, label: "list")
     List.to_string(list)
   end
   def maybe_to_string({key, val}) do

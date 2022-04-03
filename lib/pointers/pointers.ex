@@ -54,6 +54,8 @@ defmodule Bonfire.Common.Pointers do
 
   def one!(filters, opts \\ []), do: pointer_query(filters, opts) |> repo().one!()
 
+  def exists?(filters, opts), do: pointer_query(filters, opts) |> repo().exists?()
+
   def list!(pointers) when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
     follow!(pointers)
