@@ -12,19 +12,21 @@ defmodule Bonfire.Common.URIs do
 
   def path(view_module_or_path_name_or_object, args) when not is_list(args), do: path(view_module_or_path_name_or_object, [args])
 
-  def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) do
-    apply(Bonfire.Web.Router.Reverse, :path, [Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint), view_module_or_path_name_or_object] ++ args)
+  def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) and is_list(args) do
+    endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    debug(args, view_module_or_path_name_or_object)
+    Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, [endpoint, view_module_or_path_name_or_object] ++ args, &voodoo_error/2)
   end
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
     args_with_id = ([path_id(object)] ++ args)
     |> Utils.filter_empty([])
-    |> debug("args")
+    # |> debug("args")
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) and not is_nil(type) ->
-        debug(type, "detected object_type for object")
+        # debug(type, "detected object_type for object")
         path(type, args_with_id)
 
       none ->
@@ -61,7 +63,14 @@ defmodule Bonfire.Common.URIs do
   end
 
   def fallback(id, args) do
-    path(Bonfire.Social.Web.DiscussionLive, [id] ++ args)
+    fallback([id] ++ args)
+  end
+  def fallback(args) do
+    path(Bonfire.Social.Web.DiscussionLive, args)
+  end
+
+  defp voodoo_error(_error, [_endpoint, _type_module, args]) do
+    fallback(args)
   end
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do

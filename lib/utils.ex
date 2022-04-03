@@ -1222,18 +1222,24 @@ defmodule Bonfire.Common.Utils do
       if fun do
         #debug(function_exists_in: module)
 
-        # try do
+        try do
           apply(module, fun, args)
-        # rescue
-        #   e in FunctionClauseError ->
-        #     error(e)
-        #     # error(Exception.format_stacktrace())
-        #     e = fallback_fun.(
-        #       "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
-        #       args
-        #     )
-        #     fallback_return || e
-        # end
+        rescue
+          e in FunctionClauseError ->
+            error(e)
+            e = fallback_fun.(
+              "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              args
+            )
+            fallback_return || e
+          e in ArgumentError ->
+            error(e)
+            e = fallback_fun.(
+              "An argument error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              args
+            )
+            fallback_return || e
+        end
       else
         e = fallback_fun.(
           "None of the functions #{inspect funs} are defined at #{module} with arity #{arity}",
