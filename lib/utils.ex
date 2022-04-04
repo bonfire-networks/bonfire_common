@@ -1138,7 +1138,7 @@ defmodule Bonfire.Common.Utils do
 
   def debug_log(msg, exception, stacktrace, kind) do
 
-    Logger.error(inspect msg)
+    Logger.error(debug_log: inspect msg)
 
     # if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
@@ -1147,7 +1147,7 @@ defmodule Bonfire.Common.Utils do
     if exception && stacktrace, do:
       IO.warn(debug_banner(kind, exception, stacktrace), stacktrace),
     else:
-      Logger.error(inspect exception)
+      Logger.error(debug_log: inspect exception)
 
     debug_maybe_sentry(msg, exception, stacktrace)
   end
