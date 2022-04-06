@@ -47,17 +47,17 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   def maybe_preload_nested_pointers(object, keys, opts \\ [])
 
-    def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_map(object) do
+  def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_map(object) do
     debug("maybe_preload_nested_pointers: try object with list of keys: #{inspect keys}")
 
     do_maybe_preload_nested_pointers(object, nested_keys(keys), opts)
   end
 
-  def maybe_preload_nested_pointers(object, keys, opts) when is_list(keys) and length(keys)>0 and is_list(object) and length(object)>0 do
+  def maybe_preload_nested_pointers(objects, keys, opts) when is_list(keys) and length(keys)>0 and is_list(objects) and length(objects)>0 do
     debug("maybe_preload_nested_pointers: try list with list of keys: #{inspect keys}")
 
     do_maybe_preload_nested_pointers(
-      object |> Enum.reject(&(&1==[])),
+      objects |> Enum.reject(&(&1==[])),
       [Access.all()] ++ nested_keys(keys),
       opts
     )
