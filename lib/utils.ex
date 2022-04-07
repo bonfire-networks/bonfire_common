@@ -1091,8 +1091,8 @@ defmodule Bonfire.Common.Utils do
       :ok -> {return_key, socket} # shortcut to return nothing
       {:ok, _other} -> {return_key, socket}
       %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs)
-      %Bonfire.Epics.Act{} = act -> live_exception(socket, return_key, "The act was not completed: ", act)
-      %Bonfire.Epics.Epic{} = epic -> live_exception(socket, return_key, "The epic was not completed: "<>error_msg(epic), epic.errors)
+      %{__struct__: struct} = act when struct == Bonfire.Epics.Act -> live_exception(socket, return_key, "The act was not completed: ", act)
+      %{__struct__: struct} = epic when struct == Bonfire.Epics.Epic -> live_exception(socket, return_key, "There epic was not completed: "<>error_msg(epic), epic.errors)
       ret -> live_exception(socket, return_key, "An action could not be completed: #{inspect ret}") # TODO: don't show details if not in dev
     end
   end
