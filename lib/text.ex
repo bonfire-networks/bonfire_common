@@ -127,10 +127,10 @@ defmodule Bonfire.Common.Text do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
-    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/@\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle
-    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"")
-    |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"")
-    |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"")
+    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/@\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
+    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP objects
+    |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle internal links
+    |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"") # handle external links
   end
 
   def markdown_checkboxes(text) do
