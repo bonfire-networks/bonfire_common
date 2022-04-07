@@ -691,10 +691,6 @@ defmodule Bonfire.Common.Utils do
 
   def is_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
 
-  # open outside links in a new tab
-  def external_links(content),
-    do: Regex.replace(~r/(<a href=\"http.+\")>/U, content, "\\1 target=\"_blank\">")
-
   def date_relative(%{id: id}), do: date_from_pointer(id) |> date_relative()
   def date_relative(date) do
     date
