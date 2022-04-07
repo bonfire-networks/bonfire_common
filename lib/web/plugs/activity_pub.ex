@@ -1,5 +1,6 @@
 defmodule Bonfire.Web.Plugs.ActivityPub do
   import Plug.Conn
+  import Where
 
   def init(_opts), do: nil
 
@@ -15,11 +16,11 @@ defmodule Bonfire.Web.Plugs.ActivityPub do
     maybe_redirect(conn)
   end
 
-  def with_headers(%{params: params} = conn, %{"accept" => "application/activity+json"}, _opts)  do
+  def with_headers(%{params: params} = conn, %{"accept" => "application/activity+json"<>_}, _opts)  do
     maybe_redirect(conn)
   end
 
-  def with_headers(%{params: params} = conn, %{"accept" => "application/json"}, _opts)  do
+  def with_headers(%{params: params} = conn, %{"accept" => "application/json"<>_}, _opts)  do
     maybe_redirect(conn)
   end
 
