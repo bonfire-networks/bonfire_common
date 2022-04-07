@@ -73,6 +73,9 @@ defmodule Bonfire.Repo do
         _ -> rollback_unexpected(ret)
       end
     end)
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
   # def transact_with(fun) do
@@ -93,6 +96,9 @@ defmodule Bonfire.Repo do
     with {:error, changeset} <- insert(changeset) do
       Changesets.rewrite_constraint_errors(changeset)
     end
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
   def put_many(things) do
@@ -115,10 +121,16 @@ defmodule Bonfire.Repo do
     |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
     # |> debug("upsert cs")
     |> insert(on_conflict: :nothing)
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
   def insert_all_or_ignore(schema, data) do
     repo().insert_all(schema, data, on_conflict: :nothing)
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
   @doc """
@@ -126,6 +138,9 @@ defmodule Bonfire.Repo do
   """
   def single(q) do
     one(q |> limit(1)) |> ret_single()
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
   defp ret_single(nil), do: {:error, :not_found}
@@ -183,6 +198,28 @@ defmodule Bonfire.Repo do
   end
   def many(query, opts \\ []) do
     all(query, opts)
+  rescue
+    exception in Postgrex.Error ->
+      handle_postgrex_exception(exception, __STACKTRACE__)
+  end
+
+  defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil)
+
+  defp handle_postgrex_exception(%{postgres: %{code: :undefined_file} = pg}, _, nil) do
+    error(pg, "Database error, probably a missing extension (eg. if using geolocation, you need to run Postgis)")
+    {:error, :missing_db_extension}
+  end
+
+  # defp handle_postgrex_exception(
+  #        %{postgres: %{code: :integrity_constraint_violation}},
+  #        _,
+  #        changeset
+  #      ) do
+  #   {:error, %{changeset | valid?: false}}
+  # end
+
+  defp handle_postgrex_exception(exception, stacktrace, _) do
+    reraise(exception, stacktrace)
   end
 
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])

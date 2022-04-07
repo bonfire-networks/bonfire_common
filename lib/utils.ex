@@ -1040,18 +1040,8 @@ defmodule Bonfire.Common.Utils do
 
   def undead(socket, fun, return_key \\ :noreply) do
     fun.()
-    # |> debug(:undead)
-    |> case do
-      {:ok, socket} -> {:ok, socket}
-      {:ok, socket, data} -> {:ok, socket, data}
-      {:noreply, socket} -> {:noreply, socket}
-      {:reply, data, socket} -> {:reply, data, socket}
-      {:error, reason} -> live_exception(socket, return_key, reason)
-      {:error, reason, extra} -> live_exception(socket, return_key, "#{reason} #{inspect extra}")
-      :ok -> {return_key, socket} # shortcut for return nothing
-      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs)
-      ret -> live_exception(socket, return_key, "The app returned something unexpected: #{inspect ret}") # TODO: don't show details if not in dev
-    end
+    # |> debug()
+    |> undead_error(socket, return_key)
   rescue
     error in Ecto.Query.CastError ->
       live_exception(socket, return_key, "You seem to have provided an incorrect data type (eg. an invalid ID)", error, __STACKTRACE__)
@@ -1077,7 +1067,7 @@ defmodule Bonfire.Common.Utils do
         live_exception(socket, return_key, "A 'with condition' didn't receive data in a format it can recognise", error, __STACKTRACE__)
       end
     cs in Ecto.Changeset ->
-        live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs, nil)
+        live_exception(socket, return_key, "The data provided caused an exceptional error and could do not be inserted or updated: "<>error_msg(cs), cs, nil)
     error ->
       live_exception(socket, return_key, "The app encountered an unexpected error", error, __STACKTRACE__)
   catch
@@ -1086,8 +1076,25 @@ defmodule Bonfire.Common.Utils do
     :throw, error ->
       live_exception(socket, return_key, "An exceptional error was thrown", error, __STACKTRACE__)
     error ->
-      debug(error)
+      # error(error)
       live_exception(socket, return_key, "An exceptional error occured", error, __STACKTRACE__)
+  end
+
+  def undead_error(error, socket, return_key \\ :noreply) do
+   case error do
+      {:ok, %Phoenix.LiveView.Socket{} = socket} -> {:ok, socket}
+      {:ok, %Phoenix.LiveView.Socket{} = socket, data} -> {:ok, socket, data}
+      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:noreply, socket}
+      {:reply, data, %Phoenix.LiveView.Socket{} = socket} -> {:reply, data, socket}
+      {:error, reason} -> undead_error(reason, socket, return_key)
+      {:error, reason, extra} -> live_exception(socket, return_key, "There was an error: #{inspect reason}", extra)
+      :ok -> {return_key, socket} # shortcut to return nothing
+      {:ok, _other} -> {return_key, socket}
+      %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs)
+      %Bonfire.Epics.Act{} = act -> live_exception(socket, return_key, "The act was not completed: ", act)
+      %Bonfire.Epics.Epic{} = epic -> live_exception(socket, return_key, "The epic was not completed: "<>error_msg(epic), epic.errors)
+      ret -> live_exception(socket, return_key, "An action could not be completed: #{inspect ret}") # TODO: don't show details if not in dev
+    end
   end
 
   defp live_exception(socket, return_key, msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
@@ -1116,7 +1123,7 @@ defmodule Bonfire.Common.Utils do
   def debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
   def debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind) do
-    debug_exception(EctoSparkles.Changesets.Errors.cs_to_string(cs), exception, stacktrace, kind)
+    debug_exception(EctoSparkles.Changesets.Errors.changeset_errors_string(cs), exception, stacktrace, kind)
   end
 
   def debug_exception(msg, exception, stacktrace, kind) do
@@ -1128,7 +1135,7 @@ defmodule Bonfire.Common.Utils do
       exception = if exception, do: debug_banner(kind, exception, stacktrace)
       stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
 
-      {:error, Enum.join([error_msg(msg), exception, stacktrace] |> filter_empty(""), " - ") |> String.slice(0..1000) }
+      {:error, Enum.join([error_msg(msg), exception, stacktrace] |> filter_empty([]), "\n") |> String.slice(0..1000) }
     else
       {:error, error_msg(msg)}
     end
@@ -1138,7 +1145,7 @@ defmodule Bonfire.Common.Utils do
 
   def debug_log(msg, exception, stacktrace, kind) do
 
-    Logger.error(debug_log: inspect msg)
+   error(msg)
 
     # if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
     # if exception, do: IO.puts(Exception.format_exit(exception))
@@ -1147,7 +1154,7 @@ defmodule Bonfire.Common.Utils do
     if exception && stacktrace, do:
       IO.warn(debug_banner(kind, exception, stacktrace), stacktrace),
     else:
-      Logger.error(debug_log: inspect exception)
+      (if exception, do: warn(exception))
 
     debug_maybe_sentry(msg, exception, stacktrace)
   end
@@ -1169,12 +1176,22 @@ defmodule Bonfire.Common.Utils do
   end
   defp debug_maybe_sentry(_, _, _stacktrace), do: nil
 
+  defp debug_banner(kind, errors, stacktrace) when is_list(errors) do
+    errors
+    |> Enum.map(&debug_banner(kind, &1, stacktrace))
+    |> Enum.join("\n")
+  end
+
   defp debug_banner(kind, {:error, error}, stacktrace) do
     debug_banner(kind, error, stacktrace)
   end
 
+  defp debug_banner(kind, %{error: error}, stacktrace) do
+    debug_banner(kind, error, stacktrace)
+  end
+
   defp debug_banner(_kind, %Ecto.Changeset{} = cs, _) do
-    EctoSparkles.Changesets.Errors.cs_to_string(cs)
+    # EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
   end
 
   defp debug_banner(kind, %_{} = exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] do
@@ -1185,11 +1202,18 @@ defmodule Bonfire.Common.Utils do
     inspect exception
   end
 
-  def error_msg(%Ecto.Changeset{} = cs), do: EctoSparkles.Changesets.Errors.cs_to_string(cs)
-  def error_msg(%{message: message}), do: message
+  def error_msg(errors) when is_list(errors) do
+    errors
+    |> Enum.map(&error_msg/1)
+    |> Enum.join("\n")
+  end
+  def error_msg(%Ecto.Changeset{} = cs), do: EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
+  def error_msg(%{message: message}), do: error_msg(message)
+  def error_msg({:error, error}), do: error_msg(error)
+  def error_msg(%{error: error}), do: error_msg(error)
+  def error_msg(%{errors: errors}), do: error_msg(errors)
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect message
-
 
 
   @doc "Helpers for calling hypothetical functions in other modules"

@@ -214,7 +214,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp preload_per_table({table_id, ids}, acc, opts) do
-    with {:ok, items} when is_list(items) <- loader(table_id, [id: ids], opts) do
+    with items when is_list(items) <- loader(table_id, [id: ids], opts) do
       Enum.reduce(items, acc, &Map.put(&2, &1.id, &1))
     end
   end
@@ -227,10 +227,9 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp loader_query(schema, id_filters, opts) when is_atom(schema) do
-    query = query(schema, id_filters, opts)
-    debug("Pointers: query with #{inspect query}")
-
-    {:ok, query |> repo().many() }
+    query(schema, id_filters, opts)
+    |> debug("Pointers: query with")
+    |> repo().many()
   end
 
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
@@ -243,7 +242,7 @@ defmodule Bonfire.Common.Pointers do
 
   defp cowboy_query_all(schema_or_query, id_filters, opts) do
 
-    {:ok, cowboy_query(schema_or_query, id_filters, opts) |> repo().many() }
+    cowboy_query(schema_or_query, id_filters, opts) |> repo().many()
   end
 
   defp cowboy_query(schema, id_filters, opts) when is_atom(schema) do
