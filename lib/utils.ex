@@ -402,12 +402,9 @@ defmodule Bonfire.Common.Utils do
   def maybe_append(list, value) when is_list(list), do: [value | list]
   def maybe_append(obj, value), do: maybe_append([obj], value)
 
+  def maybe_to_atom("false"), do: false # not sure why but seems needed
   def maybe_to_atom(str) when is_binary(str) do
-    try do
-      String.to_existing_atom(str)
-    rescue
-      ArgumentError -> str
-    end
+    maybe_to_atom!(str) || str
   end
   def maybe_to_atom(other), do: other
 
@@ -418,16 +415,19 @@ defmodule Bonfire.Common.Utils do
       ArgumentError -> nil
     end
   end
+  def maybe_to_atom!(atom) when is_atom(atom), do: atom
   def maybe_to_atom!(_), do: nil
 
+  def maybe_str_to_module(str)
   def maybe_str_to_module(str) when is_binary(str) do
     case maybe_to_atom(str) do
-      module when is_atom(module) -> module
-      "Elixir."<>_ -> nil # doesn't exist
-      other -> maybe_str_to_module("Elixir."<>str)
+      module_or_atom when is_atom(module_or_atom) -> module_or_atom
+      "Elixir."<>str -> nil # module doesn't exist
+      _ -> maybe_to_atom!("Elixir."<>str)
     end
   end
   def maybe_str_to_module(atom) when is_atom(atom), do: atom
+  def maybe_str_to_module(_), do: nil
 
   def module_to_str(str) when is_binary(str) do
     case str do
@@ -497,6 +497,22 @@ defmodule Bonfire.Common.Utils do
     |> Enum.map(&maybe_to_map(&1, true))
     |> Enum.into(%{})
   end
+
+  @doc """
+  Converts an enumerable to a list recursively
+  Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first
+  """
+  def maybe_to_keyword_list(obj, recursive \\ true)
+  def maybe_to_keyword_list(obj, true = recursive) when is_map(obj) or is_list(obj) do
+    obj
+    |> maybe_to_keyword_list(false)
+    |> Keyword.new(fn {k, v} -> {k, maybe_to_keyword_list(v, recursive)} end)
+  end
+  def maybe_to_keyword_list(obj, false = _recursive) when is_map(obj) or is_list(obj) do
+    obj
+    |> Enum.filter(fn {k, _v} -> is_atom(k) end)
+  end
+  def maybe_to_keyword_list(obj, _), do: obj
 
   def nested_structs_to_maps(struct = %type{}) when not type == DateTime,
     do: nested_structs_to_maps(struct_to_map(struct))
@@ -602,19 +618,32 @@ defmodule Bonfire.Common.Utils do
   def replace_nil(other, _), do: other
 
 
-  def input_to_atoms(data) when is_struct(data) do # skip structs
+  def input_to_atoms(data, discard_unknown_keys \\ true, including_values \\ false)
+  def input_to_atoms(data, _, _) when is_struct(data) do # skip structs
     data
   end
-  def input_to_atoms(%{} = data) do
+  def input_to_atoms(%{} = data, true = discard_unknown_keys, including_values) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
     :maps.filter(fn k, _v -> is_atom(k) end,
       data
       |> Map.drop(["_csrf_token"])
-      |> Map.new(fn {k, v} -> {maybe_to_snake_atom(k), input_to_atoms(v)} end)
+      |> Map.new(fn {k, v} -> {maybe_to_snake_atom(k) || maybe_str_to_module(k), input_to_atoms(v, discard_unknown_keys, including_values)} end)
     )
   end
-  def input_to_atoms(list) when is_list(list), do: Enum.map(list, &input_to_atoms/1)
-  def input_to_atoms(v), do: v
+  def input_to_atoms(%{} = data, false = discard_unknown_keys, including_values) do
+    data
+    |> Map.drop(["_csrf_token"])
+    |> Map.new(fn {k, v} -> {(maybe_to_snake_atom(k) || maybe_str_to_module(k) || k), input_to_atoms(v, discard_unknown_keys, including_values)} end)
+  end
+  def input_to_atoms(list, true = discard_unknown_keys, including_values) when is_list(list), do: Enum.map(list, &input_to_atoms(&1, discard_unknown_keys, including_values)) |> Enum.filter(&is_atom/1)
+  def input_to_atoms(list, discard_unknown_keys, including_values) when is_list(list), do: Enum.map(list, &input_to_atoms(&1, discard_unknown_keys, including_values))
+  def input_to_atoms(v, _, true = _including_values) do
+    case maybe_str_to_module(v) do
+      nil -> v # do it this roundabout way to support `false` as a value
+      other -> other
+    end
+  end
+  def input_to_atoms(v, _, _), do: v
 
   def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
