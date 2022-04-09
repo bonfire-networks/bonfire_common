@@ -20,7 +20,7 @@ defmodule Bonfire.Common.QueryModules do
   local garbage collection.
   """
 
-  use Bonfire.Common.Utils, only: []
+  use Bonfire.Common.Utils, only: [e: 3]
 
   def maybe_query(
         schema,
@@ -36,10 +36,10 @@ defmodule Bonfire.Common.QueryModules do
     case maybe_query_module(schema) do
       query_module when is_atom(query_module) and not is_nil(query_module) ->
 
-        # IO.inspect(args: args)
+        debug(args, "maybe_query args")
+        paginate = if is_list(args), do: e(Enum.at(args, 0), :paginate, nil) || e(Enum.at(args, 1), :paginate, nil)
 
-        case args[:paginate] do
-          paginate when not is_nil(paginate) and paginate != %{} ->
+        if not is_nil(paginate) and paginate != %{} and function_exported?(query_module, :query_paginated, length(args)) do
 
             Utils.maybe_apply(
               query_module,
@@ -48,8 +48,8 @@ defmodule Bonfire.Common.QueryModules do
               fallback_fun
             )
 
-          _ ->
-            Utils.maybe_apply(
+        else
+          Utils.maybe_apply(
               query_module,
               :query,
               args,

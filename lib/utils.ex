@@ -1263,13 +1263,14 @@ defmodule Bonfire.Common.Utils do
     fallback_return = if not is_function(fallback_fun), do: fallback_fun
 
     if module_enabled?(module) do
+      debug(module, "module_enabled")
 
       available_funs = funs |> Enum.reject(fn f -> not Kernel.function_exported?(module, f, arity) end)
 
       fun = List.first(available_funs)
 
       if fun do
-        #debug(function_exists_in: module)
+        debug({fun, arity}, "function_exists")
 
         try do
           apply(module, fun, args)

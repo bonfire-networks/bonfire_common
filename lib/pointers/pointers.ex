@@ -292,7 +292,7 @@ defmodule Bonfire.Common.Pointers do
 
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
       query = case Bonfire.Common.QueryModules.maybe_query(schema, [filters(schema, filters, opts), opts]) do
-      query when not is_nil(query) ->
+      %Ecto.Query{} = query ->
         debug("Pointers: using the QueryModule associated with #{schema}")
 
         query
