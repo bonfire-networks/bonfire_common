@@ -2,13 +2,14 @@ defmodule Bonfire.Common.Utils do
   use Arrows
   import Bonfire.Common.URIs
   import Bonfire.Common.Extend
+  require Bonfire.Web.Gettext
+  import Bonfire.Web.Gettext.Helpers
   import Where
+  require Logger
   import Phoenix.LiveView
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
-  import Bonfire.Common.Extend
   alias Ecto.Changeset
-  require Logger
 
   defmacro __using__(opts) do
     quote do
@@ -276,9 +277,8 @@ defmodule Bonfire.Common.Utils do
     Map.merge(left, right, &deep_resolve/3)
   end
   def deep_merge(left, right) when is_list(left) and is_list(right) do
-    if Keyword.keyword?(left) and Keyword.keyword?(right), do: Keyword.merge(left, right), # this includes dups :/ maybe switch to https://github.com/PragTob/deep_merge ?
-    else: right # do not merge lists
-    # else: left ++ right # this includes dups
+    if Keyword.keyword?(left) and Keyword.keyword?(right), do: Keyword.merge(left, right, &deep_resolve/3),
+    else: (left ++ right) |> Enum.uniq()
   end
   def deep_merge(%{} = left, right) when is_list(right) do
     deep_merge(Map.to_list(left), right)
@@ -286,20 +286,30 @@ defmodule Bonfire.Common.Utils do
   def deep_merge(left, %{} = right) when is_list(left) do
     deep_merge(left, Map.to_list(right))
   end
+  def deep_merge(_left, right) do
+    right
+  end
 
-  # Key exists in both maps
-  # These can be merged recursively.
+  # Key exists in both maps - these can be merged recursively.
   defp deep_resolve(_key, left, right) when (is_map(left) or is_list(left)) and (is_map(right) or is_list(right)) do
     deep_merge(left, right)
   end
 
-  # Key exists in both maps, but at least one of the values is
-  # NOT a map or array. We fall back to standard merge behavior, preferring
+  # Key exists in both maps or keylists, but at least one of the values is
+  # NOT a map or list. We fall back to standard merge behavior, preferring
   # the value on the right.
   defp deep_resolve(_key, _left, right) do
     right
   end
 
+  def deep_merge_reduce(list_or_map) do
+    list_or_map
+    |> Enum.reduce(fn elem, acc ->
+      # debug(acc, "left")
+      # debug(elem, "right")
+      deep_merge(acc, elem)
+    end)
+  end
 
   def assign_global(socket, assigns) when is_map(assigns), do: assign_global(socket, Map.to_list(assigns))
   def assign_global(socket, assigns) when is_list(assigns) do
@@ -709,10 +719,17 @@ defmodule Bonfire.Common.Utils do
   def markdown(content), do: Text.markdown_to_html(content)
 
   def rich(content) do
-    cond do
-      not is_binary(content) or content=="" -> nil
-      is_html?(content) -> r(content)
-      true -> md(content)
+    case content do
+      _ when is_binary(content) ->
+        if is_html?(content), do: r(content), else: md(content)
+      {:ok, msg} when is_binary(msg) -> rich(msg)
+      {:ok, _data} -> l "OK"
+      {:error, msg} when is_binary(msg) -> rich(msg)
+      {:error, _data} -> l "Error"
+      _ when is_map(content) -> l "Unexpected data"
+      _ when is_nil(content) or content=="" -> nil
+      %Ecto.Association.NotLoaded{} -> nil
+      _  -> rich(inspect content)
     end
   end
 

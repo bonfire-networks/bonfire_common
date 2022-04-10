@@ -29,19 +29,39 @@ defmodule Bonfire.Common.Extend do
   def extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
 
-    module_exists?(extension) or
-      Enum.member?(Application.loaded_applications() |> Enum.map(&elem(&1, 0)), extension)
+    module_exists?(extension) or application_loaded?(extension)
+  end
+
+  def application_loaded?(extension) do
+    Enum.member?(Enum.map(Application.loaded_applications(), &elem(&1, 0)), extension)
   end
 
   def maybe_extension_loaded(module_or_otp_app) when is_atom(module_or_otp_app) do
     case maybe_module_loaded(module_or_otp_app) |> Application.get_application() do
-      # if we got an otp_app, assume for now that it's valid & loaded
-      nil -> module_or_otp_app
-      # if we got a module, return the corresponding application
-      otp_app -> otp_app
+      nil ->
+        module_or_otp_app
+        |> debug("received an atom that isn't a module, return it as-is")
+
+      otp_app ->
+        otp_app
+        |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
+
     end
   end
 
+  def maybe_extension_loaded!(module_or_otp_app) when is_atom(module_or_otp_app) do
+    case maybe_extension_loaded(module_or_otp_app) do
+      otp_app when otp_app == module_or_otp_app ->
+
+        application_loaded = application_loaded?(module_or_otp_app)
+                              |> debug("is it a loaded application?")
+
+        if application_loaded, do: module_or_otp_app, else: nil
+
+      otp_app ->
+        otp_app
+    end
+  end
 
   def loaded_deps() do
     if module_enabled?(Mix.Dep) do
@@ -66,7 +86,7 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app has configuration keys set up
   """
   def has_extension_config?(module_or_otp_app) do
-    extension = maybe_extension_loaded(module_or_otp_app)
+    extension = maybe_extension_loaded(module_or_otp_app) || module_or_otp_app
 
     config = Application.get_all_env(extension)
     config && config != []

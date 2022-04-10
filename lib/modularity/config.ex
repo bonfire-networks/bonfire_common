@@ -47,6 +47,16 @@ defmodule Bonfire.Common.Config do
     end
   end
 
+  def get_ext!(module_or_otp_app, key) do
+    case get_ext(module_or_otp_app, key, nil) do
+      nil ->
+        compilation_error("Missing configuration value: #{inspect([module_or_otp_app, key], pretty: true)}")
+
+      any ->
+        any
+    end
+  end
+
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
   """
@@ -74,12 +84,12 @@ defmodule Bonfire.Common.Config do
   end
 
   def get!(key, otp_app \\ top_level_otp_app()) do
-    value = get(key, nil, otp_app)
+    case get(key, nil, otp_app) do
+      nil ->
+        compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
 
-    if value == nil do
-      compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
-    else
-      value
+      any ->
+        any
     end
   end
 
@@ -91,17 +101,15 @@ defmodule Bonfire.Common.Config do
     Application.get_all_env(otp_app)
   end
 
-  def get_ext!(module_or_otp_app, key) do
-    value = get_ext(module_or_otp_app, key, nil)
-
-    if value == nil do
-      compilation_error(
-        "Missing configuration value for extension #{maybe_extension_loaded(module_or_otp_app)}: #{
-          inspect(key, pretty: true)
-        }"
+  def get_ext!(module_or_otp_app) do
+    case get_ext(module_or_otp_app) do
+      nil ->
+        compilation_error(
+        "Missing configuration for extension #{maybe_extension_loaded(module_or_otp_app)}"
       )
-    else
-      value
+
+      any ->
+        any
     end
   end
 
@@ -123,9 +131,7 @@ defmodule Bonfire.Common.Config do
     Application.put_env(otp_app, key, value, persistent: true)
   end
 
-  def delete(key, otp_app \\ nil)
-
-  def delete(key, nil), do: delete(key, top_level_otp_app())
+  def delete(key, otp_app \\ top_level_otp_app())
 
   def delete([key], otp_app), do: delete(key, otp_app)
 
