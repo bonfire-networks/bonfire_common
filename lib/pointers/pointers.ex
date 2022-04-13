@@ -168,11 +168,16 @@ defmodule Bonfire.Common.Pointers do
     #debug(pointer)
 
     if is_nil(pointer.pointed) or Keyword.get(opts, :force) do
-      with {:ok, [pointed]} <- loader(table_id, [id: id], opts) do
-        %{pointer | pointed: pointed}
-      else e ->
-        debug("Pointers: could not load: #{inspect e}")
-        pointer
+      case loader(table_id, [id: id], opts) do
+        {:ok, [pointed]} ->
+          %{pointer | pointed: pointed}
+
+        [pointed] ->
+          %{pointer | pointed: pointed}
+
+        other ->
+          debug(other, "Pointers: could not load")
+          pointer
       end
     else
       pointer
