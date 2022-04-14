@@ -2,6 +2,7 @@
 defmodule Bonfire.Common.Pointers.Queries do
   import Ecto.Query
   alias Pointers.Pointer
+  import EctoSparkles
 
   def queries_module, do: Pointer
 
@@ -38,6 +39,18 @@ defmodule Bonfire.Common.Pointers.Queries do
 
   def filter(q, {:id, ids}) when is_list(ids) do
     where(q, [main_object: p], p.id in ^ids)
+  end
+
+  def filter(q, {:username, username}) when is_binary(username) do
+   q
+  |> proload(:character)
+  |> where([character: character], character.username == ^username)
+  end
+
+  def filter(q, {:canonical_uri, canonical_uri}) when is_binary(canonical_uri) do
+   q
+  |> proload(peered: [:peer])
+  |> where([peered: peered], peered.canonical_uri == ^canonical_uri)
   end
 
   def filter(q, {:table, id}) when is_binary(id), do:

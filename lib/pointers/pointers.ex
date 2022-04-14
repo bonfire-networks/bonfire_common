@@ -44,17 +44,15 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def one(id, opts \\ [])
-  def one(id, opts) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid?(id),
-      do: one([id: id], opts),
-      else: {:error, :not_found}
-  end
+  def one(id, opts) when is_binary(id), do: one(filter_one(id), opts)
   # TODO: boundary check by default in one and many?
   def one(filters, opts), do: pointer_query(filters, opts) |> repo().single()
 
   def one!(filters, opts \\ []), do: pointer_query(filters, opts) |> repo().one!()
 
-  def exists?(filters, opts), do: pointer_query(filters, opts) |> repo().exists?()
+  def exists?(filters, opts \\[])
+  def exists?(filters, opts) when is_binary(filters), do: filter_one(filters) |> pointer_query(opts++[skip_boundary_check: true]) |> repo().exists?()
+  def exists?(filters, opts), do: pointer_query(filters, opts++[skip_boundary_check: true]) |> repo().exists?()
 
   def list!(pointers) when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
@@ -74,6 +72,17 @@ defmodule Bonfire.Common.Pointers do
 
   def many!(filters \\ [], opts \\ []), do: pointer_query(filters, opts) |> repo().many()
 
+  def filter_one(filters) do
+    if Bonfire.Common.Utils.is_ulid?(filters) do
+      [id: filters]
+    else
+      if String.starts_with?(filters, "http") do
+        [canonical_uri: filters]
+      else
+        [username: filters]
+      end
+    end
+  end
 
   def pointer_query(filters, opts) do
     q = Queries.query(nil, filters)
