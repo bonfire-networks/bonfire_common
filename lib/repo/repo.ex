@@ -312,7 +312,7 @@ defmodule Bonfire.Repo do
       obj
   catch
     :exit, e ->
-      warn("maybe_preload skipped with catch exit: #{inspect e}")
+      warn("maybe_preload skipped with exit: #{inspect e}")
     e ->
       warn("maybe_preload skipped with catch: #{inspect e}")
   end

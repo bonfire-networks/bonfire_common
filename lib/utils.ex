@@ -1174,8 +1174,7 @@ defmodule Bonfire.Common.Utils do
 
     if Config.get!(:env) == :dev and Config.get(:show_debug_errors_in_dev) !=false do
 
-      exception = if exception, do: debug_banner(kind, exception, stacktrace)
-      stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
+      {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
 
       {:error, Enum.join([error_msg(msg), exception, stacktrace] |> filter_empty([]), "\n") |> String.slice(0..1000) }
     else
@@ -1217,6 +1216,12 @@ defmodule Bonfire.Common.Utils do
     )
   end
   defp debug_maybe_sentry(_, _, _stacktrace), do: nil
+
+  def debug_banner_with_trace(kind, exception, stacktrace) do
+    exception = if exception, do: debug_banner(kind, exception, stacktrace)
+    stacktrace = if stacktrace, do: Exception.format_stacktrace(stacktrace)
+    {exception, stacktrace}
+  end
 
   defp debug_banner(kind, errors, stacktrace) when is_list(errors) do
     errors
@@ -1293,16 +1298,18 @@ defmodule Bonfire.Common.Utils do
           apply(module, fun, args)
         rescue
           e in FunctionClauseError ->
-            error(e)
+            {exception, stacktrace} = debug_banner_with_trace(:error, e, __STACKTRACE__)
+            error(stacktrace, exception)
             e = fallback_fun.(
-              "A pattern matching error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              "A pattern matching error occured when trying to maybe_apply #{module}.#{fun}/#{arity}",
               args
             )
             fallback_return || e
           e in ArgumentError ->
-            error(e)
+            {exception, stacktrace} = debug_banner_with_trace(:error, e, __STACKTRACE__)
+            error(stacktrace, exception)
             e = fallback_fun.(
-              "An argument error occured when trying to run #{module}.#{fun}/#{arity} - #{Exception.format_banner(:error, e)}",
+              "An argument error occured when trying to maybe_apply #{module}.#{fun}/#{arity}",
               args
             )
             fallback_return || e

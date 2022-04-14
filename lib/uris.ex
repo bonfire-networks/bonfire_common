@@ -196,7 +196,7 @@ defmodule Bonfire.Common.URIs do
       ""
     end
   rescue e ->
-    error("could not get struct_url from endpoint: #{inspect e}")
+    error(e, "could not get struct_url from endpoint")
     ""
   end
   def base_url(_) do
