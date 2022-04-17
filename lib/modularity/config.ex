@@ -136,16 +136,20 @@ defmodule Bonfire.Common.Config do
   end
 
   defp put_env(otp_app, key, value) do
-    debug(value, "#{inspect otp_app}: #{inspect key}")
+    # debug(value, "#{inspect otp_app}: #{inspect key}")
     Application.put_env(otp_app, key, value, persistent: true)
   end
 
   def put(tree) when is_list(tree) do
-    Enum.each(tree, &put_tree/1)
+    Enum.each(tree, &put/1)
   end
 
-  defp put_tree({otp_app, tree}) do
+  def put({otp_app, tree}) do
     Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
+  end
+
+  def put(other) do
+    warn(other, "No valid instance-level settings found in database")
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
