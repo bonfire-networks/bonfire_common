@@ -149,7 +149,7 @@ defmodule Bonfire.Common.Config do
   end
 
   def put(other) do
-    warn(other, "No valid instance-level settings found in database")
+    debug(other, "Nothing to put")
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
