@@ -7,12 +7,12 @@ defmodule Bonfire.Web.Gettext.Plural do
 end
 defmodule Bonfire.Web.Gettext do
   @moduledoc """
-  Gettext module.
-  It is recommended to use the macros in `Bonfire.Web.Gettext.Helpers` instead.
+  Default Gettext module
+  It is recommended to use the more convenient macros in `Bonfire.Web.Gettext.Helpers` instead.
   """
   use Gettext,
     otp_app: :bonfire_common,
-    default_locale: Bonfire.Common.Config.get(:default_locale, "en"),
+    default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Web.Cldr, :default_locale], "en"),
     plural_forms: Bonfire.Web.Gettext.Plural,
     priv: Bonfire.Common.Config.get!(:localisation_path)
 
@@ -160,7 +160,5 @@ defmodule Bonfire.Web.Gettext.Helpers do
 
     quote do: dpngettext(unquote(domain), unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
   end
-
-
 
 end

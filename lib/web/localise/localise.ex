@@ -10,13 +10,13 @@ defmodule Bonfire.Web.Localise do
     end
   end
 
-  def default_locale, do: Bonfire.Common.Config.get(:default_locale, "en")
+  def default_locale, do: Bonfire.Common.Config.get([Bonfire.Web.Cldr, :default_locale], "en")
 
-  def known_locales, do: [default_locale] ++ Gettext.known_locales(Bonfire.Web.Gettext)
+  def known_locales, do: ([default_locale()] ++ Bonfire.Common.Config.get([Bonfire.Web.Cldr, :locales], []) ++ Gettext.known_locales(Bonfire.Web.Gettext)) |> Enum.uniq()
 
   def put_locale(locale) do
     Bonfire.Web.Cldr.put_locale(locale)
-    Gettext.put_locale(Bonfire.Web.Gettext, locale)
+    Gettext.put_locale(Bonfire.Web.Gettext, to_string(locale))
   end
 
   def locale_name(locale) do
