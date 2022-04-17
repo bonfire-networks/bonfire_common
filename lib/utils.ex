@@ -754,7 +754,7 @@ defmodule Bonfire.Common.Utils do
 
   def date_from_pointer(%{id: id}), do: date_from_pointer(id)
   def date_from_pointer(id) when is_binary(id) do
-    with {:ok, ts} <- Pointers.ULID.timestamp(id) |> dump,
+    with {:ok, ts} <- Pointers.ULID.timestamp(id) |> debug(),
     {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
       date
     else e ->

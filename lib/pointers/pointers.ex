@@ -87,7 +87,7 @@ defmodule Bonfire.Common.Pointers do
   def pointer_query(filters, opts) do
     q = Queries.query(nil, filters)
     q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
-    if Utils.e(opts, :log_query, nil), do: dump(q), else: q
+    if Utils.e(opts, :log_query, nil), do: info(q), else: q
   end
 
   @doc "Turns a thing into a pointer if it is not already or returns nil"
@@ -139,12 +139,12 @@ defmodule Bonfire.Common.Pointers do
     with {:ok, schema} <- Pointers.Tables.schema(table_id),
       :virtual <- schema.__pointers__(:role) do
 
-      # dump(table_id, "virtual - skip following ")
+      # info(table_id, "virtual - skip following ")
       struct(schema, Utils.maybe_from_struct(pointer))
 
     else e ->
 
-      # dump(e, "not a virtual")
+      # info(e, "not a virtual")
       do_follow!(pointer, opts)
 
     end

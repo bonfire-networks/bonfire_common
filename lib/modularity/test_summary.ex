@@ -6,41 +6,41 @@ defmodule Bonfire.Common.TestSummary do
   @ets_table_name __MODULE__
 
   def init(opts) do
-    # dump(opts, "TestSummary init")
+    # info(opts, "TestSummary init")
     :ets.new(@ets_table_name, [:named_table, :ordered_set, :private])
     {:ok, opts}
   end
 
   def handle_cast({:suite_started, _opts}, config) do
-    # dump(config, "Tests started, with config:")
+    # info(config, "Tests started, with config:")
 
     {:noreply, config}
   end
 
   def handle_cast({:module_finished, %{tests: tests} = tested_module}, config) do
-    # dump(tested_module, "Tests for module done")
+    # info(tested_module, "Tests for module done")
     Enum.each(tests, &handle_test(&1, config))
     {:noreply, config}
   end
 
   def handle_cast({:suite_finished, times_us}, config) do
-    # dump(times_us, "Tests finished")
+    # info(times_us, "Tests finished")
 
     # select_all = :ets.fun2ms(&(&1))
     # :ets.select(@ets_table_name, select_all)
-    # |> dump("ETS")
+    # |> info("ETS")
     # |> Enum.each(&( IO.puts(elem(&1, 1)) ))
 
     {:noreply, config}
   end
 
   def handle_cast({:sigquit, _test_or_test_module}, config) do
-    dump("Suite interrupted")
+    info("Suite interrupted")
     handle_cast({:suite_finished, nil}, config)
   end
 
   def handle_cast(event, config) do
-    # dump(event, "Other test event")
+    # info(event, "Other test event")
     {:noreply, config}
   end
 
