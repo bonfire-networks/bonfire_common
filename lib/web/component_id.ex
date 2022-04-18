@@ -14,7 +14,7 @@ defmodule Bonfire.Common.Web.ComponentID do
     new(component_module, Utils.ulid(object) || Pointers.ULID.generate())
   end
   def new(component_module, other) do
-    error(other, "ComponentID: you need to provid an object id for #{component_module}, but got")
+    warn(other, "expected an object id for #{component_module}, but got")
     Pointers.ULID.generate()
   end
 

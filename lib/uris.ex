@@ -15,7 +15,13 @@ defmodule Bonfire.Common.URIs do
   def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) and is_list(args) do
     endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
     debug(args, view_module_or_path_name_or_object)
-    Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, [endpoint, view_module_or_path_name_or_object] ++ args, &voodoo_error/2)
+    case Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, [endpoint, view_module_or_path_name_or_object] ++ args, &voodoo_error/2) do
+      "/%40"<>username -> "/@"<>username
+      path when is_binary(path) -> path
+      other ->
+        error(other, "Router didn't return a valid path")
+        fallback(args)
+    end
   end
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
