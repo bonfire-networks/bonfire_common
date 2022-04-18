@@ -1135,7 +1135,8 @@ defmodule Bonfire.Common.Utils do
       %Ecto.Changeset{} = cs -> live_exception(socket, return_key, "The data provided seems invalid and could not be inserted or updated: "<>error_msg(cs), cs)
       %{__struct__: struct} = act when struct == Bonfire.Epics.Act -> live_exception(socket, return_key, "The act was not completed: ", act)
       %{__struct__: struct} = epic when struct == Bonfire.Epics.Epic -> live_exception(socket, return_key, "There epic was not completed: "<>error_msg(epic), epic.errors)
-      ret -> live_exception(socket, return_key, "An action could not be completed: #{inspect ret}") # TODO: don't show details if not in dev
+      not_found when not_found in [:not_found, "Not found", 404] -> live_exception(socket, return_key, "Not found")
+      ret -> live_exception(socket, return_key, "An action could not be completed: #{inspect ret}") # TODO: don't show details if not in dev?
     end
   end
 
