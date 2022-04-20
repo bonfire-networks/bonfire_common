@@ -232,6 +232,11 @@ defmodule Bonfire.Common.Utils do
   defp re_filter_empty([], fallback), do: fallback
   defp re_filter_empty(list, _fallback), do: list
 
+  def uniq_by_id(list) do
+    list
+    |> Enum.uniq_by(&e(&1, :id, &1))
+  end
+
   def put_new_in(%{} = map, [key], val) do
     Map.put_new(map, key, val)
   end
@@ -637,16 +642,31 @@ defmodule Bonfire.Common.Utils do
     :maps.filter(fn k, _v -> is_atom(k) end,
       data
       |> Map.drop(["_csrf_token"])
-      |> Map.new(fn {k, v} -> {maybe_to_snake_atom(k) || maybe_str_to_module(k), input_to_atoms(v, discard_unknown_keys, including_values)} end)
+      |> Map.new(fn {k, v} -> {
+        maybe_to_snake_atom(k) || maybe_str_to_module(k),
+        input_to_atoms(v, discard_unknown_keys, including_values)
+      } end)
     )
   end
   def input_to_atoms(%{} = data, false = discard_unknown_keys, including_values) do
     data
     |> Map.drop(["_csrf_token"])
-    |> Map.new(fn {k, v} -> {(maybe_to_snake_atom(k) || maybe_str_to_module(k) || k), input_to_atoms(v, discard_unknown_keys, including_values)} end)
+    |> Map.new(fn {k, v} -> {
+      (maybe_to_snake_atom(k) || maybe_str_to_module(k) || k),
+      input_to_atoms(v, discard_unknown_keys, including_values)
+    } end)
   end
-  def input_to_atoms(list, true = discard_unknown_keys, including_values) when is_list(list), do: Enum.map(list, &input_to_atoms(&1, discard_unknown_keys, including_values)) |> Enum.filter(&is_atom/1)
-  def input_to_atoms(list, discard_unknown_keys, including_values) when is_list(list), do: Enum.map(list, &input_to_atoms(&1, discard_unknown_keys, including_values))
+  def input_to_atoms(list, true = _discard_unknown_keys, including_values) when is_list(list) do
+    list = Enum.map(list, &input_to_atoms(&1, true, including_values))
+    if Keyword.keyword?(list) do
+      Keyword.filter(list, fn {k, _v} -> is_atom(k) end)
+    else
+      list
+    end
+  end
+  def input_to_atoms(list, _, including_values) when is_list(list) do
+    Enum.map(list, &input_to_atoms(&1, false, including_values))
+  end
   def input_to_atoms(v, _, true = _including_values) do
     case maybe_str_to_module(v) do
       nil -> v # do it this roundabout way to support `false` as a value
@@ -823,6 +843,9 @@ defmodule Bonfire.Common.Utils do
         []
     end
   end
+
+  def maybe_from_opts(opts, key, fallback \\ nil) when is_list(opts), do: opts[key] || fallback
+  def maybe_from_opts(_opts, _key, fallback), do: fallback
 
   def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do
     current_account
@@ -1136,7 +1159,8 @@ defmodule Bonfire.Common.Utils do
       %{__struct__: struct} = act when struct == Bonfire.Epics.Act -> live_exception(socket, return_key, "The act was not completed: ", act)
       %{__struct__: struct} = epic when struct == Bonfire.Epics.Epic -> live_exception(socket, return_key, "There epic was not completed: "<>error_msg(epic), epic.errors)
       not_found when not_found in [:not_found, "Not found", 404] -> live_exception(socket, return_key, "Not found")
-      ret -> live_exception(socket, return_key, "An action could not be completed: #{inspect ret}") # TODO: don't show details if not in dev?
+      msg when is_binary(msg) -> live_exception(socket, return_key, msg)
+      ret -> live_exception(socket, return_key, "Oops, this resulted in something unexpected", ret)
     end
   end
 
