@@ -806,10 +806,17 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{image: url}) when is_binary(url), do: url
   def image_url(%{profile: profile}), do: image_url(profile)
-  def image_url(%{name: name}) when is_binary(name), do: "https://loremflickr.com/600/225/#{name}/all?lock=1"
-  def image_url(%{note: note}) when is_binary(note), do: "https://loremflickr.com/600/225/#{note}/all?lock=1"
-  def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225?blur"
-  def image_url(_obj), do: "https://picsum.photos/600/225?blur"
+
+  # WIP: https://github.com/bonfire-networks/bonfire-app/issues/151#issuecomment-1060536119
+
+  # def image_url(%{name: name}) when is_binary(name), do: "https://loremflickr.com/600/225/#{name}/all?lock=1"
+  # def image_url(%{note: note}) when is_binary(note), do: "https://loremflickr.com/600/225/#{note}/all?lock=1"
+  # def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225?blur"
+  # def image_url(_obj), do: "https://picsum.photos/600/225?blur"
+
+  # If no background image is provided, default to a default one (It can be included in configurations) 
+  def image_url(_obj), do: "./images/bonfires.png"
+  
   # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 
   def current_user(current_user_or_socket_or_opts) do
