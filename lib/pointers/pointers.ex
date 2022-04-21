@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Pointers do
   import Bonfire.Common.Extend
   import_if_enabled Bonfire.Boundaries.Queries
   import Ecto.Query
-
+  import EctoSparkles
   alias Bonfire.Common.Pointers.Queries
   alias Bonfire.Common.Utils
   alias Bonfire.Common.ContextModules
@@ -85,9 +85,28 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def pointer_query(filters, opts) do
+    opts = Utils.to_options(opts)
     q = Queries.query(nil, filters)
     q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
+    |> pointer_preloads(opts[:preload])
     if Utils.e(opts, :log_query, nil), do: info(q), else: q
+  end
+
+  def pointer_preloads(query, preloads) do
+    case preloads do
+      _ when is_list(preloads) ->
+        Enum.reduce(preloads, query, &pointer_preloads(&2, &1))
+      :with_creator ->
+        proload query,
+          created:  [creator: [:character, profile: :icon]]
+      :tags -> # Tags/mentions
+        proload query,
+          tags:  [:character, profile: :icon]
+      :character ->
+        proload query, :character
+      _default ->
+        query
+    end
   end
 
   @doc "Turns a thing into a pointer if it is not already or returns nil"

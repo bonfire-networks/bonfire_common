@@ -328,7 +328,7 @@ defmodule Bonfire.Repo do
   end
 
   def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts) when is_list(objects) do
-    debug("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preloads: #{inspect preloads}")
+    debug("maybe_preloads_per_nested_schema try schema: #{inspect schema} in path: #{inspect path} with preload: #{inspect preloads}")
 
     with {_old, loaded} <- get_and_update_in(
       objects,

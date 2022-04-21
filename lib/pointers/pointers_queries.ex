@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   import Ecto.Query
   alias Pointers.Pointer
   import EctoSparkles
+  import Where
 
   def queries_module, do: Pointer
 
@@ -69,7 +70,8 @@ defmodule Bonfire.Common.Pointers.Queries do
     select(q, ^fields)
   end
 
-  def filter(q, _)  do
+  def filter(q, filter)  do
+    warn(filter, "Unknown filter")
     q
   end
 

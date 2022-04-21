@@ -1,10 +1,10 @@
 defmodule Bonfire.Common.URIs do
-
-  alias Bonfire.Common.Utils
+  import Where
+  use Arrows
   import Bonfire.Common.Extend
+  alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
   alias Plug.Conn.Query
-  import Where
 
   def path(view_module_or_path_name_or_object, args \\ [])
 
@@ -14,8 +14,9 @@ defmodule Bonfire.Common.URIs do
 
   def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) and is_list(args) do
     endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
-    debug(args, view_module_or_path_name_or_object)
-    case Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, [endpoint, view_module_or_path_name_or_object] ++ args, &voodoo_error/2) do
+    ([endpoint, view_module_or_path_name_or_object] ++ args)
+    |> debug("args")
+    |> case Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, ..., &voodoo_error/2) do
       "/%40"<>username -> "/@"<>username
       path when is_binary(path) -> path
       other ->
@@ -85,7 +86,7 @@ defmodule Bonfire.Common.URIs do
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
-      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
+      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true, preload: :character) do
         debug("path_by_id: found a pointer #{inspect pointer}")
         object
         |> Map.merge(pointer)
