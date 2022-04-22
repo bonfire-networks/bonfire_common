@@ -701,6 +701,9 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_to_struct(obj, type \\ nil)
   def maybe_to_struct(%{__struct__: struct_type} = obj, target_type) when target_type == struct_type, do: obj
+  def maybe_to_struct(obj, type) when is_struct(obj) do
+    maybe_from_struct(obj) |> maybe_to_struct(type)
+  end
   def maybe_to_struct(obj, type) when is_binary(type) do
     case maybe_str_to_module(type) do
       module when is_atom(module) -> maybe_to_struct(obj, module)
@@ -814,9 +817,9 @@ defmodule Bonfire.Common.Utils do
   # def image_url(%{id: id}), do: "https://picsum.photos/seed/#{id}/600/225?blur"
   # def image_url(_obj), do: "https://picsum.photos/600/225?blur"
 
-  # If no background image is provided, default to a default one (It can be included in configurations) 
+  # If no background image is provided, default to a default one (It can be included in configurations)
   def image_url(_obj), do: "./images/bonfires.png"
-  
+
   # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 
   def current_user(current_user_or_socket_or_opts) do
