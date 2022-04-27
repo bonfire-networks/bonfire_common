@@ -225,12 +225,19 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback
   def filter_empty([], fallback), do: fallback
-  def filter_empty(list, fallback) when is_list(list), do: list |> Enum.filter(& &1) |> re_filter_empty(fallback)
+  def filter_empty(list, fallback) when is_list(list), do: list |> Enum.map(&sub_filter_empty/1) |> Enum.filter(& &1) |> re_filter_empty(fallback)
   # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
   def filter_empty(val, fallback), do: val || fallback
 
+  defp sub_filter_empty(%Ecto.Association.NotLoaded{}), do: nil
+  defp sub_filter_empty([]), do: nil
+  defp sub_filter_empty({:error, _}), do: nil
+  defp sub_filter_empty(map) when is_map(map) and map==%{}, do: nil
+  defp sub_filter_empty(""), do: nil
+  defp sub_filter_empty(val), do: val
+
   defp re_filter_empty([], fallback), do: fallback
-  defp re_filter_empty(list, _fallback), do: list
+  defp re_filter_empty(val, _fallback), do: val
 
   def uniq_by_id(list) do
     list
