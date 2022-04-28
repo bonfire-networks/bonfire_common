@@ -800,6 +800,14 @@ defmodule Bonfire.Common.Utils do
     nil
   end
 
+  def media_url(%{media_type: media_type} = media) do
+    if String.starts_with?(media_type, "image") do
+      image_url(media)
+    else
+      Bonfire.Files.DocumentUploader.remote_url(media)
+    end
+  end
+
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
