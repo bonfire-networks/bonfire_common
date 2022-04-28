@@ -314,11 +314,11 @@ defmodule Bonfire.Common.Utils do
     right
   end
 
+  def deep_merge_reduce([]), do: []
+  def deep_merge_reduce([only_one]), do: only_one # to avoid Enum.EmptyError
   def deep_merge_reduce(list_or_map) do
     list_or_map
     |> Enum.reduce(fn elem, acc ->
-      # debug(acc, "left")
-      # debug(elem, "right")
       deep_merge(acc, elem)
     end)
   end
@@ -743,20 +743,25 @@ defmodule Bonfire.Common.Utils do
     |> binary_part(0, length)
   end
 
-  def r(html), do: Phoenix.HTML.raw(html)
-
-  def md(content), do: r(markdown(content)) # for use in views
+  def md(content), do: Phoenix.HTML.raw(markdown(content)) # for use in views
   def markdown(content), do: Text.markdown_to_html(content)
 
   def rich(content) do
     case content do
       _ when is_binary(content) ->
-        if is_html?(content), do: r(content), else: md(content)
+        # if Text.is_html?(content), do: r(content), else:
+          md(content)
       {:ok, msg} when is_binary(msg) -> rich(msg)
-      {:ok, _data} -> l "OK"
+      {:ok, _} ->
+        debug(content)
+        l "Ok"
       {:error, msg} when is_binary(msg) -> rich(msg)
-      {:error, _data} -> l "Error"
-      _ when is_map(content) -> l "Unexpected data"
+      {:error, _} ->
+        error(content)
+        l "Error"
+      _ when is_map(content) ->
+        error(content, "Unexpected data")
+        l "Unexpected data"
       _ when is_nil(content) or content=="" -> nil
       %Ecto.Association.NotLoaded{} -> nil
       _  -> rich(inspect content)
@@ -764,8 +769,6 @@ defmodule Bonfire.Common.Utils do
   end
 
   def text_only(html), do: HtmlSanitizeEx.strip_tags(html)
-
-  def is_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
 
   def date_relative(%{id: id}), do: date_from_pointer(id) |> date_relative()
   def date_relative(date) do
@@ -801,6 +804,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{id: _} = media}), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id), do: Bonfire.Files.IconUploader.remote_url(icon_id)
+  def avatar_url(%{path: _} = media), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   def avatar_url(%{image: url}) when is_binary(url), do: url # handle VF API
   def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.avatar_url(id) # robohash
@@ -813,6 +817,7 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{image: %{id: _} = media}), do: Bonfire.Files.ImageUploader.remote_url(media)
+  def image_url(%{path: _} = media), do: Bonfire.Files.ImageUploader.remote_url(media)
   def image_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.ImageUploader.remote_url(image_id)
   def image_url(%{image: url}) when is_binary(url), do: url
   def image_url(%{profile: profile}), do: image_url(profile)
@@ -825,7 +830,7 @@ defmodule Bonfire.Common.Utils do
   # def image_url(_obj), do: "https://picsum.photos/600/225?blur"
 
   # If no background image is provided, default to a default one (It can be included in configurations)
-  def image_url(_obj), do: "./images/bonfires.png"
+  def image_url(_obj), do: "/images/bonfires.png"
 
   # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
 

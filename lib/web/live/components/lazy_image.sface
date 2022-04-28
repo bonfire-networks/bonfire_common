@@ -1,6 +1,6 @@
 
 
-{#case Bonfire.Files.blurred(@src)}
+{#case Bonfire.Files.Blurred.blurred(@src)}
   {#match blurred when is_binary(blurred) and blurred != @src}
     <img 
       class={@class}

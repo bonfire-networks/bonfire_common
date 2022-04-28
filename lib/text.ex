@@ -15,6 +15,8 @@ defmodule Bonfire.Common.Text do
 
   def blank?(str_or_nil), do: "" == str_or_nil |> to_string() |> String.trim()
 
+  def is_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
+
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
 
   def truncate(text, max_length, add_to_end) do
@@ -111,7 +113,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_to_html(content) do
-    # IO.inspect(to_md: content)
+    # debug(content, "input")
     if module_enabled?(Earmark) do
       content
       |> Earmark.as_html!()
@@ -120,6 +122,7 @@ defmodule Bonfire.Common.Text do
     else
       content
     end
+    # |> debug("output")
   end
 
   # open outside links in a new tab
@@ -127,16 +130,16 @@ defmodule Bonfire.Common.Text do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
-    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/@\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
-    |> Regex.replace(~r/(<a href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP objects
+    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/@\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
+    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP objects
     |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle internal links
     |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"") # handle external links
   end
 
   def markdown_checkboxes(text) do
     text
-    |> replace_checked_boxes
-    |> replace_unchecked_boxes
+    |> replace_checked_boxes()
+    |> replace_unchecked_boxes()
   end
 
   defp replace_checked_boxes(text) do
