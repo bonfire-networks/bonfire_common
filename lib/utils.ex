@@ -17,6 +17,10 @@ defmodule Bonfire.Common.Utils do
       alias Common.Utils
       alias Common.Config
       alias Common.Extend
+      alias Common.Text
+      alias Common.URIs
+      alias Common.Enums
+      alias Common.DayeTimes
 
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
@@ -743,19 +747,22 @@ defmodule Bonfire.Common.Utils do
     |> binary_part(0, length)
   end
 
-  def md(content), do: Phoenix.HTML.raw(markdown(content)) # for use in views
-  def markdown(content), do: Text.markdown_to_html(content)
-
   def rich(content) do
     case content do
       _ when is_binary(content) ->
-        # if Text.is_html?(content), do: r(content), else:
-          md(content)
-      {:ok, msg} when is_binary(msg) -> rich(msg)
+
+        content
+        |> Text.maybe_markdown_to_html()
+        |> Text.external_links() # transform internal links for LiveView navigation
+        |> Phoenix.HTML.raw() # for use in views
+
+      {:ok, msg} when is_binary(msg) -> msg
       {:ok, _} ->
         debug(content)
         l "Ok"
-      {:error, msg} when is_binary(msg) -> rich(msg)
+      {:error, msg} when is_binary(msg) ->
+        error(msg)
+        msg
       {:error, _} ->
         error(content)
         l "Error"
@@ -764,7 +771,7 @@ defmodule Bonfire.Common.Utils do
         l "Unexpected data"
       _ when is_nil(content) or content=="" -> nil
       %Ecto.Association.NotLoaded{} -> nil
-      _  -> rich(inspect content)
+      _  -> inspect content
     end
   end
 

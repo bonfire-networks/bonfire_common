@@ -15,7 +15,7 @@ defmodule Bonfire.Common.Text do
 
   def blank?(str_or_nil), do: "" == str_or_nil |> to_string() |> String.trim()
 
-  def is_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("is_html?")
+  def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("contains_html?")
 
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
 
@@ -108,21 +108,45 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def markdown_to_html(nothing) when not is_binary(nothing) or nothing=="" do
+  def maybe_markdown_to_html(nothing) when not is_binary(nothing) or nothing=="" do
     nil
   end
 
-  def markdown_to_html(content) do
+  def maybe_markdown_to_html("<"<>_ = content) do
+    maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
+  end
+
+  def maybe_markdown_to_html(content) do
     # debug(content, "input")
     if module_enabled?(Earmark) do
       content
-      |> Earmark.as_html!()
+      |> Earmark.as_html!(inner_html: true, escape: false)
       |> markdown_checkboxes()
-      |> external_links()
     else
       content
     end
     # |> debug("output")
+  end
+
+  @doc """
+  It is recommended to call this before storing any that data is coming in from the user or from a remote instance
+  """
+  def maybe_sane_html(content) do
+    if module_enabled?(HtmlSanitizeEx) do
+      content
+      |> HtmlSanitizeEx.markdown_html()
+    else
+      content
+    end
+  end
+
+  def maybe_emote(content) do
+    if module_enabled?(Emote) do
+      content
+      |> Emote.convert_text()
+    else
+      content
+    end
   end
 
   # open outside links in a new tab

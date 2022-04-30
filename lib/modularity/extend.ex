@@ -40,11 +40,11 @@ defmodule Bonfire.Common.Extend do
     case maybe_module_loaded(module_or_otp_app) |> Application.get_application() do
       nil ->
         module_or_otp_app
-        |> debug("received an atom that isn't a module, return it as-is")
+        # |> debug("received an atom that isn't a module, return it as-is")
 
       otp_app ->
         otp_app
-        |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
+        # |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
 
     end
   end
@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Extend do
       otp_app when otp_app == module_or_otp_app ->
 
         application_loaded = application_loaded?(module_or_otp_app)
-                              |> debug("is it a loaded application?")
+                              # |> debug("is it a loaded application?")
 
         if application_loaded, do: module_or_otp_app, else: nil
 
