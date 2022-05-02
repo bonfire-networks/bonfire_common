@@ -150,7 +150,7 @@ defmodule Bonfire.Common.Text do
   end
 
   # open outside links in a new tab
-  def external_links(content) do
+  def external_links(content) when is_binary(content) and byte_size(content)>20 do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
@@ -159,6 +159,7 @@ defmodule Bonfire.Common.Text do
     |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle internal links
     |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"") # handle external links
   end
+  def external_links(content), do: content
 
   def markdown_checkboxes(text) do
     text
