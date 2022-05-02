@@ -89,7 +89,7 @@ defmodule Bonfire.Common.Pointers do
     q = Queries.query(nil, filters)
     q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
     |> pointer_preloads(opts[:preload])
-    if Utils.e(opts, :log_query, nil), do: info(q), else: q
+    # if Utils.e(opts, :log_query, nil), do: info(q), else: q
   end
 
   def pointer_preloads(query, preloads) do
