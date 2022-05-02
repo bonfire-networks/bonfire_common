@@ -7,3 +7,4 @@ bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identi
 surface_heroicons = "https://github.com/rocketinsights/surface_heroicons"
 ecto_sparkles = "https://github.com/bonfire-networks/ecto_sparkles#main"
 phoenix_gon = "https://github.com/bonfire-networks/phoenix_gon"
+where = "https://github.com/bonfire-networks/where#main"
