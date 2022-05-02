@@ -255,7 +255,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def go_where?(_conn, params, default) do
-    go = Utils.e(params |> dump, :go, default) |> dump
+    go = Utils.e(params, :go, default) |> dump
     if valid_go_path?(go), do: go, else: default
   end
 end
