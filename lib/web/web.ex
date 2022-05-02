@@ -23,7 +23,7 @@ defmodule Bonfire.Web do
     opts =
       opts
       |> Keyword.put_new(:root, "lib")
-      |> maybe_put_layout(opts, "app.html")
+      |> maybe_put_layout("app.html")
     quote do
       use Phoenix.View, unquote(opts)
       # Import convenience functions from controllers
@@ -37,7 +37,7 @@ defmodule Bonfire.Web do
 
   defp maybe_put_layout(opts, file) do
     if !Bonfire.Common.Config.get(:default_layout_module), do: opts, else: opts
-      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get!(:default_layout_module), file})
+      |> Keyword.put_new(:layout, {Bonfire.Common.Config.get(:default_layout_module), file})
   end
 
   def layout_view(opts \\ []) do
@@ -48,7 +48,7 @@ defmodule Bonfire.Web do
     #IO.inspect(live_view: opts)
     opts =
       opts
-      |> maybe_put_layout(opts, "live.html")
+      |> maybe_put_layout("live.html")
     quote do
       use Phoenix.LiveView, unquote(opts)
 
@@ -180,7 +180,7 @@ defmodule Bonfire.Web do
     def surface_view(opts \\ []) do
       opts =
         opts
-        |> maybe_put_layout(opts, "live.html")
+        |> maybe_put_layout("live.html")
 
       quote do
 
