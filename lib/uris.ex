@@ -234,28 +234,47 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  @doc "Save a `go` redirection path in the session (for redirecting somewhere after auth flows)"
+  def set_go_after(conn, path \\ nil) do
+    path = path || conn.request_path
+    conn
+    |> Plug.Conn.put_session(
+      :go,
+      path
+    )
+  end
 
-  # copies the 'go' part of the query string, if any
+  @doc """
+  Generate a query string adding a `go` redirection path to the URI (for redirecting somewhere after auth flows).
+  It is recommended to use `set_go_after/2` where possible instead.
+  """
+  def go_query(url) when is_binary(url), do: "?" <> Query.encode(go: url)
+  def go_query(conn), do: "?" <> Query.encode(go: conn.request_path)
+
+  @doc "copies the `go` param into a query string, if any"
   def copy_go(%{go: go}), do: "?" <> Query.encode(go: go)
   def copy_go(%{"go" => go}), do: "?" <> Query.encode(go: go)
   def copy_go(_), do: ""
 
-  # TODO: should we preserve query strings?
-  def go_query(url) when is_binary(url), do: "?" <> Query.encode(go: url)
-  def go_query(conn), do: "?" <> Query.encode(go: conn.request_path)
-
   # TODO: we should validate this a bit harder. Phoenix will prevent
   # us from sending the user to an external URL, but it'll do so by
   # means of a 500 error.
-  def valid_go_path?("/" <> _), do: true
-  def valid_go_path?(_), do: false
+  defp internal_go_path?("/" <> _), do: true
+  defp internal_go_path?(_), do: false
 
-  def go_where?(_conn, %Ecto.Changeset{}=cs, default) do
-    go_where?(_conn, cs.changes, default)
+  def go_where?(conn, %Ecto.Changeset{}=cs, default) do
+    go_where?(conn, cs.changes, default)
   end
 
-  def go_where?(_conn, params, default) do
-    go = Utils.e(params, :go, default) |> dump
-    if valid_go_path?(go), do: go, else: default
+  def go_where?(conn, params, default) do
+    case Plug.Conn.get_session(conn, :go) |> debug do
+      url when is_binary(url) ->
+        Plug.Conn.delete_session(conn, :go)
+        [external: url]
+      _ ->
+        go = (Utils.e(params, :go, nil) || default) |> debug
+        if internal_go_path?(go), do: [to: go], else: [to: default]
+    end
+
   end
 end

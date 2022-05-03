@@ -14,7 +14,7 @@ defmodule Bonfire.Web do
       alias Bonfire.Web.Plugs.{MustBeGuest, MustLogIn}
       import Phoenix.LiveView.Controller
 
-      unquote(view_helpers())
+      unquote(basic_view_helpers())
 
     end
   end
@@ -140,19 +140,28 @@ defmodule Bonfire.Web do
     end
   end
 
-  defp view_helpers do
+  defp basic_view_helpers do
     quote do
       unquote(common_helpers())
 
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
 
-      # Import basic rendering functionality (render, render_layout, etc)
-      import Phoenix.View
-
       # icons
       alias Heroicons.Solid
       alias Heroicons.Outline
+
+      # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
+
+    end
+  end
+
+  defp view_helpers do
+    quote do
+      unquote(basic_view_helpers())
+
+      # Import basic rendering functionality (render, render_layout, etc)
+      import Phoenix.View
 
       # unquote(Bonfire.Common.Extend.quoted_use_if_enabled(Thesis.View, Bonfire.Common.Web.ContentAreas))
 
