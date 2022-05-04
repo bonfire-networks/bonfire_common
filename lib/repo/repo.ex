@@ -1,4 +1,4 @@
-defmodule Bonfire.Repo do
+defmodule Bonfire.Common.Repo do
   @moduledoc """
   Ecto Repo and related common functions
   """
@@ -40,7 +40,7 @@ defmodule Bonfire.Repo do
 
       alias Ecto.Changeset
 
-      alias Bonfire.Repo
+      alias Bonfire.Common.Repo
 
       import Where
 

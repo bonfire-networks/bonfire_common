@@ -1,4 +1,4 @@
-defmodule Bonfire.Repo.Delete do
+defmodule Bonfire.Common.Repo.Delete do
 
   import Where
 

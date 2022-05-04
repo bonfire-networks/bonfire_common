@@ -1,30 +1,30 @@
-defmodule Bonfire.Web.Gettext.Plural do
+defmodule Bonfire.Common.Localise.Gettext.Plural do
   @moduledoc """
   Defines a plural forms module for Gettext that uses CLDR plural rules
   https://cldr.unicode.org/index/cldr-spec/plural-rules
   """
-  use Cldr.Gettext.Plural, cldr_backend: Bonfire.Web.Cldr
+  use Cldr.Gettext.Plural, cldr_backend: Bonfire.Common.Localise.Cldr
 end
-defmodule Bonfire.Web.Gettext do
+defmodule Bonfire.Common.Localise.Gettext do
   @moduledoc """
   Default Gettext module
-  It is recommended to use the more convenient macros in `Bonfire.Web.Gettext.Helpers` instead.
+  It is recommended to use the more convenient macros in `Bonfire.Common.Localise.Gettext.Helpers` instead.
   """
   use Gettext,
     otp_app: :bonfire_common,
-    default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Web.Cldr, :default_locale], "en"),
-    plural_forms: Bonfire.Web.Gettext.Plural,
+    default_locale: Bonfire.Common.Config.get_ext(:bonfire_ui_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
+    plural_forms: Bonfire.Common.Localise.Gettext.Plural,
     priv: Bonfire.Common.Config.get!(:localisation_path)
 
 end
-defmodule Bonfire.Web.Gettext.Helpers do
+defmodule Bonfire.Common.Localise.Gettext.Helpers do
   @moduledoc """
   A module providing Internationalization with a gettext-based API.
 
   By using [Gettext](https://hexdocs.pm/gettext),
   your module gains a set of macros for translations, for example:
 
-      import Bonfire.Web.Gettext
+      import Bonfire.Common.Localise.Gettext
 
       # Simple translation
 
@@ -55,7 +55,7 @@ defmodule Bonfire.Web.Gettext.Helpers do
 
   # alias the gettext macros for ease-of-use
 
-  import Bonfire.Web.Gettext
+  import Bonfire.Common.Localise.Gettext
 
   defmacro l(original_text_or_id, bindings \\ [], context \\ nil, domain \\ nil)
 

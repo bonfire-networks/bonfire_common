@@ -1,4 +1,4 @@
-defmodule Bonfire.Web.Cldr do
+defmodule Bonfire.Common.Localise.Cldr do
 @moduledoc """
 This module integrates `ex_cldr` - an Elixir library for the Unicode Consortium's Common Locale Data Repository (CLDR), used to simplify the locale specific formatting and parsing of numbers, lists, currencies, calendars, units of measure and dates/times.
 

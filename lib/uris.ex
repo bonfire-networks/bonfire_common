@@ -86,7 +86,7 @@ defmodule Bonfire.Common.URIs do
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
-      with {:ok, pointer} <- Bonfire.Common.Pointers.one(id, skip_boundary_check: true, preload: :character) do
+      with {:ok, pointer} <- Bonfire.UI.Common.Pointers.one(id, skip_boundary_check: true, preload: :character) do
         debug("path_by_id: found a pointer #{inspect pointer}")
         object
         |> Map.merge(pointer)
@@ -114,7 +114,7 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{username: username}), do: username
   defp path_id(%{display_username: "@"<>display_username}), do: path_id(display_username)
   defp path_id(%{display_username: display_username}), do: path_id(display_username)
-  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Repo.maybe_preload(:character) |> Utils.e(:character, obj.id) |> path_id()
+  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Common.Repo.maybe_preload(:character) |> Utils.e(:character, obj.id) |> path_id()
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 
@@ -135,19 +135,19 @@ defmodule Bonfire.Common.URIs do
     canonical_url
   end
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Repo.maybe_preload(object, :peered)
+    Bonfire.Common.Repo.maybe_preload(object, :peered)
     |> Utils.e(:peered, :canonical_uri, nil)
         ||
        query_or_generate_canonical_url(object)
   end
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Repo.maybe_preload(object, [created: [:peered]])
+    Bonfire.Common.Repo.maybe_preload(object, [created: [:peered]])
     |> Utils.e(:created, :peered, :canonical_uri, nil)
         ||
        query_or_generate_canonical_url(object)
   end
   def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Repo.maybe_preload(object, [character: [:peered]])
+    Bonfire.Common.Repo.maybe_preload(object, [character: [:peered]])
     |> Utils.e(:character, :peered, :canonical_uri, nil)
         ||
        query_or_generate_canonical_url(object)

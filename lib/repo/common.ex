@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Repo.Common do
+defmodule Bonfire.Common.Repo.Utils do
   @moduledoc "Helper functions for changesets"
 
   import EctoSparkles.Changesets

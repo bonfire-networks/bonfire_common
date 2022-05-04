@@ -211,10 +211,10 @@ defmodule Bonfire.Common.Test.Interactive do
 
     share_and_persit? = System.get_env("START_SERVER")=="true"
 
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Repo, sandbox: not share_and_persit?)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo, sandbox: not share_and_persit?)
 
     if !tags[:async] || share_and_persit? do
-      Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Common.Repo, {:shared, self()})
     end
   end
 end
