@@ -18,11 +18,13 @@ defmodule Bonfire.Common.Utils do
       alias Common.Text
       alias Common.Enums
       alias Common.DateTimes
+      alias Common.URIs
 
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
 
       import Extend
+      import URIs
 
       import Where
       use Arrows
@@ -723,12 +725,12 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{path: _} = media), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   def avatar_url(%{image: url}) when is_binary(url), do: url # handle VF API
-  def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.avatar_url(id) # robohash
+  def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
   def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128?blur" # for Teams/Orgs
   # def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Common.Repo.maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
-  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.avatar_url(id) # robohash
-  def avatar_url(_obj), do: Bonfire.Me.Fake.avatar_url()
+  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
+  def avatar_url(_obj), do: Bonfire.Me.Fake.Helpers.avatar_url()
 
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
@@ -748,7 +750,7 @@ defmodule Bonfire.Common.Utils do
   # If no background image is provided, default to a default one (It can be included in configurations)
   def image_url(_obj), do: "/images/bonfires.png"
 
-  # def image_url(_obj), do: Bonfire.Me.Fake.image_url()
+  # def image_url(_obj), do: Bonfire.Me.Fake.Helpers.image_url()
 
   def current_user(current_user_or_socket_or_opts) do
     case current_user_or_socket_or_opts do

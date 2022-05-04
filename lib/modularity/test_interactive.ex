@@ -209,11 +209,11 @@ defmodule Bonfire.Common.Test.Interactive do
 
   def setup_test_repo(tags) do
 
-    share_and_persit? = System.get_env("START_SERVER")=="true"
+    wrap_test_in_transaction_and_rollback = System.get_env("START_SERVER") !="true"
 
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo, sandbox: not share_and_persit?)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo, sandbox: wrap_test_in_transaction_and_rollback)
 
-    if !tags[:async] || share_and_persit? do
+    if not wrap_test_in_transaction_and_rollback or !tags[:async] do
       Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Common.Repo, {:shared, self()})
     end
   end
