@@ -371,16 +371,16 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_atom!(atom) when is_atom(atom), do: atom
   def maybe_to_atom!(_), do: nil
 
-  def maybe_str_to_module(str)
-  def maybe_str_to_module(str) when is_binary(str) do
+  def maybe_to_module(str)
+  def maybe_to_module(str) when is_binary(str) do
     case maybe_to_atom(str) do
       module_or_atom when is_atom(module_or_atom) -> module_or_atom
       "Elixir."<>str -> nil # module doesn't exist
       _ -> maybe_to_atom!("Elixir."<>str)
     end
   end
-  def maybe_str_to_module(atom) when is_atom(atom), do: atom
-  def maybe_str_to_module(_), do: nil
+  def maybe_to_module(atom) when is_atom(atom), do: atom
+  def maybe_to_module(_), do: nil
 
   def module_to_str(str) when is_binary(str) do
     case str do
@@ -581,7 +581,7 @@ defmodule Bonfire.Common.Utils do
       data
       |> Map.drop(["_csrf_token"])
       |> Map.new(fn {k, v} -> {
-        maybe_to_snake_atom(k) || maybe_str_to_module(k),
+        maybe_to_snake_atom(k) || maybe_to_module(k),
         input_to_atoms(v, discard_unknown_keys, including_values)
       } end)
     )
@@ -590,7 +590,7 @@ defmodule Bonfire.Common.Utils do
     data
     |> Map.drop(["_csrf_token"])
     |> Map.new(fn {k, v} -> {
-      (maybe_to_snake_atom(k) || maybe_str_to_module(k) || k),
+      (maybe_to_snake_atom(k) || maybe_to_module(k) || k),
       input_to_atoms(v, discard_unknown_keys, including_values)
     } end)
   end
@@ -606,7 +606,7 @@ defmodule Bonfire.Common.Utils do
     Enum.map(list, &input_to_atoms(&1, false, including_values))
   end
   def input_to_atoms(v, _, true = _including_values) do
-    case maybe_str_to_module(v) do
+    case maybe_to_module(v) do
       nil -> v # do it this roundabout way to support `false` as a value
       other -> other
     end
@@ -643,7 +643,7 @@ defmodule Bonfire.Common.Utils do
     maybe_from_struct(obj) |> maybe_to_struct(type)
   end
   def maybe_to_struct(obj, type) when is_binary(type) do
-    case maybe_str_to_module(type) do
+    case maybe_to_module(type) do
       module when is_atom(module) -> maybe_to_struct(obj, module)
       _ -> obj
     end

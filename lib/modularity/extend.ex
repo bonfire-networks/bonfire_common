@@ -112,7 +112,7 @@ defmodule Bonfire.Common.Extend do
   defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
 
   def quoted_use_if_enabled(module, fallback_module \\ nil)
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_str_to_module(), fallback_module)
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module)
   def quoted_use_if_enabled(module, fallback_module) do
     if is_atom(module) and module_enabled?(module) do
       debug(module, "Found module to use")
@@ -131,7 +131,7 @@ defmodule Bonfire.Common.Extend do
 
   defmacro import_if_enabled(module, fallback_module \\ nil), do: quoted_import_if_enabled(module, fallback_module)
 
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_str_to_module(), fallback_module)
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module)
   def quoted_import_if_enabled(module, fallback_module \\ nil) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to import")
@@ -150,7 +150,7 @@ defmodule Bonfire.Common.Extend do
 
   defmacro require_if_enabled(module, fallback_module \\ nil), do: quoted_require_if_enabled(module, fallback_module)
 
-  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_require_if_enabled(module_name_ast |> Macro.to_string() |> IO.inspect |> Utils.maybe_str_to_module() |> IO.inspect, fallback_module)
+  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_require_if_enabled(module_name_ast |> Macro.to_string() |> IO.inspect |> Utils.maybe_to_module() |> IO.inspect, fallback_module)
   def quoted_require_if_enabled(module, fallback_module \\ nil) do
     if is_atom(module) and module_enabled?(module) do
       debug(module, "Found module to require")
