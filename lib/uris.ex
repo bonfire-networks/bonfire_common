@@ -268,13 +268,16 @@ defmodule Bonfire.Common.URIs do
 
   def go_where?(conn, params, default) do
     case Plug.Conn.get_session(conn, :go) |> debug do
-      url when is_binary(url) ->
-        Plug.Conn.delete_session(conn, :go)
-        [external: url]
+      go when is_binary(go) ->
+        if internal_go_path?(go), do: [to: go], else: [external: go] # needs to support external for oauth/openid
       _ ->
         go = (Utils.e(params, :go, nil) || default) |> debug
         if internal_go_path?(go), do: [to: go], else: [to: default]
     end
+  end
 
+  def redirect_to_previous_go(conn, params, default) do
+    go_where?(conn, params, default)
+    |> Phoenix.Controller.redirect(Plug.Conn.delete_session(conn, :go), ...)
   end
 end
