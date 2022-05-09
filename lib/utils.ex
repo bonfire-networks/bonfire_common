@@ -729,7 +729,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128?blur" # for Teams/Orgs
   # def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Common.Repo.maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
-  def avatar_url(%{id: id}), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
+  def avatar_url(%{id: id}) when is_binary(id), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
   def avatar_url(_obj), do: Bonfire.Me.Fake.Helpers.avatar_url()
 
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
