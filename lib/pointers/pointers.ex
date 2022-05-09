@@ -204,7 +204,7 @@ defmodule Bonfire.Common.Pointers do
           %{pointer | pointed: pointed}
 
         other ->
-          debug(other, "Pointers: could not load")
+          debug(other, "Pointers: could not load #{inspect table_id}")
           pointer
       end
     else

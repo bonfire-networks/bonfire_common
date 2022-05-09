@@ -3,44 +3,46 @@ defmodule Bonfire.Common.Pointers.Preload do
   alias Bonfire.Common.Utils
   import Where
 
-  def maybe_preload_pointers(object, keys) when is_list(object) do
-    debug("maybe_preload_pointers: iterate list of objects")
-    Enum.map(object, &maybe_preload_pointers(&1, keys))
+  def maybe_preload_pointers(object, keys, opts \\ [])
+
+  def maybe_preload_pointers(object, keys, opts) when is_list(object) do
+    debug("iterate list of objects")
+    Enum.map(object, &maybe_preload_pointers(&1, keys, opts))
   end
 
-  def maybe_preload_pointers(object, keys) when is_list(keys) and length(keys)==1 do
+  def maybe_preload_pointers(object, keys, opts) when is_list(keys) and length(keys)==1 do
     # TODO: handle any size list and merge with accelerator?
     key = List.first(keys)
-    debug("maybe_preload_pointers: list with one key: #{inspect key}")
-    maybe_preload_pointers(object, key)
+    debug("list with one key: #{inspect key}")
+    maybe_preload_pointers(object, key, opts)
   end
 
-  def maybe_preload_pointers(object, key) when is_struct(object) and is_map(object) and is_atom(key) do
-    debug("maybe_preload_pointers: one field: #{inspect key}")
+  def maybe_preload_pointers(object, key, opts) when is_struct(object) and is_map(object) and is_atom(key) do
+    debug("one field: #{inspect key}")
     case Map.get(object, key) do
       %Pointers.Pointer{} = pointer ->
 
         object
-        |> Map.put(key, maybe_preload_pointer(pointer))
+        |> Map.put(key, maybe_preload_pointer(pointer, opts))
 
       _ -> object
     end
   end
 
-  def maybe_preload_pointers(object, {key, nested_keys}) when is_struct(object) do
+  def maybe_preload_pointers(object, {key, nested_keys}, opts) when is_struct(object) do
 
-    debug("maybe_preload_pointers: key #{key} with nested keys #{inspect nested_keys}")
+    debug("key #{key} with nested keys #{inspect nested_keys}")
     object
-    |> maybe_preload_pointer()
+    |> maybe_preload_pointer(opts)
     # |> IO.inspect
     |> Map.put(key,
       Map.get(object, key)
-      |> maybe_preload_pointers(nested_keys)
+      |> maybe_preload_pointers(nested_keys, opts)
     )
   end
 
-  def maybe_preload_pointers(object, keys) do
-    debug("maybe_preload_pointers: ignore #{inspect keys}")
+  def maybe_preload_pointers(object, keys, _opts) do
+    debug("ignore #{inspect keys}")
     object
   end
 

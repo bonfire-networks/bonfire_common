@@ -278,19 +278,23 @@ defmodule Bonfire.Common.Repo do
   #   CommonsPub.Contexts.prepare_context(obj)
   # end
 
-  def maybe_preload(obj, preloads, follow_pointers? \\ true)
+  def maybe_preload(obj, preloads, opts \\ [])
 
-  def maybe_preload({:ok, obj}, preloads, follow_pointers?), do: {:ok, maybe_preload(obj, preloads, follow_pointers?)}
+  def maybe_preload({:ok, obj}, preloads, opts), do: {:ok, maybe_preload(obj, preloads, opts)}
 
-  def maybe_preload(obj, preloads, true = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
-    maybe_do_preload(obj, preloads)
-    |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads)
-  end
-  def maybe_preload(obj, preloads, false = follow_pointers?) when is_struct(obj) or is_list(obj) do
-    debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
+  def maybe_preload(obj, preloads, false = follow_pointers?), do: maybe_preload(obj, preloads, follow_pointers: false) # deprecate
 
-      maybe_do_preload(obj, preloads)
+  def maybe_preload(obj, preloads, opts) when is_struct(obj) or is_list(obj) do
+    if Keyword.get(opts, :follow_pointers, true) do
+      debug("maybe_preload: trying to preload (and follow pointers): #{inspect preloads}")
+      maybe_do_preload(obj, preloads, opts)
+      |> Bonfire.Common.Pointers.Preload.maybe_preload_pointers(preloads, opts)
+
+    else
+      debug("maybe_preload: trying to preload (without following pointers): #{inspect preloads}")
+
+      maybe_do_preload(obj, preloads, opts)
+    end
   end
 
   def maybe_preload(obj, _, _) do
@@ -299,10 +303,10 @@ defmodule Bonfire.Common.Repo do
     obj
   end
 
-  defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _), do: nil
+  defp maybe_do_preload(%Ecto.Association.NotLoaded{}, _, _), do: nil
 
-  defp maybe_do_preload(obj, preloads) when is_struct(obj) or is_list(obj) do
-    repo().preload(obj, preloads)
+  defp maybe_do_preload(obj, preloads, opts) when is_struct(obj) or is_list(obj) do
+    repo().preload(obj, preloads, opts)
   rescue
     e in ArgumentError ->
       debug("maybe_preload skipped due to wrong argument: #{inspect e}")
@@ -317,7 +321,7 @@ defmodule Bonfire.Common.Repo do
       warn("maybe_preload skipped with catch: #{inspect e}")
   end
 
-  defp maybe_do_preload(obj, _), do: obj
+  defp maybe_do_preload(obj, _, _), do: obj
 
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
@@ -344,7 +348,7 @@ defmodule Bonfire.Common.Repo do
 
   def maybe_preloads_per_schema(%{__struct__: object_schema} = object, {schema, preloads}, opts \\ []) when object_schema==schema do
     debug("maybe_preloads_per_schema preloading schema: #{inspect schema}")
-    maybe_do_preload(object, preloads)
+    maybe_do_preload(object, preloads, opts)
     # TODO: make one preload per get_and_update_in to avoid n+1
   end
 
