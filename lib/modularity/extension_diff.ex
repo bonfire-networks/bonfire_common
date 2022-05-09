@@ -2,15 +2,16 @@ defmodule Bonfire.Common.Extensions.Diff do
 
   import Where
 
-  def generate_diff(package, repo_path) do
-    case repo_latest_diff(package, repo_path) do
+  def generate_diff(repo_path) do
+    case repo_latest_diff(repo_path) do
       {:ok, diff} ->
 
         #IO.inspect(diff)
         # render_diff(diff)
         {:ok, diff}
 
-      :error ->
+      other ->
+        error(other)
         {:error, "Could not generate latest diff."}
     end
   catch
@@ -18,30 +19,35 @@ defmodule Bonfire.Common.Extensions.Diff do
       {:error, "Invalid diff."}
   end
 
-  def repo_latest_diff(package, repo_path) do
-    path_diff = tmp_path("diff-#{package}-")
+  def repo_latest_diff(repo_path) do
+    path_diff = tmp_path(Regex.replace(~r/[^a-z0-9_]+/i, repo_path, "_"))
 
     with  :ok <- git_fetch(repo_path),
-          :ok <- git_config(repo_path),
+          :ok <- git_pre_configure(repo_path),
           :ok <- git_add_all(repo_path),
-          :ok <- git_diff(repo_path, path_diff) do
+          :ok <- git_diff(repo_path, path_diff),
+          {:ok, diff} <- parse_repo_latest_diff(path_diff) do
 
-      parse_repo_latest_diff(path_diff)
+      {:ok, diff}
 
     else
       error ->
-        error("Failed to create diff of #{inspect package} for #{repo_path} at #{path_diff} with: #{inspect(error)}")
-        :error
+        error(error, "Failed to create diff for #{repo_path} at #{path_diff}")
     end
   end
 
   def parse_repo_latest_diff(path_diff) do
-      File.read!(path_diff)
-      |> GitDiff.parse_patch()
+    with diff when is_binary(diff) and diff !="" <- File.read!(path_diff) do
+        diff
+        # |> debug("path_diff")
+        |> GitDiff.parse_patch()
+    else _ ->
+      error("No diff patch generated")
+    end
   end
 
   def analyse_repo_latest_diff_stream(path_diff) do
-    # TODO: figure out how to stream the data to LiveView as it becomes available, in which case use this instead of `parse_repo_latest_diff`
+    # TODO: figure out how to stream the data to LiveView as it becomes available, in which case use this function instead of `parse_repo_latest_diff`
     stream =
       File.stream!(path_diff, [:read_ahead])
       |> GitDiff.stream_patch()
@@ -54,7 +60,7 @@ defmodule Bonfire.Common.Extensions.Diff do
     {:ok, stream}
   end
 
-  def git_config(repo_path) do
+  def git_pre_configure(repo_path) do
 
   # Enable better diffing
     ["config", "core.attributesfile", "../../config/.gitattributes"]
@@ -84,7 +90,7 @@ defmodule Bonfire.Common.Extensions.Diff do
         "diff.algorithm=histogram",
         "diff",
       #  "--no-index", # specify if we're diffing a repo or two paths
-        extra_opt, # optionally diff staged changes (older git versions don't support the equivaled --staged)
+        extra_opt, # optionally diff staged changes (older git versions don't support the equivalent --staged)
         "--no-color",
         "--output=#{path_output}",
       ], repo_path)
@@ -92,6 +98,7 @@ defmodule Bonfire.Common.Extensions.Diff do
 
   def git!(args, repo_path \\ ".", into \\ default_into()) do
     debug(inspect %{repo: repo_path, git: args, cwd: File.cwd()})
+    original_cwd = File.cwd()
 
     File.cd!(repo_path, fn ->
 
@@ -99,7 +106,7 @@ defmodule Bonfire.Common.Extensions.Diff do
 
       case System.cmd("git", args, opts) do
         {response, 0} ->
-          IO.inspect(git_response: response)
+          # debug(response, "git_response")
           :ok
 
         {response, _} ->

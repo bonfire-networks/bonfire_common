@@ -69,7 +69,7 @@ defmodule Bonfire.Common.Extend do
       apply(Mix.Dep, func, args)
       # |> IO.inspect
     else
-      # TODO: cache this at compile-time so it is available in releases
+      # TODO: cache this at compile-time so it is available in releases?
       []
     end
   end

@@ -1,38 +1,74 @@
 defmodule Bonfire.Common.Extensions do
 
   @prefix "bonfire_"
+  @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
   import Where
+  alias Bonfire.Common.Utils
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
   def data() do
 
-    deps = Bonfire.Application.deps() # Bonfire.Common.Extend.loaded_deps()
-    #IO.inspect(List.first(deps))
+    deps = deps_list()
 
-    extensions = filter_bonfire(deps)
-    other_deps = filter_bonfire(deps, false)
+    feature_extensions = filter_bonfire(deps, true, @prefix)
+    other_deps = filter_bonfire(deps, false, @prefix)
 
-    schemas = filter_bonfire(extensions, true, @prefix_data)
-    extensions = filter_bonfire(extensions, false, @prefix_data)
-    #IO.inspect(List.first(extensions))
+    ecosystem_libs = filter_bonfire(other_deps, true, :git)
+    other_deps = filter_bonfire(other_deps, false, :git)
+
+    ui = filter_bonfire(feature_extensions, true, @prefix_ui)
+    feature_extensions = filter_bonfire(feature_extensions, false, @prefix_ui)
+
+    schemas = filter_bonfire(feature_extensions, true, @prefix_data)
+    feature_extensions = filter_bonfire(feature_extensions, false, @prefix_data)
 
     [
-      extensions: extensions,
+      feature_extensions: feature_extensions,
+      ui: ui,
       schemas: schemas,
+      ecosystem_libs: ecosystem_libs,
       other_deps: other_deps
     ]
   end
 
+  def deps_list(opts \\ []) do
+    # Bonfire.Common.Extend.loaded_deps()
+    Bonfire.Application.deps() # load compile-time cached list
+    |> prepare_list(opts)
+    |> List.flatten()
+    |> Enum.uniq_by(&dep_name(&1))
+  end
 
-  defp filter_bonfire(deps, only \\ true, prefix \\ @prefix) do
+  defp prepare_list(deps, opts) when is_list(deps) do
+    Enum.flat_map(deps, fn
+      %Mix.Dep{deps: nested_deps} = dep ->
+        [dep] ++ prepare_list(nested_deps, opts)
+
+      dep ->
+        [dep]
+    end)
+  end
+
+  defp filter_bonfire(deps, only, prefix) when is_binary(prefix) do
     Enum.filter(deps, fn
       %{app: name} ->
         case Atom.to_string(name) |> String.split(prefix) do
           [_, _] -> only
           _ -> !only
         end
+      _ -> !only
+    end)
+  end
+
+  defp filter_bonfire(deps, only, :git) do
+    Enum.filter(deps, fn
+      %{} = dep ->
+        # debug(dep)
+        repo = Utils.e(dep, :opts, :git, nil) || ( Utils.e(dep, :opts, :lock, {nil, nil}) |> elem(1) )
+        # debug(repo)
+        if is_binary(repo) and String.contains?(repo, "bonfire"), do: only, else: !only
       _ -> !only
     end)
   end
@@ -65,5 +101,9 @@ defmodule Bonfire.Common.Extensions do
   def get_version_link(%{lock: {:git, "https://github.com/"<>url, ref, [branch: branch]}}), do: "https://github.com/#{url}/compare/#{ref}...#{branch}"
   def get_version_link(dep), do: get_link(dep)
 
+  defp dep_name(%Mix.Dep{app: dep}) when is_atom(dep), do: dep
+  defp dep_name(dep) when is_tuple(dep), do: elem(dep, 0) |> dep_name()
+  defp dep_name(dep) when is_atom(dep), do: dep
+  defp dep_name(dep) when is_binary(dep), do: dep
 
 end
