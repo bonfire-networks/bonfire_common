@@ -112,15 +112,15 @@ defmodule Bonfire.Common.Extend do
   defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
 
   def quoted_use_if_enabled(module, fallback_module \\ nil)
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module)
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module) # TODO: clean this up?
   def quoted_use_if_enabled(module, fallback_module) do
     if is_atom(module) and module_enabled?(module) do
-      debug(module, "Found module to use")
+      # debug(module, "Found module to use")
       quote do
         use unquote(module)
       end
     else
-      warn(module, "Did not find module to use")
+      # warn(module, "Did not find module to use")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           use unquote(fallback_module)
@@ -139,7 +139,7 @@ defmodule Bonfire.Common.Extend do
         import unquote(module)
       end
     else
-      warn(module, "Did not find module to import")
+      # warn(module, "Did not find module to import")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
@@ -153,12 +153,12 @@ defmodule Bonfire.Common.Extend do
   def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_require_if_enabled(module_name_ast |> Macro.to_string() |> IO.inspect |> Utils.maybe_to_module() |> IO.inspect, fallback_module)
   def quoted_require_if_enabled(module, fallback_module \\ nil) do
     if is_atom(module) and module_enabled?(module) do
-      debug(module, "Found module to require")
+      # debug(module, "Found module to require")
       quote do
         require unquote(module)
       end
     else
-      warn(module, "Did not find module to require")
+      # warn(module, "Did not find module to require")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           require unquote(fallback_module)
