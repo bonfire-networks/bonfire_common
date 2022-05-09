@@ -18,39 +18,6 @@ defmodule Bonfire.Common.Extensions.Diff do
       {:error, "Invalid diff."}
   end
 
-  def render_diff(patch) do
-
-    #IO.inspect(patch)
-    Phoenix.View.render_to_iodata(Bonfire.Common.Web.DiffRenderView, "diff_render.html", patch: patch)
-
-  end
-
-  def render_diff_stream(package, repo_path, stream) do
-    path = tmp_path("html-#{package}-")
-
-    # TODO: figure out how to stream the data to LiveView as it becomes available, in which case use something like this instead of `render_diff`
-
-    File.open!(path, [:write, :raw, :binary, :write_delay], fn file ->
-      Enum.each(stream, fn
-        {:ok, patch} ->
-
-          html_patch =
-            Phoenix.View.render_to_iodata(Bonfire.Common.Web.DiffRenderView, "diff_render.html", patch: patch)
-
-          IO.binwrite(file, html_patch)
-
-        error ->
-          error("Failed to parse diff stream of #{package} at #{repo_path} with: #{inspect(error)}")
-          throw({:error, :invalid_diff})
-      end)
-    end)
-
-    # path
-
-    File.read(path)
-
-  end
-
   def repo_latest_diff(package, repo_path) do
     path_diff = tmp_path("diff-#{package}-")
 
@@ -158,7 +125,7 @@ defmodule Bonfire.Common.Extensions.Diff do
     end
   end
 
-  defp tmp_path(prefix) do
+  def tmp_path(prefix) do
     random_string = Base.encode16(:crypto.strong_rand_bytes(4))
     Path.join([System.tmp_dir!(), prefix <> random_string])
   end

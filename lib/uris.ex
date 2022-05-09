@@ -4,7 +4,6 @@ defmodule Bonfire.Common.URIs do
   import Bonfire.Common.Extend
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
-  alias Plug.Conn.Query
 
   def path(view_module_or_path_name_or_object, args \\ [])
 
@@ -234,50 +233,4 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  @doc "Save a `go` redirection path in the session (for redirecting somewhere after auth flows)"
-  def set_go_after(conn, path \\ nil) do
-    path = path || conn.request_path
-    conn
-    |> Plug.Conn.put_session(
-      :go,
-      path
-    )
-  end
-
-  @doc """
-  Generate a query string adding a `go` redirection path to the URI (for redirecting somewhere after auth flows).
-  It is recommended to use `set_go_after/2` where possible instead.
-  """
-  def go_query(url) when is_binary(url), do: "?" <> Query.encode(go: url)
-  def go_query(conn), do: "?" <> Query.encode(go: conn.request_path)
-
-  @doc "copies the `go` param into a query string, if any"
-  def copy_go(%{go: go}), do: "?" <> Query.encode(go: go)
-  def copy_go(%{"go" => go}), do: "?" <> Query.encode(go: go)
-  def copy_go(_), do: ""
-
-  # TODO: we should validate this a bit harder. Phoenix will prevent
-  # us from sending the user to an external URL, but it'll do so by
-  # means of a 500 error.
-  defp internal_go_path?("/" <> _), do: true
-  defp internal_go_path?(_), do: false
-
-  def go_where?(conn, %Ecto.Changeset{}=cs, default) do
-    go_where?(conn, cs.changes, default)
-  end
-
-  def go_where?(conn, params, default) do
-    case Plug.Conn.get_session(conn, :go) |> debug do
-      go when is_binary(go) ->
-        if internal_go_path?(go), do: [to: go], else: [external: go] # needs to support external for oauth/openid
-      _ ->
-        go = (Utils.e(params, :go, nil) || default) |> debug
-        if internal_go_path?(go), do: [to: go], else: [to: default]
-    end
-  end
-
-  def redirect_to_previous_go(conn, params, default) do
-    go_where?(conn, params, default)
-    |> Phoenix.Controller.redirect(Plug.Conn.delete_session(conn, :go), ...)
-  end
 end
