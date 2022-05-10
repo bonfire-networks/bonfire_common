@@ -10,9 +10,12 @@ defmodule Bonfire.Common.Repo do
     otp_app: Bonfire.Common.Config.get!(:otp_app),
     adapter: Ecto.Adapters.Postgres
 
+  import Ecto.Query
+  import Where
+  use Arrows
+
   alias Pointers.{Changesets, Pointer}
   alias Ecto.Changeset
-  import Ecto.Query
 
   @pagination_defaults [
     limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),                           # sets the default limit TODO: put in config
@@ -24,8 +27,6 @@ defmodule Bonfire.Common.Repo do
 
   # import cursor-based pagination helper
   # use Paginator, @pagination_defaults
-
-  import Where
 
   defmacro __using__(opts) do
     quote do
@@ -178,29 +179,50 @@ defmodule Bonfire.Common.Repo do
     |> all()
   end
 
-  def delete_many(query) do
-    query
-    |> Ecto.Query.exclude(:order_by)
-    |> delete_all()
+  defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+  defp paginate(queryable, opts, repo_opts) when is_list(opts) do
+    opts = if opts[:paginate], do: Keyword.new(opts[:paginate]), else: opts
+    # info(opts, "opts")
+    Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
+    # |> info("merged opts")
+    |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
-
-  def paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
-  def paginate(queryable, opts, repo_opts) when is_list(opts) do
-    # debug(paginate: opts)
-    opts = Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
-    Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
+  defp paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
+    paginate(queryable, opts |> Utils.to_options(), repo_opts)
   end
-  def paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
-    paginate(queryable, opts |> Utils.input_to_atoms() |> Keyword.new(), repo_opts)
-  end
-  def paginate(queryable, _, repo_opts) do
+  defp paginate(queryable, _, repo_opts) do
     paginate(queryable, @default_cursor_fields, repo_opts)
   end
+
+
+  def many_paginated(queryable, opts \\ [], repo_opts \\ [])
+
+  def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
+    # debug(order, "order_bys")
+    queryable
+    |> paginate(opts, repo_opts)
+  end
+
+  def many_paginated(queryable, opts, repo_opts) do
+    queryable
+    |> order_by([o],
+      desc: o.id
+    )
+    |> paginate(opts, repo_opts)
+  end
+
+
   def many(query, opts \\ []) do
     all(query, opts)
   rescue
     exception in Postgrex.Error ->
       handle_postgrex_exception(exception, __STACKTRACE__)
+  end
+
+  def delete_many(query) do
+    query
+    |> Ecto.Query.exclude(:order_by)
+    |> delete_all()
   end
 
   defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil)
@@ -222,29 +244,9 @@ defmodule Bonfire.Common.Repo do
     reraise(exception, stacktrace)
   end
 
-  def many_paginated(queryable, opts \\ [], repo_opts \\ [])
-
-  def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
-    # debug(order_by: order)
-    queryable
-    |>
-    paginate(opts, repo_opts)
-  end
-
-  def many_paginated(queryable, opts, repo_opts) do
-    queryable
-    |>
-    order_by([o],
-      desc: o.id
-    )
-    # |> IO.inspect
-    |>
-    paginate(opts, repo_opts)
-  end
-
   defp rollback_error(reason, extra \\ nil) do
-    error(transact_with_error: reason)
-    if extra, do: debug(transact_with_error_extra: extra)
+    error(reason, "transact_with_error")
+    if extra, do: debug(extra, "transact_with_error_extra")
     rollback(reason)
   end
 

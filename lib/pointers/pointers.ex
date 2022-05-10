@@ -350,8 +350,8 @@ defmodule Bonfire.Common.Pointers do
     query
     |> where([p], p.id == ^id)
   end
-  def id_filter(query, [paginate: pagination]) do
-    limit = pagination[:limit] || 10
+  def id_filter(query, [paginate: paginate]) do
+    limit = paginate[:limit] || 10
 
     query
     |> limit(^limit)
