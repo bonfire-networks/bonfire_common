@@ -155,9 +155,9 @@ defmodule Bonfire.Common.Utils do
 
   def is_ulid?(_), do: false
 
+  def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
   def ulid(%{id: id}) when is_binary(id), do: ulid(id)
   def ulid(%Changeset{}=cs), do: ulid(Changeset.get_field(cs, :id))
-  def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
   def ulid({:id, id}) when is_binary(id), do: ulid(id)
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
   def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
