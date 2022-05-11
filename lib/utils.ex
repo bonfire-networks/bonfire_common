@@ -19,6 +19,7 @@ defmodule Bonfire.Common.Utils do
       alias Common.Enums
       alias Common.DateTimes
       alias Common.URIs
+      alias Bonfire.Me.Settings
 
       require Utils
       import Utils, unquote(opts) # can import specific functions with `only` or `except`
