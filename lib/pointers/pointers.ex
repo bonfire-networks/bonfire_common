@@ -159,7 +159,12 @@ defmodule Bonfire.Common.Pointers do
       :virtual <- schema.__pointers__(:role) do
 
       # info(table_id, "virtual - skip following ")
-      struct(schema, Utils.maybe_from_struct(pointer))
+      if function_exported?(schema, :__struct__, 0) do
+        debug("schema is available in the compuled app")
+        struct(schema, Utils.maybe_from_struct(pointer))
+      else
+        pointer
+      end
 
     else e ->
 
@@ -176,7 +181,7 @@ defmodule Bonfire.Common.Pointers do
   defp do_follow!(pointer_or_pointers, opts \\ []) do
     case preload!(pointer_or_pointers, opts) do
       %{pointed: followed_pointer} ->
-        # merge any assocs previously preloaded on pointer to the returned object
+        debug("merge any assocs previously preloaded on pointer to the returned object")
         Utils.maybe_merge_to_struct(followed_pointer, pointer_or_pointers)
 
       followed_pointers when is_list(followed_pointers) ->

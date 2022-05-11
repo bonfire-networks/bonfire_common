@@ -483,10 +483,15 @@ defmodule Bonfire.Common.Utils do
 
     case Bonfire.Common.Types.object_type(first) || Bonfire.Common.Types.object_type(precedence) do
       type when is_atom(type) and not is_nil(type) ->
-        debug("maybe_merge_to_struct yes: #{inspect type}")
-        struct(type, merged)
+        if function_exported?(type, :__struct__, 0) do
+          debug("schema is available in the compiled app :-)")
+          struct(type, merged)
+        else
+          debug(type, "schema doesn't exist in the compiled app")
+          merged
+        end
       other ->
-        debug("maybe_merge_to_struct no: #{inspect other}")
+        debug(other, "unknown type")
         merged
     end
   end
