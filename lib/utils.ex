@@ -681,8 +681,7 @@ defmodule Bonfire.Common.Utils do
 
   def text_only(html), do: HtmlSanitizeEx.strip_tags(html)
 
-  def date_relative(%{id: id}), do: date_from_pointer(id) |> date_relative()
-  def date_relative(date) do
+  def date_from_now(%DateTime{} = date) do
     date
     |> Timex.format("{relative}", :relative)
     |> with({:ok, relative} <- ...) do
@@ -690,25 +689,21 @@ defmodule Bonfire.Common.Utils do
     else
       other ->
         error(date, inspect other)
-        ""
+        nil
     end
   end
+  def date_from_now(object), do: date_from_pointer(object) |> date_from_now()
 
-  def date_from_now(date), do: date_relative(date)
-
-  def date_from_pointer(%{id: id}), do: date_from_pointer(id)
-  def date_from_pointer(id) when is_binary(id) do
-    with {:ok, ts} <- Pointers.ULID.timestamp(id) |> debug(),
+  def date_from_pointer(object) do
+    with id when is_binary(id) <- ulid(object),
+    {:ok, ts} <- Pointers.ULID.timestamp(id) |> debug(),
     {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
       date
+      |> debug()
     else e ->
       error(e)
       nil
     end
-  end
-  def date_from_pointer(other) do
-    error(other, "no pattern match")
-    nil
   end
 
   def media_url(%{media_type: "remote", path: url} = _media) do
