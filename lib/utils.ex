@@ -294,7 +294,8 @@ defmodule Bonfire.Common.Utils do
   end
   def deep_merge(left, right) when is_list(left) and is_list(right) do
     if Keyword.keyword?(left) and Keyword.keyword?(right), do: Keyword.merge(left, right, &deep_resolve/3),
-    else: (left ++ right) |> Enum.uniq()
+    else: right
+    # else: (left ++ right) |> Enum.uniq()
   end
   def deep_merge(%{} = left, right) when is_list(right) do
     deep_merge(Map.to_list(left), right)
@@ -460,13 +461,28 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_keyword_list(obj, true = recursive) when is_map(obj) or is_list(obj) do
     obj
     |> maybe_to_keyword_list(false)
-    |> Keyword.new(fn {k, v} -> {k, maybe_to_keyword_list(v, recursive)} end)
+    |> do_maybe_to_keyword_list()
   end
   def maybe_to_keyword_list(obj, false = _recursive) when is_map(obj) or is_list(obj) do
     obj
-    |> Enum.filter(fn {k, _v} -> is_atom(k) end)
+    |> Enum.filter(fn
+      {k, _v} -> is_atom(k)
+      v -> v
+    end)
   end
   def maybe_to_keyword_list(obj, _), do: obj
+
+  defp do_maybe_to_keyword_list(object) do
+    if Keyword.keyword?(object) or is_map(object) do
+      object
+      |> Keyword.new(fn
+        {k, v} -> {k, maybe_to_keyword_list(v, true)}
+        v -> maybe_to_keyword_list(v, true)
+      end)
+    else
+      object
+    end
+  end
 
   def nested_structs_to_maps(struct = %type{}) when not type == DateTime,
     do: nested_structs_to_maps(struct_to_map(struct))
