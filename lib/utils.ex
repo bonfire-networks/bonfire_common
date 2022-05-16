@@ -757,6 +757,14 @@ defmodule Bonfire.Common.Utils do
   def image_url(%{image: url}) when is_binary(url), do: url
   def image_url(%{profile: profile}), do: image_url(profile)
 
+  def banner_url(%{profile: %{image: _} = profile}), do: banner_url(profile)
+  def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
+  def banner_url(%{image: %{id: _} = media}), do: Bonfire.Files.BannerUploader.remote_url(media)
+  def banner_url(%{path: _} = media), do: Bonfire.Files.BannerUploader.remote_url(media)
+  def banner_url(%{image_id: image_id}) when is_binary(image_id), do: Bonfire.Files.BannerUploader.remote_url(image_id)
+  def banner_url(%{image: url}) when is_binary(url), do: url
+  def banner_url(%{profile: profile}), do: banner_url(profile)
+
   # WIP: https://github.com/bonfire-networks/bonfire-app/issues/151#issuecomment-1060536119
 
   # def image_url(%{name: name}) when is_binary(name), do: "https://loremflickr.com/600/225/#{name}/all?lock=1"
