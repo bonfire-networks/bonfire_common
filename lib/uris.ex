@@ -72,7 +72,7 @@ defmodule Bonfire.Common.URIs do
     fallback([id] ++ args)
   end
   def fallback(args) do
-    path(Bonfire.Social.Web.DiscussionLive, args)
+    path(Bonfire.UI.Social.DiscussionLive, args)
   end
 
   defp voodoo_error(_error, [_endpoint, _type_module, args]) do
