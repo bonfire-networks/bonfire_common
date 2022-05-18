@@ -484,7 +484,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def nested_structs_to_maps(struct = %type{}) when not type == DateTime,
+  def nested_structs_to_maps(struct = %type{}) when type != DateTime,
     do: nested_structs_to_maps(struct_to_map(struct))
   def nested_structs_to_maps(v) when not is_map(v), do: v
   def nested_structs_to_maps(map = %{}) do

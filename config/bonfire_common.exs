@@ -2,6 +2,9 @@ import Config
 
 default_locale = "en"
 
+config :bonfire,
+  localisation_path: "priv/localisation"
+
 config :bonfire_common,
   otp_app: :bonfire
 

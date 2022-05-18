@@ -11,7 +11,7 @@ defmodule Bonfire.Common.Pointers do
   alias Bonfire.Common.Pointers.Queries
   alias Bonfire.Common.Utils
   alias Bonfire.Common.ContextModules
-  alias Pointers.{NotFound, Pointer, Tables}
+  alias Pointers.{NotFound, Pointer}
 
   def get!(id, opts \\ []) do
     with {:ok, obj} <- get(id, opts) do
@@ -87,7 +87,8 @@ defmodule Bonfire.Common.Pointers do
   def pointer_query(filters, opts) do
     opts = Utils.to_options(opts)
     q = Queries.query(nil, filters)
-    q = Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
+
+    Utils.maybe_apply(Bonfire.Boundaries.Queries, :object_boundarised, [q, opts], q) # note: cannot use boundarise macro to avoid depedency cycles
     |> pointer_preloads(opts[:preload])
     # if Utils.e(opts, :log_query, nil), do: info(q), else: q
   end
@@ -166,7 +167,7 @@ defmodule Bonfire.Common.Pointers do
         pointer
       end
 
-    else e ->
+    else _e ->
 
       # info(e, "not a virtual")
       do_follow!(pointer, opts)
@@ -284,7 +285,6 @@ defmodule Bonfire.Common.Pointers do
   end
 
   defp cowboy_query(schema, id_filters, opts) when is_atom(schema) do
-    schema
     (from m in schema, as: :main_object)
     |> cowboy_query(id_filters, opts)
   end
@@ -329,7 +329,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
-      query = case Bonfire.Common.QueryModules.maybe_query(schema, [filters(schema, filters, opts), opts]) do
+    case Bonfire.Common.QueryModules.maybe_query(schema, [filters(schema, filters, opts), opts]) do
       %Ecto.Query{} = query ->
         debug("Pointers: using the QueryModule associated with #{schema}")
 
@@ -377,16 +377,15 @@ defmodule Bonfire.Common.Pointers do
     query
   end
 
-  def id_binary([id: id]) do
-    [id: id_binary(id)]
-  end
   def id_binary([id: ids]) when is_list(ids) do
     [id: Enum.map(ids, &id_binary/1)]
+  end
+  def id_binary([id: id]) do
+    [id: id_binary(id)]
   end
   def id_binary(id) when is_binary(id) do
     with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
   end
-
 
   def filters(schema, id_filters, opts \\ []) do
     filters_override = Keyword.get(opts, :filters_override, [])

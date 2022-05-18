@@ -94,12 +94,7 @@ defmodule Bonfire.Common.QueryModules do
   @doc "Populates the global cache with query_module data via introspection."
   def start_link(_), do: GenServer.start_link(__MODULE__, [])
 
-  def data(), do: :persistent_term.get(__MODULE__) #, data_init())
-
-  defp data_init() do
-    error "The QueryModules was not started. Please add it to your Application."
-    populate()
-  end
+  def data(), do: :persistent_term.get(__MODULE__)
 
   @spec query_module(query :: query) :: {:ok, atom} | {:error, :not_found}
   @doc "Get a Queryable identified by name or id."

@@ -1,8 +1,8 @@
 defmodule Bonfire.Common.Text do
   use Bonfire.Common.Utils
-  import Where
+  # import Where
 
-  @add_to_end "..."
+  # @add_to_end "..."
   @sentence_seperator " "
 
   @checkbox_regex_unchecked ~r/\s\[\s\]/

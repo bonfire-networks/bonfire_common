@@ -1,4 +1,5 @@
 arrows = "https://github.com/bonfire-networks/arrows#main"
+pointers_ulid = "https://github.com/bonfire-networks/pointers_ulid#main"
 # bonfire_data_access_control = "https://github.com/bonfire-networks/bonfire_data_access_control#main"
 # bonfire_data_activity_pub="https://github.com/bonfire-networks/bonfire_data_activity_pub#main"
 bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identity#main"
@@ -6,3 +7,4 @@ bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identi
 # bonfire_mailer = "https://github.com/bonfire-networks/bonfire_mailer#main"
 ecto_sparkles = "https://github.com/bonfire-networks/ecto_sparkles#main"
 where = "https://github.com/bonfire-networks/where#main"
+paginator = "https://github.com/bonfire-networks/paginator#main"

@@ -9,11 +9,13 @@ defmodule Bonfire.Common.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       compilers: [:gettext] ++ Mix.compilers(),
-      deps: Mess.deps [
+      deps: Mess.deps([
         {:dbg, "~> 1.0", only: :dev},
         {:zest, "~> 0.1", optional: true},
-        # {:bonfire_boundaries, git: "https://github.com/bonfire-networks/bonfire_boundaries#main", optional: true}
-      ]
+        {:sentry, "~> 8.0", optional: true},
+        {:dataloader, "~> 1.0", optional: true},
+        {:emote, git: "https://github.com/bonfire-networks/emote", branch: "master", optional: true}
+      ])
     ]
   end
 

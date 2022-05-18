@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Utils
-  import Bonfire.Common.Extend
+  alias Bonfire.Common.Extend
+  import Extend
   import Where
 
   def top_level_otp_app do
