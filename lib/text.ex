@@ -112,15 +112,20 @@ defmodule Bonfire.Common.Text do
     nil
   end
 
-  def maybe_markdown_to_html("<"<>_ = content) do
-    maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
+  def maybe_markdown_to_html("<p>"<>content) do
+    content
+    |> String.trim_trailing("</p>")
+    |> maybe_markdown_to_html() # workaround for weirdness with Earmark's parsing of markdown within html
   end
+  # def maybe_markdown_to_html("<"<>_ = content) do
+  #   maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
+  # end
 
   def maybe_markdown_to_html(content) do
     # debug(content, "input")
     if module_enabled?(Earmark) do
       content
-      |> Earmark.as_html!(inner_html: true, escape: false)
+      |> Earmark.as_html!(inner_html: true, escape: false, smartypants: false)
       |> markdown_checkboxes()
     else
       content
