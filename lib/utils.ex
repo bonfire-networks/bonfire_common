@@ -163,15 +163,22 @@ defmodule Bonfire.Common.Utils do
   def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
   def ulid(ids) when is_list(ids), do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
   def ulid({:ok, other}), do: ulid(other)
-  def ulid(id) do
+  def ulid(input) when is_binary(input) do
+    id = String.slice(input, 0, 26) # ulid is always 26 chars
     if is_ulid?(id) do
       id
     else
-      e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect id}"
+      e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect input}"
       # throw {:error, e}
       warn(e)
       nil
     end
+  end
+  def ulid(id) do
+    e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect id}"
+    # throw {:error, e}
+    warn(e)
+    nil
   end
 
   @doc """

@@ -24,6 +24,19 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  # def path(%{replied: %{reply_to: %{id: _} = reply_to}} = object, args) do
+  #   reply_path(object, path(reply_to))
+  # end
+  # def path(%{replied: %{thread_id: thread_id}} = object, args) when is_binary(thread_id) do
+  #   reply_path(object, path(thread_id))
+  # end
+  # def path(%{reply_to: %{id: _} = reply_to} = object, args) do
+  #   reply_path(object, path(reply_to))
+  # end
+  # def path(%{thread_id: thread_id} = object, args) when is_binary(thread_id) do
+  #   reply_path(object, path(thread_id))
+  # end
+
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
   def path(%{id: id} = object, args) do
     args_with_id = ([path_id(object)] ++ args)
@@ -75,6 +88,13 @@ defmodule Bonfire.Common.URIs do
     path(Bonfire.UI.Social.DiscussionLive, args)
   end
 
+  defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
+    reply_to_path<>"#"<>(Utils.ulid(object) || "")
+  end
+  defp reply_path(object, _) do
+    path(object)
+  end
+
   defp voodoo_error(_error, [_endpoint, _type_module, args]) do
     fallback(args)
   end
@@ -104,7 +124,6 @@ defmodule Bonfire.Common.URIs do
           error("path_by_id: could not find a matching route for #{id}")
           fallback(id, args)
       end
-
     end
   end
 
