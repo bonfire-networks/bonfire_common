@@ -284,6 +284,8 @@ defmodule Bonfire.Common.Repo do
 
   def maybe_preload({:ok, obj}, preloads, opts), do: {:ok, maybe_preload(obj, preloads, opts)}
 
+  def maybe_preload(%{edges: list} = page, preloads, opts) when is_list(list), do: Map.put(page, :edges, maybe_preload(list, preloads, opts))
+
   def maybe_preload(obj, preloads, false = follow_pointers?), do: maybe_preload(obj, preloads, follow_pointers: false) # deprecate
 
   def maybe_preload(obj, preloads, opts) when is_struct(obj) or is_list(obj) do
