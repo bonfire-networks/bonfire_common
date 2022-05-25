@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   alias Pointers.Pointer
   import EctoSparkles
   import Where
+  alias Bonfire.Common.Utils
 
   def queries_module, do: Pointer
 
@@ -34,12 +35,17 @@ defmodule Bonfire.Common.Pointers.Queries do
 
   ## by fields
 
-  def filter(q, {:id, id}) when is_binary(id) do
-    where(q, [main_object: p], p.id == ^id)
+  def filter(q, {:id, id}) when not is_list(id) do
+    case Utils.ulid(id) do
+      id when is_binary(id) ->
+        where(q, [main_object: p], p.id == ^id)
+      _ ->
+        throw error("Invalid ID")
+    end
   end
 
   def filter(q, {:id, ids}) when is_list(ids) do
-    where(q, [main_object: p], p.id in ^ids)
+    where(q, [main_object: p], p.id in ^Utils.ulid(ids))
   end
 
   def filter(q, {:username, username}) when is_binary(username) do
