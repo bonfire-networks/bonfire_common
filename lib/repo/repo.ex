@@ -184,7 +184,7 @@ defmodule Bonfire.Common.Repo do
     opts = if opts[:paginate], do: Keyword.new(opts[:paginate]), else: opts
     # info(opts, "opts")
     Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
-    # |> info("merged opts")
+    |> debug("merged opts")
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
   defp paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
