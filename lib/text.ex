@@ -112,11 +112,11 @@ defmodule Bonfire.Common.Text do
     nil
   end
 
-  def maybe_markdown_to_html("<p>"<>content) do
-    content
-    |> String.trim_trailing("</p>")
-    |> maybe_markdown_to_html() # workaround for weirdness with Earmark's parsing of markdown within html
-  end
+  # def maybe_markdown_to_html("<p>"<>content) do
+  #   content
+  #   |> String.trim_trailing("</p>")
+  #   |> maybe_markdown_to_html() # workaround for weirdness with Earmark's parsing of markdown within html
+  # end
   # def maybe_markdown_to_html("<"<>_ = content) do
   #   maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
@@ -143,6 +143,23 @@ defmodule Bonfire.Common.Text do
     else
       content
     end
+  end
+
+  def maybe_normalize_html("<p>"<>content) do
+    content
+    |> maybe_normalize_html() # workaround for weirdness with Earmark's parsing of markdown within html
+  end
+
+  def maybe_normalize_html(html_string) do
+    if module_enabled?(Floki) do
+      html_string
+      |> Floki.parse()
+      |> Floki.raw_html()
+    else
+      html_string
+    end
+    |> String.trim("<p><br/></p>")
+    |> String.trim("<br/>")
   end
 
   def maybe_emote(content) do

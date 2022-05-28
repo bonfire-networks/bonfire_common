@@ -15,6 +15,7 @@ defmodule Bonfire.Common.MixProject do
         {:sentry, "~> 8.0", optional: true},
         {:dataloader, "~> 1.0", optional: true},
         {:solid, "~> 0.12.0", optional: true},
+        {:floki, "~> 0.32.1", optional: true},
         {:emote, git: "https://github.com/bonfire-networks/emote", branch: "master", optional: true}
       ])
     ]
