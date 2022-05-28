@@ -34,9 +34,9 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def sentence_truncate(input, length \\ 250) do
+  def sentence_truncate(input, length \\ 250, add_to_end \\ "") do
     if(String.length(input)>length) do
-      do_sentence_truncate(input, length)
+      do_sentence_truncate(input, length) <> add_to_end
     else
       input
     end
