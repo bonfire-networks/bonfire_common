@@ -1,8 +1,8 @@
 defmodule Bonfire.Common.Utils do
   use Arrows
   import Bonfire.Common.Extend
-  require Bonfire.Common.Localise.Gettext
-  import Bonfire.Common.Localise.Gettext.Helpers
+  # require Bonfire.Common.Localise.Gettext
+  # import Bonfire.Common.Localise.Gettext.Helpers
   import Where
   require Logger
   alias Bonfire.Common.Text

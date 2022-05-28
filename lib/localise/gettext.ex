@@ -10,12 +10,20 @@ defmodule Bonfire.Common.Localise.Gettext do
   Default Gettext module
   It is recommended to use the more convenient macros in `Bonfire.Common.Localise.Gettext.Helpers` instead.
   """
-  use Gettext,
-    otp_app: :bonfire_common,
-    default_locale: Bonfire.Common.Config.get_ext(:bonfire_ui_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
-    plural_forms: Bonfire.Common.Localise.Gettext.Plural,
-    priv: Bonfire.Common.Config.get!(:localisation_path)
 
+  if Bonfire.Common.Config.get(:env) == :dev do
+    use PseudoGettext,
+      otp_app: :bonfire_common,
+      default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
+      plural_forms: Bonfire.Common.Localise.Gettext.Plural,
+      priv: Bonfire.Common.Config.get!(:localisation_path)
+  else
+    use Gettext,
+      otp_app: :bonfire_common,
+      default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
+      plural_forms: Bonfire.Common.Localise.Gettext.Plural,
+      priv: Bonfire.Common.Config.get!(:localisation_path)
+  end
 end
 defmodule Bonfire.Common.Localise.Gettext.Helpers do
   @moduledoc """
