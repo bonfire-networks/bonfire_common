@@ -215,4 +215,23 @@ defmodule Bonfire.Common.Text do
     |> to_string
   end
 
+  def maybe_render_templated(templated_content, data) when is_binary(templated_content) and is_map(data) do
+    if module_enabled?(Solid) and String.contains?(templated_content, "{{") do
+      with {:ok, template} <- Solid.parse(templated_content) do
+        Solid.render(template, data)
+        |> to_string()
+      else {:error, error} ->
+        error(error)
+        templated_content
+      end
+    else
+      debug("Skipping parse/render template")
+      templated_content
+    end
+  end
+  def maybe_render_templated(content, _data) do
+    warn("No pattern match on args, so can't parse/render template")
+    content
+  end
+
 end
