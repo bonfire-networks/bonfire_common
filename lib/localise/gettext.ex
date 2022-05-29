@@ -169,4 +169,17 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     quote do: dpngettext(unquote(domain), unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
   end
 
+  @doc """
+  Localise a list of strings
+  """
+  defmacro localise_strings(crops) do
+    {crop_types, _} = Code.eval_quoted(crops)
+
+    for crop <- crop_types do
+      quote do
+        l unquote(crop)
+      end
+    end
+  end
+
 end
