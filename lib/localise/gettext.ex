@@ -11,19 +11,19 @@ defmodule Bonfire.Common.Localise.Gettext do
   It is recommended to use the more convenient macros in `Bonfire.Common.Localise.Gettext.Helpers` instead.
   """
 
-  if Bonfire.Common.Config.get(:env) == :dev do
-    use PseudoGettext,
-      otp_app: :bonfire_common,
-      default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
-      plural_forms: Bonfire.Common.Localise.Gettext.Plural,
-      priv: Bonfire.Common.Config.get!(:localisation_path)
-  else
+  # if Bonfire.Common.Config.get(:env) == :dev do
+  #   use PseudoGettext,
+  #     otp_app: :bonfire_common,
+  #     default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
+  #     plural_forms: Bonfire.Common.Localise.Gettext.Plural,
+  #     priv: Bonfire.Common.Config.get!(:localisation_path)
+  # else
     use Gettext,
       otp_app: :bonfire_common,
       default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
       plural_forms: Bonfire.Common.Localise.Gettext.Plural,
       priv: Bonfire.Common.Config.get!(:localisation_path)
-  end
+  # end
 end
 defmodule Bonfire.Common.Localise.Gettext.Helpers do
   @moduledoc """
@@ -64,30 +64,29 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   # alias the gettext macros for ease-of-use
 
   import Bonfire.Common.Localise.Gettext
+  import Where
 
   defmacro l(original_text_or_id, bindings \\ [], context \\ nil, domain \\ nil)
 
   defmacro l(msgid, bindings, nil, nil) when is_list(bindings) or is_map(bindings) and is_binary(msgid) do
-    # debug(__CALLER__)
-    mod = __CALLER__.module
-    case Application.get_application(mod) do
+    case caller_app(__CALLER__.module) do
 
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
-        # debug(msgid, "domain based on module #{inspect mod}: #{inspect otp_app}")
+        # debug(msgid, "domain based on caller module: #{inspect otp_app}")
 
         quote do: dgettext(unquote(Atom.to_string(otp_app)), unquote(msgid), unquote(bindings))
 
       _ ->
 
-        # debug(msgid, "no domain or context / #{inspect mod}")
+        # debug(msgid, "no domain or context")
 
         quote do: gettext(unquote(msgid), unquote(bindings))
     end
   end
 
   defmacro l(msgid, bindings, context, nil) when is_binary(context) and is_list(bindings) or is_map(bindings) and is_binary(msgid) do
-    case Application.get_application(__CALLER__.module) do
+    case caller_app(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
         # debug(msgid, "custom context #{context} + domain based on module #{inspect otp_app}")
@@ -121,9 +120,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lp(original_text_or_id, msgid_plural, n, bindings \\ [], context \\ nil, domain \\ nil)
 
   defmacro lp(msgid, msgid_plural, n, bindings, nil, nil) when is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and is_list(bindings) or is_map(bindings) do
-    # debug(__CALLER__)
-    mod = __CALLER__.module
-    case Application.get_application(mod) do
+    case caller_app(__CALLER__.module) do
 
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
@@ -140,7 +137,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   defmacro lp(msgid, msgid_plural, n, bindings, context, nil)  when is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and is_list(bindings) or is_map(bindings) and is_binary(context) do
-    case Application.get_application(__CALLER__.module) do
+    case caller_app(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
 
         # debug(msgid, "plural: custom context #{context} + domain based on module #{inspect otp_app}")
@@ -169,6 +166,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     quote do: dpngettext(unquote(domain), unquote(context), unquote(msgid), unquote(msgid_plural), unquote(n), unquote(bindings))
   end
 
+  def localise_dynamic(msgid, caller_module \\ nil) do
+    otp_app = caller_app(caller_module) || :bonfire
+    Gettext.dgettext(Bonfire.Common.Localise.Gettext, Atom.to_string(otp_app), msgid)
+  end
+
+
   @doc """
   Localise a list of strings
   """
@@ -179,6 +182,16 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
       quote do
         l unquote(crop)
       end
+    end
+  end
+
+  defp caller_app(caller_module) when is_atom(caller_module) do
+    case Application.get_application(caller_module) do
+      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+        otp_app
+      _ ->
+        mix = Mix.Project.get()
+        otp_app = if mix, do: mix.project()[:app]
     end
   end
 

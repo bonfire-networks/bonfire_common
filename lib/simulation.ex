@@ -1,4 +1,5 @@
 defmodule Bonfire.Common.Simulation do
+  use Bonfire.Common.Localise
 
   @integer_min -32768
   @integer_max 32767
@@ -81,7 +82,8 @@ defmodule Bonfire.Common.Simulation do
   @doc "A website address"
   def website(), do: Faker.Internet.url()
   @doc "A verb to be used for an activity."
-  def verb(), do: Faker.Util.pick(["created", "updated", "deleted"])
+  def verb(), do: Faker.Util.pick(["Create", "Follow", "Delete"])
+  def verb_localised(), do: Faker.Util.pick(localise_strings(["Create", "Follow", "Delete"]))
 
   # Unique data
 
