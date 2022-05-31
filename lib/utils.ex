@@ -926,10 +926,14 @@ defmodule Bonfire.Common.Utils do
     # if exception, do: IO.puts(Exception.format_exit(exception))
     # if stacktrace, do: IO.inspect(Exception.format_stacktrace(stacktrace), limit: :infinity, printable_limit: :infinity)
 
-    if exception && stacktrace, do:
-      IO.warn(debug_banner(kind, exception, stacktrace), stacktrace),
-    else:
-      (if exception, do: warn(exception))
+    if exception && stacktrace do
+      {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
+      error(exception)
+      Logger.warn(stacktrace)
+      # IO.warn(exception, stacktrace)
+    else
+      if exception, do: warn(exception)
+    end
 
     debug_maybe_sentry(msg, exception, stacktrace)
   end
