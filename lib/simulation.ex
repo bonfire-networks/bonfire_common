@@ -83,7 +83,7 @@ defmodule Bonfire.Common.Simulation do
   def website(), do: Faker.Internet.url()
   @doc "A verb to be used for an activity."
   def verb(), do: Faker.Util.pick(["Create", "Follow", "Delete"])
-  def verb_localised(), do: Faker.Util.pick(localise_strings(["Create", "Follow", "Delete"]))
+  # def verb_localised(), do: Faker.Util.pick(localise_strings(["Create", "Follow", "Delete"]))
 
   # Unique data
 
