@@ -161,9 +161,10 @@ defmodule Bonfire.Common.Pointers do
 
       # info(table_id, "virtual - skip following ")
       if function_exported?(schema, :__struct__, 0) do
-        debug("schema is available in the compuled app")
+        # debug("schema is available in the compiled app")
         struct(schema, Utils.maybe_from_struct(pointer))
       else
+        debug("schema is not available in the compiled app")
         pointer
       end
 
