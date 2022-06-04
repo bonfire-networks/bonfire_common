@@ -128,7 +128,8 @@ defmodule Bonfire.Common.Config do
   def put([parent_key | keys], value, otp_app) do
     value =
       get(parent_key, [], otp_app) # handle nested config
-      |> put_in(keys, value)
+      # |> debug("get existing")
+      |> put_in(keys_with_fallback(keys), value)
 
     put_env(otp_app, parent_key, value)
   end
@@ -152,6 +153,24 @@ defmodule Bonfire.Common.Config do
 
   def put(other) do
     debug(other, "Nothing to put")
+  end
+
+  defp keys_with_fallback(keys) do
+    # see https://code.krister.ee/elixir-put_in-deep-empty-map-array/
+    access_nil = fn key ->
+      fn
+        :get, data, next ->
+          next.(Keyword.get(data, key, []))
+        :get_and_update, data, next ->
+          value = Keyword.get(data, key, [])
+          case next.(value) do
+            {get, update} -> {get, Keyword.put(data, key, update)}
+            :pop -> {value, Keyword.delete(data, key)}
+          end
+      end
+    end
+
+    Enum.map(keys, fn k -> access_nil.(k) end)
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
