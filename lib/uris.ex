@@ -132,7 +132,11 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{username: username}), do: username
   defp path_id(%{display_username: "@"<>display_username}), do: path_id(display_username)
   defp path_id(%{display_username: display_username}), do: path_id(display_username)
-  defp path_id(%{character: character} = obj), do: obj |> Bonfire.Common.Repo.maybe_preload(:character) |> Utils.e(:character, obj.id) |> path_id()
+  defp path_id(%{__struct__: schema, character: character} = obj) when schema !=Pointers.Pointer, do: obj
+    # |> debug("with character")
+    |> Bonfire.Common.Repo.maybe_preload(:character)
+    |> Utils.e(:character, obj.id)
+    |> path_id()
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 

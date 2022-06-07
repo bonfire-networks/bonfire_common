@@ -9,6 +9,9 @@ defmodule Bonfire.Common.Utils do
   alias Bonfire.Common.Config
   alias Ecto.Changeset
 
+  @default_cache_ttl 1_000 * 60 * 60 * 6 # 6 hours
+  @error_cache_ttl 1_000 * 60 * 5 # 5 min
+
   defmacro __using__(opts) do
     quote do
       alias Bonfire.Common
@@ -19,6 +22,7 @@ defmodule Bonfire.Common.Utils do
       alias Common.Enums
       alias Common.DateTimes
       alias Common.URIs
+      alias Common.Cache
       alias Bonfire.Me.Settings
 
       require Utils
@@ -1106,4 +1110,6 @@ defmodule Bonfire.Common.Utils do
 
     {:error, error}
   end
+
+
 end
