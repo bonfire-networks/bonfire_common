@@ -175,12 +175,15 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   @doc """
   Localise a list of strings
   """
-  defmacro localise_strings(crops) do
-    {crop_types, _} = Code.eval_quoted(crops)
+  defmacro localise_strings(strings, caller_module \\ nil) do
+    {strings, _} = Code.eval_quoted(strings)
+    {caller_module, _} = Code.eval_quoted(caller_module)
+    domain = Atom.to_string(caller_app(caller_module || __CALLER__.module))
 
-    for crop <- crop_types do
+    for msg <- strings do
       quote do
-        l unquote(crop)
+        # l unquote(msg)
+        dgettext(unquote(domain), unquote(msg), [])
       end
     end
   end
@@ -191,7 +194,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
         otp_app
       _ ->
         mix = Mix.Project.get()
-        otp_app = if mix, do: mix.project()[:app]
+        if mix, do: mix.project()[:app]
     end
   end
 

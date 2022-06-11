@@ -251,4 +251,17 @@ defmodule Bonfire.Common.Text do
     content
   end
 
+  @doc """
+  Uses the `Verbs` library to convert an English conjugated verb back to inifinitive form.
+  Currently only supports irregular verbs.
+  """
+  def verb_infinitive(verb_conjugated) do
+    with [{infinitive, _}] <- Irregulars.verb_forms
+    |> Enum.filter(fn {infinitive, conjugations} -> verb_conjugated in conjugations end) do
+      infinitive
+    else _ ->
+      nil
+    end
+  end
+
 end

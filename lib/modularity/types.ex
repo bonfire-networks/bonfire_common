@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Types do
-  alias Bonfire.Common.Utils
+  use Bonfire.Common.Utils
   alias Pointers.Pointer
 
   import Where
@@ -12,7 +12,7 @@ defmodule Bonfire.Common.Types do
   def object_type(%{table_id: type}), do: object_type(type) # for schema-less queries
   def object_type(%{__typename: type}) when type !=Pointer, do: object_type(type) # for graphql queries
   def object_type(%{pointer_id: type}), do: object_type(type) # for AP objects
-  def object_type(%{index_type: type}), do: object_type(Utils.maybe_to_atom(type)) # for search results
+  def object_type(%{index_type: type}), do: object_type(maybe_to_atom(type)) # for search results
   def object_type(%{object: object}), do: object_type(object) # for activities
   def object_type(%{__struct__: schema}) when schema !=Pointer, do: object_type(schema)
 
@@ -58,4 +58,55 @@ defmodule Bonfire.Common.Types do
     nil
   end
 
+  def object_type_display(object_type) when is_atom(object_type) and not is_nil(object_type) do
+    module_to_human_readable(object_type)
+    |> localise_dynamic(__MODULE__)
+    |> String.downcase()
+  end
+  def object_type_display(object) when not is_nil(object) do
+    object_type(object)
+    |> object_type_display()
+  end
+  def object_type_display(_) do
+    nil
+  end
+
+  @doc """
+  Outputs the names all object types, for the purpose of adding to the localisation strings, as long as the output is piped through to localise_strings/1 at compile time.
+  """
+  def all_object_type_names() do
+    Bonfire.Common.ContextModules.search_app_modules(Application.fetch_env!(:pointers, :search_path))
+    |> Enum.filter(&Bonfire.Common.Utils.defines_struct?/1)
+    |> Enum.flat_map(fn t ->
+      t = t
+      |> Bonfire.Common.Utils.module_to_human_readable()
+      |> sanitise_name()
+
+      if t, do: [ t,
+        "Delete this #{t}"
+      ], else: []
+    end)
+    |> filter_empty([])
+    # |> IO.inspect(label: "Making all object types localisable")
+  end
+
+  defp sanitise_name("Replied"), do: "Reply in Thread"
+  defp sanitise_name("Named"), do: "Name"
+  defp sanitise_name("Settings"), do: "Setting"
+  defp sanitise_name("Apactivity"), do: "Federated Object"
+  defp sanitise_name("Feed Publish"), do: "Activity in Feed"
+  defp sanitise_name("Acl"), do: "Boundary"
+  defp sanitise_name("Controlled"), do: "Object Boundary"
+  defp sanitise_name("Tagged"), do: "Tag"
+  defp sanitise_name("Files"), do: "File"
+  defp sanitise_name("Created"), do: nil
+  defp sanitise_name("File Denied"), do: nil
+  defp sanitise_name("Accounted"), do: nil
+  defp sanitise_name("Seen"), do: nil
+  defp sanitise_name("Self"), do: nil
+  defp sanitise_name("Peer"), do: nil
+  defp sanitise_name("Peered"), do: nil
+  defp sanitise_name("Encircle"), do: nil
+  defp sanitise_name("Care Closure"), do: nil
+  defp sanitise_name(type), do: Text.verb_infinitive(type) || type
 end

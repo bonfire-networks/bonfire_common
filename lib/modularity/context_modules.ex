@@ -131,9 +131,7 @@ defmodule Bonfire.Common.ContextModules do
 
   def populate() do
     indexed =
-      search_path()
-      # |> IO.inspect
-      |> Enum.flat_map(&app_modules/1)
+      search_app_modules()
       # |> IO.inspect(limit: :infinity)
       |> Enum.filter(&declares_context_module?/1)
       # |> IO.inspect(limit: :infinity)
@@ -141,6 +139,11 @@ defmodule Bonfire.Common.ContextModules do
       # |> IO.inspect
     :persistent_term.put(__MODULE__, indexed)
     indexed
+  end
+
+  def search_app_modules(search_path \\ search_path()) do
+    search_path
+    |> Enum.flat_map(&app_modules/1)
   end
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
@@ -160,6 +163,5 @@ defmodule Bonfire.Common.ContextModules do
   defp index(acc, declaring_module, context_module) do
     Map.merge(acc, %{declaring_module => context_module, context_module => declaring_module})
   end
-
 
 end

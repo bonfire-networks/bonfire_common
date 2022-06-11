@@ -18,6 +18,7 @@ defmodule Bonfire.Common.Utils do
       alias Common.Utils
       alias Common.Config
       alias Common.Extend
+      alias Common.Types
       alias Common.Text
       alias Common.Enums
       alias Common.DateTimes
@@ -404,7 +405,7 @@ defmodule Bonfire.Common.Utils do
   def module_to_str(atom) when is_atom(atom), do: maybe_to_string(atom) |> module_to_str()
 
   def module_to_human_readable(module) do
-    module |> module_to_str() |> String.split(".") |> List.last() |> Recase.to_sentence()
+    module |> module_to_str() |> String.split(".") |> List.last() |> Recase.to_title()
   end
 
   def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
@@ -511,7 +512,7 @@ defmodule Bonfire.Common.Utils do
 
     case Bonfire.Common.Types.object_type(first) || Bonfire.Common.Types.object_type(precedence) do
       type when is_atom(type) and not is_nil(type) ->
-        if function_exported?(type, :__struct__, 0) do
+        if defines_struct?(type) do
           debug("schema is available in the compiled app :-)")
           struct(type, merged)
         else
@@ -699,6 +700,10 @@ defmodule Bonfire.Common.Utils do
     # Process map, checking for both string / atom keys
     for(key <- keys, into: %{}, do: {key, Map.get(a_map, key) || Map.get(a_map, to_string(key))})
     |> Map.merge(a_struct, ...)
+  end
+
+  def defines_struct?(module) do
+    function_exported?(module, :__struct__, 0)
   end
 
   def random_string(length) do
@@ -943,21 +948,31 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp debug_maybe_sentry(msg, {:error, %_{} = exception}, stacktrace), do: debug_maybe_sentry(msg, exception, stacktrace)
-  # defp debug_maybe_sentry(msg, exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] and is_exception(exception) do # FIXME: sentry lib often crashes
-  #   if module_enabled?(Sentry), do: Sentry.capture_exception(
-  #     exception,
-  #     stacktrace: stacktrace,
-  #     extra: inspect msg
-  #   )
-  # end
+  defp debug_maybe_sentry(msg, exception, stacktrace) when not is_nil(stacktrace) and stacktrace !=[] and is_exception(exception) do # FIXME: sentry lib often crashes
+    if module_enabled?(Sentry) do
+      Sentry.capture_exception(
+        exception,
+        stacktrace: stacktrace,
+        extra: map_new(msg, :error)
+      )
+      |> debug()
+    end
+  end
   defp debug_maybe_sentry(msg, error, stacktrace) do
-    if module_enabled?(Sentry), do: Sentry.capture_message(
-      inspect error,
-      stacktrace: stacktrace,
-      extra: inspect msg
-    )
+    if module_enabled?(Sentry) do
+      Sentry.capture_message(
+        inspect error,
+        stacktrace: stacktrace,
+        extra: map_new(msg, :error)
+      )
+      |> debug()
+    end
   end
   defp debug_maybe_sentry(_, _, _stacktrace), do: nil
+
+  def map_new(data, fallback_key \\ :data) do
+    if Enumerable.impl_for(data), do: Map.new(data), else: Map.put(%{}, fallback_key, data)
+  end
 
   def debug_banner_with_trace(kind, exception, stacktrace) do
     exception = if exception, do: debug_banner(kind, exception, stacktrace)
