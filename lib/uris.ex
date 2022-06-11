@@ -22,6 +22,10 @@ defmodule Bonfire.Common.URIs do
         error(other, "Router didn't return a valid path")
         fallback(args)
     end
+  rescue
+    error in ArgumentError ->
+      warn(error, "path: could not find a matching route for #{inspect view_module_or_path_name_or_object}")
+      nil
   end
 
   # def path(%{replied: %{reply_to: %{id: _} = reply_to}} = object, args) do
@@ -84,7 +88,17 @@ defmodule Bonfire.Common.URIs do
   def fallback(id, args) do
     fallback([id] ++ args)
   end
+  def fallback(nil) do
+    nil
+  end
+  def fallback([]) do
+    nil
+  end
+  def fallback([nil]) do
+    nil
+  end
   def fallback(args) do
+    debug(args)
     path(Bonfire.UI.Social.DiscussionLive, args)
   end
 
