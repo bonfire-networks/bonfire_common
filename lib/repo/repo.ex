@@ -181,13 +181,14 @@ defmodule Bonfire.Common.Repo do
 
   defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
   defp paginate(queryable, opts, repo_opts) when is_list(opts) do
-    opts = if opts[:paginate], do: Keyword.new(opts[:paginate]), else: opts
-    # info(opts, "opts")
+    opts = (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts) |> Keyword.new()
+    info(opts, "opts")
     Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
     # |> debug("merged opts")
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
   defp paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
+    info(opts, "opts")
     paginate(queryable, opts |> Utils.to_options(), repo_opts)
   end
   defp paginate(queryable, _, repo_opts) do
@@ -198,12 +199,14 @@ defmodule Bonfire.Common.Repo do
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
+    info(opts, "opts")
     # debug(order, "order_bys")
     queryable
     |> paginate(opts, repo_opts)
   end
 
   def many_paginated(queryable, opts, repo_opts) do
+    info(opts, "opts")
     queryable
     |> order_by([o],
       desc: o.id
