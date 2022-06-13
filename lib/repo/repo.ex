@@ -17,16 +17,7 @@ defmodule Bonfire.Common.Repo do
   alias Pointers.{Changesets, Pointer}
   alias Ecto.Changeset
 
-  @pagination_defaults [
-    limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),                           # sets the default limit TODO: put in config
-    maximum_limit: 200,                  # sets the maximum limit TODO: put in config
-    include_total_count: false,           # include total count by default?
-    total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
-  ]
   @default_cursor_fields [cursor_fields: [{:id, :desc}]]
-
-  # import cursor-based pagination helper
-  # use Paginator, @pagination_defaults
 
   defmacro __using__(opts) do
     quote do
@@ -179,11 +170,18 @@ defmodule Bonfire.Common.Repo do
     |> all()
   end
 
+  defp pagination_defaults, do: [
+    limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),                           # sets the default limit TODO: put in config
+    maximum_limit: 200,                  # sets the maximum limit TODO: put in config
+    include_total_count: false,           # include total count by default?
+    total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
+  ]
+
   defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
   defp paginate(queryable, opts, repo_opts) when is_list(opts) do
     opts = (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts) |> Keyword.new()
     info(opts, "opts")
-    Keyword.merge(@pagination_defaults, Keyword.merge(@default_cursor_fields, opts))
+    Keyword.merge(pagination_defaults(), Keyword.merge(@default_cursor_fields, opts))
     # |> debug("merged opts")
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end

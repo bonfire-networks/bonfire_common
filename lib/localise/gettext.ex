@@ -22,7 +22,7 @@ defmodule Bonfire.Common.Localise.Gettext do
       otp_app: :bonfire_common,
       default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
       plural_forms: Bonfire.Common.Localise.Gettext.Plural,
-      priv: Bonfire.Common.Config.get!(:localisation_path)
+      priv: Application.compile_env!(:bonfire, :localisation_path)
   # end
 end
 defmodule Bonfire.Common.Localise.Gettext.Helpers do
