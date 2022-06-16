@@ -826,7 +826,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def maybe_from_opts(opts, key, fallback \\ nil) when is_list(opts), do: opts[key] || fallback
+  def maybe_from_opts(opts, key, fallback \\ nil) when is_list(opts) or is_map(opts), do: opts[key] || fallback
   def maybe_from_opts(_opts, _key, fallback), do: fallback
 
   def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do

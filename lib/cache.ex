@@ -76,6 +76,7 @@ defmodule Bonfire.Common.Cache do
 
   def cached_preloads_for_objects(name, objects, fun) when is_list(objects) and is_function(fun) do
     Cachex.execute!(cache_key(), fn(cache) ->
+
       maybe_cached = Enum.map(objects, fn obj ->
         id = ulid(obj)
         key = "#{name}:{id}"
@@ -92,7 +93,9 @@ defmodule Bonfire.Common.Cache do
       |> fun.()
       # |> debug("fetched")
 
-      Enum.each(not_cached, fn {id, v} -> Cachex.put(cache, "#{name}:{id}", v) end) # TODO: longer cache TTL?
+      Enum.each(not_cached, fn {id, v} ->
+        Cachex.put(cache, "#{name}:{id}", v) # TODO: longer cache TTL?
+      end)
 
       # cached = Enum.reject(maybe_cached, fn {_, v} -> is_nil(v) end)
       maybe_cached
