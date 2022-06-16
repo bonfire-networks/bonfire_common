@@ -197,14 +197,14 @@ defmodule Bonfire.Common.Repo do
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
-    info(opts, "opts")
+    # info(opts, "opts")
     # debug(order, "order_bys")
     queryable
     |> paginate(opts, repo_opts)
   end
 
   def many_paginated(queryable, opts, repo_opts) do
-    info(opts, "opts")
+    # info(opts, "opts")
     queryable
     |> order_by([o],
       desc: o.id
