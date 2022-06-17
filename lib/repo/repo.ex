@@ -180,13 +180,13 @@ defmodule Bonfire.Common.Repo do
   defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
   defp paginate(queryable, opts, repo_opts) when is_list(opts) do
     opts = (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts) |> Keyword.new()
-    info(opts, "opts")
+    # info(opts, "opts")
     Keyword.merge(pagination_defaults(), Keyword.merge(@default_cursor_fields, opts))
     # |> debug("merged opts")
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
   defp paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
-    info(opts, "opts")
+    # info(opts, "opts")
     paginate(queryable, opts |> Utils.to_options(), repo_opts)
   end
   defp paginate(queryable, _, repo_opts) do
