@@ -6,7 +6,7 @@ defmodule Bonfire.Common.ContextModules do
   Use of the ContextModules Service requires:
 
   1. Exporting `context_module/0` in relevant modules (in schemas pointing to context modules and/or in context modules pointing to schemas), returning a Module atom
-  2. To populate `:pointers, :search_path` in config the list of OTP applications where context_modules are declared.
+  2. To populate `:bonfire, :context_modules_search_path` in config the list of OTP applications where context_modules are declared.
   3. Start the `Bonfire.Common.ContextModules` application before querying.
   4. OTP 21.2 or greater, though we recommend using the most recent
      release available.
