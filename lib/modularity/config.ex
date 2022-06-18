@@ -73,7 +73,7 @@ defmodule Bonfire.Common.Config do
   def get([key], default, otp_app), do: get(key, default, otp_app)
 
   def get([parent_key | keys], default, otp_app) do
-    debug("get [#{inspect parent_key}, #{inspect keys}] from #{otp_app} or default to #{inspect default}")
+    # debug("get [#{inspect parent_key}, #{inspect keys}] from #{otp_app} or default to #{inspect default}")
     case otp_app
          |> Application.get_env(parent_key)
          |> get_in(keys) do
