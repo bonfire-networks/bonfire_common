@@ -10,14 +10,15 @@ defmodule Bonfire.Common.URIs do
     case uri do
       %URI{scheme: nil} -> {:error, uri}
       %URI{host: nil} -> {:error, uri}
-      %URI{path: nil} -> {:error, uri}
       _ -> {:ok, uri}
     end
   end
 
   def is_uri?(str) do
-    with {:ok, _} <- validate_uri(str) do
-      true
+    case URI.parse(str) do
+      %URI{scheme: nil} -> false
+      %URI{host: nil} -> false
+      _ -> true
     end
   end
 
