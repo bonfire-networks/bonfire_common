@@ -5,6 +5,22 @@ defmodule Bonfire.Common.URIs do
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
 
+  def validate_uri(str) do
+    uri = URI.parse(str)
+    case uri do
+      %URI{scheme: nil} -> {:error, uri}
+      %URI{host: nil} -> {:error, uri}
+      %URI{path: nil} -> {:error, uri}
+      _ -> {:ok, uri}
+    end
+  end
+
+  def is_uri?(str) do
+    with {:ok, _} <- validate_uri(str) do
+      true
+    end
+  end
+
   def path(view_module_or_path_name_or_object, args \\ [])
 
   def path(view_module_or_path_name_or_object, %{id: id} = args) when not is_struct(args), do: path(view_module_or_path_name_or_object, [id])

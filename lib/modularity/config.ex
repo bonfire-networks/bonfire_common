@@ -204,7 +204,6 @@ defmodule Bonfire.Common.Config do
   end
 
 
-
   @doc """
   Constructs a key path for settings/config, which always starts with an app or extension name (which defaults to the main OTP app)
 
