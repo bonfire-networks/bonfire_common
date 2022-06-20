@@ -90,7 +90,7 @@ defmodule Bonfire.Common.Test.Interactive do
   @impl true
   def init(state) do
     Process.flag(:trap_exit, true)
-    ExUnit.start(autorun: false, formatters: [ExUnit.CLIFormatter, Bonfire.Common.Test.Interactive.Observer])
+    ExUnit.start(autorun: false, formatters: [ExUnit.CLIFormatter, Bonfire.Common.Test.Interactive.Observer], exclude: Bonfire.Common.RuntimeConfig.skip_test_tags())
     {:ok, state}
   end
 

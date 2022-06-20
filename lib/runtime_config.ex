@@ -1,4 +1,5 @@
 defmodule Bonfire.Common.RuntimeConfig do
+  import Where
 
   def config_module, do: true
 
@@ -32,4 +33,17 @@ defmodule Bonfire.Common.RuntimeConfig do
         ]
       ]
   end
+
+  def skip_test_tags(extras \\ []) do
+    chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
+
+    # TODO: less ugly
+    skip = extras ++ [:skip, :todo, :fixme]
+    skip = if System.get_env("TEST_INSTANCE")=="yes", do: skip, else: [:test_instance] ++ skip # skip two-instances-required federation tests
+    skip = if System.get_env("CI"), do: [:skip_ci] ++ skip, else: skip
+    skip = if System.get_env("CI") || is_nil(chromedriver_path), do: [:browser] ++ skip, else: skip # skip browser automation tests in CI
+
+    warn(skip, "Skipping tests tagged with")
+  end
+
 end
