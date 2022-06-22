@@ -931,15 +931,11 @@ defmodule Bonfire.Common.Utils do
 
    error(msg)
 
-    # if exception, do: Logger.error(debug_banner(kind, exception, stacktrace))
-    # if exception, do: IO.puts(Exception.format_exit(exception))
-    # if stacktrace, do: IO.inspect(Exception.format_stacktrace(stacktrace), limit: :infinity, printable_limit: :infinity)
-
     if exception && stacktrace do
       {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
       error(exception)
-      Logger.warn(stacktrace)
-      # IO.warn(exception, stacktrace)
+      IO.inspect(stacktrace, limit: :infinity,  printable_limit: :infinity)
+      # Logger.warn(stacktrace, truncate: :infinity)
     else
       if exception, do: warn(exception)
     end
@@ -987,10 +983,6 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp debug_banner(kind, {:error, error}, stacktrace) do
-    debug_banner(kind, error, stacktrace)
-  end
-
-  defp debug_banner(kind, %{error: error}, stacktrace) do
     debug_banner(kind, error, stacktrace)
   end
 
