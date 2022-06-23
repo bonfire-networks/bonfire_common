@@ -125,12 +125,47 @@ defmodule Bonfire.Common.Text do
     # debug(content, "input")
     if module_enabled?(Earmark) do
       content
-      |> Earmark.as_html!(inner_html: true, escape: false, smartypants: false)
+      |> Earmark.as_html!(
+          inner_html: true,
+          escape: false,
+          smartypants: false,
+          registered_processors: [
+            # {"a", &md_add_target/1},
+            {"h1", &md_heading_anchors/1},
+            {"h2", &md_heading_anchors/1},
+            {"h3", &md_heading_anchors/1},
+            {"h4", &md_heading_anchors/1},
+            {"h5", &md_heading_anchors/1},
+            {"h6", &md_heading_anchors/1},
+        ])
       |> markdown_checkboxes()
     else
       content
     end
     # |> debug("output")
+  end
+
+  defp md_add_target(node) do # This will only be applied to nodes as it will become a TagSpecificProcessors
+    # debug(node)
+    if Regex.match?(~r{\.x\.com\z}, Earmark.AstTools.find_att_in_node(node, "href", "")), do: Earmark.AstTools.merge_atts_in_node(node, target: "_blank"), else: node
+  end
+
+  defp md_heading_anchors({tag, attrs, text, extra} = _node) do
+    # node
+    # |> debug()
+    {tag,
+      [
+        {"id", slug(text)}
+      ], text, extra}
+  end
+
+  defp slug(text) when is_list(text), do: Enum.join(text, "-") |> slug()
+  defp slug(text) do
+    text
+    |> String.trim()
+    |> String.downcase()
+    |> String.replace(~r/\s+/, "-")
+    |> URI.encode()
   end
 
   @doc """
