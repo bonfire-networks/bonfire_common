@@ -168,12 +168,11 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   def localise_dynamic(msgid, caller_module \\ nil) do
     otp_app = caller_app(caller_module) || :bonfire
-    Gettext.dgettext(Bonfire.Common.Localise.Gettext, Atom.to_string(otp_app), msgid)
+    Gettext.dgettext(Bonfire.Common.Localise.Gettext, Atom.to_string(otp_app), "#{msgid}")
   end
 
-
   @doc """
-  Localise a list of strings
+  Localise a list of strings at compile time
   """
   defmacro localise_strings(strings, caller_module \\ nil) do
     {strings, _} = Code.eval_quoted(strings)
