@@ -192,7 +192,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         otp_app
       _ ->
-        mix = Mix.Project.get()
+        mix = if Bonfire.Common.Extend.module_enabled?(Mix.Project), do: Mix.Project.get()
         if mix, do: mix.project()[:app]
     end
   end
