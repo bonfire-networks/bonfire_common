@@ -9,5 +9,4 @@ Most function calls in Cldr will be calls to functions on this module.
   use Cldr,
     otp_app: :bonfire_common # which OTP app the ex_cldr config is set on
 
-
 end
