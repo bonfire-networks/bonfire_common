@@ -758,12 +758,15 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{path: _} = media), do: Bonfire.Files.IconUploader.remote_url(media)
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   def avatar_url(%{image: url}) when is_binary(url), do: url # handle VF API
-  def avatar_url(%{id: id, shared_user: nil}), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
+  def avatar_url(%{id: id, shared_user: nil}), do: avatar_fallback(id)
   def avatar_url(%{id: id, shared_user: %{id: _}} = obj), do: "https://picsum.photos/seed/#{id}/128/128?blur" # for Teams/Orgs
   # def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Common.Repo.maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
-  def avatar_url(%{id: id}) when is_binary(id), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
-  def avatar_url(_obj), do: Bonfire.Me.Fake.Helpers.avatar_url()
+  def avatar_url(%{id: id}) when is_binary(id), do: avatar_fallback(id)
+  def avatar_url(obj), do: avatar_fallback(ulid(obj))
+
+  def avatar_fallback(_ \\ nil), do: "/images/avatar.png"
+  # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
