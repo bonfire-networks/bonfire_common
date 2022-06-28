@@ -743,6 +743,10 @@ defmodule Bonfire.Common.Utils do
     url
   end
 
+  def media_url(%{path: "http"<>_ = url} = _media) do
+    url
+  end
+
   def media_url(%{media_type: media_type} = media) do
     if String.starts_with?(media_type, "image") do
       image_url(media)
