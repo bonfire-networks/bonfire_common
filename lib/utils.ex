@@ -186,6 +186,15 @@ defmodule Bonfire.Common.Utils do
     nil
   end
 
+  def ulid!(object) do
+    case ulid(object) do
+      id when is_binary(id) -> id
+      _ ->
+        error(object, "Expected an object or ID (ULID), but got")
+        raise "Expected an object or ID (ULID)"
+    end
+  end
+
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
