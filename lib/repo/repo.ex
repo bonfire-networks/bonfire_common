@@ -108,10 +108,18 @@ defmodule Bonfire.Common.Repo do
     end
   end
 
-  def upsert(cs) do
+  def upsert(cs, attrs, conflict_target \\ [:id]) when is_struct(cs) and not is_struct(attrs) do
+    insert(
+      cs,
+      on_conflict: [set: Map.to_list(attrs)],
+      conflict_target: conflict_target
+    )
+  end
+
+  def insert_or_ignore(cs) do
     cs
     |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
-    # |> debug("upsert cs")
+    # |> debug("insert_or_ignore cs")
     |> insert(on_conflict: :nothing)
   rescue
     exception in Postgrex.Error ->
