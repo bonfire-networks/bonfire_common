@@ -1010,6 +1010,10 @@ defmodule Bonfire.Common.Utils do
     inspect Exception.format_banner(kind, exception, stacktrace)
   end
 
+  defp debug_banner(_kind, exception, _stacktrace) when is_binary(exception) do
+    exception
+  end
+
   defp debug_banner(_kind, exception, _stacktrace) do
     inspect exception
   end
@@ -1021,9 +1025,11 @@ defmodule Bonfire.Common.Utils do
   end
   def error_msg(%Ecto.Changeset{} = cs), do: EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
   def error_msg(%{message: message}), do: error_msg(message)
+  def error_msg({:error, :not_found}), do: "Not found"
   def error_msg({:error, error}), do: error_msg(error)
   def error_msg(%{error: error}), do: error_msg(error)
   def error_msg(%{errors: errors}), do: error_msg(errors)
+  def error_msg(%{term: term}), do: error_msg(term)
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect message
 
