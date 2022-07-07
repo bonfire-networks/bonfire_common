@@ -721,8 +721,6 @@ defmodule Bonfire.Common.Utils do
     |> binary_part(0, length)
   end
 
-  def text_only(html), do: HtmlSanitizeEx.strip_tags(html)
-
   def date_from_now(%DateTime{} = date) do
     date
     |> Timex.format("{relative}", :relative)

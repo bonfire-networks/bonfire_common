@@ -180,6 +180,17 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  def text_only(content) do
+    if module_enabled?(HtmlSanitizeEx) do
+      content
+      |> HtmlSanitizeEx.strip_tags()
+    else
+      content
+      |> Phoenix.HTML.html_escape()
+      |> Phoenix.HTML.safe_to_string()
+    end
+  end
+
   def maybe_normalize_html("<p>"<>content) do
     content
     |> maybe_normalize_html() # workaround for weirdness with Earmark's parsing of markdown within html

@@ -16,7 +16,9 @@ defmodule Bonfire.Common.MixProject do
         {:dataloader, "~> 1.0", optional: true},
         {:solid, "~> 0.12.0", optional: true},
         {:floki, "~> 0.32.1", optional: true},
-        {:emote, git: "https://github.com/bonfire-networks/emote", branch: "master", optional: true}
+        {:emote, git: "https://github.com/bonfire-networks/emote", branch: "master", optional: true},
+        {:text, "~> 0.2.0", optional: true},
+        {:text_corpus_udhr, "~> 0.1.0", optional: true}
       ])
     ]
   end
