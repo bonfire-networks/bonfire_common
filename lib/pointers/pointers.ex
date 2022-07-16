@@ -112,20 +112,22 @@ defmodule Bonfire.Common.Pointers do
 
   @doc "Turns a thing into a pointer if it is not already or returns nil"
   def maybe_forge(%Pointer{}=thing), do: thing
-  def maybe_forge(%_{}=thing), do: if is_pointable?(thing), do: thing
+  def maybe_forge(%{pointer_id: pointer_id}) when is_binary(pointer_id), do: one!(id: pointer_id)
+  def maybe_forge(thing) when is_struct(thing), do: if is_pointable?(thing), do: forge!(thing)
   def maybe_forge(_), do: nil
 
   @doc "Turns a thing into a pointer if it is not already. Errors if it cannot be performed"
   def maybe_forge!(thing) do
     case {thing, is_pointable?(thing)} do
       {%Pointer{}, _} -> thing
-      {%_{}, true} -> forge!(thing)
-      {%_{pointer_id: pointer_id}, false} -> one!(id: pointer_id) # AP objects like ActivityPub.Actor
+      {%{}, true} -> forge!(thing)
+      {%_{pointer_id: pointer_id}, false} -> one!(id: pointer_id) # for AP objects like ActivityPub.Actor
     end
   end
 
-  defp is_pointable?(%struct{}), do: function_exported?(struct, :__pointers__, 1) && (struct.__pointers__(:role) == :pointable)
-  defp is_pointable?(_), do: false
+  def is_pointable?(%struct{}), do: is_pointable?(struct)
+  def is_pointable?(schema), do: function_exported?(schema, :__pointers__, 1) && (schema.__pointers__(:role) in [:pointable, :virtual])
+  def is_pointable?(_), do: false
 
   @doc """
   Forge a pointer from a pointable object
