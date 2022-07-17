@@ -20,15 +20,30 @@ defmodule Bonfire.Common.Repo.Delete do
 
   #  @spec soft_delete_changeset(Changeset.t(), atom, any) :: Changeset.t()
   @doc "Creates a changeset for deleting an entity"
-  def soft_delete_changeset(it, column \\ :deleted_at, error \\ "was already deleted") do
-    cs = Changeset.cast(it, %{}, [])
+  def soft_delete_changeset(it, column \\ :deleted_at, error \\ "was already deleted")
+  def soft_delete_changeset(it, column, error) when is_struct(it) do
+    soft_delete_changeset({schema(it), it}, column, error)
+  end
+  def soft_delete_changeset({schema, it}, column, error) do
+    if schema.__schema__(:fields) |> Enum.member?(column) do
+      cs = Changeset.cast(it, %{}, [])
+      case Changeset.fetch_field(cs, column) do
+        :error -> Changeset.change(cs, [{column, DateTime.utc_now()}])
+        {_, nil} -> Changeset.change(cs, [{column, DateTime.utc_now()}])
+        {_, _} -> Changeset.add_error(cs, column, error)
+      end
+      |> debug()
 
-    case Changeset.fetch_field(cs, column) do
-      :error -> Changeset.change(cs, [{column, DateTime.utc_now()}])
-      {_, nil} -> Changeset.change(cs, [{column, DateTime.utc_now()}])
-      {_, _} -> Changeset.add_error(cs, column, error)
+    else
+      warn(schema, "Schema has no #{column} column, will soft-delete the Pointer instead")
+      p = Bonfire.Common.Pointers.maybe_forge!(it)
+      # p = %Pointers.Pointer{id: ulid(it)}
+      soft_delete_changeset({Pointers.Pointer, p}, :deleted_at, error)
     end
   end
+
+  def schema(it) when is_atom(it), do: it
+  def schema(%schema{} = _it), do: schema
 
 
   @spec hard_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
