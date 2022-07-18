@@ -186,6 +186,8 @@ defmodule Bonfire.Common.Utils do
     nil
   end
 
+  def ulids(objects), do: ulid(objects) |> List.wrap()
+
   def ulid!(object) do
     case ulid(object) do
       id when is_binary(id) -> id
