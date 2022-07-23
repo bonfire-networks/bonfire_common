@@ -34,6 +34,7 @@ defmodule Bonfire.Common.URIs do
     |> debug("args")
     |> case Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, ..., &voodoo_error/2) do
       "/%40"<>username -> "/@"<>username
+      "/%2B"<>username -> "/+"<>username
       path when is_binary(path) -> path
       other ->
         error(other, "Router didn't return a valid path")

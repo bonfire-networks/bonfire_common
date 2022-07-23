@@ -218,16 +218,16 @@ defmodule Bonfire.Common.Text do
   end
 
   # open outside links in a new tab
-  def external_links(content) when is_binary(content) and byte_size(content)>20 do
+  def normalise_links(content) when is_binary(content) and byte_size(content)>20 do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
-    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/@\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
+    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/character/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
     |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP objects
     |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle internal links
     |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"") # handle external links
   end
-  def external_links(content), do: content
+  def normalise_links(content), do: content
 
   def markdown_checkboxes(text) do
     text
