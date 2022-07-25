@@ -140,7 +140,7 @@ defmodule Bonfire.Common.Extend do
         import unquote(module)
       end
     else
-      # warn(module, "Did not find module to import")
+      warn(module, "Did not find module to import")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
