@@ -97,6 +97,14 @@ defmodule Bonfire.Common.HTTP do
     do: request(:put, url, body, headers, options)
 
   @doc """
+  Makes a PATCH request
+
+  see `request/5`
+  """
+  def patch(url, body, headers \\ [], options \\ []),
+    do: request(:patch, url, body, headers, options)
+
+  @doc """
   Makes a DELETE request
 
   see `request/5`
