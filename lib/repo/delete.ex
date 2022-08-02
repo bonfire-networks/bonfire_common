@@ -16,30 +16,36 @@ defmodule Bonfire.Common.Repo.Delete do
   @doc "Marks an entry as deleted in the database or throws an error"
   def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
 
+  def undelete(it), do: deletion_result(repo().update(soft_delete_changeset(it, :deleted_at, nil, "was already un-deleted")))
+
   defp do_soft_delete(it), do: repo().update(soft_delete_changeset(it))
 
   #  @spec soft_delete_changeset(Changeset.t(), atom, any) :: Changeset.t()
   @doc "Creates a changeset for deleting an entity"
-  def soft_delete_changeset(it, column \\ :deleted_at, error \\ "was already deleted")
-  def soft_delete_changeset(it, column, error) when is_struct(it) do
-    soft_delete_changeset({schema(it), it}, column, error)
+  def soft_delete_changeset(it, column \\ :deleted_at, value \\ DateTime.utc_now(), error \\ "was already deleted")
+  def soft_delete_changeset(it, column, value, error) when is_struct(it) do
+    soft_delete_changeset({schema(it), it}, column, value, error)
   end
-  def soft_delete_changeset({schema, it}, column, error) do
+  def soft_delete_changeset({schema, it}, column, value, error) do
     if schema.__schema__(:fields) |> Enum.member?(column) do
       cs = Changeset.cast(it, %{}, [])
       case Changeset.fetch_field(cs, column) do
-        :error -> Changeset.change(cs, [{column, DateTime.utc_now()}])
-        {_, nil} -> Changeset.change(cs, [{column, DateTime.utc_now()}])
-        {_, _} -> Changeset.add_error(cs, column, error)
+        :error -> Changeset.change(cs, [{column, value}])
+        {_, _} -> Changeset.change(cs, [{column, value}])
+        # {_, _} -> Changeset.add_error(cs, column, error)
       end
       |> debug()
 
     else
       warn(schema, "Schema has no #{column} column, will soft-delete the Pointer instead")
-      p = Bonfire.Common.Pointers.maybe_forge!(it)
-      # p = %Pointers.Pointer{id: ulid(it)}
-      soft_delete_changeset({Pointers.Pointer, p}, :deleted_at, error)
+      # Bonfire.Common.Pointers.maybe_forge!(it)
+      Bonfire.Common.Pointers.one(ulid!(it), skip_boundary_check: true)
+      ~> soft_delete_changeset({Pointers.Pointer, ...}, :deleted_at, value, error)
     end
+  end
+  def soft_delete_changeset(it, column, value, error) when is_binary(it) do
+    Bonfire.Common.Pointers.get(it, skip_boundary_check: true)
+    ~> soft_delete_changeset(column, value, error)
   end
 
   def schema(it) when is_atom(it), do: it
