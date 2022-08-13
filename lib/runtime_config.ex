@@ -27,7 +27,7 @@ defmodule Bonfire.Common.RuntimeConfig do
     skip = if System.get_env("CI"), do: [:skip_ci] ++ skip, else: skip
     skip = if System.get_env("CI") || is_nil(chromedriver_path), do: [:browser] ++ skip, else: skip # skip browser automation tests in CI
 
-    warn(skip, "Skipping tests tagged with")
+    debug(skip, "Skipping tests tagged with")
   end
 
 end
