@@ -111,7 +111,7 @@ defmodule Bonfire.Common.Repo do
   def upsert(cs, attrs, conflict_target \\ [:id]) when is_struct(cs) and not is_struct(attrs) do
     insert(
       cs,
-      on_conflict: [set: Map.to_list(attrs)],
+      on_conflict: {:replace_all_except, conflict_target}, #[set: Map.to_list(attrs)],
       conflict_target: conflict_target
     )
   end
