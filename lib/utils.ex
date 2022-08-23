@@ -51,8 +51,8 @@ defmodule Bonfire.Common.Utils do
   def strlen(x) when x == 0, do: 0
 
   @doc "Returns a value, or a fallback if nil/false"
-  def e(key, fallback) do
-    key || fallback
+  def e(val, fallback) do
+    filter_empty(val, fallback)
   end
 
   @doc "Returns a value from a map, or a fallback if not present"
@@ -203,7 +203,8 @@ defmodule Bonfire.Common.Utils do
   def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
     maybe_get(map, key,
       map_get(map, Atom.to_string(key), fallback)
-    ) |> magic_filter_empty(map, key, fallback)
+    )
+    |> magic_filter_empty(map, key, fallback)
   end
 
   #doc """ Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
@@ -220,7 +221,8 @@ defmodule Bonfire.Common.Utils do
           fallback
         )
       )
-    ) |> magic_filter_empty(map, key, fallback)
+    )
+    |> magic_filter_empty(map, key, fallback)
   end
 
   #doc "Try with each key in list"
@@ -252,6 +254,7 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback
   def filter_empty([], fallback), do: fallback
+  def filter_empty("", fallback), do: fallback
   def filter_empty(list, fallback) when is_list(list), do: list |> Enum.map(&sub_filter_empty/1) |> Enum.filter(& &1) |> re_filter_empty(fallback)
   # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
   def filter_empty(val, fallback), do: val || fallback
