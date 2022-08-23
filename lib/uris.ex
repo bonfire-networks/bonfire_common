@@ -179,7 +179,7 @@ defmodule Bonfire.Common.URIs do
   def canonical_url(%{canonical_uri: canonical_url}) when is_binary(canonical_url) do
     canonical_url
   end
-  def canonical_url(%{canonical_url: canonical_url}) when not is_nil(canonical_url) do
+  def canonical_url(%{canonical_url: canonical_url}) when is_binary(canonical_url) do
     canonical_url
   end
   def canonical_url(%{"canonicalUrl"=> canonical_url}) when is_binary(canonical_url) do
@@ -188,11 +188,20 @@ defmodule Bonfire.Common.URIs do
   def canonical_url(%{peered: %{canonical_uri: canonical_url}}) when is_binary(canonical_url) do
     canonical_url
   end
+  def canonical_url(%{character: %{canonical_uri: canonical_url}}) when is_binary(canonical_url) do
+    canonical_url
+  end
+  def canonical_url(%{character: %{peered: %{canonical_uri: canonical_url}}}) when is_binary(canonical_url) do
+    canonical_url
+  end
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
     Bonfire.Common.Repo.maybe_preload(object, :peered)
     |> Utils.e(:peered, :canonical_uri, nil)
         ||
        query_or_generate_canonical_url(object)
+  end
+  def canonical_url(%{peered: %{}} = object) do
+    maybe_generate_canonical_url(object)
   end
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
     Bonfire.Common.Repo.maybe_preload(object, [created: [:peered]])
@@ -206,22 +215,24 @@ defmodule Bonfire.Common.URIs do
         ||
        query_or_generate_canonical_url(object)
   end
+  def canonical_url(%{character: %{peered: %{}}} = object) do
+    maybe_generate_canonical_url(object)
+  end
   def canonical_url(object) do
     query_or_generate_canonical_url(object)
   end
 
   defp query_or_generate_canonical_url(object) do
     if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
-      # info("attempt to query Peered")
-      Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object) || maybe_generate_canonical_url(object)
-    else
-      maybe_generate_canonical_url(object)
+      debug(object, "attempt to query Peered")
+      Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object)
     end
+    || maybe_generate_canonical_url(object)
   end
 
   defp maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
     if module_enabled?(Characters) do
-      # check if object is a Character (in which case use actor URL)
+      debug("check if object is a Character (in which case use actor URL)")
       case Characters.character_url(thing) do
         nil -> maybe_generate_canonical_url(id)
         character_url -> character_url
