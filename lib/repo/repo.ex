@@ -108,15 +108,25 @@ defmodule Bonfire.Common.Repo do
     end
   end
 
-  def upsert(cs, attrs, conflict_target \\ [:id]) when is_struct(cs) and not is_struct(attrs) do
+  def upsert(cs, attrs, conflict_target \\ [:id]) when is_struct(cs) or is_atom(cs) and not is_struct(attrs) do
     insert(
       cs,
-      on_conflict: [set: Map.to_list(attrs)], #{:replace_all_except, conflict_target}
+      # on_conflict: {:replace_all_except, conflict_target},
+      on_conflict: [set: Map.to_list(attrs)],
       conflict_target: conflict_target
     )
   end
 
-  def insert_or_ignore(cs) do
+  def upsert_all(schema, data, conflict_target \\ [:id]) when is_atom(schema) do
+    insert_all(
+      schema,
+      data,
+      on_conflict: {:replace_all_except, conflict_target},
+      conflict_target: conflict_target
+    )
+  end
+
+  def insert_or_ignore(cs) when is_struct(cs) or is_atom(cs) do
     cs
     |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
     # |> debug("insert_or_ignore cs")
@@ -126,8 +136,8 @@ defmodule Bonfire.Common.Repo do
       handle_postgrex_exception(exception, __STACKTRACE__)
   end
 
-  def insert_all_or_ignore(schema, data) do
-    repo().insert_all(schema, data, on_conflict: :nothing)
+  def insert_all_or_ignore(schema, data) when is_atom(schema) do
+    insert_all(schema, data, on_conflict: :nothing)
   rescue
     exception in Postgrex.Error ->
       handle_postgrex_exception(exception, __STACKTRACE__)
