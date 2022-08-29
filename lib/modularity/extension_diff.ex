@@ -97,8 +97,9 @@ defmodule Bonfire.Common.Extensions.Diff do
   end
 
   def git!(args, repo_path \\ ".", into \\ default_into()) do
-    debug(inspect %{repo: repo_path, git: args, cwd: File.cwd()})
-    original_cwd = File.cwd()
+    root = root()
+    debug(inspect %{repo: repo_path, git: args, cwd: root})
+    original_cwd = root
 
     File.cd!(repo_path, fn ->
 
@@ -126,7 +127,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   # This addresses an issue changing the working directory when executing from
   # within a secondary node since file I/O is done through the main node.
   defp cmd_opts(opts) do
-    case File.cwd() do
+    case root() do
       {:ok, cwd} -> Keyword.put(opts, :cd, cwd)
       _ -> opts
     end
@@ -136,4 +137,6 @@ defmodule Bonfire.Common.Extensions.Diff do
     random_string = Base.encode16(:crypto.strong_rand_bytes(4))
     Path.join([System.tmp_dir!(), prefix <> random_string])
   end
+
+  def root, do: Bonfire.Common.Config.get(:root_path)
 end
