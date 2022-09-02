@@ -543,7 +543,7 @@ defmodule Bonfire.Common.Utils do
 
   def merge_structs_as_map(%{__typename: type} = target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge) |> Map.put(:__typename, type)
   def merge_structs_as_map(target, merge) when is_struct(target) or is_struct(merge), do: merge_structs_as_map(maybe_from_struct(target), maybe_from_struct(merge))
-  def merge_structs_as_map(target, merge) when not is_struct(target) and not is_struct(merge), do: Map.merge(target, merge)
+  def merge_structs_as_map(target, merge) when is_map(target) and is_map(merge), do: Map.merge(target, merge)
 
   def maybe_convert_ulids(list) when is_list(list), do: Enum.map(list, &maybe_convert_ulids/1)
 
@@ -820,27 +820,21 @@ defmodule Bonfire.Common.Utils do
       %{__context__: context}   = _assigns  -> current_user(context)
       %{assigns: assigns}       = _socket   -> current_user(assigns)
       %{socket: socket}         = _socket   -> current_user(socket)
-      %{id: _, profile: _}      = user      -> user
-      %{id: _, character: _}    = user      -> user
-      options when is_list(options)         -> current_user(Map.new(options))
-      other ->
-        debug("No current_user found in #{inspect other}")
+      %{id: _, profile: _}                  -> current_user_or_socket_or_opts
+      %{id: _, character: _}                -> current_user_or_socket_or_opts
+      _ when is_list(current_user_or_socket_or_opts) -> current_user(Map.new(current_user_or_socket_or_opts))
+      _ ->
+        debug("No current_user found in #{inspect current_user_or_socket_or_opts}")
         nil
     end
   end
 
   def to_options(current_user_or_socket_or_opts) do
     case current_user_or_socket_or_opts do
-      %{current_user: %{}=user} = _options  -> [current_user: user]
-      %{context: context}       = _api_opts -> to_options(context)
-      %{__context__: context}   = _assigns  -> to_options(context)
-      %{assigns: assigns}       = _socket   -> to_options(assigns)
-      %{socket: socket}         = _socket   -> to_options(socket)
-      %{id: _, profile: _}      = user      -> [current_user: user]
-      %{id: _, character: _}    = user      -> [current_user: user]
-      list when is_list(list)               -> list
-      other ->
-        debug("No current_user found in #{inspect other}")
+      %{assigns: assigns}       = _socket   -> Keyword.new(assigns)
+      _ when is_list(current_user_or_socket_or_opts) or is_map(current_user_or_socket_or_opts) and not is_struct(current_user_or_socket_or_opts)  -> Keyword.new(current_user_or_socket_or_opts)
+      _ ->
+        debug("No opts found in #{inspect current_user_or_socket_or_opts}")
         []
     end
   end
@@ -848,6 +842,9 @@ defmodule Bonfire.Common.Utils do
   def maybe_from_opts(opts, key, fallback \\ nil) when is_list(opts) or is_map(opts), do: opts[key] || fallback
   def maybe_from_opts(_opts, _key, fallback), do: fallback
 
+  def current_account(list) when is_list(list) do
+    current_account(Map.new(list))
+  end
   def current_account(%{current_account: current_account} = _assigns) when not is_nil(current_account) do
     current_account
   end
@@ -869,22 +866,19 @@ defmodule Bonfire.Common.Utils do
   def current_account(%{socket: socket} = _socket) do
     current_account(socket)
   end
-  def current_account(other) when is_map(other) do
+  def current_account(other) do
     case current_user(other) do
       nil ->
         debug("No current_account found in #{inspect other}")
         nil
       user ->
-        case user
-        |> Bonfire.Common.Repo.maybe_preload(accounted: :account) do
-          %{accounted: %{account: account}} -> account
+        case user do
+        # |> Bonfire.Common.Repo.maybe_preload(accounted: :account) do
+          %{accounted: %{account: %{id: _} = account}} -> account
+          %{accounted: %{account_id: account_id}} -> account_id
           _ -> nil
         end
     end
-  end
-  def current_account(other) do
-    debug("No current_account found in #{inspect other}")
-    nil
   end
 
   def macro_inspect(fun) do
@@ -1059,14 +1053,14 @@ defmodule Bonfire.Common.Utils do
     fallback_return = if not is_function(fallback_fun), do: fallback_fun
 
     if module_enabled?(module) do
-      debug(module, "module_enabled")
+      # debug(module, "module_enabled")
 
       available_funs = funs |> Enum.reject(fn f -> not Kernel.function_exported?(module, f, arity) end)
 
       fun = List.first(available_funs)
 
       if fun do
-        debug({fun, arity}, "function_exists")
+        # debug({fun, arity}, "function_exists")
 
         try do
           apply(module, fun, args)

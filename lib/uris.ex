@@ -31,7 +31,7 @@ defmodule Bonfire.Common.URIs do
   def path(view_module_or_path_name_or_object, args) when is_atom(view_module_or_path_name_or_object) and not is_nil(view_module_or_path_name_or_object) and is_list(args) do
     endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
     ([endpoint, view_module_or_path_name_or_object] ++ args)
-    |> debug("args")
+    # |> debug("args")
     |> case Utils.maybe_apply(Bonfire.Web.Router.Reverse, :path, ..., &voodoo_error/2) do
       "/%40"<>username -> "/@"<>username
       "/%2B"<>username -> "/+"<>username
