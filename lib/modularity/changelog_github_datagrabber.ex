@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   """
   @behaviour Versioce.Changelog.DataGrabber
 
-  import Where
+  import Untangle
   alias Bonfire.Common.Utils
   # alias Versioce.Changelog.Sections
   alias Versioce.Changelog.Anchors

@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Text do
   use Bonfire.Common.Utils
-  # import Where
+  # import Untangle
 
   # @add_to_end "..."
   @sentence_seperator " "

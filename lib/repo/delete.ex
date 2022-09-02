@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Repo.Delete do
 
-  import Where
+  import Untangle
 
   import Bonfire.Common.Config, only: [repo: 0]
   use Bonfire.Common.Utils

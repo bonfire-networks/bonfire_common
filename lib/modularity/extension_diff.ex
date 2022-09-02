@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Extensions.Diff do
 
-  import Where
+  import Untangle
 
   def generate_diff(repo_path) do
     case repo_latest_diff(repo_path) do

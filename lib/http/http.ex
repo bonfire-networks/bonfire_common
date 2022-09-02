@@ -2,7 +2,7 @@ defmodule Bonfire.Common.HTTP do
   @moduledoc """
   Module for building and performing HTTP requests.
   """
-  import Where
+  import Untangle
   alias Bonfire.Common.HTTP.Connection
   alias Bonfire.Common.HTTP.RequestBuilder
   alias Bonfire.Common.Cache

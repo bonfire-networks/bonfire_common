@@ -2,7 +2,7 @@
 defmodule Bonfire.Common.Pointers do
 
   use Arrows
-  import Where
+  import Untangle
   import Bonfire.Common.Config, only: [repo: 0]
   import Bonfire.Common.Extend
   import_if_enabled Bonfire.Boundaries.Queries

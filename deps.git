@@ -6,5 +6,5 @@ bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identi
 # bonfire_data_social = "https://github.com/bonfire-networks/bonfire_data_social#main"
 # bonfire_mailer = "https://github.com/bonfire-networks/bonfire_mailer#main"
 ecto_sparkles = "https://github.com/bonfire-networks/ecto_sparkles#main"
-where = "https://github.com/bonfire-networks/where#main"
+untangle = "https://github.com/bonfire-networks/untangle#main"
 paginator = "https://github.com/bonfire-networks/paginator#main"

@@ -11,4 +11,4 @@ earmark = "~> 1.4" # handle markdown
 earmark_parser = "~> 1.4" # parse markdown
 # mappable = "~> 0.2.4" # convert between map/struct/keyword list
 html_sanitize_ex = "~> 1.4" # html sanitation
-where = "~> 0.1" # log/inspect with code location
+untangle = "~> 0.1" # log/inspect with code location

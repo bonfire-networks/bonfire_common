@@ -12,7 +12,7 @@ defmodule Bonfire.Common.Repo.Preload do
     adapter: Ecto.Adapters.Postgres
 
   # import Ecto.Query
-  import Where
+  import Untangle
   use Arrows
 
   alias Pointers.Pointer

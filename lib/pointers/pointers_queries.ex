@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   import Ecto.Query
   alias Pointers.Pointer
   import EctoSparkles
-  import Where
+  import Untangle
   alias Bonfire.Common.Utils
 
   def queries_module, do: Pointer

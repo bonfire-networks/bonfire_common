@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Utils do
   import Bonfire.Common.Extend
   # require Bonfire.Common.Localise.Gettext
   # import Bonfire.Common.Localise.Gettext.Helpers
-  import Where
+  import Untangle
   require Logger
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
@@ -32,7 +32,7 @@ defmodule Bonfire.Common.Utils do
       import Extend
       import URIs
 
-      import Where
+      import Untangle
       use Arrows
 
       # localisation

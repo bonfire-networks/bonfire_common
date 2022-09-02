@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Pointers.Preload do
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
-  import Where
+  import Untangle
 
   def maybe_preload_pointers(object, keys, opts \\ [])
 

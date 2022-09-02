@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Types do
   use Bonfire.Common.Utils
   alias Pointers.Pointer
 
-  import Where
+  import Untangle
 
   def object_type(%Ecto.Association.NotLoaded{}) do
     error("Types.object_type: cannot detect the type on an association that wasn't preloaded")

@@ -64,7 +64,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   # alias the gettext macros for ease-of-use
 
   import Bonfire.Common.Localise.Gettext
-  import Where
+  import Untangle
 
   defmacro l(original_text_or_id, bindings \\ [], context \\ nil, domain \\ nil)
 

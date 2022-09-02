@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
   import Extend
-  import Where
+  import Untangle
 
   def top_level_otp_app do
     get!(:otp_app, :bonfire_common)

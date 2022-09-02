@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Extensions do
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
-  import Where
+  import Untangle
   alias Bonfire.Common.Utils
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 

@@ -8,7 +8,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   alias Pointers.Table
   alias Pointers.NotFound
   alias Bonfire.Common.Pointers.Tables.Queries
-  import Where
+  import Untangle
 
   def one(id) when is_binary(id) do
     if Bonfire.Common.Utils.is_ulid?(id) do

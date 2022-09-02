@@ -11,7 +11,7 @@ defmodule Bonfire.Common.Repo do
     adapter: Ecto.Adapters.Postgres
 
   import Ecto.Query
-  import Where
+  import Untangle
   use Arrows
 
   alias Pointers.{Changesets, Pointer}
@@ -34,7 +34,7 @@ defmodule Bonfire.Common.Repo do
 
       alias Bonfire.Common.Repo
 
-      import Where
+      import Untangle
 
     end
   end

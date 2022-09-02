@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.RuntimeConfig do
-  import Where
+  import Untangle
 
   def config_module, do: true
 

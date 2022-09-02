@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Extend do
-  import Where
+  import Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
 

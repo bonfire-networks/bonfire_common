@@ -8,7 +8,7 @@ defmodule Bonfire.Common.MixProject do
       version: "0.1.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
-      compilers: [:gettext] ++ Mix.compilers(),
+      compilers: [] ++ Mix.compilers(),
       deps: Mess.deps([
         {:dbg, "~> 1.0", only: :dev},
         {:zest, "~> 0.1", optional: true},
