@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Types do
   import Untangle
 
   def object_type(%Ecto.Association.NotLoaded{}) do
-    error("Types.object_type: cannot detect the type on an association that wasn't preloaded")
+    error("cannot detect the type on an association that wasn't preloaded")
     nil
   end
 
@@ -15,6 +15,7 @@ defmodule Bonfire.Common.Types do
   def object_type(%{index_type: type}), do: object_type(maybe_to_atom(type)) # for search results
   def object_type(%{object: object}), do: object_type(object) # for activities
   def object_type(%{__struct__: schema}) when schema !=Pointer, do: object_type(schema)
+  def object_type({:ok, thing}), do: object_type(thing)
 
   def object_type(%{display_username: display_username}), do: object_type(display_username)
   def object_type("@"<>_), do: Bonfire.Data.Identity.User
@@ -40,22 +41,23 @@ defmodule Bonfire.Common.Types do
   def object_type(type) when type in [ValueFlows.Process, "Process", "4AYF0R1NPVTST0BEC0ME0VTPVT"], do: ValueFlows.Process
 
 
-  def object_type(type) when is_binary(type) do
-    with {:ok, schema} <- Pointers.Tables.schema(type) do
+  def object_type(id) when is_binary(id) do
+    with {:ok, schema} <- Pointers.Tables.schema(id) do
       schema
     else _ ->
-      error("Types.object_type: could not find a Pointers.Table schema for #{inspect type}")
-      nil
+      debug(id, "this isn't the table_id of Pointers.Table schema, querying it to check if it's a Pointable")
+      Bonfire.Common.Pointers.one(id, skip_boundary_check: true)
+      |> object_type()
     end
   end
 
   def object_type(type) when is_atom(type) and not is_nil(type) do
-    debug("Types.object_type: atom might be a schema type: #{inspect type}")
+    debug("atom might be a schema type: #{inspect type}")
     type
   end
 
   def object_type(type) do
-    error("Types.object_type: no pattern matched for #{inspect type}")
+    error("no pattern matched for #{inspect type}")
     nil
   end
 
