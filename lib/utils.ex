@@ -250,6 +250,9 @@ defmodule Bonfire.Common.Utils do
   end
   def magic_filter_empty(val, _, _, fallback), do: val |> filter_empty(fallback)
 
+  def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
+  def empty?(_), do: false
+
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map==%{}, do: fallback

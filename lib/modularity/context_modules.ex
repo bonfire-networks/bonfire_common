@@ -86,7 +86,12 @@ defmodule Bonfire.Common.ContextModules do
   @doc "Populates the global cache with context_module data via introspection."
   def start_link(_), do: GenServer.start_link(__MODULE__, [])
 
-  def data(), do: :persistent_term.get(__MODULE__)
+  def data() do
+    :persistent_term.get(__MODULE__)
+  rescue e in ArgumentError ->
+    debug("Gathering a list of context modules...")
+    populate()
+  end
 
   @spec context_module(query :: query) :: {:ok, atom} | {:error, :not_found}
   @doc "Get a context identified by schema"
