@@ -28,7 +28,8 @@ defmodule Bonfire.Common.HTTP do
       options =
         process_request_options(options)
         |> process_sni_options(url)
-        # |> info("options")
+
+      # |> info("options")
 
       params = Keyword.get(options, :params, [])
 
@@ -44,6 +45,7 @@ defmodule Bonfire.Common.HTTP do
     rescue
       e in Tesla.Mock.Error ->
         error(e, :test_mock_error)
+
       e ->
         error(e, "HTTP request failed")
     catch
@@ -60,7 +62,7 @@ defmodule Bonfire.Common.HTTP do
 
   defp process_sni_options(options, url) do
     uri = URI.parse(url)
-    host = uri.host |> to_charlist()
+    host = to_charlist(uri.host)
 
     case uri.scheme do
       "https" -> options ++ [ssl: [server_name_indication: host]]

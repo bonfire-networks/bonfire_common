@@ -30,13 +30,29 @@ defmodule Bonfire.Common.Test.Interactive do
   use GenServer
 
   defmodule Helpers do
-    defdelegate ta(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_all_tests
-    defdelegate f(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_failed_tests
-    defdelegate s(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :run_stale_tests
-    defdelegate w(args \\ nil), to: Bonfire.Common.Test.Interactive, as: :watch_tests
+    defdelegate ta(args \\ nil),
+      to: Bonfire.Common.Test.Interactive,
+      as: :run_all_tests
+
+    defdelegate f(args \\ nil),
+      to: Bonfire.Common.Test.Interactive,
+      as: :run_failed_tests
+
+    defdelegate s(args \\ nil),
+      to: Bonfire.Common.Test.Interactive,
+      as: :run_stale_tests
+
+    defdelegate w(args \\ nil),
+      to: Bonfire.Common.Test.Interactive,
+      as: :watch_tests
+
     defdelegate uw, to: Bonfire.Common.Test.Interactive, as: :unwatch_tests
 
-    def ready, do: IO.puts "Test.Interactive is ready... Enter `w` to start watching for changes and `uw` to unwatch. Or run tests manually with `f` for previously-failed tests, `s` for stale ones, and `ta` to run all tests. Note that you can pass a path as argument to limit testing to specific test file(s)."
+    def ready,
+      do:
+        IO.puts(
+          "Test.Interactive is ready... Enter `w` to start watching for changes and `uw` to unwatch. Or run tests manually with `f` for previously-failed tests, `s` for stale ones, and `ta` to run all tests. Note that you can pass a path as argument to limit testing to specific test file(s)."
+        )
   end
 
   defmodule Observer do
@@ -90,7 +106,16 @@ defmodule Bonfire.Common.Test.Interactive do
   @impl true
   def init(state) do
     Process.flag(:trap_exit, true)
-    ExUnit.start(autorun: false, formatters: [ExUnit.CLIFormatter, Bonfire.Common.Test.Interactive.Observer], exclude: Bonfire.Common.RuntimeConfig.skip_test_tags())
+
+    ExUnit.start(
+      autorun: false,
+      formatters: [
+        ExUnit.CLIFormatter,
+        Bonfire.Common.Test.Interactive.Observer
+      ],
+      exclude: Bonfire.Common.RuntimeConfig.skip_test_tags()
+    )
+
     {:ok, state}
   end
 
@@ -201,17 +226,19 @@ defmodule Bonfire.Common.Test.Interactive do
 
     # if result =~ ~r/No stale tests/ or
     #      result =~ ~r/There are no tests to run/ do
-      Bonfire.Common.Test.Interactive.unlock()
+    Bonfire.Common.Test.Interactive.unlock()
     # end
 
     IO.puts(result)
   end
 
   def setup_test_repo(tags) do
+    wrap_test_in_transaction_and_rollback = System.get_env("START_SERVER") != "true"
 
-    wrap_test_in_transaction_and_rollback = System.get_env("START_SERVER") !="true"
-
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo, sandbox: wrap_test_in_transaction_and_rollback)
+    :ok =
+      Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo,
+        sandbox: wrap_test_in_transaction_and_rollback
+      )
 
     if not wrap_test_in_transaction_and_rollback or !tags[:async] do
       Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Common.Repo, {:shared, self()})

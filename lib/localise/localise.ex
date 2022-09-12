@@ -11,7 +11,12 @@ defmodule Bonfire.Common.Localise do
     end
   end
 
-  def default_locale, do: Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :default_locale], "en")
+  def default_locale,
+    do:
+      Bonfire.Common.Config.get(
+        [Bonfire.Common.Localise.Cldr, :default_locale],
+        "en"
+      )
 
   def known_locales do
     Bonfire.Common.Localise.Cldr.known_locale_names()
@@ -48,12 +53,20 @@ defmodule Bonfire.Common.Localise do
     # Enum.each(Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :extra_gettext], []), & Gettext.put_locale(&1, to_string(locale)) )
   end
 
-  def locale_name(locale) when is_atom(locale), do: Atom.to_string(locale) |> locale_name()
+  def locale_name(locale) when is_atom(locale),
+    do: Atom.to_string(locale) |> locale_name()
+
   def locale_name(locale) do
     # FIXME, not sure why the Cldr.Language provider is not being compiled in
-    with {:ok, name} <- Utils.maybe_apply(Bonfire.Common.Localise.Cldr.Language, :to_string, locale) do
+    with {:ok, name} <-
+           Utils.maybe_apply(
+             Bonfire.Common.Localise.Cldr.Language,
+             :to_string,
+             locale
+           ) do
       name
-    else _ ->
+    else
+      _ ->
         locale
     end
   end
@@ -61,10 +74,10 @@ defmodule Bonfire.Common.Localise do
   def set_locale_config() do
     [
       default: Bonfire.Common.Localise.default_locale(),
-	    apps: [gettext: :global, cldr: :global],
-	    from: [:session, :cookie, :accept_language, :query],
-	    gettext: Bonfire.Common.Localise.Gettext,
-	    cldr: Bonfire.Common.Localise.Cldr
+      apps: [gettext: :global, cldr: :global],
+      from: [:session, :cookie, :accept_language, :query],
+      gettext: Bonfire.Common.Localise.Gettext,
+      cldr: Bonfire.Common.Localise.Cldr
     ]
   end
 end

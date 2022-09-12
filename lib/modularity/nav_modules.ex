@@ -34,9 +34,10 @@ defmodule Bonfire.Common.NavModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of nav modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of nav modules...")
+      populate()
   end
 
   @doc "Get a nav identified by schema"
@@ -45,10 +46,15 @@ defmodule Bonfire.Common.NavModules do
     # |> debug
     |> nav()
   end
+
   def nav({app, modules}), do: {app, nav(modules)}
+
   def nav(modules) when is_list(modules) do
-    Enum.map(modules, fn module -> Utils.maybe_apply(module, :declared_nav, [], &nav_function_error/2) end)
+    Enum.map(modules, fn module ->
+      Utils.maybe_apply(module, :declared_nav, [], &nav_function_error/2)
+    end)
   end
+
   def nav(_), do: nil
 
   def nav() do
@@ -62,7 +68,10 @@ defmodule Bonfire.Common.NavModules do
   end
 
   def nav_function_error(error, _args) do
-    warn(error, "NavModules - there's no nav module declared for this schema: 1) No function declared_nav/0 that returns this schema atom. 2)")
+    warn(
+      error,
+      "NavModules - there's no nav module declared for this schema: 1) No function declared_nav/0 that returns this schema atom. 2)"
+    )
 
     nil
   end
@@ -76,34 +85,38 @@ defmodule Bonfire.Common.NavModules do
   end
 
   def populate() do
-    indexed =
-      search_app_modules()
-      # |> IO.inspect(limit: :infinity)
-      |> Utils.filter_empty([])
-      # |> IO.inspect(limit: :infinity)
-      # |> Enum.reduce([], &index/2)
-      # |> debug()
+    # |> IO.inspect(limit: :infinity)
+    indexed = Utils.filter_empty(search_app_modules(), [])
+
+    # |> IO.inspect(limit: :infinity)
+    # |> Enum.reduce([], &index/2)
+    # |> debug()
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
 
   def search_app_modules(search_path \\ search_path()) do
-    search_path
-    |> Enum.map(&app_modules/1)
+    Enum.map(search_path, &app_modules/1)
   end
 
-  defp search_path(), do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
+
   defp app_modules(app, mods) when is_list(mods) do
     case Enum.filter(mods, &declares_nav_module?/1) do
       [] -> nil
       mods -> {app, mods}
     end
   end
+
   defp app_modules(_, _), do: nil
 
-  defp declares_nav_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :declared_nav, 0)
+  defp declares_nav_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :declared_nav, 0)
 
   # called by populate/0
   # defp index(mod, acc), do: acc ++ [mod] # only put the module name in ETS
@@ -117,5 +130,4 @@ defmodule Bonfire.Common.NavModules do
   # defp index(acc, declaring_module, _) do
   #   warn(declaring_module, "Skip")
   # end
-
 end

@@ -20,7 +20,9 @@ defmodule Bonfire.Common.Enums do
       when is_list(list) and is_function(fun, 1),
       do: group(list, %{}, fun)
 
-  defp group([x | xs], acc, fun), do: group(xs, group_item(fun.(x), x, acc), fun)
+  defp group([x | xs], acc, fun),
+    do: group(xs, group_item(fun.(x), x, acc), fun)
+
   defp group([], acc, _), do: acc
 
   defp group_item(key, value, acc)
@@ -33,7 +35,9 @@ defmodule Bonfire.Common.Enums do
       when is_list(list) and is_function(fun, 1),
       do: group_map(list, %{}, fun)
 
-  defp group_map([x | xs], acc, fun), do: group_map(xs, group_map_item(fun.(x), acc), fun)
+  defp group_map([x | xs], acc, fun),
+    do: group_map(xs, group_map_item(fun.(x), acc), fun)
+
   defp group_map([], acc, _), do: acc
 
   defp group_map_item({key, value}, acc)

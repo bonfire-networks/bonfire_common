@@ -26,9 +26,7 @@ defmodule Bonfire.Common.Config do
   def require_extension_config!(extension) do
     if !has_extension_config?(extension) do
       compilation_error(
-        "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{
-          extension
-        }/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository and then customise the copied config as necessary"
+        "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{extension}/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository and then customise the copied config as necessary"
       )
     end
   end
@@ -52,7 +50,9 @@ defmodule Bonfire.Common.Config do
   def get_ext!(module_or_otp_app, key) do
     case get_ext(module_or_otp_app, key, nil) do
       nil ->
-        compilation_error("Missing configuration value: #{inspect([module_or_otp_app, key], pretty: true)}")
+        compilation_error(
+          "Missing configuration value: #{inspect([module_or_otp_app, key], pretty: true)}"
+        )
 
       any ->
         any
@@ -111,8 +111,8 @@ defmodule Bonfire.Common.Config do
     case get_ext(module_or_otp_app) do
       nil ->
         compilation_error(
-        "Missing configuration for extension #{maybe_extension_loaded(module_or_otp_app)}"
-      )
+          "Missing configuration for extension #{maybe_extension_loaded(module_or_otp_app)}"
+        )
 
       any ->
         any
@@ -126,8 +126,9 @@ defmodule Bonfire.Common.Config do
   def put([key], value, otp_app), do: put(key, value, otp_app)
 
   def put([parent_key | keys], value, otp_app) do
+    # handle nested config
     value =
-      get(parent_key, [], otp_app) # handle nested config
+      get(parent_key, [], otp_app)
       # |> debug("get existing")
       |> put_in(keys_with_fallback(keys), value)
 
@@ -161,8 +162,10 @@ defmodule Bonfire.Common.Config do
       fn
         :get, data, next ->
           next.(Keyword.get(data, key, []))
+
         :get_and_update, data, next ->
           value = Keyword.get(data, key, [])
+
           case next.(value) do
             {get, update} -> {get, Keyword.put(data, key, update)}
             :pop -> {value, Keyword.delete(data, key)}
@@ -203,7 +206,6 @@ defmodule Bonfire.Common.Config do
     Application.delete_env(otp_app, key, persistent: true)
   end
 
-
   @doc """
   Constructs a key path for settings/config, which always starts with an app or extension name (which defaults to the main OTP app)
 
@@ -224,31 +226,38 @@ defmodule Bonfire.Common.Config do
   """
   def keys_tree(keys) when is_list(keys) do
     maybe_module_or_otp_app = List.first(keys)
+
     otp_app = maybe_extension_loaded!(maybe_module_or_otp_app) || top_level_otp_app()
 
-    if maybe_module_or_otp_app !=otp_app do
-      [otp_app] ++ keys # add the module name to the key tree
+    if maybe_module_or_otp_app != otp_app do
+      # add the module name to the key tree
+      [otp_app] ++ keys
     else
       keys
     end
   end
-  def keys_tree({maybe_module_or_otp_app, tree}) do
-    otp_app = maybe_extension_loaded!(maybe_module_or_otp_app) || top_level_otp_app()
-    |> debug("otp_app for #{inspect maybe_module_or_otp_app}")
 
-    if maybe_module_or_otp_app !=otp_app do
-      {otp_app, [{maybe_module_or_otp_app, tree}]} # add the module name to the key tree
+  def keys_tree({maybe_module_or_otp_app, tree}) do
+    otp_app =
+      maybe_extension_loaded!(maybe_module_or_otp_app) ||
+        debug(
+          top_level_otp_app(),
+          "otp_app for #{inspect(maybe_module_or_otp_app)}"
+        )
+
+    if maybe_module_or_otp_app != otp_app do
+      # add the module name to the key tree
+      {otp_app, [{maybe_module_or_otp_app, tree}]}
     else
       {maybe_module_or_otp_app, tree}
     end
   end
-  def keys_tree(key), do: keys_tree([key])
 
+  def keys_tree(key), do: keys_tree([key])
 
   # some aliases to specific config keys for convienience
 
   def repo, do: get!(:repo_module)
-
 end
 
 # finally, check that bonfire_common is configured, required so that this module can function

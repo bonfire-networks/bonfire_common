@@ -20,7 +20,9 @@ defmodule Bonfire.Common.Extend do
   """
   def extension_enabled?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    Config.get_ext(extension, :disabled) != true and extension_loaded?(extension)
+
+    Config.get_ext(extension, :disabled) != true and
+      extension_loaded?(extension)
   end
 
   @doc """
@@ -33,28 +35,34 @@ defmodule Bonfire.Common.Extend do
   end
 
   def application_loaded?(extension) do
-    Enum.member?(Enum.map(Application.loaded_applications(), &elem(&1, 0)), extension)
+    Enum.member?(
+      Enum.map(Application.loaded_applications(), &elem(&1, 0)),
+      extension
+    )
   end
 
-  def maybe_extension_loaded(module_or_otp_app) when is_atom(module_or_otp_app) do
-    case maybe_module_loaded(module_or_otp_app) |> Application.get_application() do
+  def maybe_extension_loaded(module_or_otp_app)
+      when is_atom(module_or_otp_app) do
+    case maybe_module_loaded(module_or_otp_app)
+         |> Application.get_application() do
       nil ->
         module_or_otp_app
-        # |> debug("received an atom that isn't a module, return it as-is")
+
+      # |> debug("received an atom that isn't a module, return it as-is")
 
       otp_app ->
         otp_app
-        # |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
 
+        # |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
     end
   end
 
-  def maybe_extension_loaded!(module_or_otp_app) when is_atom(module_or_otp_app) do
+  def maybe_extension_loaded!(module_or_otp_app)
+      when is_atom(module_or_otp_app) do
     case maybe_extension_loaded(module_or_otp_app) do
       otp_app when otp_app == module_or_otp_app ->
-
         application_loaded = application_loaded?(module_or_otp_app)
-                              # |> debug("is it a loaded application?")
+        # |> debug("is it a loaded application?")
 
         if application_loaded, do: module_or_otp_app, else: nil
 
@@ -92,7 +100,6 @@ defmodule Bonfire.Common.Extend do
     config && config != []
   end
 
-
   def maybe_module_loaded(module) do
     if module_exists?(module), do: module
   end
@@ -109,10 +116,18 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  defmacro use_if_enabled(module, fallback_module \\ nil), do: quoted_use_if_enabled(module, fallback_module)
+  defmacro use_if_enabled(module, fallback_module \\ nil),
+    do: quoted_use_if_enabled(module, fallback_module)
 
   def quoted_use_if_enabled(module, fallback_module \\ nil)
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_use_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module) # TODO: clean this up?
+  # TODO: clean this up?
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module),
+    do:
+      quoted_use_if_enabled(
+        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
+        fallback_module
+      )
+
   def quoted_use_if_enabled(module, fallback_module) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to use")
@@ -129,10 +144,18 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  defmacro import_if_enabled(module, fallback_module \\ nil), do: quoted_import_if_enabled(module, fallback_module)
+  defmacro import_if_enabled(module, fallback_module \\ nil),
+    do: quoted_import_if_enabled(module, fallback_module)
 
   def quoted_import_if_enabled(module, fallback_module \\ nil)
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_import_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module)
+
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module),
+    do:
+      quoted_import_if_enabled(
+        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
+        fallback_module
+      )
+
   def quoted_import_if_enabled(module, fallback_module) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to import")
@@ -141,6 +164,7 @@ defmodule Bonfire.Common.Extend do
       end
     else
       warn(module, "Did not find module to import")
+
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           import unquote(fallback_module)
@@ -149,10 +173,18 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  defmacro require_if_enabled(module, fallback_module \\ nil), do: quoted_require_if_enabled(module, fallback_module)
+  defmacro require_if_enabled(module, fallback_module \\ nil),
+    do: quoted_require_if_enabled(module, fallback_module)
 
   def quoted_require_if_enabled(module, fallback_module \\ nil)
-  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module), do: quoted_require_if_enabled(module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(), fallback_module)
+
+  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module),
+    do:
+      quoted_require_if_enabled(
+        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
+        fallback_module
+      )
+
   def quoted_require_if_enabled(module, fallback_module) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to require")
@@ -168,6 +200,4 @@ defmodule Bonfire.Common.Extend do
       end
     end
   end
-
-
 end

@@ -23,11 +23,19 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     # TODO: less ugly
     skip = extras ++ [:skip, :todo, :fixme]
-    skip = if System.get_env("TEST_INSTANCE")=="yes", do: skip, else: [:test_instance] ++ skip # skip two-instances-required federation tests
+    # skip two-instances-required federation tests
+    skip =
+      if System.get_env("TEST_INSTANCE") == "yes",
+        do: skip,
+        else: [:test_instance] ++ skip
+
     skip = if System.get_env("CI"), do: [:skip_ci] ++ skip, else: skip
-    skip = if System.get_env("CI") || is_nil(chromedriver_path), do: [:browser] ++ skip, else: skip # skip browser automation tests in CI
+    # skip browser automation tests in CI
+    skip =
+      if System.get_env("CI") || is_nil(chromedriver_path),
+        do: [:browser] ++ skip,
+        else: skip
 
     debug(skip, "Skipping tests tagged with")
   end
-
 end

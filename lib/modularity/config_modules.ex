@@ -34,9 +34,10 @@ defmodule Bonfire.Common.ConfigModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of config modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of config modules...")
+      populate()
   end
 
   @spec config_module(query :: query) :: {:ok, atom} | {:error, :not_found}
@@ -61,13 +62,17 @@ defmodule Bonfire.Common.ConfigModules do
   def maybe_config_module(query) do
     with {:ok, module} <- config_module(query) do
       module
-    else _ ->
-      Utils.maybe_apply(query, :config_module, [], &config_function_error/2)
+    else
+      _ ->
+        Utils.maybe_apply(query, :config_module, [], &config_function_error/2)
     end
   end
 
   def config_function_error(error, _args) do
-    warn(error, "ConfigModules - there's no config module declared for this schema: 1) No function config_module/0 that returns this schema atom. 2)")
+    warn(
+      error,
+      "ConfigModules - there's no config module declared for this schema: 1) No function config_module/0 that returns this schema atom. 2)"
+    )
 
     nil
   end
@@ -87,14 +92,14 @@ defmodule Bonfire.Common.ConfigModules do
       |> Enum.filter(&declares_config_module?/1)
       # |> IO.inspect(limit: :infinity)
       |> Enum.reduce([], &index/2)
-      # |> debug()
+
+    # |> debug()
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
 
   def search_app_modules(search_path \\ search_path()) do
-    search_path
-    |> Enum.flat_map(&app_modules/1)
+    Enum.flat_map(search_path, &app_modules/1)
   end
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
@@ -102,10 +107,14 @@ defmodule Bonfire.Common.ConfigModules do
   defp app_modules(_, mods), do: mods
 
   # called by populate/0
-  defp search_path(), do: Application.fetch_env!(:bonfire, :config_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :config_modules_search_path)
 
   # called by populate/0
-  defp declares_config_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :config_module, 0)
+  defp declares_config_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :config_module, 0)
 
   # called by populate/0
   defp index(mod, acc), do: index(acc, mod, mod.config_module())
@@ -118,5 +127,4 @@ defmodule Bonfire.Common.ConfigModules do
   defp index(acc, declaring_module, _) do
     warn(declaring_module, "Skip")
   end
-
 end

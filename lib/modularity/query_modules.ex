@@ -29,39 +29,43 @@ defmodule Bonfire.Common.QueryModules do
       )
 
   def maybe_query(schema, args, fallback_fun)
-      when is_atom(schema)
-      and ( is_list(args) or is_map(args) or is_atom(args) or is_tuple(args) )
-      and is_function(fallback_fun) do
-
+      when is_atom(schema) and
+             (is_list(args) or is_map(args) or is_atom(args) or is_tuple(args)) and
+             is_function(fallback_fun) do
     case maybe_query_module(schema) do
       query_module when is_atom(query_module) and not is_nil(query_module) ->
-
         debug(args, "maybe_query args")
-        paginate = if is_list(args), do: e(Enum.at(args, 0), :paginate, nil) || e(Enum.at(args, 1), :paginate, nil)
 
-        if not is_nil(paginate) and paginate != %{} and function_exported?(query_module, :query_paginated, length(args)) do
+        paginate =
+          if is_list(args),
+            do:
+              e(Enum.at(args, 0), :paginate, nil) ||
+                e(Enum.at(args, 1), :paginate, nil)
 
-            Utils.maybe_apply(
-              query_module,
-              :query_paginated,
-              args,
-              fallback_fun
-            )
-
+        if not is_nil(paginate) and paginate != %{} and
+             function_exported?(query_module, :query_paginated, length(args)) do
+          Utils.maybe_apply(
+            query_module,
+            :query_paginated,
+            args,
+            fallback_fun
+          )
         else
           Utils.maybe_apply(
-              query_module,
-              :query,
-              args,
-              fallback_fun
-            )
+            query_module,
+            :query,
+            args,
+            fallback_fun
+          )
         end
 
-
       not_found ->
-        query_function_error("No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect not_found})", args, :info)
+        query_function_error(
+          "No queries_modules/0 on #{schema} that returns this context module 3) A malfunction of the QueriesModule service (got: #{inspect(not_found)})",
+          args,
+          :info
+        )
     end
-
   end
 
   def maybe_query(
@@ -78,7 +82,7 @@ defmodule Bonfire.Common.QueryModules do
   end
 
   def apply_error(error, args) do
-    warn("QueryModules - could not query: #{error} - Query args: #{inspect args}")
+    warn("QueryModules - could not query: #{error} - Query args: #{inspect(args)}")
 
     nil
   end
@@ -96,9 +100,10 @@ defmodule Bonfire.Common.QueryModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of query modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of query modules...")
+      populate()
   end
 
   @spec query_module(query :: query) :: {:ok, atom} | {:error, :not_found}
@@ -124,13 +129,17 @@ defmodule Bonfire.Common.QueryModules do
     with {:ok, module} <- query_module(query) do
       # IO.inspect(maybe_query_module: module)
       module
-    else _ ->
-      Utils.maybe_apply(query, :queries_module, [], &query_function_error/2)
+    else
+      _ ->
+        Utils.maybe_apply(query, :queries_module, [], &query_function_error/2)
     end
   end
 
   def query_function_error(error, _args, level \\ :info) do
-    warn(error, "QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2)")
+    warn(
+      error,
+      "QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2)"
+    )
 
     nil
   end
@@ -150,7 +159,8 @@ defmodule Bonfire.Common.QueryModules do
       |> Enum.filter(&declares_queries_module?/1)
       # |> IO.inspect
       |> Enum.reduce(%{}, &index/2)
-      # |> IO.inspect(label: "Query modules")
+
+    # |> IO.inspect(label: "Query modules")
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
@@ -160,10 +170,14 @@ defmodule Bonfire.Common.QueryModules do
   defp app_modules(_, mods), do: mods
 
   # called by populate/0
-  defp search_path(), do: Application.fetch_env!(:bonfire, :query_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :query_modules_search_path)
 
   # called by populate/0
-  defp declares_queries_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :queries_module, 0)
+  defp declares_queries_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :queries_module, 0)
 
   # called by populate/0
   defp index(mod, acc), do: index(acc, mod, mod.queries_module())
@@ -173,8 +187,6 @@ defmodule Bonfire.Common.QueryModules do
     Map.merge(acc, %{
       declaring_module => query_module,
       query_module => declaring_module
-      })
+    })
   end
-
-
 end

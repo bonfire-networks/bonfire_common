@@ -14,7 +14,9 @@ defmodule Bonfire.Common.Repo do
   import Untangle
   use Arrows
 
-  alias Pointers.{Changesets, Pointer}
+  alias Pointers.Changesets
+  alias Pointers.Pointer
+
   alias Ecto.Changeset
 
   @default_cursor_fields [cursor_fields: [{:id, :desc}]]
@@ -35,10 +37,8 @@ defmodule Bonfire.Common.Repo do
       alias Bonfire.Common.Repo
 
       import Untangle
-
     end
   end
-
 
   # @doc """
   # Dynamically loads the repository url from the
@@ -52,7 +52,8 @@ defmodule Bonfire.Common.Repo do
   Run a transaction, similar to `Repo.transaction/1`, but it expects an ok or error
   tuple. If an error tuple is returned, the transaction is aborted.
   """
-  @spec transact_with(fun :: (() -> {:ok, any} | {:error, any})) :: {:ok, any} | {:error, any}
+  @spec transact_with(fun :: (() -> {:ok, any} | {:error, any})) ::
+          {:ok, any} | {:error, any}
   def transact_with(fun) do
     transaction(fn ->
       ret = fun.()
@@ -84,7 +85,7 @@ defmodule Bonfire.Common.Repo do
   Like `insert/1`, but understands remapping changeset errors to attr
   names from config (and only config, no overrides at present!)
   """
-  def put(%Changeset{}=changeset) do
+  def put(%Changeset{} = changeset) do
     with {:error, changeset} <- insert(changeset) do
       Changesets.rewrite_constraint_errors(changeset)
     end
@@ -101,6 +102,7 @@ defmodule Bonfire.Common.Repo do
   end
 
   defp put_many([], acc), do: {:ok, acc}
+
   defp put_many([{k, v} | is], acc) do
     case insert(v) do
       {:ok, v} -> put_many(is, Map.put(acc, k, v))
@@ -108,7 +110,8 @@ defmodule Bonfire.Common.Repo do
     end
   end
 
-  def upsert(cs, attrs, conflict_target \\ [:id]) when is_struct(cs) or is_atom(cs) and not is_struct(attrs) do
+  def upsert(cs, attrs, conflict_target \\ [:id])
+      when is_struct(cs) or (is_atom(cs) and not is_struct(attrs)) do
     insert(
       cs,
       # on_conflict: {:replace_all_except, conflict_target},
@@ -128,7 +131,8 @@ defmodule Bonfire.Common.Repo do
 
   def insert_or_ignore(cs) when is_struct(cs) or is_atom(cs) do
     cs
-    |> Map.put(:repo_opts, [on_conflict: :ignore]) # FIXME?
+    # FIXME?
+    |> Map.put(:repo_opts, on_conflict: :ignore)
     # |> debug("insert_or_ignore cs")
     |> insert(on_conflict: :nothing)
   rescue
@@ -147,7 +151,7 @@ defmodule Bonfire.Common.Repo do
   Like Repo.one, but returns an ok/error tuple.
   """
   def single(q) do
-    one(q |> limit(1)) |> ret_single()
+    one(limit(q, 1)) |> ret_single()
   rescue
     exception in Postgrex.Error ->
       handle_postgrex_exception(exception, __STACKTRACE__)
@@ -163,6 +167,7 @@ defmodule Bonfire.Common.Repo do
 
   defp ret_find(nil, changeset, field),
     do: {:error, Changeset.add_error(changeset, field, "not_found")}
+
   defp ret_find(other, _changeset, _field), do: {:ok, other}
 
   @doc "Like Repo.get, but returns an ok/error tuple"
@@ -188,37 +193,51 @@ defmodule Bonfire.Common.Repo do
     |> all()
   end
 
-  defp pagination_defaults, do: [
-    limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),                           # sets the default limit TODO: put in config
-    maximum_limit: 200,                  # sets the maximum limit TODO: put in config
-    include_total_count: false,           # include total count by default?
-    total_count_primary_key_field: Pointers.ULID # sets the total_count_primary_key_field to uuid for calculating total_count
-  ]
+  defp pagination_defaults,
+    do: [
+      # sets the default limit TODO: put in config
+      limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),
+      # sets the maximum limit TODO: put in config
+      maximum_limit: 200,
+      # include total count by default?
+      include_total_count: false,
+      # sets the total_count_primary_key_field to uuid for calculating total_count
+      total_count_primary_key_field: Pointers.ULID
+    ]
 
   defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+
   defp paginate(queryable, opts, repo_opts) when is_list(opts) do
-    opts = (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts) |> Keyword.new()
+    opts =
+      (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
+      |> Keyword.new()
+
     # info(opts, "opts")
-    Keyword.merge(pagination_defaults(), Keyword.merge(@default_cursor_fields, opts))
+    Keyword.merge(
+      pagination_defaults(),
+      Keyword.merge(@default_cursor_fields, opts)
+    )
     # |> debug("merged opts")
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
-  defp paginate(queryable, opts, repo_opts) when is_map(opts) and not is_struct(opts) do
+
+  defp paginate(queryable, opts, repo_opts)
+       when is_map(opts) and not is_struct(opts) do
     # info(opts, "opts")
-    paginate(queryable, opts |> Utils.to_options(), repo_opts)
+    paginate(queryable, Utils.to_options(opts), repo_opts)
   end
+
   defp paginate(queryable, _, repo_opts) do
     paginate(queryable, @default_cursor_fields, repo_opts)
   end
 
-
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
-  def many_paginated(%{order_bys: order} = queryable, opts, repo_opts) when is_list(order) and length(order) > 0 do
+  def many_paginated(%{order_bys: order} = queryable, opts, repo_opts)
+      when is_list(order) and length(order) > 0 do
     # info(opts, "opts")
     # debug(order, "order_bys")
-    queryable
-    |> paginate(opts, repo_opts)
+    paginate(queryable, opts, repo_opts)
   end
 
   def many_paginated(queryable, opts, repo_opts) do
@@ -229,7 +248,6 @@ defmodule Bonfire.Common.Repo do
     )
     |> paginate(opts, repo_opts)
   end
-
 
   def many(query, opts \\ []) do
     all(query, opts)
@@ -246,8 +264,16 @@ defmodule Bonfire.Common.Repo do
 
   defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil)
 
-  defp handle_postgrex_exception(%{postgres: %{code: :undefined_file} = pg}, _, nil) do
-    error(pg, "Database error, probably a missing extension (eg. if using geolocation, you need to run Postgis)")
+  defp handle_postgrex_exception(
+         %{postgres: %{code: :undefined_file} = pg},
+         _,
+         nil
+       ) do
+    error(
+      pg,
+      "Database error, probably a missing extension (eg. if using geolocation, you need to run Postgis)"
+    )
+
     {:error, :missing_db_extension}
   end
 
@@ -271,9 +297,7 @@ defmodule Bonfire.Common.Repo do
 
   defp rollback_unexpected(ret) do
     error(
-      "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{
-        inspect(ret)
-      }"
+      "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{inspect(ret)}"
     )
 
     rollback("transact_with_unexpected_case")
@@ -298,5 +322,6 @@ defmodule Bonfire.Common.Repo do
     Ecto.Adapters.SQL.query!(__MODULE__, raw_sql, data, opts)
   end
 
-  defdelegate maybe_preload(obj, preloads, opts \\ []), to: Bonfire.Common.Repo.Preload
+  defdelegate maybe_preload(obj, preloads, opts \\ []),
+    to: Bonfire.Common.Repo.Preload
 end

@@ -39,8 +39,9 @@ defmodule Bonfire.Common.Pointers.Queries do
     case Utils.ulid(id) do
       id when is_binary(id) ->
         where(q, [main_object: p], p.id == ^id)
+
       _ ->
-        throw error("Invalid ID")
+        throw(error("Invalid ID"))
     end
   end
 
@@ -49,19 +50,20 @@ defmodule Bonfire.Common.Pointers.Queries do
   end
 
   def filter(q, {:username, username}) when is_binary(username) do
-   q
-  |> proload(:character)
-  |> where([character: character], character.username == ^username)
+    q
+    |> proload(:character)
+    |> where([character: character], character.username == ^username)
   end
 
-  def filter(q, {:canonical_uri, canonical_uri}) when is_binary(canonical_uri) do
-   q
-  |> proload(peered: [:peer])
-  |> where([peered: peered], peered.canonical_uri == ^canonical_uri)
+  def filter(q, {:canonical_uri, canonical_uri})
+      when is_binary(canonical_uri) do
+    q
+    |> proload(peered: [:peer])
+    |> where([peered: peered], peered.canonical_uri == ^canonical_uri)
   end
 
-  def filter(q, {:table, id}) when is_binary(id), do:
-    where(q, [main_object: p], p.table_id == ^id)
+  def filter(q, {:table, id}) when is_binary(id),
+    do: where(q, [main_object: p], p.table_id == ^id)
 
   def filter(q, {:table, name}) when is_atom(name),
     do: filter(q, {:table, Pointers.Tables.id!(name)})
@@ -76,9 +78,8 @@ defmodule Bonfire.Common.Pointers.Queries do
     select(q, ^fields)
   end
 
-  def filter(q, filter)  do
+  def filter(q, filter) do
     warn(filter, "Unknown filter")
     q
   end
-
 end

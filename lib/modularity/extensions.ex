@@ -1,15 +1,14 @@
 defmodule Bonfire.Common.Extensions do
-
   @prefix "bonfire_"
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
   import Untangle
   alias Bonfire.Common.Utils
+
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
   def data() do
-
     deps = deps_list()
 
     feature_extensions = filter_bonfire(deps, true, @prefix)
@@ -35,7 +34,8 @@ defmodule Bonfire.Common.Extensions do
 
   def deps_list(opts \\ []) do
     # Bonfire.Common.Extend.loaded_deps()
-    Bonfire.Application.deps() # load compile-time cached list
+    # load compile-time cached list
+    Bonfire.Application.deps()
     |> prepare_list(opts)
     |> List.flatten()
     |> Enum.uniq_by(&dep_name(&1))
@@ -58,7 +58,9 @@ defmodule Bonfire.Common.Extensions do
           [_, _] -> only
           _ -> !only
         end
-      _ -> !only
+
+      _ ->
+        !only
     end)
   end
 
@@ -66,44 +68,70 @@ defmodule Bonfire.Common.Extensions do
     Enum.filter(deps, fn
       %{} = dep ->
         # debug(dep)
-        repo = Utils.e(dep, :opts, :git, nil) || ( Utils.e(dep, :opts, :lock, {nil, nil}) |> elem(1) )
+        repo =
+          Utils.e(dep, :opts, :git, nil) ||
+            Utils.e(dep, :opts, :lock, {nil, nil}) |> elem(1)
+
         # debug(repo)
-        if is_binary(repo) and String.contains?(repo, "bonfire"), do: only, else: !only
-      _ -> !only
+        if is_binary(repo) and String.contains?(repo, "bonfire"),
+          do: only,
+          else: !only
+
+      _ ->
+        !only
     end)
   end
 
-  def get_version(%{scm: Mix.SCM.Path}=dep), do: " (local fork based on "<>get_branch(dep)<>" "<>do_get_version(dep)<>")"
+  def get_version(%{scm: Mix.SCM.Path} = dep),
+    do:
+      " (local fork based on " <>
+        get_branch(dep) <> " " <> do_get_version(dep) <> ")"
+
   def get_version(dep), do: do_get_version(dep)
 
   defp do_get_version(%{status: {:ok, version}}), do: version
   defp do_get_version(%{requirement: version}), do: version
   defp do_get_version(_), do: ""
 
-  def get_branch(%{opts: opts}) when is_list(opts), do: get_branch(Enum.into(opts, %{}))
+  def get_branch(%{opts: opts}) when is_list(opts),
+    do: get_branch(Enum.into(opts, %{}))
+
   def get_branch(%{git: _, branch: branch}), do: branch
   def get_branch(%{lock: {:git, _url, _, [branch: branch]}}), do: branch
   def get_branch(dep), do: ""
 
-  def get_link(%{opts: opts}) when is_list(opts), do: get_link(Enum.into(opts, %{}))
+  def get_link(%{opts: opts}) when is_list(opts),
+    do: get_link(Enum.into(opts, %{}))
+
   def get_link(%{hex: hex}), do: "https://hex.pm/packages/#{hex}"
-  def get_link(%{lock: {:git, url, _, [branch: branch]}}), do: "#{url}/tree/#{branch}"
+
+  def get_link(%{lock: {:git, url, _, [branch: branch]}}),
+    do: "#{url}/tree/#{branch}"
+
   def get_link(%{git: url, branch: branch}), do: "#{url}/tree/#{branch}"
   def get_link(%{lock: {:git, url, _, _}}), do: url
   def get_link(%{git: url}), do: url
+
   def get_link(dep) do
     IO.inspect(dep)
     "#"
   end
 
-  def get_version_link(%{opts: opts}) when is_list(opts), do: get_version_link(Enum.into(opts, %{}))
-  def get_version_link(%{path: file}), do: "/settings/extensions/diff?local="<>file
-  def get_version_link(%{lock: {:git, "https://github.com/"<>url, ref, [branch: branch]}}), do: "https://github.com/#{url}/compare/#{ref}...#{branch}"
+  def get_version_link(%{opts: opts}) when is_list(opts),
+    do: get_version_link(Enum.into(opts, %{}))
+
+  def get_version_link(%{path: file}),
+    do: "/settings/extensions/diff?local=" <> file
+
+  def get_version_link(%{
+        lock: {:git, "https://github.com/" <> url, ref, [branch: branch]}
+      }),
+      do: "https://github.com/#{url}/compare/#{ref}...#{branch}"
+
   def get_version_link(dep), do: get_link(dep)
 
   defp dep_name(%Mix.Dep{app: dep}) when is_atom(dep), do: dep
   defp dep_name(dep) when is_tuple(dep), do: elem(dep, 0) |> dep_name()
   defp dep_name(dep) when is_atom(dep), do: dep
   defp dep_name(dep) when is_binary(dep), do: dep
-
 end

@@ -44,18 +44,34 @@ defmodule Bonfire.Common.TestSummary do
     {:noreply, config}
   end
 
-  def handle_test(%{state: nil} = test, _config), do: post_test(test, :ok, ["Test OK"])
-  def handle_test(%{state: {:invalid, module}} = test, _config), do: post_test(test, "The test seems invalid (#{inspect module})", ["Test fails"])
+  def handle_test(%{state: nil} = test, _config),
+    do: post_test(test, :ok, ["Test OK"])
+
+  def handle_test(%{state: {:invalid, module}} = test, _config),
+    do:
+      post_test(test, "The test seems invalid (#{inspect(module)})", [
+        "Test fails"
+      ])
 
   # NOTE: skipped/excluded tests are not included in :module_finished
-  def handle_test(%{state: {:skipped, reason}} = test, _config), do: post_test(test, "The test was skipped (#{reason})", ["Test skipped"])
-  def handle_test(%{state: {:excluded, reason}} = test, _config), do: post_test(test, "The test was excluded (#{reason})", ["Test skipped"])
+  def handle_test(%{state: {:skipped, reason}} = test, _config),
+    do: post_test(test, "The test was skipped (#{reason})", ["Test skipped"])
+
+  def handle_test(%{state: {:excluded, reason}} = test, _config),
+    do: post_test(test, "The test was excluded (#{reason})", ["Test skipped"])
 
   def handle_test(%{state: {:failed, failures}} = test, config) do
-    error = ExUnit.Formatter.format_test_failure(test, failures, 1, 90000, &formatter(&1, &2, config))
-    |> String.split(["\n"])
-    |> Enum.drop(2)
-    |> Enum.join("\n")
+    error =
+      ExUnit.Formatter.format_test_failure(
+        test,
+        failures,
+        1,
+        90000,
+        &formatter(&1, &2, config)
+      )
+      |> String.split(["\n"])
+      |> Enum.drop(2)
+      |> Enum.join("\n")
 
     post_test(test, error, ["Test fails"])
   end
@@ -67,6 +83,7 @@ defmodule Bonfire.Common.TestSummary do
       :ok ->
         # success
         nil
+
       _ ->
         # IO.puts(result)
         :ets.insert_new(@ets_table_name, {test.name, {tags, status_or_comment}})
@@ -80,6 +97,4 @@ defmodule Bonfire.Common.TestSummary do
   # defp formatter(:extra_info, _msg, _config), do: ""
 
   defp formatter(_, msg, _config), do: msg
-
-
 end

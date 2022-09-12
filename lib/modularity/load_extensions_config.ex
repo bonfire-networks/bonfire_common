@@ -19,19 +19,22 @@ defmodule Bonfire.Common.Config.LoadExtensionsConfig do
     if Code.ensure_loaded?(:telemetry),
       do: :telemetry.span([:settings, :load_configs], %{}, &load_configs/0),
       else: load_configs()
+
     :ignore
   end
 
   def load_configs() do
     extension_configs = Bonfire.Common.ConfigModules.data()
     # |> debug()
-    if is_list(extension_configs) and length(extension_configs) >0 do
+    if is_list(extension_configs) and length(extension_configs) > 0 do
       Enum.each(extension_configs, & &1.config)
-      Logger.info("Extensions' default settings were loaded into runtime config: #{inspect extension_configs}")
+
+      Logger.info(
+        "Extensions' default settings were loaded into runtime config: #{inspect(extension_configs)}"
+      )
     else
       Logger.info("Note: No extensions settings to load into runtime config")
       {:ok, %{skip: "No config loaded"}}
     end
   end
-
 end

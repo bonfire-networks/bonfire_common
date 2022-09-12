@@ -24,32 +24,39 @@ defmodule Bonfire.Common.Pointers.Tables do
 
   def many(filters \\ []), do: {:ok, repo().many(Queries.query(Table, filters))}
 
-
   @doc """
   Retrieves the Table that a pointer points to
   Note: Throws an error if the table cannot be found
   """
   @spec table!(Pointer.t()) :: Table.t()
   def table!(%Pointer{table_id: id}), do: table!(id)
-  def table!(schema_or_tablename_or_id), do: Pointers.Tables.table!(schema_or_tablename_or_id)
+
+  def table!(schema_or_tablename_or_id),
+    do: Pointers.Tables.table!(schema_or_tablename_or_id)
 
   def schema_or_table!(schema_or_tablename_or_id) do
     # TODO
     with {:ok, table} <- Pointers.Tables.table(schema_or_tablename_or_id) do
       table.schema || table.table
-    else _e ->
-      with {:ok, table} <- one(schema_or_tablename_or_id) do
-        table.schema || table.table
-      else _e ->
-        raise NotFound
-      end
+    else
+      _e ->
+        with {:ok, table} <- one(schema_or_tablename_or_id) do
+          table.schema || table.table
+        else
+          _e ->
+            raise NotFound
+        end
     end
   end
 
   def table_fields(table) when is_binary(table) do
-    with {:ok, %{rows: rows}} <- repo().query("SELECT column_name FROM information_schema.columns WHERE TABLE_NAME='#{table}'") do
+    with {:ok, %{rows: rows}} <-
+           repo().query(
+             "SELECT column_name FROM information_schema.columns WHERE TABLE_NAME='#{table}'"
+           ) do
       for [column] <- rows do
-        String.to_atom(column) # naughty but limited to existing DB fields
+        # naughty but limited to existing DB fields
+        String.to_atom(column)
       end
     end
   end
@@ -81,7 +88,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   def list_tables_debug() do
     Enum.concat(list_tables_db_vs_code(), list_tables_code_vs_db())
     |> Enum.sort(:desc)
-    |> Enum.dedup
+    |> Enum.dedup()
   end
 
   defp list_tables_db_vs_code() do
@@ -93,38 +100,36 @@ defmodule Bonfire.Common.Pointers.Tables do
         else
           {:error, "Code and DB have differing IDs for the same table", name, p.id, t.id}
         end
-      else e ->
-        {:error, "Table present in DB but not in code", name}
+      else
+        e ->
+          {:error, "Table present in DB but not in code", name}
       end
     end)
     |> Enum.sort(:desc)
   end
-
 
   defp list_tables_code_vs_db() do
     db_tables = list_tables(:db)
 
     list_tables(:code)
-    |> Enum.map(fn {schema, p} when is_atom(schema) ->
+    |> Enum.map(fn
+      {schema, p} when is_atom(schema) ->
+        t = Map.get(db_tables, p.table)
 
-      t = Map.get(db_tables, p.table)
-
-      if not is_nil(t) do
-        if t.id == p.id do
-          {:ok, p.table}
+        if not is_nil(t) do
+          if t.id == p.id do
+            {:ok, p.table}
+          else
+            {:error, "Code and DB have differing IDs for the same table", p.table, p.id, t.id}
+          end
         else
-          {:error, "Code and DB have differing IDs for the same table", p.table, p.id, t.id}
+          {:error, "Table present in code but not in DB", p.table}
         end
-      else
-        {:error, "Table present in code but not in DB", p.table}
-      end
 
-      _ -> nil
+      _ ->
+        nil
     end)
     |> Enum.sort(:desc)
-    |> Enum.dedup
+    |> Enum.dedup()
   end
-
-
-
 end

@@ -46,6 +46,7 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
   end
 
   defmacro declare_nav_link(name, opts \\ [])
+
   defmacro declare_nav_link(name, opts) do
     quote do
       def declared_nav do
@@ -57,12 +58,12 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
 
           name ->
             generate_link(name, __MODULE__, unquote(opts))
-          # Enum.into(unquote(opts), %{
-          #   name: unquote(name),
-          #   module: __MODULE__,
-          #   href: unquote(opts)[:href] || path(__MODULE__),
-          #   type: :link
-          # })
+            # Enum.into(unquote(opts), %{
+            #   name: unquote(name),
+            #   module: __MODULE__,
+            #   href: unquote(opts)[:href] || path(__MODULE__),
+            #   type: :link
+            # })
         end
       end
     end
@@ -77,7 +78,15 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
     })
   end
 
-  def component_type(module), do: List.first(module.__info__(:attributes)[:component_type] || module.__info__(:attributes)[:behaviour])
+  def component_type(module),
+    do:
+      List.first(
+        module.__info__(:attributes)[:component_type] ||
+          module.__info__(:attributes)[:behaviour]
+      )
 
-  def component_props(module), do: Surface.API.get_props(module) |> Enum.map(&Map.drop(&1, [:opts_ast, :func, :line]))
+  def component_props(module),
+    do:
+      Surface.API.get_props(module)
+      |> Enum.map(&Map.drop(&1, [:opts_ast, :func, :line]))
 end

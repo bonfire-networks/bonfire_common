@@ -1,12 +1,10 @@
 defmodule Bonfire.Common.Extensions.Diff do
-
   import Untangle
 
   def generate_diff(repo_path) do
     case repo_latest_diff(repo_path) do
       {:ok, diff} ->
-
-        #IO.inspect(diff)
+        # IO.inspect(diff)
         # render_diff(diff)
         {:ok, diff}
 
@@ -22,14 +20,12 @@ defmodule Bonfire.Common.Extensions.Diff do
   def repo_latest_diff(repo_path) do
     path_diff = tmp_path(Regex.replace(~r/[^a-z0-9_]+/i, repo_path, "_"))
 
-    with  :ok <- git_fetch(repo_path),
-          :ok <- git_pre_configure(repo_path),
-          :ok <- git_add_all(repo_path),
-          :ok <- git_diff(repo_path, path_diff),
-          {:ok, diff} <- parse_repo_latest_diff(path_diff) do
-
+    with :ok <- git_fetch(repo_path),
+         :ok <- git_pre_configure(repo_path),
+         :ok <- git_add_all(repo_path),
+         :ok <- git_diff(repo_path, path_diff),
+         {:ok, diff} <- parse_repo_latest_diff(path_diff) do
       {:ok, diff}
-
     else
       error ->
         error(error, "Failed to create diff for #{repo_path} at #{path_diff}")
@@ -37,12 +33,12 @@ defmodule Bonfire.Common.Extensions.Diff do
   end
 
   def parse_repo_latest_diff(path_diff) do
-    with diff when is_binary(diff) and diff !="" <- File.read!(path_diff) do
-        diff
-        # |> debug("path_diff")
-        |> GitDiff.parse_patch()
-    else _ ->
-      error("No diff patch generated")
+    with diff when is_binary(diff) and diff != "" <- File.read!(path_diff) do
+      # |> debug("path_diff")
+      GitDiff.parse_patch(diff)
+    else
+      _ ->
+        error("No diff patch generated")
     end
   end
 
@@ -61,48 +57,45 @@ defmodule Bonfire.Common.Extensions.Diff do
   end
 
   def git_pre_configure(repo_path) do
-
-  # Enable better diffing
-    ["config", "core.attributesfile", "../../config/.gitattributes"]
-    |> git!(repo_path)
+    # Enable better diffing
+    git!(["config", "core.attributesfile", "../../config/.gitattributes"], repo_path)
   end
 
   def git_fetch(repo_path) do
-
-  # Fetch remote data
-    ["fetch", "--force", "--quiet"]
+    # Fetch remote data
     # |> Kernel.++(tags_switch(opts[:tag]))
-    |> git!(repo_path)
+    git!(["fetch", "--force", "--quiet"], repo_path)
   end
 
   def git_add_all(repo_path) do
-
-  # Add local changes for diffing purposes
-    ["add", "."]
-    |> git!(repo_path)
+    # Add local changes for diffing purposes
+    git!(["add", "."], repo_path)
   end
 
   def git_diff(repo_path, path_output, extra_opt \\ "--cached") do
-    git!([
+    git!(
+      [
         "-c",
         "core.quotepath=false",
         "-c",
         "diff.algorithm=histogram",
         "diff",
-      #  "--no-index", # specify if we're diffing a repo or two paths
-        extra_opt, # optionally diff staged changes (older git versions don't support the equivalent --staged)
+        #  "--no-index", # specify if we're diffing a repo or two paths
+        # optionally diff staged changes (older git versions don't support the equivalent --staged)
+        extra_opt,
         "--no-color",
-        "--output=#{path_output}",
-      ], repo_path)
+        "--output=#{path_output}"
+      ],
+      repo_path
+    )
   end
 
   def git!(args, repo_path \\ ".", into \\ default_into()) do
     root = root()
-    debug(inspect %{repo: repo_path, git: args, cwd: root})
+    debug(inspect(%{repo: repo_path, git: args, cwd: root}))
     original_cwd = root
 
     File.cd!(repo_path, fn ->
-
       opts = cmd_opts(into: into, stderr_to_stdout: true)
 
       case System.cmd("git", args, opts) do
@@ -111,7 +104,9 @@ defmodule Bonfire.Common.Extensions.Diff do
           :ok
 
         {response, _} ->
-          raise("Command \"git #{Enum.join(args, " ")}\" failed with reason: #{inspect response}")
+          raise(
+            "Command \"git #{Enum.join(args, " ")}\" failed with reason: #{inspect(response)}"
+          )
       end
     end)
   end

@@ -34,9 +34,10 @@ defmodule Bonfire.Common.WidgetModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of widget modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of widget modules...")
+      populate()
   end
 
   @doc "Get a widget identified by schema"
@@ -55,7 +56,10 @@ defmodule Bonfire.Common.WidgetModules do
   end
 
   def widget_function_error(error, _args) do
-    warn(error, "WidgetModules - there's no widget module declared for this schema: 1) No function declared_widget/0 that returns this schema atom. 2)")
+    warn(
+      error,
+      "WidgetModules - there's no widget module declared for this schema: 1) No function declared_widget/0 that returns this schema atom. 2)"
+    )
 
     nil
   end
@@ -75,14 +79,14 @@ defmodule Bonfire.Common.WidgetModules do
       |> Enum.filter(&declares_widget_module?/1)
       # |> IO.inspect(limit: :infinity)
       |> Enum.reduce([], &index/2)
-      # |> debug()
+
+    # |> debug()
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
 
   def search_app_modules(search_path \\ search_path()) do
-    search_path
-    |> Enum.flat_map(&app_modules/1)
+    Enum.flat_map(search_path, &app_modules/1)
   end
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
@@ -90,13 +94,19 @@ defmodule Bonfire.Common.WidgetModules do
   defp app_modules(_, mods), do: mods
 
   # called by populate/0
-  defp search_path(), do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
 
   # called by populate/0
-  defp declares_widget_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :declared_widget, 0)
+  defp declares_widget_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :declared_widget, 0)
 
   # called by populate/0
-  defp index(mod, acc), do: acc ++ [mod] # only put the module name in ETS
+  # only put the module name in ETS
+  defp index(mod, acc), do: acc ++ [mod]
+
   # defp index(mod, acc), do: index(acc, mod, mod.declared_widget()) # put data in ETS
 
   # called by index/2
@@ -107,5 +117,4 @@ defmodule Bonfire.Common.WidgetModules do
   # defp index(acc, declaring_module, _) do
   #   warn(declaring_module, "Skip")
   # end
-
 end

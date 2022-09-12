@@ -25,6 +25,7 @@ defmodule Bonfire.Common.HTTP.Connection do
     |> Keyword.merge(adapter_options)
     |> Keyword.merge(proxy: proxy_url)
     |> Keyword.merge(passed_options)
+
     # |> IO.inspect()
   end
 end

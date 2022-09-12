@@ -34,9 +34,7 @@ defmodule Bonfire.Common.ContextModules do
   def maybe_apply(schema_or_context, fun, args, fallback_fun)
       when is_atom(schema_or_context) and is_atom(fun) and is_list(args) and
              is_function(fallback_fun) do
-
     if module_enabled?(schema_or_context) do
-
       object_context_module = maybe_context_module(schema_or_context)
 
       Utils.maybe_apply(
@@ -45,7 +43,6 @@ defmodule Bonfire.Common.ContextModules do
         args,
         fallback_fun
       )
-
     else
       fallback_fun.(
         "ContextModules: Module could be found: #{schema_or_context}",
@@ -69,11 +66,12 @@ defmodule Bonfire.Common.ContextModules do
   end
 
   def apply_error(error, args) do
-    error("Bonfire.Common.ContextModules: Error running function: #{error} with args: (#{inspect args})")
+    error(
+      "Bonfire.Common.ContextModules: Error running function: #{error} with args: (#{inspect(args)})"
+    )
 
     {:error, error}
   end
-
 
   use GenServer, restart: :transient
 
@@ -88,9 +86,10 @@ defmodule Bonfire.Common.ContextModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of context modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of context modules...")
+      populate()
   end
 
   @spec context_module(query :: query) :: {:ok, atom} | {:error, :not_found}
@@ -115,13 +114,17 @@ defmodule Bonfire.Common.ContextModules do
   def maybe_context_module(query) do
     with {:ok, module} <- context_module(query) do
       module
-    else _ ->
-      Utils.maybe_apply(query, :context_module, [], &context_function_error/2)
+    else
+      _ ->
+        Utils.maybe_apply(query, :context_module, [], &context_function_error/2)
     end
   end
 
   def context_function_error(error, _args) do
-    warn(error, "ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2)")
+    warn(
+      error,
+      "ContextModules - there's no context module declared for this schema: 1) No function context_module/0 that returns this schema atom. 2)"
+    )
 
     nil
   end
@@ -141,14 +144,14 @@ defmodule Bonfire.Common.ContextModules do
       |> Enum.filter(&declares_context_module?/1)
       # |> IO.inspect(limit: :infinity)
       |> Enum.reduce(%{}, &index/2)
-      # |> IO.inspect
+
+    # |> IO.inspect
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
 
   def search_app_modules(search_path \\ search_path()) do
-    search_path
-    |> Enum.flat_map(&app_modules/1)
+    Enum.flat_map(search_path, &app_modules/1)
   end
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
@@ -156,17 +159,23 @@ defmodule Bonfire.Common.ContextModules do
   defp app_modules(_, mods), do: mods
 
   # called by populate/0
-  defp search_path(), do: Application.fetch_env!(:bonfire, :context_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :context_modules_search_path)
 
   # called by populate/0
-  defp declares_context_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :context_module, 0)
+  defp declares_context_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :context_module, 0)
 
   # called by populate/0
   defp index(mod, acc), do: index(acc, mod, mod.context_module())
 
   # called by index/2
   defp index(acc, declaring_module, context_module) do
-    Map.merge(acc, %{declaring_module => context_module, context_module => declaring_module})
+    Map.merge(acc, %{
+      declaring_module => context_module,
+      context_module => declaring_module
+    })
   end
-
 end

@@ -67,6 +67,4 @@ defmodule Bonfire.Common.Repo.Utils do
   @doc "Keeps disabled_at in accord with is_disabled"
   def change_disabled(%Changeset{} = changeset),
     do: change_synced_timestamp(changeset, :is_disabled, :disabled_at)
-
-
 end

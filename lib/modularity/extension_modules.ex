@@ -34,9 +34,10 @@ defmodule Bonfire.Common.ExtensionModules do
 
   def data() do
     :persistent_term.get(__MODULE__)
-  rescue e in ArgumentError ->
-    debug("Gathering a list of extension modules...")
-    populate()
+  rescue
+    e in ArgumentError ->
+      debug("Gathering a list of extension modules...")
+      populate()
   end
 
   @doc "Get a extension identified by schema"
@@ -45,12 +46,19 @@ defmodule Bonfire.Common.ExtensionModules do
     # |> debug
     |> extension_module()
   end
+
   def extension({app, module}), do: extension_module({app, module})
   def extension(_), do: nil
 
   def extension_module({app, module}), do: {app, extension_module(module)}
+
   def extension_module(module) when is_atom(module) do
-    Utils.maybe_apply(module, :declared_extension, [], &extension_function_error/2)
+    Utils.maybe_apply(
+      module,
+      :declared_extension,
+      [],
+      &extension_function_error/2
+    )
   end
 
   def default_nav(app) do
@@ -63,7 +71,10 @@ defmodule Bonfire.Common.ExtensionModules do
   end
 
   def extension_function_error(error, _args) do
-    warn(error, "NavModules - there's no extension module declared for this schema: 1) No function declared_extension/0 that returns this schema atom. 2)")
+    warn(
+      error,
+      "NavModules - there's no extension module declared for this schema: 1) No function declared_extension/0 that returns this schema atom. 2)"
+    )
 
     nil
   end
@@ -77,34 +88,38 @@ defmodule Bonfire.Common.ExtensionModules do
   end
 
   def populate() do
-    indexed =
-      search_app_modules()
-      # |> IO.inspect(limit: :infinity)
-      |> Utils.filter_empty([])
-      # |> IO.inspect(limit: :infinity)
-      # |> Enum.reduce([], &index/2)
-      # |> debug()
+    # |> IO.inspect(limit: :infinity)
+    indexed = Utils.filter_empty(search_app_modules(), [])
+
+    # |> IO.inspect(limit: :infinity)
+    # |> Enum.reduce([], &index/2)
+    # |> debug()
     :persistent_term.put(__MODULE__, indexed)
     indexed
   end
 
   def search_app_modules(search_path \\ search_path()) do
-    search_path
-    |> Enum.map(&app_modules/1)
+    Enum.map(search_path, &app_modules/1)
   end
 
-  defp search_path(), do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
+  defp search_path(),
+    do: Application.fetch_env!(:bonfire, :ui_modules_search_path)
 
   defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
+
   defp app_modules(app, mods) when is_list(mods) do
     case Enum.filter(mods, &declares_extension_module?/1) do
       [mod] -> {app, mod}
       [] -> nil
     end
   end
+
   defp app_modules(_, _), do: nil
 
-  defp declares_extension_module?(module), do: Code.ensure_loaded?(module) and function_exported?(module, :declared_extension, 0)
+  defp declares_extension_module?(module),
+    do:
+      Code.ensure_loaded?(module) and
+        function_exported?(module, :declared_extension, 0)
 
   # called by populate/0
   # defp index(mod, acc), do: acc ++ [mod] # only put the module name in ETS
@@ -118,5 +133,4 @@ defmodule Bonfire.Common.ExtensionModules do
   # defp index(acc, declaring_module, _) do
   #   warn(declaring_module, "Skip")
   # end
-
 end

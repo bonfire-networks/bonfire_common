@@ -76,13 +76,16 @@ defmodule Bonfire.Common.Simulation do
   @doc "Picks a fake signing key"
   def signing_key(), do: nil
   @doc "A random license for content"
-  def license(), do: Faker.Util.pick(["GPLv3", "BSDv3", "AGPL", "Creative Commons"])
+  def license(),
+    do: Faker.Util.pick(["GPLv3", "BSDv3", "AGPL", "Creative Commons"])
+
   @doc "Returns a city and country"
   def location(), do: Faker.Address.city() <> ", " <> Faker.Address.country()
   @doc "A website address"
   def website(), do: Faker.Internet.url()
   @doc "A verb to be used for an activity."
   def verb(), do: Faker.Util.pick(["Create", "Follow", "Delete"])
+
   # def verb_localised(), do: Faker.Util.pick(localise_strings(["Create", "Follow", "Delete"]))
 
   # Unique data
@@ -96,7 +99,9 @@ defmodule Bonfire.Common.Simulation do
   @doc "Generates a random domain name"
   def domain(), do: Zest.Faking.unused(&Faker.Internet.domain_name/0, :domain)
   @doc "Generates the first half of an email address"
-  def email_user(), do: Zest.Faking.unused(&Faker.Internet.user_name/0, :email_user)
+  def email_user(),
+    do: Zest.Faking.unused(&Faker.Internet.user_name/0, :email_user)
+
   @doc "Picks a unique random url for an ap endpoint"
   def ap_url_base(), do: Zest.Faking.unused(&url/0, :ap_url_base)
 
@@ -104,7 +109,8 @@ defmodule Bonfire.Common.Simulation do
   def username(), do: Faker.Internet.user_name()
 
   @doc "Picks a unique preferred_username"
-  def preferred_username(), do: Zest.Faking.unused(&username/0, :preferred_username)
+  def preferred_username(),
+    do: Zest.Faking.unused(&username/0, :preferred_username)
 
   @doc "Picks a random canonical url and makes it unique"
   def canonical_url(), do: Faker.Internet.url() <> "/" <> ulid()
@@ -146,5 +152,4 @@ defmodule Bonfire.Common.Simulation do
              last >= first do
     some(Faker.random_between(first, last), fun)
   end
-
 end

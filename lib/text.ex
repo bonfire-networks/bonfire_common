@@ -15,7 +15,8 @@ defmodule Bonfire.Common.Text do
 
   def blank?(str_or_nil), do: "" == str_or_nil |> to_string() |> String.trim()
 
-  def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string) #|> debug("contains_html?")
+  # |> debug("contains_html?")
+  def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
 
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
 
@@ -35,7 +36,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def sentence_truncate(input, length \\ 250, add_to_end \\ "") do
-    if(String.length(input)>length) do
+    if(String.length(input) > length) do
       do_sentence_truncate(input, length) <> add_to_end
     else
       input
@@ -72,7 +73,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def underscore_truncate(input, length \\ 250) do
-    if(String.length(input)>length) do
+    if(String.length(input) > length) do
       do_underscore_truncate(input, length)
     else
       input
@@ -108,7 +109,8 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def maybe_markdown_to_html(nothing) when not is_binary(nothing) or nothing=="" do
+  def maybe_markdown_to_html(nothing)
+      when not is_binary(nothing) or nothing == "" do
     nil
   end
 
@@ -126,40 +128,49 @@ defmodule Bonfire.Common.Text do
     if module_enabled?(Earmark) do
       content
       |> Earmark.as_html!(
-          inner_html: true,
-          escape: false,
-          smartypants: false,
-          registered_processors: [
-            # {"a", &md_add_target/1},
-            {"h1", &md_heading_anchors/1},
-            {"h2", &md_heading_anchors/1},
-            {"h3", &md_heading_anchors/1},
-            {"h4", &md_heading_anchors/1},
-            {"h5", &md_heading_anchors/1},
-            {"h6", &md_heading_anchors/1},
-        ])
+        inner_html: true,
+        escape: false,
+        smartypants: false,
+        registered_processors: [
+          # {"a", &md_add_target/1},
+          {"h1", &md_heading_anchors/1},
+          {"h2", &md_heading_anchors/1},
+          {"h3", &md_heading_anchors/1},
+          {"h4", &md_heading_anchors/1},
+          {"h5", &md_heading_anchors/1},
+          {"h6", &md_heading_anchors/1}
+        ]
+      )
       |> markdown_checkboxes()
     else
       content
     end
+
     # |> debug("output")
   end
 
-  defp md_add_target(node) do # This will only be applied to nodes as it will become a TagSpecificProcessors
+  # This will only be applied to nodes as it will become a TagSpecificProcessors
+  defp md_add_target(node) do
     # debug(node)
-    if Regex.match?(~r{\.x\.com\z}, Earmark.AstTools.find_att_in_node(node, "href", "")), do: Earmark.AstTools.merge_atts_in_node(node, target: "_blank"), else: node
+    if Regex.match?(
+         ~r{\.x\.com\z},
+         Earmark.AstTools.find_att_in_node(node, "href", "")
+       ),
+       do: Earmark.AstTools.merge_atts_in_node(node, target: "_blank"),
+       else: node
   end
 
   defp md_heading_anchors({tag, attrs, text, extra} = _node) do
     # node
     # |> debug()
     {tag,
-      [
-        {"id", slug(text)}
-      ], text, extra}
+     [
+       {"id", slug(text)}
+     ], text, extra}
   end
 
   defp slug(text) when is_list(text), do: Enum.join(text, "-") |> slug()
+
   defp slug(text) do
     text
     |> String.trim()
@@ -173,8 +184,7 @@ defmodule Bonfire.Common.Text do
   """
   def maybe_sane_html(content) do
     if module_enabled?(HtmlSanitizeEx) do
-      content
-      |> HtmlSanitizeEx.markdown_html()
+      HtmlSanitizeEx.markdown_html(content)
     else
       content
     end
@@ -182,8 +192,7 @@ defmodule Bonfire.Common.Text do
 
   def text_only(content) do
     if module_enabled?(HtmlSanitizeEx) do
-      content
-      |> HtmlSanitizeEx.strip_tags()
+      HtmlSanitizeEx.strip_tags(content)
     else
       content
       |> Phoenix.HTML.html_escape()
@@ -191,9 +200,9 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def maybe_normalize_html("<p>"<>content) do
-    content
-    |> maybe_normalize_html() # workaround for weirdness with Earmark's parsing of markdown within html
+  def maybe_normalize_html("<p>" <> content) do
+    # workaround for weirdness with Earmark's parsing of markdown within html
+    maybe_normalize_html(content)
   end
 
   def maybe_normalize_html(html_string) do
@@ -210,23 +219,40 @@ defmodule Bonfire.Common.Text do
 
   def maybe_emote(content) do
     if module_enabled?(Emote) do
-      content
-      |> Emote.convert_text()
+      Emote.convert_text(content)
     else
       content
     end
   end
 
   # open outside links in a new tab
-  def normalise_links(content) when is_binary(content) and byte_size(content)>20 do
+  def normalise_links(content)
+      when is_binary(content) and byte_size(content) > 20 do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
-    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U, ..., "\\1/character/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP actors
-    |> Regex.replace(~r/(href=\")#{local_instance}\/pub\/objects\/(.+\")/U, ..., "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle AP objects
-    |> Regex.replace(~r/(href=\")#{local_instance}(.+\")/U, ..., "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\"") # handle internal links
-    |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"") # handle external links
+    # handle AP actors
+    |> Regex.replace(
+      ~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
+      ...,
+      "\\1/character/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+    )
+    # handle AP objects
+    |> Regex.replace(
+      ~r/(href=\")#{local_instance}\/pub\/objects\/(.+\")/U,
+      ...,
+      "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+    )
+    # handle internal links
+    |> Regex.replace(
+      ~r/(href=\")#{local_instance}(.+\")/U,
+      ...,
+      "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+    )
+    # handle external links
+    |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"")
   end
+
   def normalise_links(content), do: content
 
   def markdown_checkboxes(text) do
@@ -263,35 +289,39 @@ defmodule Bonfire.Common.Text do
     regex_list(@checkbox_regex_checkbox_line, text)
   end
 
-  def regex_list(regex, text) when is_binary(text) and text !="" do
+  def regex_list(regex, text) when is_binary(text) and text != "" do
     Regex.scan(regex, text)
   end
 
   def regex_list(text, regex), do: nil
 
-  def upcase_first(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
+  def upcase_first(<<first::utf8, rest::binary>>),
+    do: String.upcase(<<first::utf8>>) <> rest
 
   def camelise(str) do
     words = ~w(#{str})
 
     Enum.into(words, [], fn word -> upcase_first(word) end)
-    |> to_string
+    |> to_string()
   end
 
-  def maybe_render_templated(templated_content, data) when is_binary(templated_content) and is_map(data) do
+  def maybe_render_templated(templated_content, data)
+      when is_binary(templated_content) and is_map(data) do
     if module_enabled?(Solid) and String.contains?(templated_content, "{{") do
       with {:ok, template} <- Solid.parse(templated_content) do
         Solid.render(template, data)
         |> to_string()
-      else {:error, error} ->
-        error(error)
-        templated_content
+      else
+        {:error, error} ->
+          error(error)
+          templated_content
       end
     else
       debug("Skipping parse/render template")
       templated_content
     end
   end
+
   def maybe_render_templated(content, _data) do
     warn("No pattern match on args, so can't parse/render template")
     content
@@ -302,12 +332,14 @@ defmodule Bonfire.Common.Text do
   Currently only supports irregular verbs.
   """
   def verb_infinitive(verb_conjugated) do
-    with [{infinitive, _}] <- Irregulars.verb_forms
-    |> Enum.filter(fn {infinitive, conjugations} -> verb_conjugated in conjugations end) do
+    with [{infinitive, _}] <-
+           Enum.filter(Irregulars.verb_forms(), fn {infinitive, conjugations} ->
+             verb_conjugated in conjugations
+           end) do
       infinitive
-    else _ ->
-      nil
+    else
+      _ ->
+        nil
     end
   end
-
 end
