@@ -896,13 +896,13 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def date_from_now(object), do: date_from_pointer(object) |> date_from_now()
+  def date_from_now(object), do: date_from_pointer(object) ~> date_from_now()
 
   def date_from_pointer(object) do
     with id when is_binary(id) <- ulid(object),
          {:ok, ts} <- Pointers.ULID.timestamp(id) |> debug(),
          {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
-      debug(date)
+      {:ok, date}
     else
       e ->
         error(e)

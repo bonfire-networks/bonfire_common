@@ -50,8 +50,13 @@ defmodule Bonfire.Common.NavModules do
   def nav({app, modules}), do: {app, nav(modules)}
 
   def nav(modules) when is_list(modules) do
-    Enum.map(modules, fn module ->
-      Utils.maybe_apply(module, :declared_nav, [], &nav_function_error/2)
+    Enum.map(modules, fn
+      {module, props} ->
+        Utils.maybe_apply(module, :declared_nav, [], &nav_function_error/2)
+        |> Enum.into(%{props: props})
+
+      module ->
+        Utils.maybe_apply(module, :declared_nav, [], &nav_function_error/2)
     end)
   end
 

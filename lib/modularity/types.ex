@@ -184,6 +184,18 @@ defmodule Bonfire.Common.Types do
     # |> IO.inspect(label: "Making all object types localisable")
   end
 
+  def table_types(types) when is_list(types),
+    do: Enum.map(types, &table_type/1) |> Utils.filter_empty([])
+
+  def table_types(type),
+    do: table_types(List.wrap(type))
+
+  def table_type(type) when is_atom(type) and not is_nil(type), do: table_id(type)
+  def table_type(type) when is_map(type) or is_binary(type), do: ulid(type)
+  def table_type(_), do: nil
+
+  def table_id(schema), do: schema.__pointers__(:table_id)
+
   defp sanitise_name("Replied"), do: "Reply in Thread"
   defp sanitise_name("Named"), do: "Name"
   defp sanitise_name("Settings"), do: "Setting"
