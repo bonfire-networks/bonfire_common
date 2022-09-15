@@ -75,7 +75,7 @@ defmodule Bonfire.Common.Pointers do
     follow!(pointers)
   end
 
-  def list!(ids) when is_list(ids) and length(ids) > 0 and is_binary(hd(ids)) do
+  def list!(ids) when is_list(ids) and length(ids) > 0 and not is_nil(hd(ids)) do
     with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: follow!(ptrs)
   end
 

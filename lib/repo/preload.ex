@@ -38,14 +38,18 @@ defmodule Bonfire.Common.Repo.Preload do
   def maybe_preload(obj, preloads, opts)
       when is_struct(obj) or (is_list(obj) and is_list(opts)) do
     if Keyword.get(opts, :follow_pointers, true) do
-      debug("maybe_preload: trying to preload (and follow pointers): #{inspect(preloads)}")
+      debug(
+        "maybe_preload #{opts[:label]}: trying to preload (and follow pointers): #{inspect(preloads)}"
+      )
 
       try_repo_preload(obj, preloads, opts)
       |> Pointers.Preload.maybe_preload_pointers(preloads, opts)
 
       # TODO: cache this as well (only if not needing to double check pointer boundaries)
     else
-      debug("maybe_preload: trying to preload (without following pointers): #{inspect(preloads)}")
+      debug(
+        "maybe_preload #{opts[:label]}: trying to preload (without following pointers): #{inspect(preloads)}"
+      )
 
       obj =
         if Keyword.get(opts, :with_cache, false) do
@@ -56,8 +60,10 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
-  def maybe_preload(obj, _, _) do
-    debug("maybe_preload: can only preload from struct or list of structs")
+  def maybe_preload(obj, _, opts) do
+    debug(
+      "maybe_preload #{Utils.e(opts, :label, nil)}: can only preload from struct or list of structs"
+    )
 
     obj
   end
