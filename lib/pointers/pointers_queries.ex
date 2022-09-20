@@ -46,7 +46,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   end
 
   def filter(q, {:id, ids}) when is_list(ids) do
-    where(q, [main_object: p], p.id in ^Utils.ulid!(ids))
+    where(q, [main_object: p], p.id in ^Utils.ulids(ids))
   end
 
   def filter(q, {:username, username}) when is_binary(username) do

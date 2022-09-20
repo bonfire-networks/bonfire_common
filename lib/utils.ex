@@ -358,29 +358,48 @@ defmodule Bonfire.Common.Utils do
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  @doc "recursively merge maps or lists"
-  def deep_merge(left = %{}, right = %{}) do
-    Map.merge(left, right, &deep_resolve/3)
+  @doc "merge maps or lists (into a map)"
+  def merge_as_map(left, right, conflict_fn \\ nil)
+
+  def merge_as_map(left = %{}, right = %{}, conflict_fn) when is_function(conflict_fn) do
+    Map.merge(left, right, conflict_fn)
   end
 
-  def deep_merge(left, right) when is_list(left) and is_list(right) do
-    if Keyword.keyword?(left) and Keyword.keyword?(right),
-      do: Keyword.merge(left, right, &deep_resolve/3),
-      else: right
-
-    # else: (left ++ right) |> Enum.uniq()
+  def merge_as_map(left = %{}, right = %{}, _) do
+    Map.merge(left, right)
   end
 
-  def deep_merge(%{} = left, right) when is_list(right) do
-    deep_merge(Map.to_list(left), right)
+  def merge_as_map(left, right, conflict_fn) when is_list(left) and is_list(right) do
+    if Keyword.keyword?(left) and Keyword.keyword?(right) do
+      merge_as_map(Enum.into(left, %{}), Enum.into(right, %{}), conflict_fn)
+    else
+      right
+    end
   end
 
-  def deep_merge(left, %{} = right) when is_list(left) do
-    deep_merge(left, Map.to_list(right))
+  def merge_as_map(%{} = left, right, conflict_fn) when is_list(right) do
+    if Keyword.keyword?(right) do
+      merge_as_map(left, Enum.into(right, %{}), conflict_fn)
+    else
+      left
+    end
   end
 
-  def deep_merge(_left, right) do
+  def merge_as_map(left, %{} = right, conflict_fn) when is_list(left) do
+    if Keyword.keyword?(left) do
+      merge_as_map(Enum.into(left, %{}), right, conflict_fn)
+    else
+      right
+    end
+  end
+
+  def merge_as_map(_left, right, _) do
     right
+  end
+
+  @doc "recursively merge maps or lists (into a map)"
+  def deep_merge(left, right) do
+    merge_as_map(left, right, &deep_resolve/3)
   end
 
   # Key exists in both maps - these can be merged recursively.
@@ -538,7 +557,11 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_to_map(obj, recursive \\ false)
   def maybe_to_map(struct = %{__struct__: _}, false), do: struct_to_map(struct)
-  def maybe_to_map(data, false) when is_list(data), do: Enum.into(data, %{})
+
+  def maybe_to_map(data, false) when is_list(data) do
+    if Keyword.keyword?(data), do: Enum.into(data, %{}), else: data
+  end
+
   def maybe_to_map(data, false) when not is_tuple(data), do: data
 
   def maybe_to_map(data, false) do
@@ -683,12 +706,12 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Convert map atom keys to strings
   """
-  def stringify_keys(map, recursive \\ true)
+  def stringify_keys(map, recursive \\ false)
 
   def stringify_keys(nil, _recursive), do: nil
 
-  def stringify_keys(map = %{}, true) do
-    map
+  def stringify_keys(object, true) when is_map(object) or is_list(object) do
+    object
     |> maybe_to_map()
     |> Enum.map(fn {k, v} ->
       {
@@ -699,20 +722,20 @@ defmodule Bonfire.Common.Utils do
     |> Enum.into(%{})
   end
 
-  def stringify_keys(map = %{}, _) do
-    map
+  def stringify_keys(object, _) when is_map(object) or is_list(object) do
+    object
     |> maybe_to_map()
     |> Enum.map(fn {k, v} -> {maybe_to_string(k), v} end)
     |> Enum.into(%{})
   end
 
-  # Walk a list and stringify the keys of
-  # of any map members
-  def stringify_keys([head | rest], recursive) do
-    [stringify_keys(head, recursive) | stringify_keys(rest, recursive)]
-  end
+  # Walk a list and stringify the keys of any map members
+  # def stringify_keys([head | rest], recursive) do
+  #   [stringify_keys(head, recursive) | stringify_keys(rest, recursive)]
+  # end
 
   def stringify_keys(not_a_map, _recursive) do
+    warn(not_a_map, "Cannot stringify this object's keys")
     not_a_map
   end
 
