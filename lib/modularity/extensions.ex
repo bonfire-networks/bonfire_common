@@ -8,6 +8,21 @@ defmodule Bonfire.Common.Extensions do
 
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
+  def global_disable(extension) do
+    global_toggle(extension, true)
+  end
+
+  def global_enable(extension) do
+    global_toggle(extension, nil)
+  end
+
+  defp global_toggle(extension, enabled?) do
+    Bonfire.Me.Settings.put([extension, :disabled], enabled?,
+      scope: :instance,
+      skip_boundary_check: true
+    )
+  end
+
   def data() do
     deps = deps_list()
 

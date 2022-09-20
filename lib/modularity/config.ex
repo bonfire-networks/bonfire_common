@@ -62,7 +62,7 @@ defmodule Bonfire.Common.Config do
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
   """
-  def get(key, default \\ nil, otp_app \\ nil)
+  def get(key_or_keys, default \\ nil, otp_app \\ nil)
 
   # if no extension is specified, use the top-level Bonfire app
   def get(keys_tree, default, nil) do

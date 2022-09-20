@@ -586,7 +586,7 @@ defmodule Bonfire.Common.Utils do
   Converts an enumerable to a list recursively
   Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first
   """
-  def maybe_to_keyword_list(obj, recursive \\ true)
+  def maybe_to_keyword_list(obj, recursive \\ false)
 
   def maybe_to_keyword_list(obj, true = recursive)
       when is_map(obj) or is_list(obj) do
@@ -1021,22 +1021,10 @@ defmodule Bonfire.Common.Utils do
   def banner_url(%{profile: profile}), do: banner_url(profile)
   def banner_url(_obj), do: "/images/bonfires.png"
 
-  def current_user(current_user_or_socket_or_opts) do
+  def current_user(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
-      %{current_user: %{} = user} = _options ->
+      %{current_user: %{id: _} = user} = _options ->
         user
-
-      %{context: context} = _api_opts ->
-        current_user(context)
-
-      %{__context__: context} = _assigns ->
-        current_user(context)
-
-      %{assigns: assigns} = _socket ->
-        current_user(assigns)
-
-      %{socket: socket} = _socket ->
-        current_user(socket)
 
       %{id: _, profile: _} ->
         current_user_or_socket_or_opts
@@ -1044,14 +1032,31 @@ defmodule Bonfire.Common.Utils do
       %{id: _, character: _} ->
         current_user_or_socket_or_opts
 
+      # %{id: _} when is_struct(current_user_or_socket_or_opts) ->
+      #   current_user_or_socket_or_opts
+
+      %{assigns: %{} = assigns} = _socket ->
+        current_user(assigns, true)
+
+      %{__context__: %{current_user: _} = context} = _assigns ->
+        current_user(context, true)
+
+      %{socket: socket} = _socket ->
+        current_user(socket, true)
+
+      %{context: %{} = context} = _api_opts ->
+        current_user(context, true)
+
       _ when is_list(current_user_or_socket_or_opts) ->
-        current_user(Map.new(current_user_or_socket_or_opts))
+        current_user(Map.new(current_user_or_socket_or_opts), true)
 
       _ ->
-        debug("No current_user found in #{inspect(current_user_or_socket_or_opts)}")
-
         nil
-    end
+    end ||
+      (
+        if !recursing, do: debug(current_user_or_socket_or_opts, "No current_user found in")
+        nil
+      )
   end
 
   def to_options(current_user_or_socket_or_opts) do
@@ -1094,26 +1099,26 @@ defmodule Bonfire.Common.Utils do
     account
   end
 
-  def current_account(%{context: context} = _api_opts) do
+  def current_account(%{__context__: %{} = context} = _assigns) do
     current_account(context)
   end
 
-  def current_account(%{__context__: context} = _assigns) do
-    current_account(context)
-  end
-
-  def current_account(%{assigns: assigns} = _socket) do
+  def current_account(%{assigns: %{} = assigns} = _socket) do
     current_account(assigns)
   end
 
-  def current_account(%{socket: socket} = _socket) do
+  def current_account(%{socket: %{} = socket} = _socket) do
     current_account(socket)
   end
 
+  def current_account(%{context: %{} = context} = _api_opts) do
+    current_account(context)
+  end
+
   def current_account(other) do
-    case current_user(other) do
+    case current_user(other, true) do
       nil ->
-        debug("No current_account found in #{inspect(other)}")
+        debug(other, "No current_account found in")
         nil
 
       user ->
