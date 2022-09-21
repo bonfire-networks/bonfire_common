@@ -144,7 +144,7 @@ defmodule Bonfire.Common.Config do
     Application.put_env(otp_app, key, value, persistent: true)
   end
 
-  def put(tree) when is_list(tree) do
+  def put(tree) when is_list(tree) or is_map(tree) do
     Enum.each(tree, &put/1)
   end
 
