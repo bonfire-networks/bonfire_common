@@ -1054,24 +1054,29 @@ defmodule Bonfire.Common.Utils do
         nil
     end ||
       (
-        if !recursing, do: debug(current_user_or_socket_or_opts, "No current_user found in")
+        if recursing != true,
+          do: debug(current_user_or_socket_or_opts, "No current_user found in")
+
         nil
       )
   end
 
-  def to_options(current_user_or_socket_or_opts) do
-    case current_user_or_socket_or_opts do
+  def to_options(user_or_socket_or_opts) do
+    case user_or_socket_or_opts do
       %{assigns: assigns} = _socket ->
-        Keyword.new(assigns)
+        [assigns: assigns]
+
+      _ when is_struct(user_or_socket_or_opts) ->
+        [context: user_or_socket_or_opts]
 
       _
-      when is_list(current_user_or_socket_or_opts) or
-             (is_map(current_user_or_socket_or_opts) and
-                not is_struct(current_user_or_socket_or_opts)) ->
-        Keyword.new(current_user_or_socket_or_opts)
+      when is_list(user_or_socket_or_opts) or
+             (is_map(user_or_socket_or_opts) and
+                not is_struct(user_or_socket_or_opts)) ->
+        Keyword.new(user_or_socket_or_opts)
 
       _ ->
-        debug("No opts found in #{inspect(current_user_or_socket_or_opts)}")
+        debug("No opts found in #{inspect(user_or_socket_or_opts)}")
         []
     end
   end
