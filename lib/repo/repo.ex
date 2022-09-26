@@ -205,9 +205,9 @@ defmodule Bonfire.Common.Repo do
       total_count_primary_key_field: Pointers.ULID
     ]
 
-  defp paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+  defp paginator_paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
 
-  defp paginate(queryable, opts, repo_opts) when is_list(opts) do
+  defp pagpaginator_paginateinate(queryable, opts, repo_opts) when is_list(opts) do
     opts =
       (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
       |> Keyword.new()
@@ -221,23 +221,36 @@ defmodule Bonfire.Common.Repo do
     |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
   end
 
-  defp paginate(queryable, opts, repo_opts)
+  defp paginator_paginate(queryable, opts, repo_opts)
        when is_map(opts) and not is_struct(opts) do
     # info(opts, "opts")
-    paginate(queryable, Utils.to_options(opts), repo_opts)
+    paginator_paginate(queryable, Utils.to_options(opts), repo_opts)
   end
 
-  defp paginate(queryable, _, repo_opts) do
-    paginate(queryable, @default_cursor_fields, repo_opts)
+  defp paginator_paginate(queryable, _, repo_opts) do
+    paginator_paginate(queryable, @default_cursor_fields, repo_opts)
   end
 
+  @doc """
+  Different implementation for pagination using Scrivener (used by eg. rauversion)
+  """
+  def paginate(pageable, options \\ []) do
+    Scrivener.paginate(
+      pageable,
+      Scrivener.Config.new(__MODULE__, [page_size: 10], options)
+    )
+  end
+
+  @doc """
+  Main implementation for pagination using Paginator (used by most extensions)
+  """
   def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
   def many_paginated(%{order_bys: order} = queryable, opts, repo_opts)
       when is_list(order) and length(order) > 0 do
     # info(opts, "opts")
     # debug(order, "order_bys")
-    paginate(queryable, opts, repo_opts)
+    paginator_paginate(queryable, opts, repo_opts)
   end
 
   def many_paginated(queryable, opts, repo_opts) do
@@ -246,7 +259,7 @@ defmodule Bonfire.Common.Repo do
     |> order_by([o],
       desc: o.id
     )
-    |> paginate(opts, repo_opts)
+    |> paginator_paginate(opts, repo_opts)
   end
 
   def many(query, opts \\ []) do
