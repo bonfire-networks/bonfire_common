@@ -207,7 +207,7 @@ defmodule Bonfire.Common.Repo do
 
   defp paginator_paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
 
-  defp pagpaginator_paginateinate(queryable, opts, repo_opts) when is_list(opts) do
+  defp paginator_paginate(queryable, opts, repo_opts) when is_list(opts) do
     opts =
       (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
       |> Keyword.new()

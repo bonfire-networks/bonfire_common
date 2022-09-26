@@ -1207,14 +1207,19 @@ defmodule Bonfire.Common.Utils do
 
       {:error,
        Enum.join(
-         filter_empty([error_msg(msg), exception, stacktrace], []),
+         filter_empty([error_msg(msg), exception, maybe_stacktrace(stacktrace)], []),
          "\n"
        )
-       |> String.slice(0..1000)}
+       |> String.slice(0..3000)}
     else
       {:error, error_msg(msg)}
     end
   end
+
+  defp maybe_stacktrace(stacktrace) when not is_nil(stacktrace) and stacktrace != "",
+    do: "```\n#{stacktrace |> String.slice(0..2000)}\n```"
+
+  defp maybe_stacktrace(_), do: nil
 
   def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
