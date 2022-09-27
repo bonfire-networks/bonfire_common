@@ -110,12 +110,31 @@ defmodule Bonfire.Common.Repo do
     end
   end
 
-  def upsert(cs, attrs, conflict_target \\ [:id])
-      when is_struct(cs) or (is_atom(cs) and not is_struct(attrs)) do
+  def upsert(cs, keys_or_attrs_to_update \\ nil, conflict_target \\ [:id])
+
+  def upsert(cs, nil, conflict_target) do
+    debug("replace_all_except")
+
+    insert(
+      cs,
+      on_conflict: :nothing
+      # conflict_target: conflict_target
+    )
+  end
+
+  def upsert(cs, attrs, conflict_target)
+      when is_map(attrs) do
+    upsert(cs, Map.to_list(attrs), conflict_target)
+  end
+
+  def upsert(cs, keys, conflict_target)
+      when (is_list(keys) and is_struct(cs)) or is_atom(cs) do
+    debug(keys, "update keys")
+
     insert(
       cs,
       # on_conflict: {:replace_all_except, conflict_target},
-      on_conflict: [set: Map.to_list(attrs)],
+      on_conflict: [set: keys],
       conflict_target: conflict_target
     )
   end

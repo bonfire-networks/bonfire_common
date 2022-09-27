@@ -1230,7 +1230,7 @@ defmodule Bonfire.Common.Utils do
       {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
 
       error(exception)
-      IO.inspect(stacktrace, limit: :infinity, printable_limit: :infinity)
+      Logger.info(stacktrace, limit: :infinity, printable_limit: :infinity)
       # Logger.warn(stacktrace, truncate: :infinity)
     else
       if exception, do: warn(exception)

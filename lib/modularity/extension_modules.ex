@@ -53,12 +53,20 @@ defmodule Bonfire.Common.ExtensionModules do
   def extension_module({app, module}), do: {app, extension_module(module)}
 
   def extension_module(module) when is_atom(module) do
-    Utils.maybe_apply(
-      module,
-      :declared_extension,
-      [],
-      &extension_function_error/2
-    )
+    if Code.ensure_loaded?(module) and function_exported?(module, :declared_extension, 0),
+      do:
+        apply(
+          module,
+          :declared_extension,
+          []
+        )
+
+    # Utils.maybe_apply(
+    #   module,
+    #   :declared_extension,
+    #   [],
+    #   &extension_function_error/2
+    # )
   end
 
   def default_nav(app) do
