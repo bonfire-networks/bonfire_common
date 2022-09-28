@@ -1061,6 +1061,9 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  def current_user_required(context),
+    do: current_user(context) || raise(Bonfire.Fail, :unauthenticated)
+
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do
       %{assigns: assigns} = _socket ->
