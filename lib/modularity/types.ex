@@ -191,6 +191,7 @@ defmodule Bonfire.Common.Types do
     do: table_types(List.wrap(type))
 
   def table_type(type) when is_atom(type) and not is_nil(type), do: table_id(type)
+  def table_type(%{table_id: table_id}) when is_binary(table_id), do: ulid(table_id)
   def table_type(type) when is_map(type) or is_binary(type), do: ulid(type)
   def table_type(_), do: nil
 
