@@ -320,7 +320,7 @@ defmodule Bonfire.Common.Text do
           templated_content
       end
     else
-      debug("Skipping parse/render template")
+      debug("Solid not used in block or not enabled - skipping parse/render template")
       templated_content
     end
   end
