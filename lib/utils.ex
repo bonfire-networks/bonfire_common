@@ -479,18 +479,23 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_atom!(atom) when is_atom(atom), do: atom
   def maybe_to_atom!(_), do: nil
 
-  def maybe_to_module(str)
-
   def maybe_to_module(str) when is_binary(str) do
     case maybe_to_atom(str) do
-      module_or_atom when is_atom(module_or_atom) -> module_or_atom
+      module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom)
       # module doesn't exist
       "Elixir." <> str -> nil
-      _ -> maybe_to_atom!("Elixir." <> str)
+      _ -> maybe_to_module("Elixir." <> str)
     end
   end
 
-  def maybe_to_module(atom) when is_atom(atom), do: atom
+  def maybe_to_module(atom) when is_atom(atom) do
+    if module_enabled?(atom) do
+      atom
+    else
+      nil
+    end
+  end
+
   def maybe_to_module(_), do: nil
 
   def module_to_str(str) when is_binary(str) do
@@ -1062,7 +1067,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def current_user_required(context),
-    do: current_user(context) || raise(Bonfire.Fail, :unauthenticated)
+    do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do

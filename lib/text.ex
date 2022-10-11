@@ -20,13 +20,13 @@ defmodule Bonfire.Common.Text do
 
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
 
-  def truncate(text, max_length, add_to_end) do
+  def truncate(text, max_length, add_to_end) when is_binary(text) do
     text = String.trim(text)
 
-    if String.length(text) < max_length do
+    if String.length(text) < (max_length || 250) do
       text
     else
-      if add_to_end do
+      if is_binary(add_to_end) do
         length_with_add_to_end = max_length - String.length(add_to_end)
         String.slice(text, 0, length_with_add_to_end) <> add_to_end
       else
@@ -34,6 +34,8 @@ defmodule Bonfire.Common.Text do
       end
     end
   end
+
+  def truncate(text, _, _), do: text
 
   def sentence_truncate(input, length \\ 250, add_to_end \\ "") do
     if(String.length(input) > length) do
@@ -122,6 +124,10 @@ defmodule Bonfire.Common.Text do
   # def maybe_markdown_to_html("<"<>_ = content) do
   #   maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
+  def maybe_markdown_to_html("<" <> _ = content) do
+    warn("not processing markup in content that starts with an HTML tag")
+    content
+  end
 
   def maybe_markdown_to_html(content) do
     # debug(content, "input")
@@ -190,7 +196,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def text_only(content) do
+  def text_only(content) when is_binary(content) do
     if module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.strip_tags(content)
     else
@@ -199,6 +205,8 @@ defmodule Bonfire.Common.Text do
       |> Phoenix.HTML.safe_to_string()
     end
   end
+
+  def text_only(_content), do: nil
 
   def maybe_normalize_html("<p>" <> content) do
     # workaround for weirdness with Earmark's parsing of markdown within html
@@ -215,6 +223,7 @@ defmodule Bonfire.Common.Text do
     end
     |> String.trim("<p><br/></p>")
     |> String.trim("<br/>")
+    |> debug(html_string)
   end
 
   def maybe_emote(content) do
