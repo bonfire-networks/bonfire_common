@@ -112,16 +112,6 @@ defmodule Bonfire.Common.Repo do
 
   def upsert(cs, keys_or_attrs_to_update \\ nil, conflict_target \\ [:id])
 
-  def upsert(cs, nil, conflict_target) do
-    debug("replace_all_except")
-
-    insert(
-      cs,
-      on_conflict: :nothing
-      # conflict_target: conflict_target
-    )
-  end
-
   def upsert(cs, attrs, conflict_target)
       when is_map(attrs) do
     upsert(cs, Map.to_list(attrs), conflict_target)
@@ -131,11 +121,28 @@ defmodule Bonfire.Common.Repo do
       when (is_list(keys) and is_struct(cs)) or is_atom(cs) do
     debug(keys, "update keys")
 
-    insert(
+    keys =
+      if not Keyword.keyword?(keys) do
+        Enum.map(keys, &{&1, Ecto.Changeset.get_field(cs, &1)})
+      else
+        keys
+      end
+
+    insert_or_update(
       cs,
       # on_conflict: {:replace_all_except, conflict_target},
       on_conflict: [set: keys],
       conflict_target: conflict_target
+    )
+  end
+
+  def upsert(cs, nil, conflict_target) do
+    debug("replace_all_except")
+
+    insert_or_update(
+      cs,
+      on_conflict: :nothing
+      # conflict_target: conflict_target
     )
   end
 
