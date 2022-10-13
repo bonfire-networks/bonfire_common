@@ -196,6 +196,8 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  def text_only({:safe, content}), do: text_only(content)
+
   def text_only(content) when is_binary(content) do
     if module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.strip_tags(content)
