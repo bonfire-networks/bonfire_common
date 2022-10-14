@@ -156,15 +156,18 @@ defmodule Bonfire.Common.Config do
     debug(other, "Nothing to put")
   end
 
+  defp keys_with_fallback(keys) when is_map(keys),
+    do: keys |> Keyword.new(keys) |> keys_with_fallback()
+
   defp keys_with_fallback(keys) do
     # see https://code.krister.ee/elixir-put_in-deep-empty-map-array/
     access_nil = fn key ->
       fn
         :get, data, next ->
-          next.(Keyword.get(data, key, []))
+          next.(Utils.e(data, key, []))
 
         :get_and_update, data, next ->
-          value = Keyword.get(data, key, [])
+          value = Utils.e(data, key, [])
 
           case next.(value) do
             {get, update} -> {get, Keyword.put(data, key, update)}
