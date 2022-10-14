@@ -5,6 +5,7 @@ defmodule Bonfire.Common.Extensions do
 
   import Untangle
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Extend
 
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
@@ -24,7 +25,8 @@ defmodule Bonfire.Common.Extensions do
   end
 
   def data() do
-    deps = deps_list()
+    # use compiled-time cached list
+    deps = Bonfire.Application.deps(:flat)
 
     feature_extensions = filter_bonfire(deps, true, @prefix)
     other_deps = filter_bonfire(deps, false, @prefix)
@@ -47,10 +49,23 @@ defmodule Bonfire.Common.Extensions do
     ]
   end
 
-  def deps_list(opts \\ []) do
-    # Bonfire.Common.Extend.loaded_deps()
-    # load compile-time cached list
-    Bonfire.Application.deps()
+  def loaded_deps(opts \\ [])
+
+  def loaded_deps(:nested) do
+    # note that you should call the compile-time cached list in Bonfire.Application
+    if Extend.module_enabled?(Mix.Dep) do
+      {func, args} = loaded_deps_func_name()
+      apply(Mix.Dep, func, args)
+      # |> IO.inspect
+    else
+      # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
+      []
+    end
+  end
+
+  def loaded_deps(opts) do
+    # note that you should call the compile-time cached list in Bonfire.Application
+    (opts[:deps_loaded] || loaded_deps(:nested))
     |> prepare_list(opts)
     |> List.flatten()
     |> Enum.uniq_by(&dep_name(&1))
@@ -64,6 +79,14 @@ defmodule Bonfire.Common.Extensions do
       dep ->
         [dep]
     end)
+  end
+
+  defp loaded_deps_func_name() do
+    if Keyword.has_key?(Mix.Dep.__info__(:functions), :cached) do
+      {:cached, []}
+    else
+      {:loaded, [[]]}
+    end
   end
 
   defp filter_bonfire(deps, only, prefix) when is_binary(prefix) do
