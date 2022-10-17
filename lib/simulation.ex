@@ -43,7 +43,7 @@ defmodule Bonfire.Common.Simulation do
   @doc "Picks a name"
   def name(), do: Faker.Company.name()
   @doc "Generates a random password string"
-  def password(), do: base64()
+  def password(), do: Base.encode32(Faker.random_bytes(10), pad: false)
   @doc "Generates a random date of birth based on an age range of 18-99"
   def date_of_birth(), do: Faker.Date.date_of_birth(18..99)
   @doc "Picks a date up to 300 days in the past, not including today"
@@ -59,7 +59,7 @@ defmodule Bonfire.Common.Simulation do
   @doc "Same as future_datetime, but as an ISO8601 formatted string."
   def future_datetime_iso(), do: DateTime.to_iso8601(future_datetime())
   @doc "Generates a random paragraph"
-  def paragraph(), do: Faker.Lorem.sentence()
+  def paragraph(), do: Faker.Lorem.paragraph()
   @doc "Generates random base64 text"
   def base64(), do: Faker.String.base64()
 
@@ -67,8 +67,12 @@ defmodule Bonfire.Common.Simulation do
 
   # Custom data
 
+  def title(), do: Faker.Lorem.sentence(2..6)
   @doc "Picks a summary text paragraph"
-  def summary(), do: paragraph()
+  def summary(), do: Faker.Lorem.sentence(6..50)
+
+  def markdown(), do: Faker.Markdown.markdown()
+
   @doc "Picks an icon url"
   def icon(), do: Faker.Avatar.image_url()
   @doc "Picks an image url"
@@ -106,7 +110,7 @@ defmodule Bonfire.Common.Simulation do
   def ap_url_base(), do: Zest.Faking.unused(&url/0, :ap_url_base)
 
   @doc "Generates a random username"
-  def username(), do: Faker.Internet.user_name()
+  def username, do: String.replace(Faker.Internet.user_name(), ~r/\./, "_")
 
   @doc "Picks a unique preferred_username"
   def preferred_username(),
