@@ -156,6 +156,24 @@ defmodule Bonfire.Common.Config do
     debug(other, "Nothing to put")
   end
 
+  defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
+    if Keyword.keyword?(tree) do
+      Enum.each(tree, fn
+        {k, v} -> put_tree(parent_keys ++ [k], v, otp_app)
+      end)
+    else
+      put(parent_keys, tree, otp_app)
+    end
+  end
+
+  defp put_tree(parent_keys, tree, otp_app) when is_map(tree) do
+    put_tree(parent_keys, Keyword.new(tree), otp_app)
+  end
+
+  defp put_tree(k, v, otp_app) do
+    put(k, v, otp_app)
+  end
+
   defp keys_with_fallback(keys) when is_map(keys),
     do: keys |> Keyword.new(keys) |> keys_with_fallback()
 
@@ -167,7 +185,8 @@ defmodule Bonfire.Common.Config do
           next.(Utils.e(data, key, []))
 
         :get_and_update, data, next ->
-          value = Utils.e(data, key, [])
+          data = Keyword.new(data)
+          value = Keyword.get(data, key, [])
 
           case next.(value) do
             {get, update} -> {get, Keyword.put(data, key, update)}
@@ -177,20 +196,6 @@ defmodule Bonfire.Common.Config do
     end
 
     Enum.map(keys, fn k -> access_nil.(k) end)
-  end
-
-  defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
-    if Keyword.keyword?(tree) do
-      Enum.each(tree, fn
-        {k, v} -> put_tree(parent_keys ++ [k], v, otp_app)
-      end)
-    else
-      put(parent_keys, tree, otp_app)
-    end
-  end
-
-  defp put_tree(k, v, otp_app) do
-    put(k, v, otp_app)
   end
 
   def delete(key, otp_app \\ top_level_otp_app())

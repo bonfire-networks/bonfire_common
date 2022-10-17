@@ -805,6 +805,9 @@ defmodule Bonfire.Common.Utils do
     Enum.map(list, &input_to_atoms(&1, false, including_values))
   end
 
+  # support `nil` as a value
+  def input_to_atoms("nil", _, true = _including_values), do: nil
+
   def input_to_atoms(v, _, true = _including_values) do
     case maybe_to_module(v) do
       # do it this roundabout way to support `false` as a value
