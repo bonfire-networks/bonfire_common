@@ -986,6 +986,7 @@ defmodule Bonfire.Common.Utils do
 
   # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
+  def image_url(url) when is_binary(url), do: url
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
 
