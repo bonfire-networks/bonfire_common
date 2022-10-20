@@ -184,4 +184,9 @@ defmodule Bonfire.Common.Extend do
       end
     end
   end
+
+  # generate an updated reverse router based on extensions that are enabled/disabled
+  def generate_reverse_router!() do
+    Utils.maybe_apply(Config.get!(:endpoint_module), :generate_reverse_router!)
+  end
 end

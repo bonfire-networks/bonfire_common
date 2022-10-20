@@ -18,10 +18,16 @@ defmodule Bonfire.Common.Extensions do
   end
 
   defp global_toggle(extension, enabled?) do
-    Bonfire.Me.Settings.put([extension, :disabled], enabled?,
-      scope: :instance,
-      skip_boundary_check: true
-    )
+    put =
+      Bonfire.Me.Settings.put([extension, :disabled], enabled?,
+        scope: :instance,
+        skip_boundary_check: true
+      )
+
+    # generate an updated reverse router based on extensions that are enabled/disabled
+    Bonfire.Common.Extend.generate_reverse_router!()
+
+    put
   end
 
   def data() do
