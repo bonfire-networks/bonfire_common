@@ -101,18 +101,27 @@ defmodule Bonfire.Common.Extend do
   end
 
   defmacro use_if_enabled(module, fallback_module \\ nil),
-    do: quoted_use_if_enabled(module, fallback_module)
+    do: quoted_use_if_enabled(module, fallback_module, __CALLER__)
 
-  def quoted_use_if_enabled(module, fallback_module \\ nil)
-  # TODO: clean this up?
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module),
+  def quoted_use_if_enabled(module, fallback_module \\ nil, caller \\ nil)
+
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
     do:
-      quoted_use_if_enabled(
-        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
-        fallback_module
-      )
+      module_name_ast
+      |> Macro.expand(caller)
+      |> quoted_use_if_enabled(fallback_module)
 
-  def quoted_use_if_enabled(module, fallback_module) do
+  # def quoted_use_if_enabled(modules, _fallback_module, _) when is_list(modules) do
+  #   debug(modules, "List of modules to use")
+  #     quote do
+  #       Enum.map(unquote(modules), &use/1)
+  #       |> unquote_splicing()
+  #     end
+  # end
+
+  def quoted_use_if_enabled(module, fallback_module, _) do
+    debug(module, "Found module to use")
+
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to use")
       quote do
@@ -120,7 +129,8 @@ defmodule Bonfire.Common.Extend do
       end
     else
       # warn(module, "Did not find module to use")
-      if is_atom(fallback_module) and module_enabled?(fallback_module) do
+      if is_atom(fallback_module) and not is_nil(fallback_module) and
+           module_enabled?(fallback_module) do
         quote do
           use unquote(fallback_module)
         end
@@ -129,18 +139,18 @@ defmodule Bonfire.Common.Extend do
   end
 
   defmacro import_if_enabled(module, fallback_module \\ nil),
-    do: quoted_import_if_enabled(module, fallback_module)
+    do: quoted_import_if_enabled(module, fallback_module, __CALLER__)
 
-  def quoted_import_if_enabled(module, fallback_module \\ nil)
+  def quoted_import_if_enabled(module, fallback_module \\ nil, caller \\ nil)
 
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module),
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
     do:
       quoted_import_if_enabled(
-        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
+        Macro.expand(module_name_ast, caller),
         fallback_module
       )
 
-  def quoted_import_if_enabled(module, fallback_module) do
+  def quoted_import_if_enabled(module, fallback_module, caller) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to import")
       quote do
@@ -158,18 +168,18 @@ defmodule Bonfire.Common.Extend do
   end
 
   defmacro require_if_enabled(module, fallback_module \\ nil),
-    do: quoted_require_if_enabled(module, fallback_module)
+    do: quoted_require_if_enabled(module, fallback_module, __CALLER__)
 
-  def quoted_require_if_enabled(module, fallback_module \\ nil)
+  def quoted_require_if_enabled(module, fallback_module \\ nil, caller \\ nil)
 
-  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module),
+  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
     do:
       quoted_require_if_enabled(
-        module_name_ast |> Macro.to_string() |> Utils.maybe_to_module(),
+        Macro.expand(module_name_ast, caller),
         fallback_module
       )
 
-  def quoted_require_if_enabled(module, fallback_module) do
+  def quoted_require_if_enabled(module, fallback_module, caller) do
     if is_atom(module) and module_enabled?(module) do
       # debug(module, "Found module to require")
       quote do
