@@ -373,7 +373,7 @@ defmodule Bonfire.Common.Utils do
     if Keyword.keyword?(left) and Keyword.keyword?(right) do
       merge_as_map(Enum.into(left, %{}), Enum.into(right, %{}), conflict_fn)
     else
-      right
+      left ++ right
     end
   end
 

@@ -1,14 +1,14 @@
-defmodule Bonfire.Common.QueryModules do
+defmodule Bonfire.Common.QueryModule do
   @moduledoc """
   Properly query some data using the appropriate module depending on its schema.
 
   Back by a global cache of known query_modules to be queried by their schema, or vice versa.
 
-  Use of the QueryModules Service requires:
+  Use of the QueryModule Service requires:
 
-  1. Exporting `queries_module/0` in relevant modules (in schemas pointing to query modules and/or in query modules pointing to schemas), returning a Module atom
+  1. Exporting `query_module/0` in relevant modules (in schemas pointing to query modules and/or in query modules pointing to schemas), returning a Module atom
   2. To populate `:pointers, :search_path` in config the list of OTP applications where query_modules are declared.
-  3. Start the `Bonfire.Common.QueryModules` application before querying.
+  3. Start the `Bonfire.Common.QueryModule` application before querying.
   4. OTP 21.2 or greater, though we recommend using the most recent
      release available.
 
@@ -19,8 +19,17 @@ defmodule Bonfire.Common.QueryModules do
   entire cache to each process that has queried it since its last
   local garbage collection.
   """
-
+  @behaviour Bonfire.Common.ExtensionBehaviour
   use Bonfire.Common.Utils, only: [e: 3]
+
+  @doc "Declares a query module"
+  @callback query_module() :: any
+
+  @doc "Points to the related schema module"
+  @callback schema_module() :: atom
+
+  @doc "Points to the related context module"
+  @callback context_module() :: atom
 
   def maybe_query(
         schema,
@@ -82,47 +91,33 @@ defmodule Bonfire.Common.QueryModules do
   end
 
   def apply_error(error, args) do
-    warn("QueryModules - could not query: #{error} - Query args: #{inspect(args)}")
+    warn("QueryModule - could not query: #{error} - Query args: #{inspect(args)}")
 
     nil
   end
 
-  use GenServer, restart: :transient
-
-  @typedoc """
-  A query is either a query_module name atom or (Pointer) id binary
-  """
-  @type query :: binary | atom
-
-  @spec start_link(ignored :: term) :: GenServer.on_start()
-  @doc "Populates the global cache with query_module data via introspection."
-  def start_link(_), do: GenServer.start_link(__MODULE__, [])
-
-  def data() do
-    :persistent_term.get(__MODULE__)
-  rescue
-    e in ArgumentError ->
-      debug("Gathering a list of query modules...")
-      populate()
-  end
-
-  @spec query_module(query :: query) :: {:ok, atom} | {:error, :not_found}
   @doc "Get a Queryable identified by name or id."
   def query_module(query) when is_binary(query) or is_atom(query) do
-    case Map.get(data(), query) do
-      nil -> {:error, :not_found}
-      other -> {:ok, other}
+    case query in modules() do
+      true ->
+        {:ok, query}
+
+      _ ->
+        case Bonfire.Common.SchemaModule.linked_query_modules()[query] ||
+               Bonfire.Common.ContextModule.linked_query_modules()[query] do
+          nil -> {:error, :not_found}
+          module -> {:ok, module}
+        end
     end
   end
 
   @doc "Look up a Queryable by name or id, throw :not_found if not found."
-  def query_module!(query), do: Map.get(data(), query) || throw(:not_found)
+  def query_module!(query), do: Map.get(modules(), query) || throw(:not_found)
 
   @spec query_modules([binary | atom]) :: [binary]
   @doc "Look up many ids at once, throw :not_found if any of them are not found"
   def query_modules(modules) do
-    data = data()
-    Enum.map(modules, &Map.get(data, &1))
+    Enum.map(modules, &Map.get(modules(), &1))
   end
 
   def maybe_query_module(query) do
@@ -131,62 +126,33 @@ defmodule Bonfire.Common.QueryModules do
       module
     else
       _ ->
-        Utils.maybe_apply(query, :queries_module, [], &query_function_error/2)
+        Utils.maybe_apply(query, :query_module, [], &query_function_error/2)
     end
   end
 
   def query_function_error(error, _args, level \\ :info) do
     warn(
       error,
-      "QueryModules - there's no known query module for this schema, because one of: 1) No function queries_module/0 on a context module, that returns this schema's atom. 2)"
+      "QueryModule - there's no known query module for this schema, because one of: 1) No function query_module/0 on a context or schema module 1) No function schema_module/0 on a context or query module, that returns this schema's atom. 3)"
     )
 
     nil
   end
 
-  # GenServer callback
-
-  @doc false
-  def init(_) do
-    populate()
-    :ignore
+  def app_modules() do
+    Bonfire.Common.ExtensionBehaviour.behaviour_app_modules(__MODULE__)
   end
 
-  def populate() do
-    indexed =
-      search_path()
-      |> Enum.flat_map(&app_modules/1)
-      |> Enum.filter(&declares_queries_module?/1)
-      # |> IO.inspect
-      |> Enum.reduce(%{}, &index/2)
-
-    # |> IO.inspect(label: "Query modules")
-    :persistent_term.put(__MODULE__, indexed)
-    indexed
+  @spec modules() :: [atom]
+  def modules() do
+    Bonfire.Common.ExtensionBehaviour.behaviour_modules(__MODULE__)
   end
 
-  defp app_modules(app), do: app_modules(app, Application.spec(app, :modules))
-  defp app_modules(_, nil), do: []
-  defp app_modules(_, mods), do: mods
+  def linked_schema_modules() do
+    Bonfire.Common.ExtensionBehaviour.linked_modules(modules(), :schema_module)
+  end
 
-  # called by populate/0
-  defp search_path(),
-    do: Application.fetch_env!(:bonfire, :query_modules_search_path)
-
-  # called by populate/0
-  defp declares_queries_module?(module),
-    do:
-      Code.ensure_loaded?(module) and
-        function_exported?(module, :queries_module, 0)
-
-  # called by populate/0
-  defp index(mod, acc), do: index(acc, mod, mod.queries_module())
-
-  # called by index/2
-  defp index(acc, declaring_module, query_module) do
-    Map.merge(acc, %{
-      declaring_module => query_module,
-      query_module => declaring_module
-    })
+  def linked_context_modules() do
+    Bonfire.Common.ExtensionBehaviour.linked_modules(modules(), :context_module)
   end
 end

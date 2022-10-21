@@ -9,7 +9,7 @@ defmodule Bonfire.Common.Pointers do
   import EctoSparkles
   alias Bonfire.Common.Pointers.Queries
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.ContextModules
+  alias Bonfire.Common.ContextModule
   alias Pointers.NotFound
   alias Pointers.Pointer
 
@@ -394,7 +394,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
-    case Bonfire.Common.QueryModules.maybe_query(schema, [
+    case Bonfire.Common.QueryModule.maybe_query(schema, [
            filters(schema, filters, opts),
            opts
          ]) do
@@ -479,7 +479,7 @@ defmodule Bonfire.Common.Pointers do
              &follow_function_error/2
            ),
          {:error, _} <-
-           ContextModules.maybe_apply(
+           ContextModule.maybe_apply(
              schema,
              :follow_filters,
              [],

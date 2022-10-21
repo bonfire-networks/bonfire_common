@@ -165,9 +165,7 @@ defmodule Bonfire.Common.Types do
   Outputs the names all object types, for the purpose of adding to the localisation strings, as long as the output is piped through to localise_strings/1 at compile time.
   """
   def all_object_type_names() do
-    Bonfire.Common.ContextModules.search_app_modules(
-      Application.fetch_env!(:pointers, :search_path)
-    )
+    Bonfire.Common.SchemaModule.modules()
     |> Enum.filter(&Bonfire.Common.Utils.defines_struct?/1)
     |> Enum.flat_map(fn t ->
       t =

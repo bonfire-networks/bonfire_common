@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.RuntimeConfig do
   import Untangle
 
+  @behaviour Bonfire.Common.ConfigModule
   def config_module, do: true
 
   def config do

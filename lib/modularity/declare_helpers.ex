@@ -1,8 +1,10 @@
-defmodule Bonfire.Common.Modularity.DeclareExtensions do
+defmodule Bonfire.Common.Modularity.DeclareHelpers do
   alias Bonfire.Common.Extend
 
   defmacro declare_extension(name, opts \\ []) do
     quote do
+      @behaviour Bonfire.Common.ExtensionModule
+
       def declared_extension do
         generate_link(unquote(name), __MODULE__, unquote(opts))
         # Enum.into(unquote(opts), %{
@@ -17,6 +19,7 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
 
   defmacro declare_widget(name, opts \\ []) do
     quote do
+      @behaviour Bonfire.Common.WidgetModule
       @props_specs component_props(__MODULE__)
 
       def declared_widget do
@@ -32,6 +35,7 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
 
   defmacro declare_nav_component(name, opts \\ []) do
     quote do
+      @behaviour Bonfire.Common.NavModule
       @props_specs component_props(__MODULE__)
 
       def declared_nav do
@@ -49,6 +53,8 @@ defmodule Bonfire.Common.Modularity.DeclareExtensions do
 
   defmacro declare_nav_link(name, opts) do
     quote do
+      @behaviour Bonfire.Common.NavModule
+
       def declared_nav do
         case unquote(name) do
           list when is_list(list) ->

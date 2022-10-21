@@ -6,7 +6,8 @@ defmodule Bonfire.Common.Pointers.Queries do
   import Untangle
   alias Bonfire.Common.Utils
 
-  def queries_module, do: Pointer
+  @behaviour Bonfire.Common.QueryModule
+  def schema_module, do: Pointer
 
   def query(Pointer) do
     from(p in Pointer, as: :main_object)

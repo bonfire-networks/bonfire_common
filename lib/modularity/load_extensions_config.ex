@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Config.LoadExtensionsConfig do
   While this module is a GenServer, it is only responsible for querying the settings, putting them in Config, and then exits with :ignore having done so.
   """
   use GenServer, restart: :transient
-  use Bonfire.Common.Utils, only: []
+  use Bonfire.Common.Utils, only: [maybe_apply: 2]
   require Logger
 
   @spec start_link(ignored :: term) :: GenServer.on_start()
@@ -24,16 +24,17 @@ defmodule Bonfire.Common.Config.LoadExtensionsConfig do
   end
 
   def load_configs() do
-    extension_configs = Bonfire.Common.ConfigModules.data()
+    modules = Bonfire.Common.ConfigModule.modules()
     # |> debug()
-    if is_list(extension_configs) and length(extension_configs) > 0 do
-      Enum.each(extension_configs, & &1.config)
+    if is_list(modules) and modules != [] do
+      Enum.each(modules, &maybe_apply(&1, :config))
 
       Logger.info(
-        "Extensions' default settings were loaded into runtime config: #{inspect(extension_configs)}"
+        "Extensions' default settings were loaded from their ConfigModule into runtime config: #{inspect(modules)}"
       )
     else
-      Logger.info("Note: No extensions settings to load into runtime config")
+      Logger.info("Note: No extensions ConfigModule were found to load into runtime config")
+      IO.inspect(modules)
       {:ok, %{skip: "No config loaded"}}
     end
   end
