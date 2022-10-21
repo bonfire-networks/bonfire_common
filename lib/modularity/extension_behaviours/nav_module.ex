@@ -1,25 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.NavModule do
   @moduledoc """
-  A Global cache of known nav modules to be queried by associated schema, or vice versa.
-
-  Use of the NavModule Service requires:
-
-  1. Exporting `declared_nav/0` in relevant modules (or use the `declare_nav_component/2` or `declare_nav_link/2` macros), returning a Module or otp_app atom
-  2. To populate `:bonfire, :ui_modules_search_path` in nav the list of OTP applications where nav_modules are declared.
-  3. Start the `Bonfire.Common.NavModule` application before querying.
-  4. OTP 21.2 or greater, though we recommend using the most recent
-     release available.
-
-  While this module is a GenServer, it is only responsible for setup
-  of the cache and then exits with :ignore having done so. It is not
-  recommended to restart the service as this will lead to a stop the
-  world garbage collection of all processes and the copying of the
-  entire cache to each process that has queried it since its last
-  local garbage collection.
+  Add items to extensions' navigation sidebar.
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
-  use Bonfire.Common.Utils, only: []
+  use Bonfire.Common.Utils, only: [filter_empty: 2]
 
   @doc "Declares a nav module, with links or nav components"
   @callback declared_nav() :: any
@@ -47,8 +32,9 @@ defmodule Bonfire.Common.NavModule do
   def nav(_), do: nil
 
   @doc "Load all navs"
-  def navs() do
+  def nav() do
     Enum.map(modules(), &nav/1)
+    |> filter_empty([])
   end
 
   def nav_function_error(error, _args) do

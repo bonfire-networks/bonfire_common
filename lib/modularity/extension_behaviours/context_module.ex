@@ -1,22 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.ContextModule do
   @moduledoc """
-  A Global cache of known context modules to be queried by associated schema, or vice versa.
-
-  Use of the ContextModule Service requires:
-
-  1. Exporting `context_module/0` in relevant modules (in schemas pointing to context modules and/or in context modules pointing to schemas), returning a Module atom
-  2. To populate `:bonfire, :context_modules_search_path` in config the list of OTP applications where context_modules are declared.
-  3. Start the `Bonfire.Common.ContextModule` application before querying.
-  4. OTP 21.2 or greater, though we recommend using the most recent
-     release available.
-
-  While this module is a GenServer, it is only responsible for setup
-  of the cache and then exits with :ignore having done so. It is not
-  recommended to restart the service as this will lead to a stop the
-  world garbage collection of all processes and the copying of the
-  entire cache to each process that has queried it since its last
-  local garbage collection.
+  Find a context or query module via its schema, backed by a global cache of known modules.
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
   use Bonfire.Common.Utils, only: []

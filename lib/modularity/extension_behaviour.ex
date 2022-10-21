@@ -1,5 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.ExtensionBehaviour do
+  @moduledoc """
+  A Global cache of known Behaviours in Bonfire
+
+  Use of the ExtensionBehaviour Service requires ddding `@behaviour Bonfire.Common.ExtensionBehaviour` in your behaviour modules. This modules when then index those behaviours *and* all the modules that implement those behaviours at startup.
+
+  While this module is a GenServer, it is only responsible for setup
+  of the cache and then exits with :ignore having done so. It is not
+  recommended to restart the service as this will lead to a stop the
+  world garbage collection of all processes and the copying of the
+  entire cache to each process that has queried it since its last
+  local garbage collection.
+  """
   use GenServer, restart: :transient
   import Untangle
   alias Bonfire.Common.Utils
