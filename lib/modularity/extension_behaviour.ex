@@ -188,7 +188,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
       "Indexed the modules from #{Enum.count(indexed)} behaviours in #{time / 1_000_000} seconds"
     )
 
-    IO.inspect(indexed)
+    # IO.inspect(indexed)
 
     :persistent_term.put(__MODULE__, indexed)
 

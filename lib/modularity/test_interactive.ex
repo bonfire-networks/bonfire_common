@@ -28,6 +28,7 @@ defmodule Bonfire.Common.Test.Interactive do
   """
 
   use GenServer
+  import Bonfire.Common.Config, only: [repo: 0]
 
   defmodule Helpers do
     defdelegate ta(args \\ nil),
@@ -233,15 +234,16 @@ defmodule Bonfire.Common.Test.Interactive do
   end
 
   def setup_test_repo(tags) do
-    wrap_test_in_transaction_and_rollback = System.get_env("START_SERVER") != "true"
+    wrap_test_in_transaction_and_rollback =
+      System.get_env("START_SERVER") != "yes" and System.get_env("TEST_INSTANCE") != "yes"
 
     :ok =
-      Ecto.Adapters.SQL.Sandbox.checkout(Bonfire.Common.Repo,
+      Ecto.Adapters.SQL.Sandbox.checkout(repo(),
         sandbox: wrap_test_in_transaction_and_rollback
       )
 
     if not wrap_test_in_transaction_and_rollback or !tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Bonfire.Common.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(repo(), {:shared, self()})
     end
   end
 end

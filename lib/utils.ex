@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Utils do
   import Bonfire.Common.Extend
   # require Bonfire.Common.Localise.Gettext
   # import Bonfire.Common.Localise.Gettext.Helpers
+  import Bonfire.Common.Config, only: [repo: 0]
   import Untangle
   require Logger
   alias Bonfire.Common.Text
@@ -273,7 +274,7 @@ defmodule Bonfire.Common.Utils do
         "The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query..."
       )
 
-      Bonfire.Common.Repo.maybe_preload(map, key)
+      repo().maybe_preload(map, key)
       |> Map.get(key, fallback)
       |> filter_empty(fallback)
     else
@@ -740,7 +741,7 @@ defmodule Bonfire.Common.Utils do
   # end
 
   def stringify_keys(not_a_map, _recursive) do
-    warn(not_a_map, "Cannot stringify this object's keys")
+    # warn(not_a_map, "Cannot stringify this object's keys")
     not_a_map
   end
 
@@ -927,13 +928,13 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def date_from_now(object), do: date_from_pointer(object) ~> date_from_now()
+  def date_from_now(object), do: date_from_pointer(object) |> date_from_now()
 
   def date_from_pointer(object) do
     with id when is_binary(id) <- ulid(object),
          {:ok, ts} <- Pointers.ULID.timestamp(id),
          {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
-      {:ok, date}
+      date
     else
       e ->
         error(e)
@@ -977,7 +978,7 @@ defmodule Bonfire.Common.Utils do
   def avatar_url(%{id: id, shared_user: %{id: _}} = obj),
     do: "https://picsum.photos/seed/#{id}/128/128?blur"
 
-  # def avatar_url(%{id: id, shared_user: _} = user), do: Bonfire.Common.Repo.maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
+  # def avatar_url(%{id: id, shared_user: _} = user), do: repo().maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
   def avatar_url(%{id: id}) when is_binary(id), do: avatar_fallback(id)
   def avatar_url(obj), do: avatar_fallback(ulid(obj))
@@ -1140,7 +1141,7 @@ defmodule Bonfire.Common.Utils do
 
       user ->
         case user do
-          # |> Bonfire.Common.Repo.maybe_preload(accounted: :account) do
+          # |> repo().maybe_preload(accounted: :account) do
           %{accounted: %{account: %{id: _} = account}} -> account
           # %{accounted: %{account_id: account_id}} -> account_id
           _ -> nil

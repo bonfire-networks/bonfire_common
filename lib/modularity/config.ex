@@ -139,21 +139,16 @@ defmodule Bonfire.Common.Config do
     put_env(otp_app, key, value)
   end
 
-  defp put_env(otp_app, key, value) do
-    # debug(value, "#{inspect otp_app}: #{inspect key}")
-    Application.put_env(otp_app, key, value, persistent: true)
-  end
-
   def put(tree) when is_list(tree) or is_map(tree) do
     Enum.each(tree, &put/1)
   end
 
-  def put({otp_app, tree}) do
+  def put({otp_app, tree}) when is_atom(otp_app) and is_list(tree) do
     Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
   end
 
   def put(other) do
-    debug(other, "Nothing to put")
+    error(other, "Nothing to put")
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
@@ -171,7 +166,13 @@ defmodule Bonfire.Common.Config do
   end
 
   defp put_tree(k, v, otp_app) do
+    # debug(v, inspect k)
     put(k, v, otp_app)
+  end
+
+  defp put_env(otp_app, key, value) do
+    # debug(value, "#{inspect otp_app}: #{inspect key}")
+    Application.put_env(otp_app, key, value, persistent: true)
   end
 
   defp keys_with_fallback(keys) when is_map(keys),
@@ -265,7 +266,7 @@ defmodule Bonfire.Common.Config do
 
   # some aliases to specific config keys for convienience
 
-  def repo, do: get!(:repo_module)
+  def repo, do: Process.get(:ecto_repo_module) || get!(:repo_module)
 end
 
 # finally, check that bonfire_common is configured, required so that this module can function

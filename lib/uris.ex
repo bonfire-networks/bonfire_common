@@ -2,6 +2,7 @@ defmodule Bonfire.Common.URIs do
   import Untangle
   use Arrows
   import Bonfire.Common.Extend
+  import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Characters
 
@@ -215,7 +216,7 @@ defmodule Bonfire.Common.URIs do
        do:
          obj
          # |> debug("with character")
-         |> Bonfire.Common.Repo.maybe_preload(:character)
+         |> repo().maybe_preload(:character)
          |> Utils.e(:character, obj.id)
          |> path_id()
 
@@ -257,7 +258,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Common.Repo.maybe_preload(object, :peered)
+    repo().maybe_preload(object, :peered)
     |> Utils.e(:peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
@@ -267,13 +268,13 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Common.Repo.maybe_preload(object, created: [:peered])
+    repo().maybe_preload(object, created: [:peered])
     |> Utils.e(:created, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
   def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object) do
-    Bonfire.Common.Repo.maybe_preload(object, character: [:peered])
+    repo().maybe_preload(object, character: [:peered])
     |> Utils.e(:character, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
@@ -334,36 +335,41 @@ defmodule Bonfire.Common.URIs do
 
   def base_url(conn \\ nil)
 
-  def base_url(%{scheme: scheme, host: host, port: 80})
-      when scheme in [:http, "http"],
-      do: "http://" <> host
+  def base_url(%{host: host, port: 80}),
+    do: "http://" <> host
 
-  def base_url(%{scheme: scheme, host: host, port: 443})
-      when scheme in [:https, "https"],
-      do: "https://" <> host
-
-  def base_url(%{host: host, port: 443}), do: "https://" <> host
+  def base_url(%{host: host, port: 443}),
+    do: "https://" <> host
 
   def base_url(%{scheme: scheme, host: host, port: port}),
     do: "#{scheme}://#{host}:#{port}"
 
+  def base_url(%{scheme: scheme, host: host}),
+    do: "#{scheme}://#{host}"
+
+  def base_url(%{host: host, port: port}),
+    do: "http://#{host}:#{port}"
+
   def base_url(%{host: host}), do: "http://#{host}"
 
   def base_url(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
-    if Code.ensure_loaded?(endpoint) do
-      base_url(endpoint.struct_url())
+    if module_enabled?(endpoint) do
+      endpoint.struct_url()
+      # |> info(endpoint)
+      |> base_url()
     else
       error("endpoint module not found: #{inspect(endpoint)}")
-      ""
+      base_url(nil)
     end
   rescue
     e ->
       error(e, "could not get struct_url from endpoint")
-      ""
+      base_url(nil)
   end
 
   def base_url(_) do
-    case Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
+    case Process.get(:phoenix_endpoint_module) ||
+           Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
       endpoint when is_atom(endpoint) ->
         if module_enabled?(endpoint) do
           base_url(endpoint)
@@ -373,13 +379,16 @@ defmodule Bonfire.Common.URIs do
         end
 
       _ ->
-        error("requires a conn or endpoint module")
+        error("requires a conn or :endpoint_module in Config")
         ""
     end
   end
 
   def instance_domain(endpoint_or_conn \\ nil) do
     case base_url(endpoint_or_conn) |> URI.parse() do
+      %{host: host, port: port} when port not in [80, 443] ->
+        "#{host}:#{port}"
+
       %{host: host} ->
         host
 
