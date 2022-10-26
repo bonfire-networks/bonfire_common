@@ -172,16 +172,6 @@ defmodule Bonfire.Common.Utils do
   def is_ulid?(_), do: false
 
   def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
-  def ulid(%{id: id}) when is_binary(id), do: ulid(id)
-  def ulid(%Changeset{} = cs), do: ulid(Changeset.get_field(cs, :id))
-  def ulid({:id, id}) when is_binary(id), do: ulid(id)
-  def ulid(%{"id" => id}) when is_binary(id), do: ulid(id)
-
-  def ulid(ids) when is_list(ids),
-    do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
-
-  def ulid({:ok, other}), do: ulid(other)
-
   def ulid(input) when is_binary(input) do
     # ulid is always 26 chars
     id = String.slice(input, 0, 26)
@@ -196,13 +186,18 @@ defmodule Bonfire.Common.Utils do
       nil
     end
   end
-
+  def ulid(ids) when is_list(ids),
+    do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
   def ulid(id) do
-    e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect(id)}"
+    case id(id) do
+      id when is_binary(id) or is_list(id) -> ulid(id)
+      _ ->
+        e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect(id)}"
 
-    # throw {:error, e}
-    warn(e)
-    nil
+        # throw {:error, e}
+        warn(e)
+        nil
+    end
   end
 
   def ulids(objects), do: ulid(objects) |> List.wrap()
@@ -216,6 +211,21 @@ defmodule Bonfire.Common.Utils do
         error(object, "Expected an object or ID (ULID), but got")
         raise "Expected an object or ID (ULID)"
     end
+  end
+
+  def id(id) when is_binary(id), do: id
+  def id(%{id: id}) when is_binary(id), do: id
+  def id(%Changeset{} = cs), do: id(Changeset.get_field(cs, :id))
+  def id({:id, id}) when is_binary(id), do: id
+  def id(%{"id" => id}) when is_binary(id), do: id
+  def id(ids) when is_list(ids),
+    do: ids |> maybe_flatten() |> Enum.map(&id/1) |> filter_empty(nil)
+  def id({:ok, other}), do: id(other)
+  def id(id) do
+    e = "Utils.id/1: Expected an ID (or an object with one), got #{inspect(id)}"
+    # throw {:error, e}
+    warn(e)
+    nil
   end
 
   @doc """
@@ -1073,7 +1083,7 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
-  def current_user_required(context),
+  def current_user_required!(context),
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
   def to_options(user_or_socket_or_opts) do
@@ -1155,14 +1165,11 @@ defmodule Bonfire.Common.Utils do
     fun.() |> Macro.expand(__ENV__) |> Macro.to_string() |> debug("Macro:")
   end
 
-  def ok_or(ret, fallback \\ nil) do
-    with {:ok, val} <- ret do
-      val
-    else
-      _ ->
-        fallback
-    end
-  end
+  def ok_unwrap(val, fallback \\ nil)
+  def ok_unwrap({:ok, val}, _fallback), do: val
+  def ok_unwrap({:error, _val}, fallback), do: fallback
+  def ok_unwrap(:error, fallback), do: fallback
+  def ok_unwrap(val, fallback), do: val || fallback
 
   def elem_or(verb, index, _fallback) when is_tuple(verb), do: elem(verb, index)
   def elem_or(_verb, _index, fallback), do: fallback
