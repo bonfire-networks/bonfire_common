@@ -172,6 +172,7 @@ defmodule Bonfire.Common.Utils do
   def is_ulid?(_), do: false
 
   def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
+
   def ulid(input) when is_binary(input) do
     # ulid is always 26 chars
     id = String.slice(input, 0, 26)
@@ -186,11 +187,15 @@ defmodule Bonfire.Common.Utils do
       nil
     end
   end
+
   def ulid(ids) when is_list(ids),
     do: ids |> maybe_flatten() |> Enum.map(&ulid/1) |> filter_empty(nil)
+
   def ulid(id) do
     case id(id) do
-      id when is_binary(id) or is_list(id) -> ulid(id)
+      id when is_binary(id) or is_list(id) ->
+        ulid(id)
+
       _ ->
         e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect(id)}"
 
@@ -218,9 +223,12 @@ defmodule Bonfire.Common.Utils do
   def id(%Changeset{} = cs), do: id(Changeset.get_field(cs, :id))
   def id({:id, id}) when is_binary(id), do: id
   def id(%{"id" => id}) when is_binary(id), do: id
+
   def id(ids) when is_list(ids),
     do: ids |> maybe_flatten() |> Enum.map(&id/1) |> filter_empty(nil)
+
   def id({:ok, other}), do: id(other)
+
   def id(id) do
     e = "Utils.id/1: Expected an ID (or an object with one), got #{inspect(id)}"
     # throw {:error, e}
