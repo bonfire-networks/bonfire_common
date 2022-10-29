@@ -374,6 +374,7 @@ defmodule Bonfire.Common.Utils do
 
   @doc "conditionally update a map"
   def maybe_put(map, _key, nil), do: map
+  def maybe_put(map, _key, []), do: map
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 

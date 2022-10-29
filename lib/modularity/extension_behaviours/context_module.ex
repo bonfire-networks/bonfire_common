@@ -46,6 +46,15 @@ defmodule Bonfire.Common.ContextModule do
   end
 
   def maybe_apply(
+        %Pointers.Pointer{} = object,
+        fun,
+        args,
+        fallback_fun
+      ) do
+    maybe_apply(Bonfire.Common.Types.object_type(object), fun, args, fallback_fun)
+  end
+
+  def maybe_apply(
         %{__struct__: schema} = _object,
         fun,
         args,
