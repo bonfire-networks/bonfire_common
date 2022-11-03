@@ -42,8 +42,11 @@ defmodule Bonfire.Common.Types do
              Bonfire.Data.Identity.User,
              "5EVSER1S0STENS1B1YHVMAN01D",
              "User",
+             "Users",
              "Person",
-             "Organization"
+             "Organization",
+             :user,
+             :users
            ],
       do: Bonfire.Data.Identity.User
 
@@ -51,7 +54,10 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Data.Social.Post,
              "30NF1REP0STTAB1ENVMBER0NEE",
-             "Post"
+             "Posts",
+             "Post",
+             :post,
+             :posts
            ],
       do: Bonfire.Data.Social.Post
 
@@ -59,7 +65,9 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Classify.Category,
              "Category",
+             "Categories",
              "Topic",
+             "Topics",
              :Category,
              :Topic
            ],
@@ -71,6 +79,7 @@ defmodule Bonfire.Common.Types do
              Bonfire.Data.Social.Follow,
              "70110WTHE1EADER1EADER1EADE",
              "Follow",
+             "Follows",
              :follow
            ],
       do: Bonfire.Data.Social.Follow
@@ -80,6 +89,7 @@ defmodule Bonfire.Common.Types do
              Bonfire.Data.Social.Like,
              "11KES11KET0BE11KEDY0VKN0WS",
              "Like",
+             "Likes",
              :like
            ],
       do: Bonfire.Data.Social.Like
@@ -89,6 +99,7 @@ defmodule Bonfire.Common.Types do
              Bonfire.Data.Social.Boost,
              "300STANN0VNCERESHARESH0VTS",
              "Boost",
+             "Boosts",
              :boost
            ],
       do: Bonfire.Data.Social.Boost
@@ -98,6 +109,7 @@ defmodule Bonfire.Common.Types do
       when type in [
              ValueFlows.EconomicEvent,
              "EconomicEvent",
+             "EconomicEvents",
              "2CTVA10BSERVEDF10WS0FVA1VE"
            ],
       do: ValueFlows.EconomicEvent
@@ -110,6 +122,7 @@ defmodule Bonfire.Common.Types do
       when type in [
              ValueFlows.Planning.Intent,
              "Intent",
+             "Intents",
              "ValueFlows.Planning.Offer",
              "ValueFlows.Planning.Need",
              "1NTENTC0V1DBEAN0FFER0RNEED"
@@ -190,10 +203,17 @@ defmodule Bonfire.Common.Types do
 
   def table_type(type) when is_atom(type) and not is_nil(type), do: table_id(type)
   def table_type(%{table_id: table_id}) when is_binary(table_id), do: ulid(table_id)
-  def table_type(type) when is_map(type) or is_binary(type), do: ulid(type)
+  def table_type(type) when is_map(type), do: object_type(type) |> table_id()
+
+  def table_type(type) when is_binary(type),
+    do: String.capitalize(type) |> object_type() |> table_id
+
   def table_type(_), do: nil
 
-  def table_id(schema), do: schema.__pointers__(:table_id)
+  def table_id(schema) when is_atom(schema) and not is_nil(schema),
+    do: schema.__pointers__(:table_id)
+
+  def table_id(_), do: nil
 
   defp sanitise_name("Replied"), do: "Reply in Thread"
   defp sanitise_name("Named"), do: "Name"

@@ -1098,7 +1098,7 @@ defmodule Bonfire.Common.Utils do
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do
       %{assigns: assigns} = _socket ->
-        [assigns: assigns]
+        Keyword.new(assigns)
 
       _ when is_struct(user_or_socket_or_opts) ->
         [context: user_or_socket_or_opts]

@@ -16,12 +16,12 @@ defmodule Bonfire.Common.SettingsModule do
   def nav(app) when is_atom(app) and not is_nil(app) do
     app_modules()[app]
     # |> debug
-    |> nav()
+    |> modules_nav()
   end
 
-  def nav(modules) when is_list(modules) do
+  def modules_nav(modules) when is_list(modules) do
     modules
-    |> debug
+    # |> debug
     |> Enum.map(fn
       {module, props} ->
         Utils.maybe_apply(module, :declared_settings_nav, [], &nav_function_error/2)
@@ -35,8 +35,8 @@ defmodule Bonfire.Common.SettingsModule do
   @doc "Load all navs"
   def nav() do
     modules()
-    |> nav()
-    |> debug()
+    |> modules_nav()
+    # |> debug()
     |> filter_empty([])
   end
 
@@ -54,21 +54,52 @@ defmodule Bonfire.Common.SettingsModule do
     nil
   end
 
-  @doc "Get a component identified by its module"
-  def component(module) when is_atom(module) do
-    Utils.maybe_apply(module, :declared_component, [], &component_function_error/2)
+  @doc "Get components identified by their module"
+  def modules_component(modules) when is_list(modules) do
+    modules
+    |> Enum.map(fn
+      {module, props} ->
+        Utils.maybe_apply(module, :declared_component, [], &component_function_error/2)
+        |> Enum.into(%{props: props})
+
+      module ->
+        Utils.maybe_apply(module, :declared_component, [], &component_function_error/2)
+    end)
   end
 
   @doc "Load components for an extension"
   def components(extension) do
-    Enum.map(app_modules()[extension], &component/1)
+    app_modules()[extension]
+    |> modules_component()
     |> filter_empty([])
   end
 
   @doc "Load all components at once"
   def components() do
-    Enum.map(modules(), &component/1)
+    modules()
+    |> modules_component()
     |> filter_empty([])
+  end
+
+  @doc "List extensions that have settings component(s)"
+  def extension_has_components?(extension) do
+    case app_modules()[extension]
+         |> modules_with_component() do
+      [] -> false
+      _ -> true
+    end
+  end
+
+  defp modules_with_component(modules) when is_list(modules) do
+    modules
+    # |> debug
+    |> Enum.filter(fn
+      {module, _props} ->
+        module_enabled?(module) and function_exported?(module, :declared_component, 0)
+
+      module ->
+        module_enabled?(module) and function_exported?(module, :declared_component, 0)
+    end)
   end
 
   def component_function_error(error, _args) do
