@@ -106,6 +106,7 @@ defmodule Bonfire.Common.Pointers do
   def pointer_query(filters, opts) do
     opts = Utils.to_options(opts)
     q = Queries.query(nil, filters)
+    # |> info()
 
     # note: cannot use boundarise macro to avoid depedency cycles
     Utils.maybe_apply(
