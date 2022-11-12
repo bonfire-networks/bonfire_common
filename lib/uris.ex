@@ -223,7 +223,7 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 
-  def url(view_module_or_path_name_or_object, args \\ []) do
+  def url_path(view_module_or_path_name_or_object, args \\ []) do
     base_url() <> path(view_module_or_path_name_or_object, args)
   end
 
