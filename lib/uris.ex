@@ -289,8 +289,9 @@ defmodule Bonfire.Common.URIs do
 
   defp query_or_generate_canonical_url(object) do
     if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
-      debug(object, "attempt to query Peered")
+      # debug(object, "attempt to query Peered")
       Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object)
+      # |> debug("peered url")
     end ||
       maybe_generate_canonical_url(object)
   end
