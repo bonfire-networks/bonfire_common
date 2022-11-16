@@ -334,7 +334,24 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
-  def base_url(conn \\ nil)
+  def base_url(conn_or_socket \\ nil)
+
+  def base_url(%{endpoint: endpoint} = _socket), do: base_url(endpoint)
+
+  def base_url(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
+    if module_enabled?(endpoint) do
+      endpoint.struct_url()
+      # |> info(endpoint)
+      |> base_url()
+    else
+      error("endpoint module not found: #{inspect(endpoint)}")
+      base_url(nil)
+    end
+  rescue
+    e ->
+      error(e, "could not get struct_url from endpoint")
+      base_url(nil)
+  end
 
   def base_url(%{host: host, port: 80}),
     do: "http://" <> host
@@ -352,21 +369,6 @@ defmodule Bonfire.Common.URIs do
     do: "http://#{host}:#{port}"
 
   def base_url(%{host: host}), do: "http://#{host}"
-
-  def base_url(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
-    if module_enabled?(endpoint) do
-      endpoint.struct_url()
-      # |> info(endpoint)
-      |> base_url()
-    else
-      error("endpoint module not found: #{inspect(endpoint)}")
-      base_url(nil)
-    end
-  rescue
-    e ->
-      error(e, "could not get struct_url from endpoint")
-      base_url(nil)
-  end
 
   def base_url(_) do
     case Process.get(:phoenix_endpoint_module) ||
