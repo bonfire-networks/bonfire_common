@@ -296,7 +296,7 @@ defmodule Bonfire.Common.URIs do
       maybe_generate_canonical_url(object)
   end
 
-  defp maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
+  def maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
     if module_enabled?(Characters) do
       debug("check if object is a Character (in which case use actor URL)")
 
@@ -309,28 +309,28 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  defp maybe_generate_canonical_url(id) when is_binary(id) do
+  def maybe_generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
     prefix = if Utils.is_ulid?(id), do: "/objects/", else: "/actors/"
     base_url() <> ap_base_path <> prefix <> id
   end
 
-  defp maybe_generate_canonical_url(%{"id" => id}),
+  def maybe_generate_canonical_url(%{"id" => id}),
     do: maybe_generate_canonical_url(id)
 
-  defp maybe_generate_canonical_url(%{"username" => id}),
+  def maybe_generate_canonical_url(%{"username" => id}),
     do: maybe_generate_canonical_url(id)
 
-  defp maybe_generate_canonical_url(%{username: id}),
+  def maybe_generate_canonical_url(%{username: id}),
     do: maybe_generate_canonical_url(id)
 
-  defp maybe_generate_canonical_url(%{"displayUsername" => id}),
+  def maybe_generate_canonical_url(%{"displayUsername" => id}),
     do: maybe_generate_canonical_url(id)
 
-  defp maybe_generate_canonical_url(%{"preferredUsername" => id}),
+  def maybe_generate_canonical_url(%{"preferredUsername" => id}),
     do: maybe_generate_canonical_url(id)
 
-  defp maybe_generate_canonical_url(_) do
+  def maybe_generate_canonical_url(_) do
     nil
   end
 
