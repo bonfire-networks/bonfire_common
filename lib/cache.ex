@@ -12,12 +12,7 @@ defmodule Bonfire.Common.Cache do
     opts
     # |> debug()
     |> Keyword.put_new_lazy(:cache_key, fn ->
-      mod_fun =
-        String.split(inspect(fun), " in ")
-        |> List.last()
-        |> String.trim_trailing(">")
-
-      "#{mod_fun}(#{satinise_args(args)})"
+      key_for_call(fun, args)
     end)
     |> do_maybe_apply_cached(nil, fun, args, ...)
   end
@@ -26,9 +21,27 @@ defmodule Bonfire.Common.Cache do
       when is_atom(module) and is_atom(fun) do
     opts
     |> Keyword.put_new_lazy(:cache_key, fn ->
-      "#{String.trim_leading(Atom.to_string(module), "Elixir.")}.#{fun}(#{satinise_args(args)})"
+      key_for_call({module, fun}, args)
     end)
     |> do_maybe_apply_cached(module, fun, args, ...)
+  end
+
+  def reset(fun, args, opts \\ []) do
+    Cachex.del(cache_key(opts), key_for_call(fun, args))
+  end
+
+  defp key_for_call(fun, args) when is_function(fun) do
+    mod_fun =
+      String.split(inspect(fun), " in ")
+      |> List.last()
+      |> String.trim_trailing(">")
+
+    "#{mod_fun}(#{satinise_args(args)})"
+  end
+
+  defp key_for_call({module, fun}, args)
+       when is_atom(module) and is_atom(fun) do
+    "#{String.trim_leading(Atom.to_string(module), "Elixir.")}.#{fun}(#{satinise_args(args)})"
   end
 
   defp do_maybe_apply_cached(module, fun, args, opts) do
