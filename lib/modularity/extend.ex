@@ -6,13 +6,13 @@ defmodule Bonfire.Common.Extend do
 
   @doc """
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
-  # TODO: also make it possible to disable individual modules in config
+  # TODO: also make it possible to disable individual modules in config?
   """
   def module_enabled?(module, opts \\ []) do
     module_exists?(module) and extension_enabled?(module, opts)
   end
 
-  def module_exists?(module) do
+  def module_exists?(module) when is_atom(module) do
     function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
 

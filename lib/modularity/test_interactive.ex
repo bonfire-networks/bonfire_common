@@ -238,9 +238,9 @@ defmodule Bonfire.Common.Test.Interactive do
     wrap_test_in_transaction_and_rollback =
       System.get_env("START_SERVER") != "yes" and System.get_env("TEST_INSTANCE") != "yes"
 
-    if wrap_test_in_transaction_and_rollback,
-      do: info("Wrapping tests in DB transactions to be rolled back"),
-      else: info("*Not* wrapping tests in DB transactions")
+    # if wrap_test_in_transaction_and_rollback,
+    #   do: info("Wrapping tests in DB transactions to be rolled back"),
+    #   else: info("*Not* wrapping tests in DB transactions")
 
     :ok =
       Ecto.Adapters.SQL.Sandbox.checkout(repo(),
