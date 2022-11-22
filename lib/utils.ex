@@ -1072,6 +1072,9 @@ defmodule Bonfire.Common.Utils do
       %{__context__: %{current_user: _} = context} = _assigns ->
         current_user(context, true)
 
+      %{__context__: %{current_user_id: _} = context} = _assigns ->
+        current_user(context, true)
+
       %{socket: socket} = _socket ->
         current_user(socket, true)
 
@@ -1080,6 +1083,12 @@ defmodule Bonfire.Common.Utils do
 
       _ when is_list(current_user_or_socket_or_opts) ->
         current_user(Map.new(current_user_or_socket_or_opts), true)
+
+      %{current_user_id: user_id} when is_binary(user_id) ->
+        user_id
+
+      %{current_user: user_id} when is_binary(user_id) ->
+        user_id
 
       _ ->
         nil
