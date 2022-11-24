@@ -108,7 +108,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     # filter out any modules that do not have the `behaviour` specified
     modules
     |> Enum.filter(fn mod ->
-      behaviour in module_behaviours(mod)
+      behaviour in (module_behaviours(mod) || [])
     end)
 
     # |> debug()
