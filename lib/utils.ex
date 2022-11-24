@@ -1085,10 +1085,13 @@ defmodule Bonfire.Common.Utils do
         current_user(Map.new(current_user_or_socket_or_opts), true)
 
       %{current_user_id: user_id} when is_binary(user_id) ->
-        user_id
+        current_user(user_id)
 
       %{current_user: user_id} when is_binary(user_id) ->
-        user_id
+        current_user(user_id)
+
+      user_id when is_binary(user_id) ->
+        ulid(user_id)
 
       _ ->
         nil
