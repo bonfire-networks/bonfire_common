@@ -46,6 +46,11 @@ defmodule Bonfire.Common.ExtensionModule do
     Enum.map(modules, &declared_extension/1)
   end
 
+  def default_nav(%{default_nav: default_nav}) do
+    default_nav
+    |> Bonfire.Common.NavModule.nav()
+  end
+
   def default_nav(app) do
     extension(app)[:default_nav]
     |> Bonfire.Common.NavModule.nav()
