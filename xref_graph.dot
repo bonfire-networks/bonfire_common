@@ -1,0 +1,192 @@
+digraph "xref graph" {
+  "lib/cache.ex"
+  "lib/cache.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/localise/gettext.ex" -> "lib/modularity/cdlr.ex" [label="(compile)"]
+  "lib/localise/gettext.ex" -> "lib/modularity/config.ex" [label="(compile)"]
+  "lib/modularity/config.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extend.ex" -> "lib/modularity/config.ex"
+  "lib/modularity/extend.ex" -> "lib/utils.ex"
+  "lib/utils.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/utils.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/utils.ex" -> "lib/modularity/types.ex"
+  "lib/modularity/types.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/types.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/types.ex" -> "lib/modularity/extension_behaviours/schema_module.ex"
+  "lib/modularity/extension_behaviours/schema_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/schema_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/schema_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviour.ex" -> "lib/modularity/config.ex"
+  "lib/modularity/extension_behaviour.ex" -> "lib/utils.ex"
+  "lib/modularity/extension_behaviours/schema_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/uris.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/uris.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/uris.ex" -> "lib/modularity/types.ex"
+  "lib/uris.ex" -> "lib/pointers/pointers.ex"
+  "lib/pointers/pointers.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/pointers/pointers.ex" -> "lib/modularity/extend.ex" [label="(compile)"]
+  "lib/pointers/pointers.ex" -> "lib/modularity/extension_behaviours/context_module.ex"
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/modularity/extension_behaviours/schema_module.ex"
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/modularity/types.ex"
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/context_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/pointers/pointers.ex" -> "lib/modularity/extension_behaviours/query_module.ex"
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/modularity/extension_behaviours/context_module.ex"
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/modularity/extension_behaviours/schema_module.ex"
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/query_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/pointers/pointers.ex" -> "lib/pointers/pointers_queries.ex"
+  "lib/pointers/pointers_queries.ex" -> "lib/modularity/extension_behaviours/query_module.ex" [label="(compile)"]
+  "lib/pointers/pointers_queries.ex" -> "lib/utils.ex"
+  "lib/pointers/pointers.ex" -> "lib/pointers/tables.ex"
+  "lib/pointers/tables.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/pointers/tables.ex" -> "lib/pointers/tables_queries.ex"
+  "lib/pointers/tables.ex" -> "lib/utils.ex"
+  "lib/pointers/pointers.ex" -> "lib/utils.ex"
+  "lib/uris.ex" -> "lib/utils.ex"
+  "lib/modularity/extension_behaviours/schema_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/types.ex" -> "lib/pointers/pointers.ex"
+  "lib/modularity/types.ex" -> "lib/text.ex"
+  "lib/text.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/text.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/text.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/text.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/types.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/types.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/config.ex" -> "lib/utils.ex"
+  "lib/localise/gettext.ex" -> "lib/modularity/extend.ex"
+  "lib/cache.ex" -> "lib/modularity/config.ex"
+  "lib/cache.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/cache.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/cache.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/common.ex"
+  "lib/date_times.ex"
+  "lib/enums.ex"
+  "lib/http/connection.ex"
+  "lib/http/connection.ex" -> "lib/modularity/config.ex"
+  "lib/http/http.ex"
+  "lib/http/http.ex" -> "lib/cache.ex"
+  "lib/http/http.ex" -> "lib/http/connection.ex"
+  "lib/http/http.ex" -> "lib/http/request_builder.ex"
+  "lib/http/request_builder.ex"
+  "lib/localise/gettext.ex"
+  "lib/localise/localise.ex"
+  "lib/localise/localise.ex" -> "lib/localise/gettext.ex"
+  "lib/localise/localise.ex" -> "lib/modularity/cdlr.ex"
+  "lib/localise/localise.ex" -> "lib/modularity/config.ex"
+  "lib/localise/localise.ex" -> "lib/utils.ex"
+  "lib/mix_tasks/import2alias.ex"
+  "lib/modularity/cdlr.ex"
+  "lib/modularity/changelog_github_datagrabber.ex"
+  "lib/modularity/changelog_github_datagrabber.ex" -> "lib/modularity/config.ex"
+  "lib/modularity/changelog_github_datagrabber.ex" -> "lib/modularity/extend.ex" [label="(compile)"]
+  "lib/modularity/changelog_github_datagrabber.ex" -> "lib/utils.ex"
+  "lib/modularity/config.ex"
+  "lib/modularity/declare_helpers.ex"
+  "lib/modularity/declare_helpers.ex" -> "lib/uris.ex"
+  "lib/modularity/extend.ex"
+  "lib/modularity/extension_behaviour.ex"
+  "lib/modularity/extension_behaviours/config_module.ex"
+  "lib/modularity/extension_behaviours/config_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/config_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/config_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/config_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/config_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/context_module.ex"
+  "lib/modularity/extension_behaviours/extension_module.ex"
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/modularity/extension_behaviours/nav_module.ex"
+  "lib/modularity/extension_behaviours/nav_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/nav_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/nav_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/nav_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/nav_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/extension_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/nav_module.ex"
+  "lib/modularity/extension_behaviours/query_module.ex"
+  "lib/modularity/extension_behaviours/schema_module.ex"
+  "lib/modularity/extension_behaviours/settings_module.ex"
+  "lib/modularity/extension_behaviours/settings_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/settings_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/settings_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/settings_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/settings_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/widget_module.ex"
+  "lib/modularity/extension_behaviours/widget_module.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/widget_module.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/widget_module.ex" -> "lib/modularity/extension_behaviour.ex" [label="(compile)"]
+  "lib/modularity/extension_behaviours/widget_module.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/extension_behaviours/widget_module.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/extension_diff.ex"
+  "lib/modularity/extension_diff.ex" -> "lib/modularity/config.ex"
+  "lib/modularity/extensions.ex"
+  "lib/modularity/extensions.ex" -> "lib/modularity/extend.ex"
+  "lib/modularity/extensions.ex" -> "lib/utils.ex"
+  "lib/modularity/load_extensions_config.ex"
+  "lib/modularity/load_extensions_config.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/load_extensions_config.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/load_extensions_config.ex" -> "lib/modularity/extension_behaviours/config_module.ex"
+  "lib/modularity/load_extensions_config.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/load_extensions_config.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/startup_timer.ex"
+  "lib/modularity/test_interactive.ex"
+  "lib/modularity/test_interactive.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/modularity/test_interactive.ex" -> "lib/runtime_config.ex"
+  "lib/runtime_config.ex" -> "lib/modularity/config.ex"
+  "lib/runtime_config.ex" -> "lib/modularity/extension_behaviours/config_module.ex" [label="(compile)"]
+  "lib/modularity/test_summary.ex"
+  "lib/modularity/test_summary.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/modularity/test_summary.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/modularity/test_summary.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/modularity/test_summary.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/modularity/types.ex"
+  "lib/pointers/pointers.ex"
+  "lib/pointers/pointers_preload.ex"
+  "lib/pointers/pointers_preload.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/pointers/pointers_preload.ex" -> "lib/pointers/pointers.ex"
+  "lib/pointers/pointers_preload.ex" -> "lib/utils.ex"
+  "lib/pointers/pointers_queries.ex"
+  "lib/pointers/tables.ex"
+  "lib/pointers/tables_queries.ex"
+  "lib/repo/common.ex"
+  "lib/repo/delete.ex"
+  "lib/repo/delete.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/repo/delete.ex" -> "lib/modularity/config.ex" [label="(export)"]
+  "lib/repo/delete.ex" -> "lib/modularity/extend.ex" [label="(export)"]
+  "lib/repo/delete.ex" -> "lib/pointers/pointers.ex"
+  "lib/repo/delete.ex" -> "lib/uris.ex" [label="(export)"]
+  "lib/repo/delete.ex" -> "lib/utils.ex" [label="(compile)"]
+  "lib/repo/preload.ex"
+  "lib/repo/preload.ex" -> "lib/cache.ex"
+  "lib/repo/preload.ex" -> "lib/modularity/config.ex" [label="(compile)"]
+  "lib/repo/preload.ex" -> "lib/modularity/types.ex"
+  "lib/repo/preload.ex" -> "lib/pointers/pointers.ex"
+  "lib/repo/preload.ex" -> "lib/pointers/pointers_preload.ex"
+  "lib/repo/preload.ex" -> "lib/utils.ex"
+  "lib/repo/repo.ex"
+  "lib/repo/repo.ex" -> "lib/modularity/config.ex" [label="(compile)"]
+  "lib/repo/repo.ex" -> "lib/repo/preload.ex"
+  "lib/repo/repo.ex" -> "lib/repo/repo_template.ex" [label="(compile)"]
+  "lib/repo/repo.ex" -> "lib/utils.ex"
+  "lib/repo/repo_template.ex"
+  "lib/repo/test_instance_repo.ex"
+  "lib/repo/test_instance_repo.ex" -> "lib/modularity/config.ex" [label="(compile)"]
+  "lib/repo/test_instance_repo.ex" -> "lib/repo/preload.ex"
+  "lib/repo/test_instance_repo.ex" -> "lib/repo/repo_template.ex" [label="(compile)"]
+  "lib/repo/test_instance_repo.ex" -> "lib/utils.ex"
+  "lib/runtime_config.ex"
+  "lib/simulation.ex"
+  "lib/simulation.ex" -> "lib/localise/gettext.ex" [label="(export)"]
+  "lib/simulation.ex" -> "lib/localise/localise.ex" [label="(compile)"]
+  "lib/text.ex"
+  "lib/uris.ex"
+  "lib/utils.ex"
+}

@@ -125,7 +125,7 @@ defmodule Bonfire.Common.Test.Interactive do
   def handle_cast({:watch_tests, only}, state) do
     {:ok, pid} =
       Task.start(fn ->
-        cmd = "fswatch lib test forks/*/test forks/*/lib"
+        cmd = "fswatch lib test apps/*/test apps/*/lib forks/*/test forks/*/lib"
         port = Port.open({:spawn, cmd}, [:binary, :exit_status])
         watch_loop(port, only)
       end)
