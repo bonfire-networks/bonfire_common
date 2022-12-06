@@ -345,7 +345,7 @@ defmodule Bonfire.Common.Pointers do
 
     if filters_override && filters_override != [] do
       debug(
-        "Pointers: Attempting cowboy query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
+        "Pointers: Attempting 'cowboy' query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
       )
 
       schema_or_query
@@ -356,7 +356,7 @@ defmodule Bonfire.Common.Pointers do
     else
       if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
         debug(
-          "Pointers: Attempting cowboy query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} and NO boundary check (because of opts.skip_boundary_check)"
+          "Pointers: Attempting 'cowboy' query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} and NO boundary check (because of opts.skip_boundary_check)"
         )
 
         id_filter(
