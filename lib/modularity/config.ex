@@ -62,10 +62,11 @@ defmodule Bonfire.Common.Config do
   @doc """
   Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
   """
-  def get(key_or_keys, default \\ nil, otp_app \\ nil)
+  def get(key_or_keys, default \\ nil, otp_app \\ top_level_otp_app())
 
   # if no extension is specified, use the top-level Bonfire app
   def get(keys_tree, default, nil) do
+    # FIXME: needs to be fixed and then made to trigger by removing `top_level_otp_app()`
     {[otp_app], keys_tree} = keys_tree(keys_tree) |> Enum.split(1)
     get(keys_tree, default, otp_app)
   end
