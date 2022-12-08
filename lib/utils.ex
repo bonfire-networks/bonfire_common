@@ -378,36 +378,111 @@ defmodule Bonfire.Common.Utils do
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  @doc "merge maps or lists (into a map)"
-  def merge_as_map(left, right, conflict_fn \\ nil)
+  @doc "recursively merge structs, maps or lists (into a struct or map)"
+  def deep_merge(left, right, opts \\ [])
 
-  def merge_as_map(left = %{}, right = %{}, conflict_fn) when is_function(conflict_fn) do
-    Map.merge(left, right, conflict_fn)
+  def deep_merge(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, opts) do
+    merge_changesets(left, right)
   end
 
-  def merge_as_map(left = %{}, right = %{}, _) do
-    Map.merge(left, right)
+  def deep_merge(left, right, opts) when is_struct(left) do
+    struct(left, deep_merge(maybe_to_map(left), right, opts))
   end
 
-  def merge_as_map(left, right, conflict_fn) when is_list(left) and is_list(right) do
+  def deep_merge(left, right, opts) when is_map(left) do
+    merge_as_map(left, right, opts ++ [on_conflict: :deep_merge])
+  end
+
+  def deep_merge(left, right, opts) when is_list(left) do
     if Keyword.keyword?(left) and Keyword.keyword?(right) do
-      merge_as_map(Enum.into(left, %{}), Enum.into(right, %{}), conflict_fn)
+      Keyword.merge(left, right, fn k, v1, v2 ->
+        deep_resolve(k, v1, v2, opts)
+      end)
     else
-      left ++ right
+      if opts[:replace_lists] do
+        right
+      else
+        left ++ right
+      end
     end
   end
 
-  def merge_as_map(%{} = left, right, conflict_fn) when is_list(right) do
+  # Key exists in both maps - these can be merged recursively.
+  defp deep_resolve(_key, left, right, opts \\ [])
+
+  defp deep_resolve(_key, left, right, opts)
+       when (is_map(left) or is_list(left)) and
+              (is_map(right) or is_list(right)) do
+    deep_merge(left, right, opts)
+  end
+
+  # Key exists in both maps or keylists, but at least one of the values is
+  # NOT a map or list. We fall back to standard merge behavior, preferring
+  # the value on the right.
+  defp deep_resolve(_key, _left, right, _opts) do
+    right
+  end
+
+  def deep_merge_reduce(list_or_map, opts \\ [])
+  def deep_merge_reduce([], _opts), do: []
+  # to avoid Enum.EmptyError
+  def deep_merge_reduce([only_one], _opts), do: only_one
+
+  def deep_merge_reduce(list_or_map, opts) do
+    Enum.reduce(list_or_map, fn elem, acc ->
+      deep_merge(acc, elem, opts)
+    end)
+  end
+
+  @doc "merge maps or lists (into a map)"
+  def merge_as_map(left, right, opts \\ [])
+
+  def merge_as_map(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, _opts) do
+    # special case
+    merge_changesets(left, right)
+  end
+
+  def merge_as_map(left = %{}, right = %{}, opts) do
+    # to avoid overriding with empty fields
+    right = maybe_to_map(right)
+
+    case opts[:on_conflict] do
+      :deep_merge ->
+        Map.merge(left, right, fn k, v1, v2 ->
+          deep_resolve(k, v1, v2, opts)
+        end)
+
+      conflict_fn when is_function(conflict_fn) ->
+        Map.merge(left, right, conflict_fn)
+
+      _ ->
+        Map.merge(left, right)
+    end
+  end
+
+  def merge_as_map(left, right, opts) when is_list(left) and is_list(right) do
+    if Keyword.keyword?(left) and Keyword.keyword?(right) do
+      merge_as_map(Enum.into(left, %{}), Enum.into(right, %{}), opts)
+    else
+      if opts[:replace_lists] do
+        right
+      else
+        left ++ right
+      end
+    end
+  end
+
+  def merge_as_map(%{} = left, right, opts) when is_list(right) do
     if Keyword.keyword?(right) do
-      merge_as_map(left, Enum.into(right, %{}), conflict_fn)
+      merge_as_map(left, Enum.into(right, %{}), opts)
     else
       left
     end
   end
 
-  def merge_as_map(left, %{} = right, conflict_fn) when is_list(left) do
+  def merge_as_map(left, %{} = right, opts) when is_list(left) do
     if Keyword.keyword?(left) do
-      merge_as_map(Enum.into(left, %{}), right, conflict_fn)
+      merge_as_map(Enum.into(left, %{}), right, opts)
     else
       right
     end
@@ -417,33 +492,16 @@ defmodule Bonfire.Common.Utils do
     right
   end
 
-  @doc "recursively merge maps or lists (into a map)"
-  def deep_merge(left, right) do
-    merge_as_map(left, right, &deep_resolve/3)
+  def merge_changesets(%Ecto.Changeset{prepare: p1} = cs1, %Ecto.Changeset{prepare: p2} = cs2)
+      when is_list(p1) and is_list(p2) and p2 != [] do
+    info("workaround for `Ecto.Changeset.merge` not merging prepare")
+    %{Ecto.Changeset.merge(cs1, cs2) | prepare: p1 ++ p2}
   end
 
-  # Key exists in both maps - these can be merged recursively.
-  defp deep_resolve(_key, left, right)
-       when (is_map(left) or is_list(left)) and
-              (is_map(right) or is_list(right)) do
-    deep_merge(left, right)
-  end
-
-  # Key exists in both maps or keylists, but at least one of the values is
-  # NOT a map or list. We fall back to standard merge behavior, preferring
-  # the value on the right.
-  defp deep_resolve(_key, _left, right) do
-    right
-  end
-
-  def deep_merge_reduce([]), do: []
-  # to avoid Enum.EmptyError
-  def deep_merge_reduce([only_one]), do: only_one
-
-  def deep_merge_reduce(list_or_map) do
-    Enum.reduce(list_or_map, fn elem, acc ->
-      deep_merge(acc, elem)
-    end)
+  def merge_changesets(%Ecto.Changeset{} = cs1, %Ecto.Changeset{} = cs2) do
+    info(cs1.prepare, "merge without prepare")
+    info(cs2.prepare, "merge without prepare")
+    Ecto.Changeset.merge(cs1, cs2)
   end
 
   @doc "Applies change_fn if the first parameter is not nil."
@@ -581,6 +639,7 @@ defmodule Bonfire.Common.Utils do
   def struct_to_map(other), do: other
 
   def maybe_to_map(obj, recursive \\ false)
+
   def maybe_to_map(struct = %{__struct__: _}, false), do: struct_to_map(struct)
 
   def maybe_to_map(data, false) when is_list(data) do
@@ -682,7 +741,9 @@ defmodule Bonfire.Common.Utils do
 
   def merge_structs_as_map(%{__typename: type} = target, merge)
       when not is_struct(target) and not is_struct(merge),
-      do: Map.merge(target, merge) |> Map.put(:__typename, type)
+      do:
+        Map.merge(target, merge)
+        |> Map.put(:__typename, type)
 
   def merge_structs_as_map(target, merge)
       when is_struct(target) or is_struct(merge),
@@ -1267,16 +1328,13 @@ defmodule Bonfire.Common.Utils do
   def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
   def debug_log(msg, exception, stacktrace, kind) do
-    error(msg)
+    error(exception, msg)
 
     if exception && stacktrace do
       {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
 
-      error(exception)
       Logger.info(stacktrace, limit: :infinity, printable_limit: :infinity)
       # Logger.warn(stacktrace, truncate: :infinity)
-    else
-      if exception, do: warn(exception)
     end
 
     debug_maybe_sentry(msg, exception, stacktrace)

@@ -210,8 +210,9 @@ defmodule Bonfire.Common.Types do
 
   def table_type(_), do: nil
 
-  def table_id(schema) when is_atom(schema) and not is_nil(schema),
-    do: schema.__pointers__(:table_id)
+  def table_id(schema) when is_atom(schema) and not is_nil(schema) do
+    if Code.ensure_loaded?(schema), do: schema.__pointers__(:table_id)
+  end
 
   def table_id(_), do: nil
 

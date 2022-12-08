@@ -23,14 +23,19 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   defp find_behaviours() do
     adopters_of_behaviour(__MODULE__)
     |> modules_only()
-    |> debug()
+
+    # |> debug()
   end
 
   def find_adopters_of_behaviours(behaviours \\ find_behaviours()) do
+    apps_to_scan()
+    |> apps_with_behaviour(behaviours)
+  end
+
+  def apps_to_scan() do
     pattern = Config.get([:extensions_pattern], "bonfire")
 
     Application.loaded_applications()
-    # |> debug()
     |> Enum.map(fn
       {app, description, _} ->
         case (String.contains?(to_string(app), pattern) or
@@ -41,7 +46,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         end
     end)
     |> Enum.reject(&is_nil/1)
-    |> apps_with_behaviour(behaviours)
+
+    # |> debug()
   end
 
   @doc """
@@ -49,7 +55,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   """
   defp adopters_of_behaviour(behaviour) when is_atom(behaviour) do
     Config.get([:extensions_grouped, behaviour], [:bonfire, :bonfire_common])
-    |> debug()
+    # |> debug()
     |> apps_with_behaviour(behaviour)
   end
 
@@ -66,7 +72,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         end
     end)
     |> Enum.reject(&is_nil/1)
-    |> debug()
+
+    # |> debug()
   end
 
   defp apps_with_behaviour(apps, behaviours) when is_list(apps) and is_list(behaviours) do
@@ -82,7 +89,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         acc
     end)
     |> Enum.reject(&is_nil/1)
-    |> debug()
+
+    # |> debug()
   end
 
   defp behaviours_with_app_modules(modules, behaviours, app)

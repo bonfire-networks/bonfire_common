@@ -23,9 +23,13 @@ defmodule Bonfire.Common.Config.LoadExtensionsConfig do
     :ignore
   end
 
-  def load_configs() do
-    modules = Bonfire.Common.ConfigModule.modules()
+  def load_configs(extras \\ []) do
+    modules =
+      (Bonfire.Common.ConfigModule.modules() ++ List.wrap(extras))
+      |> Enum.uniq()
+
     # |> debug()
+
     if is_list(modules) and modules != [] do
       Enum.each(modules, &maybe_apply(&1, :config))
 
