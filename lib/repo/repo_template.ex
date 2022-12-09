@@ -162,6 +162,21 @@ defmodule Bonfire.Common.RepoTemplate do
           handle_postgrex_exception(exception, __STACKTRACE__)
       end
 
+      def maybe_one(q, fallback \\ nil) do
+        one(limit(q, 1))
+      rescue
+        exception in Postgrex.Error ->
+          handle_postgrex_exception(exception, __STACKTRACE__, nil, fallback)
+
+        e in DBConnection.ConnectionError ->
+          error(
+            e,
+            "DBConnection.ConnectionError prevented a database query, returning #{inspect(fallback)} as fallback"
+          )
+
+          nil
+      end
+
       defp ret_single(nil), do: {:error, :not_found}
       defp ret_single(other), do: {:ok, other}
 
@@ -280,31 +295,34 @@ defmodule Bonfire.Common.RepoTemplate do
         |> delete_all()
       end
 
-      defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil)
+      defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil, fallback \\ false)
 
       defp handle_postgrex_exception(
              %{postgres: %{code: :undefined_file} = pg},
              _,
-             nil
+             nil,
+             fallback
            ) do
         error(
           pg,
           "Database error, probably a missing extension (eg. if using geolocation, you need to run Postgis)"
         )
 
-        {:error, :missing_db_extension}
+        if fallback != false, do: fallback, else: {:error, :missing_db_extension}
       end
 
       # defp handle_postgrex_exception(
       #        %{postgres: %{code: :integrity_constraint_violation}},
       #        _,
-      #        changeset
+      #        changeset, fallback
       #      ) do
       #   {:error, %{changeset | valid?: false}}
       # end
 
-      defp handle_postgrex_exception(exception, stacktrace, _) do
-        reraise(exception, stacktrace)
+      defp handle_postgrex_exception(exception, stacktrace, _, fallback) do
+        error(stacktrace, exception)
+
+        if fallback != false, do: fallback, else: reraise(exception, stacktrace)
       end
 
       defp rollback_error(reason, extra \\ nil) do

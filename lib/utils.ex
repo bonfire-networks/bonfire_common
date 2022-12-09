@@ -389,11 +389,11 @@ defmodule Bonfire.Common.Utils do
     struct(left, deep_merge(maybe_to_map(left), right, opts))
   end
 
-  def deep_merge(left, right, opts) when is_map(left) do
+  def deep_merge(left, right, opts) when is_map(left) or is_map(right) do
     merge_as_map(left, right, opts ++ [on_conflict: :deep_merge])
   end
 
-  def deep_merge(left, right, opts) when is_list(left) do
+  def deep_merge(left, right, opts) when is_list(left) and is_list(right) do
     if Keyword.keyword?(left) and Keyword.keyword?(right) do
       Keyword.merge(left, right, fn k, v1, v2 ->
         deep_resolve(k, v1, v2, opts)
@@ -405,6 +405,10 @@ defmodule Bonfire.Common.Utils do
         left ++ right
       end
     end
+  end
+
+  def deep_merge(left, right, _opts) do
+    right
   end
 
   # Key exists in both maps - these can be merged recursively.
