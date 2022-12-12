@@ -320,7 +320,7 @@ defmodule Bonfire.Common.RepoTemplate do
       # end
 
       defp handle_postgrex_exception(exception, stacktrace, _, fallback) do
-        error(stacktrace, exception)
+        Utils.debug_exception(Utils.e(exception, :message, "A database error occurred"), exception, stacktrace)
 
         if fallback != false, do: fallback, else: reraise(exception, stacktrace)
       end
