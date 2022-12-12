@@ -44,7 +44,7 @@ defmodule Bonfire.Common.HTTP do
       |> (&Tesla.request(Connection.new(options), &1)).()
     rescue
       e in Tesla.Mock.Error ->
-        error(e, :test_mock_error)
+        error(e, "Test mock HTTP error")
 
       e ->
         error(e, "HTTP request failed")
