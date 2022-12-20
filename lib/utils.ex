@@ -508,6 +508,13 @@ defmodule Bonfire.Common.Utils do
     Ecto.Changeset.merge(cs1, cs2)
   end
 
+  def merge_keeping_only_first_keys(map_1, map_2) do
+    map_1
+    |> Map.keys()
+    |> then(&Map.take(map_2, &1))
+    |> then(&Map.merge(map_1, &1))
+  end
+
   @doc "Applies change_fn if the first parameter is not nil."
   def maybe(nil, _change_fn), do: nil
 
@@ -1150,10 +1157,13 @@ defmodule Bonfire.Common.Utils do
         current_user(Map.new(current_user_or_socket_or_opts), true)
 
       %{current_user_id: user_id} when is_binary(user_id) ->
-        current_user(user_id)
+        current_user(user_id, true)
 
       %{current_user: user_id} when is_binary(user_id) ->
-        current_user(user_id)
+        current_user(user_id, true)
+
+      %{user_id: user_id} when is_binary(user_id) ->
+        ulid(user_id)
 
       user_id when is_binary(user_id) ->
         ulid(user_id)
@@ -1164,6 +1174,47 @@ defmodule Bonfire.Common.Utils do
       (
         if recursing != true,
           do: debug(current_user_or_socket_or_opts, "No current_user found in")
+
+        nil
+      )
+  end
+
+  def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
+    case current_user_or_socket_or_opts do
+      %{current_user_id: id} = _options ->
+        ulid(id)
+
+      %{user_id: id} = _options ->
+        ulid(id)
+
+      %{assigns: %{} = assigns} = _socket ->
+        current_user_id(assigns, true)
+
+      %{__context__: %{current_user_id: _} = context} = _assigns ->
+        current_user_id(context, true)
+
+      %{socket: socket} = _socket ->
+        current_user_id(socket, true)
+
+      %{context: %{} = context} = _api_opts ->
+        current_user_id(context, true)
+
+      _ when is_list(current_user_or_socket_or_opts) ->
+        current_user_id(Map.new(current_user_or_socket_or_opts), true)
+
+      %{current_user_id: user_id} when is_binary(user_id) ->
+        current_user_id(user_id, true)
+
+      user_id when is_binary(user_id) ->
+        ulid(user_id)
+
+      _ ->
+        current_user(current_user_or_socket_or_opts)
+        |> ulid()
+    end ||
+      (
+        if recursing != true,
+          do: debug(current_user_or_socket_or_opts, "No current_user_id or current_user found in")
 
         nil
       )
@@ -1294,6 +1345,27 @@ defmodule Bonfire.Common.Utils do
     do: current_account_and_or_user_ids(context)
 
   def current_account_and_or_user_ids(_), do: nil
+
+  def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
+    maybe_apply(Phoenix.LiveView, :connected?, socket, fn _, _ -> nil end)
+  end
+
+  def socket_connected?(%{socket_connected?: bool}) do
+    bool
+  end
+
+  def socket_connected?(%{__context__: assigns}) do
+    socket_connected?(assigns)
+  end
+
+  def socket_connected?(%{assigns: assigns}) do
+    socket_connected?(assigns)
+  end
+
+  def socket_connected?(assigns) do
+    info(assigns, "Unable to find :socket_connected? info in provided assigns")
+    nil
+  end
 
   def debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
