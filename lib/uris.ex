@@ -288,12 +288,16 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp query_or_generate_canonical_url(object) do
+    remote_canonical_url(object) ||
+      maybe_generate_canonical_url(object)
+  end
+
+  def remote_canonical_url(object) do
     if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
       # debug(object, "attempt to query Peered")
       Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object)
       # |> debug("peered url")
-    end ||
-      maybe_generate_canonical_url(object)
+    end
   end
 
   def maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do

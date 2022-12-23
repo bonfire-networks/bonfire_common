@@ -38,8 +38,8 @@ defmodule Bonfire.Common.Text do
   def truncate(text, _, _), do: text
 
   def sentence_truncate(input, length \\ 250, add_to_end \\ "") do
-    if(String.length(input) > length) do
-      do_sentence_truncate(input, length) <> add_to_end
+    if(is_binary(input) and String.length(input) > length) do
+      "#{do_sentence_truncate(input, length)}#{add_to_end}"
     else
       input
     end
