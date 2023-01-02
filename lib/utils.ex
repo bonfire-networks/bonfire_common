@@ -278,15 +278,15 @@ defmodule Bonfire.Common.Utils do
 
   def maybe_get(_, _, fallback), do: fallback
 
-  def magic_filter_empty(val, map, key, fallback \\ nil)
+  defp magic_filter_empty(val, map, key, fallback \\ nil)
 
-  def magic_filter_empty(
-        %Ecto.Association.NotLoaded{},
-        %{__struct__: schema} = map,
-        key,
-        fallback
-      )
-      when is_map(map) and is_atom(key) do
+  defp magic_filter_empty(
+         %Ecto.Association.NotLoaded{},
+         %{__struct__: schema} = map,
+         key,
+         fallback
+       )
+       when is_map(map) and is_atom(key) do
     if Config.get!(:env) == :dev && Config.get(:e_auto_preload, false) do
       warn(
         "The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query..."
@@ -302,7 +302,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def magic_filter_empty(val, _, _, fallback), do: filter_empty(val, fallback)
+  defp magic_filter_empty(val, _, _, fallback), do: filter_empty(val, fallback)
 
   def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
   def empty?(_), do: false
@@ -312,26 +312,40 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   def filter_empty([], fallback), do: fallback
   def filter_empty("", fallback), do: fallback
+  def filter_empty({:error, _}, fallback), do: fallback
 
-  def filter_empty(list, fallback) when is_list(list),
+  def filter_empty(enum, fallback) when is_list(enum),
     do:
-      list
-      |> Enum.map(&sub_filter_empty/1)
-      |> Enum.filter(& &1)
+      enum
+      |> filter_empty_enum()
       |> re_filter_empty(fallback)
 
-  # def filter_empty(enum, fallback) when is_list(enum) or is_map(enum), do: Enum.map(enum, &filter_empty(&1, fallback))
+  def filter_empty(enum, fallback) when is_map(enum) and not is_struct(enum),
+    do:
+      enum
+      # |> debug()
+      |> filter_empty_enum()
+      |> Enum.into(%{})
+      |> re_filter_empty(fallback)
+
   def filter_empty(val, fallback), do: val || fallback
 
-  defp sub_filter_empty(%Ecto.Association.NotLoaded{}), do: nil
-  defp sub_filter_empty([]), do: nil
-  defp sub_filter_empty({:error, _}), do: nil
-  defp sub_filter_empty(map) when is_map(map) and map == %{}, do: nil
-  defp sub_filter_empty(""), do: nil
-  defp sub_filter_empty(val), do: val
+  defp filter_empty_enum(enum),
+    do:
+      enum
+      |> Enum.map(fn
+        {key, val} -> {key, filter_empty(val, nil)}
+        val -> filter_empty(val, nil)
+      end)
+      |> Enum.filter(fn
+        {_key, nil} -> false
+        nil -> false
+        _ -> true
+      end)
 
   defp re_filter_empty([], fallback), do: fallback
-  defp re_filter_empty(val, _fallback), do: val
+  defp re_filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
+  defp re_filter_empty(val, fallback), do: val || fallback
 
   def uniq_by_id(list) do
     Enum.uniq_by(list, &e(&1, :id, &1))
@@ -897,15 +911,13 @@ defmodule Bonfire.Common.Utils do
     Enum.map(list, &input_to_atoms(&1, false, including_values))
   end
 
-  # support `nil` as a value
+  # support truthy/falsy values
   def input_to_atoms("nil", _, true = _including_values), do: nil
+  def input_to_atoms("false", _, true = _including_values), do: false
+  def input_to_atoms("true", _, true = _including_values), do: true
 
   def input_to_atoms(v, _, true = _including_values) do
-    case maybe_to_module(v) do
-      # do it this roundabout way to support `false` as a value
-      nil -> v
-      other -> other
-    end
+    maybe_to_module(v)
   end
 
   def input_to_atoms(v, _, _), do: v
@@ -1498,8 +1510,12 @@ defmodule Bonfire.Common.Utils do
   def error_msg(%{message: message}), do: error_msg(message)
   def error_msg({:error, :not_found}), do: "Not found"
   def error_msg({:error, error}), do: error_msg(error)
-  def error_msg(%{error: error}), do: error_msg(error)
+
+  def error_msg(%{__struct__: struct} = epic) when struct == Bonfire.Epics.Epic,
+    do: Bonfire.Epics.Epic.render_errors(epic)
+
   def error_msg(%{errors: errors}), do: error_msg(errors)
+  def error_msg(%{error: error}), do: error_msg(error)
   def error_msg(%{term: term}), do: error_msg(term)
   def error_msg(message) when is_binary(message), do: message
   def error_msg(message), do: inspect(message)
