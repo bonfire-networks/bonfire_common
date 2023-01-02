@@ -67,6 +67,8 @@ defmodule Bonfire.Common.SettingsModule do
     end)
   end
 
+  def modules_component(_), do: []
+
   @doc "Load components for an extension"
   def components(extension) do
     app_modules()[extension]
