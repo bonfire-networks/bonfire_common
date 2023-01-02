@@ -175,7 +175,10 @@ defmodule Bonfire.Common.Text do
      ], text, extra}
   end
 
-  defp slug(text) when is_list(text), do: Enum.join(text, "-") |> slug()
+  defp slug({_tag, _attrs, text, _extra}), do: slug(text)
+
+  defp slug(text) when is_list(text),
+    do: text |> Enum.map(&md_tag_text/1) |> Enum.join("-") |> slug()
 
   defp slug(text) do
     text
@@ -184,6 +187,10 @@ defmodule Bonfire.Common.Text do
     |> String.replace(~r/\s+/, "-")
     |> URI.encode()
   end
+
+  defp md_tag_text({_tag, _attrs, text, _extra}), do: md_tag_text(text)
+  defp md_tag_text(text) when is_binary(text), do: text
+  defp md_tag_text(_), do: ""
 
   @doc """
   It is recommended to call this before storing any that data is coming in from the user or from a remote instance

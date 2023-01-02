@@ -920,7 +920,7 @@ defmodule Bonfire.Common.Utils do
   def input_to_atoms("false", _, true = _including_values), do: false
   def input_to_atoms("true", _, true = _including_values), do: true
 
-  def input_to_atoms(v, _, true = _including_values) do
+  def input_to_atoms(v, _, true = _including_values) when is_binary(v) do
     maybe_to_module(v)
   end
 

@@ -116,8 +116,6 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       def upsert(cs, nil, conflict_target) do
-        debug("replace_all_except")
-
         insert_or_update(
           cs,
           on_conflict: :nothing
