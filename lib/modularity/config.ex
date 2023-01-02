@@ -257,7 +257,7 @@ defmodule Bonfire.Common.Config do
 
     if maybe_module_or_otp_app != otp_app do
       # add the module name to the key tree
-      {otp_app, [{maybe_module_or_otp_app, tree}]}
+      {otp_app, Map.new([{maybe_module_or_otp_app, tree}])}
     else
       {maybe_module_or_otp_app, tree}
     end

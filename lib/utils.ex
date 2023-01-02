@@ -71,11 +71,11 @@ defmodule Bonfire.Common.Utils do
   #       debug(key: key)
   #       debug(e_context: context)
   #       # try searching in Surface's context (when object is assigns), if present
-  #       map_get(object, key, nil) || map_get(context, key, nil) || fallback
+  #       enum_get(object, key, nil) || enum_get(context, key, nil) || fallback
 
   #     map when is_map(map) ->
   #       # attempt using key as atom or string, fallback if doesn't exist or is nil
-  #       map_get(map, key, nil) || fallback
+  #       enum_get(map, key, nil) || fallback
 
   #     list when is_list(list) and length(list)==1 ->
   #       # if object is a list with 1 element, try with that
@@ -89,9 +89,9 @@ defmodule Bonfire.Common.Utils do
     case object do
       %{__context__: context} ->
         # try searching in Surface's context (when object is assigns), if present
-        case map_get(object, key, nil) do
+        case enum_get(object, key, nil) do
           result when is_nil(result) or result == fallback ->
-            map_get(context, key, fallback)
+            enum_get(context, key, fallback)
 
           result ->
             result
@@ -99,12 +99,12 @@ defmodule Bonfire.Common.Utils do
 
       map when is_map(map) ->
         # attempt using key as atom or string, fallback if doesn't exist or is nil
-        map_get(map, key, nil) || fallback
+        enum_get(map, key, fallback)
 
       list when is_list(list) and length(list) == 1 ->
         if not Keyword.keyword?(list) do
           # if object is a list with 1 element, look inside
-          e(List.first(list), key, nil) || fallback
+          e(List.first(list), key, fallback)
         else
           list |> Map.new() |> e(key, fallback)
         end
@@ -239,42 +239,44 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
   """
-  def map_get(map, key, fallback) when is_map(map) and is_atom(key) do
-    maybe_get(map, key, map_get(map, Atom.to_string(key), fallback))
-    |> magic_filter_empty(map, key, fallback)
+  def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
+    case maybe_get(map, key, :empty) do
+      :empty -> maybe_get(map, Atom.to_string(key), fallback)
+      val -> val
+    end
   end
 
   # doc """ Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
-  def map_get(map, key, fallback) when is_map(map) and is_binary(key) do
-    Map.get(
-      map,
-      key,
-      Map.get(
-        map,
-        Recase.to_camel(key),
-        Map.get(
-          map,
-          maybe_to_atom(key),
-          fallback
-        )
-      )
-    )
-    |> magic_filter_empty(map, key, fallback)
+  def enum_get(map, key, fallback) when is_map(map) and is_binary(key) do
+    case maybe_get(map, key, :empty) do
+      :empty ->
+        case maybe_get(map, Recase.to_camel(key), :empty) do
+          :empty ->
+            maybe_get(map, maybe_to_atom(key), fallback)
+
+          val ->
+            val
+        end
+
+      val ->
+        val
+    end
   end
 
   # doc "Try with each key in list"
-  def map_get(map, keys, fallback) when is_list(keys) do
-    Enum.map(keys, &map_get(map, &1, nil))
-    |> Enum.filter(& &1) ||
-      fallback
+  def enum_get(map, keys, fallback) when is_list(keys) do
+    Enum.map(keys, &enum_get(map, &1, nil))
+    |> filter_empty(fallback)
   end
 
-  def map_get(map, key, fallback), do: maybe_get(map, key, fallback)
+  def enum_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
   def maybe_get(_, _, fallback \\ nil)
 
   def maybe_get(%{} = map, key, fallback),
-    do: Map.get(map, key, fallback) |> magic_filter_empty(map, key, fallback)
+    do:
+      Map.get(map, key, fallback)
+      |> magic_filter_empty(map, key, fallback)
 
   def maybe_get(_, _, fallback), do: fallback
 
@@ -312,6 +314,7 @@ defmodule Bonfire.Common.Utils do
   def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   def filter_empty([], fallback), do: fallback
   def filter_empty("", fallback), do: fallback
+  def filter_empty(nil, fallback), do: fallback
   def filter_empty({:error, _}, fallback), do: fallback
 
   def filter_empty(enum, fallback) when is_list(enum),
@@ -328,7 +331,7 @@ defmodule Bonfire.Common.Utils do
       |> Enum.into(%{})
       |> re_filter_empty(fallback)
 
-  def filter_empty(val, fallback), do: val || fallback
+  def filter_empty(val, _fallback), do: val
 
   defp filter_empty_enum(enum),
     do:
@@ -345,7 +348,8 @@ defmodule Bonfire.Common.Utils do
 
   defp re_filter_empty([], fallback), do: fallback
   defp re_filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
-  defp re_filter_empty(val, fallback), do: val || fallback
+  defp re_filter_empty(nil, fallback), do: fallback
+  defp re_filter_empty(val, _fallback), do: val
 
   def uniq_by_id(list) do
     Enum.uniq_by(list, &e(&1, :id, &1))
