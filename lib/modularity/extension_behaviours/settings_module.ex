@@ -84,8 +84,8 @@ defmodule Bonfire.Common.SettingsModule do
   end
 
   @doc "List extensions that have settings component(s)"
-  def extension_has_components?(extension) do
-    case app_modules()[extension]
+  def extension_has_components?(extension, modules \\ nil) do
+    case (modules || app_modules()[extension])
          |> modules_with_component() do
       [] -> false
       _ -> true
