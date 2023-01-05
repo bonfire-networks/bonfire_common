@@ -60,6 +60,13 @@ defmodule Bonfire.Common.URIs do
         fallback(args)
     end
   rescue
+    error in FunctionClauseError ->
+      warn(
+        error,
+        "path: could not find a matching route for #{inspect(view_module_or_path_name_or_object)}"
+      )
+
+      nil
     error in ArgumentError ->
       warn(
         error,
