@@ -67,6 +67,7 @@ defmodule Bonfire.Common.URIs do
       )
 
       nil
+
     error in ArgumentError ->
       warn(
         error,

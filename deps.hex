@@ -12,3 +12,4 @@ earmark_parser = "~> 1.4" # parse markdown
 # mappable = "~> 0.2.4" # convert between map/struct/keyword list
 html_sanitize_ex = "~> 1.4" # html sanitation
 untangle = "~> 0.1" # log/inspect with code location
+opentelemetry_api = "~> 1.0"
