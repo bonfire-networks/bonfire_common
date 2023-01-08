@@ -1650,7 +1650,7 @@ defmodule Bonfire.Common.Utils do
         )
 
   def apply_error(error, args) do
-    error("maybe_apply: #{error} - with args: (#{inspect(args)})")
+    Logger.warn("maybe_apply: #{error} - with args: (#{inspect(args)})")
 
     {:error, error}
   end
