@@ -88,6 +88,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
           module: __MODULE__,
           app: app(__MODULE__),
           type: component_type(__MODULE__),
+          scope: unquote(opts)[:scope] || :user,
           data: @props_specs
         })
       end
@@ -105,6 +106,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
           module: __MODULE__,
           app: app(__MODULE__),
           type: component_type(__MODULE__),
+          scope: unquote(opts)[:scope] || :user,
           data: @props_specs
         })
       end
