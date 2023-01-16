@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Utils do
   # require Bonfire.Common.Localise.Gettext
   # import Bonfire.Common.Localise.Gettext.Helpers
   import Bonfire.Common.Config, only: [repo: 0]
-  import Untangle
+  use Untangle
   require Logger
   alias Bonfire.Common.Text
   alias Bonfire.Common.Config
@@ -85,6 +85,7 @@ defmodule Bonfire.Common.Utils do
   #   end
   # end
 
+  # @decorate time()
   def e(object, key, fallback) do
     case object do
       %{__context__: context} ->
@@ -615,6 +616,7 @@ defmodule Bonfire.Common.Utils do
   def module_to_str(atom) when is_atom(atom),
     do: maybe_to_string(atom) |> module_to_str()
 
+  @decorate time()
   def module_to_human_readable(module) do
     module
     |> module_to_str()

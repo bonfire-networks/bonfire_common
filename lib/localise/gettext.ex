@@ -72,7 +72,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   # alias the gettext macros for ease-of-use
 
   import Bonfire.Common.Localise.Gettext
-  import Untangle
+  use Untangle
 
   defmacro l(original_text_or_id, bindings \\ [], context \\ nil, domain \\ nil)
 
@@ -245,6 +245,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
             )
   end
 
+  @decorate time()
   def localise_dynamic(msgid, caller_module \\ nil) do
     otp_app = caller_app(caller_module) || :bonfire
 

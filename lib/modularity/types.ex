@@ -1,8 +1,10 @@
 defmodule Bonfire.Common.Types do
   use Bonfire.Common.Utils
+  use Untangle
   alias Pointers.Pointer
 
-  import Untangle
+  @decorate time()
+  def object_type(object)
 
   def object_type(%Ecto.Association.NotLoaded{}) do
     error("cannot detect the type on an association that wasn't preloaded")
@@ -158,6 +160,7 @@ defmodule Bonfire.Common.Types do
     nil
   end
 
+  @decorate time()
   def object_type_display(object_type)
       when is_atom(object_type) and not is_nil(object_type) do
     module_to_human_readable(object_type)
@@ -183,7 +186,7 @@ defmodule Bonfire.Common.Types do
     |> Enum.flat_map(fn t ->
       t =
         t
-        |> Bonfire.Common.Utils.module_to_human_readable()
+        |> module_to_human_readable()
         |> sanitise_name()
 
       if t,
