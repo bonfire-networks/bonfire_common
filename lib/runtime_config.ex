@@ -23,7 +23,7 @@ defmodule Bonfire.Common.RuntimeConfig do
     chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
 
     # TODO: less ugly
-    skip = extras ++ [:skip, :todo, :fixme]
+    skip = extras ++ [:skip, :todo, :fixme, :benchmark]
     # skip two-instances-required federation tests
     skip =
       if System.get_env("TEST_INSTANCE") == "yes",

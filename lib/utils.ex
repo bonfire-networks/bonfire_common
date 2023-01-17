@@ -201,7 +201,7 @@ defmodule Bonfire.Common.Utils do
         e = "Utils.ulid/1: Expected a ULID ID (or an object with one), got #{inspect(id)}"
 
         # throw {:error, e}
-        warn(e)
+        debug(e)
         nil
     end
   end
@@ -233,7 +233,7 @@ defmodule Bonfire.Common.Utils do
   def id(id) do
     e = "Utils.id/1: Expected an ID (or an object with one), got #{inspect(id)}"
     # throw {:error, e}
-    warn(e)
+    debug(e)
     nil
   end
 

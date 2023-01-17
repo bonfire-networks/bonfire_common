@@ -235,7 +235,7 @@ defmodule Bonfire.Common.RepoTemplate do
           pagination_defaults(),
           Keyword.merge(@default_cursor_fields, opts)
         )
-        # |> debug("merged opts")
+        |> debug("merged opts")
         |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
       end
 
