@@ -1,6 +1,8 @@
 defmodule Bonfire.Common.Cache do
   use Bonfire.Common.Utils
 
+  # TODO: use Decorator lib to support decorating functions to cache them
+
   # 6 hours
   @default_cache_ttl 1_000 * 60 * 60 * 6
   # 5 min

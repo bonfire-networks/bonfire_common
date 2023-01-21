@@ -2,6 +2,7 @@ defmodule Bonfire.Common.Types do
   use Bonfire.Common.Utils
   use Untangle
   alias Pointers.Pointer
+  alias Bonfire.Common.Cache
 
   @decorate time()
   def object_type(object)
@@ -140,13 +141,7 @@ defmodule Bonfire.Common.Types do
       schema
     else
       _ ->
-        debug(
-          id,
-          "this isn't the table_id of Pointers.Table schema, querying it to check if it's a Pointable"
-        )
-
-        Bonfire.Common.Pointers.one(id, skip_boundary_check: true)
-        |> object_type()
+        Cache.maybe_apply_cached(&object_type_from_db/1, [id])
     end
   end
 
@@ -158,6 +153,25 @@ defmodule Bonfire.Common.Types do
   def object_type(type) do
     error("no pattern matched for #{inspect(type)}")
     nil
+  end
+
+  defp object_type_from_db(id) do
+    debug(
+      id,
+      "This isn't the table_id of a known Pointers.Table schema, querying it to check if it's a Pointable"
+    )
+
+    case Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
+      {:ok, %{table_id: "601NTERTAB1EF0RA11TAB1ES00"}} ->
+        debug("This is the ID of an unknown Pointable")
+        nil
+
+      {:ok, %{table_id: table_id}} ->
+        object_type(table_id)
+
+      _ ->
+        nil
+    end
   end
 
   @decorate time()

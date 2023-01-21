@@ -50,16 +50,32 @@ defmodule Bonfire.Common.Pointers.Tables do
   end
 
   def table_fields(table) when is_binary(table) do
-    with {:ok, %{rows: rows}} <-
-           repo().query(
-             "SELECT column_name FROM information_schema.columns WHERE TABLE_NAME='#{table}'"
-           ) do
-      for [column] <- rows do
+    with rows <-
+           repo().many(
+             from "columns",
+               prefix: "information_schema",
+               select: [:column_name],
+               where: [table_name: ^table]
+           )
+           |> debug() do
+      for row <- rows do
         # naughty but limited to existing DB fields
-        String.to_atom(column)
+        String.to_atom(row[:column_name])
       end
     end
   end
+
+  # def table_fields(table) when is_binary(table) do
+  #   with {:ok, %{rows: rows}} <-
+  #          repo().query(
+  #            "SELECT column_name FROM information_schema.columns WHERE TABLE_NAME='#{table}'"
+  #          ) do
+  #     for [column] <- rows do
+  #       # naughty but limited to existing DB fields
+  #       String.to_atom(column)
+  #     end
+  #   end
+  # end
 
   @doc "Lists all Pointable Tables"
   def list_tables(source \\ :code)

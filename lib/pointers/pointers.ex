@@ -9,6 +9,7 @@ defmodule Bonfire.Common.Pointers do
   import EctoSparkles
   alias Bonfire.Common.Pointers.Queries
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Cache
   alias Bonfire.Common.ContextModule
   alias Pointers.NotFound
   alias Pointers.Pointer
@@ -310,8 +311,7 @@ defmodule Bonfire.Common.Pointers do
     do: loader_query(schema, id_filters, opts)
 
   defp loader(table_id, id_filters, opts) do
-    # |> IO.inspect
-    Bonfire.Common.Pointers.Tables.schema_or_table!(table_id)
+    Cache.maybe_apply_cached(&Bonfire.Common.Pointers.Tables.schema_or_table!/1, [table_id])
     |> loader_query(id_filters, opts)
   end
 
@@ -324,28 +324,34 @@ defmodule Bonfire.Common.Pointers do
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
     debug("Pointers: loading data from a table without a schema module")
 
+    # Cache.maybe_apply_cached(&generic_loader_query/3, [table_name, id_filters, opts])
+
     from(m in table_name, as: :main_object)
-    |> select(^Bonfire.Common.Pointers.Tables.table_fields(table_name))
-    |> cowboy_query_all(id_binary(id_filters), opts)
+    |> select(
+      ^Cache.maybe_apply_cached(&Bonfire.Common.Pointers.Tables.table_fields/1, [table_name])
+    )
+    # ++ [cache: true]
+    |> generic_query_all(id_binary(id_filters), opts)
     |> Utils.maybe_convert_ulids()
   end
 
-  defp cowboy_query_all(schema_or_query, id_filters, opts) do
-    cowboy_query(schema_or_query, id_filters, opts) |> repo().many()
+  defp generic_query_all(schema_or_query, id_filters, opts) do
+    generic_query(schema_or_query, id_filters, opts)
+    |> repo().many()
   end
 
-  defp cowboy_query(schema, id_filters, opts) when is_atom(schema) do
+  defp generic_query(schema, id_filters, opts) when is_atom(schema) do
     from(m in schema, as: :main_object)
-    |> cowboy_query(id_filters, opts)
+    |> generic_query(id_filters, opts)
   end
 
-  defp cowboy_query(schema_or_query, id_filters, opts) do
+  defp generic_query(schema_or_query, id_filters, opts) do
     filters_override = Keyword.get(opts, :filters_override, [])
     filters = id_filters ++ filters_override
 
     if filters_override && filters_override != [] do
       debug(
-        "Pointers: Attempting 'cowboy' query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
+        "Pointers: Attempting a generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
       )
 
       schema_or_query
@@ -356,7 +362,7 @@ defmodule Bonfire.Common.Pointers do
     else
       if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
         debug(
-          "Pointers: Attempting 'cowboy' query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} and NO boundary check (because of opts.skip_boundary_check)"
+          "Pointers: Attempting a generic query with NO boundary check (because of opts.skip_boundary_check) on #{inspect(schema_or_query)} with filters: #{inspect(filters)}"
         )
 
         id_filter(
@@ -367,7 +373,7 @@ defmodule Bonfire.Common.Pointers do
         # |> IO.inspect
       else
         debug(
-          "Pointers: Attempting cowboy query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} + boundary check (if Bonfire.Boundaries extension available)"
+          "Pointers: Attempting generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} + boundary check (if Bonfire.Boundaries extension available)"
         )
 
         q =
@@ -407,7 +413,7 @@ defmodule Bonfire.Common.Pointers do
       # |> IO.inspect
 
       _ ->
-        cowboy_query(schema, filters, opts)
+        generic_query(schema, filters, opts)
     end
   end
 
