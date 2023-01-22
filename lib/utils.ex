@@ -587,24 +587,26 @@ defmodule Bonfire.Common.Utils do
   def maybe_to_atom!(atom) when is_atom(atom), do: atom
   def maybe_to_atom!(_), do: nil
 
-  def maybe_to_module(str) when is_binary(str) do
+  def maybe_to_module(str, force \\ true)
+
+  def maybe_to_module(str, force) when is_binary(str) do
     case maybe_to_atom(str) do
-      module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom)
+      module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom, force)
       # module doesn't exist
       "Elixir." <> str -> nil
-      _ -> maybe_to_module("Elixir." <> str)
+      _ -> maybe_to_module("Elixir." <> str, force)
     end
   end
 
-  def maybe_to_module(atom) when is_atom(atom) do
-    if module_enabled?(atom) do
+  def maybe_to_module(atom, force) when is_atom(atom) do
+    if force != true or module_enabled?(atom) do
       atom
     else
       nil
     end
   end
 
-  def maybe_to_module(_), do: nil
+  def maybe_to_module(_, _), do: nil
 
   def module_to_str(str) when is_binary(str) do
     case str do
@@ -884,7 +886,7 @@ defmodule Bonfire.Common.Utils do
       |> Map.drop(["_csrf_token"])
       |> Map.new(fn {k, v} ->
         {
-          maybe_to_snake_atom(k) || maybe_to_module(k),
+          maybe_to_snake_atom(k) || maybe_to_module(k, false),
           input_to_atoms(v, discard_unknown_keys, including_values)
         }
       end)
@@ -896,7 +898,7 @@ defmodule Bonfire.Common.Utils do
     |> Map.drop(["_csrf_token"])
     |> Map.new(fn {k, v} ->
       {
-        maybe_to_snake_atom(k) || maybe_to_module(k) || k,
+        maybe_to_snake_atom(k) || maybe_to_module(k, false) || k,
         input_to_atoms(v, discard_unknown_keys, including_values)
       }
     end)
@@ -923,7 +925,7 @@ defmodule Bonfire.Common.Utils do
   def input_to_atoms("true", _, true = _including_values), do: true
 
   def input_to_atoms(v, _, true = _including_values) when is_binary(v) do
-    maybe_to_module(v)
+    maybe_to_module(v, false) || v
   end
 
   def input_to_atoms(v, _, _), do: v

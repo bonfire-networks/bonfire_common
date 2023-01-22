@@ -68,6 +68,8 @@ defmodule Bonfire.Common.Config do
   def get(keys_tree, default, nil) do
     # FIXME: needs to be fixed and then made to trigger by removing `top_level_otp_app()`
     {[otp_app], keys_tree} = keys_tree(keys_tree) |> Enum.split(1)
+    debug(keys_tree, "Get config for app #{otp_app}")
+
     get(keys_tree, default, otp_app)
   end
 
@@ -144,7 +146,7 @@ defmodule Bonfire.Common.Config do
     Enum.each(tree, &put/1)
   end
 
-  def put({otp_app, tree}) when is_atom(otp_app) and is_list(tree) do
+  def put({otp_app, tree}) when is_atom(otp_app) and (is_list(tree) or is_map(tree)) do
     Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
   end
 
