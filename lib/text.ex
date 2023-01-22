@@ -134,8 +134,9 @@ defmodule Bonfire.Common.Text do
     if module_enabled?(Earmark) do
       content
       |> Earmark.as_html!(
-        inner_html: true,
+        # inner_html: true,
         escape: false,
+        breaks: true,
         smartypants: false,
         registered_processors: [
           # {"a", &md_add_target/1},
@@ -148,11 +149,10 @@ defmodule Bonfire.Common.Text do
         ]
       )
       |> markdown_checkboxes()
+      |> debug("MD output for: #{content}")
     else
       content
     end
-
-    # |> debug("output")
   end
 
   # This will only be applied to nodes as it will become a TagSpecificProcessors
