@@ -4,6 +4,7 @@ defmodule Bonfire.Common.URIs do
   import Bonfire.Common.Extend
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Cache
   alias Bonfire.Me.Characters
 
   def validate_uri(str) do
@@ -90,7 +91,7 @@ defmodule Bonfire.Common.URIs do
   #   reply_path(object, path(thread_id))
   # end
 
-  def path(%{pointer_id: id} = object, args), do: path_by_id(id, args)
+  def path(%{pointer_id: id} = object, args), do: path_by_id(id, args, object)
 
   def path(%{id: id} = object, args) do
     args_with_id =
@@ -181,10 +182,10 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
     if Utils.is_ulid?(id) do
       with {:ok, pointer} <-
-             Bonfire.Common.Pointers.one(id,
-               skip_boundary_check: true,
-               preload: :character
-             ) do
+             Cache.maybe_apply_cached(&Bonfire.Common.Pointers.one/2, [
+               id,
+               [skip_boundary_check: true, preload: :character]
+             ]) do
         debug("path_by_id: found a pointer #{inspect(pointer)}")
 
         object

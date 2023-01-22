@@ -34,6 +34,8 @@ defmodule Bonfire.Common.Extensions do
     # use compiled-time cached list
     deps = Bonfire.Application.deps(:flat)
 
+    # TODO: refactor using `Enum.split_with/2`
+
     feature_extensions = filter_bonfire(deps, true, @prefix)
     other_deps = filter_bonfire(deps, false, @prefix)
 

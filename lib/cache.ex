@@ -1,12 +1,16 @@
 defmodule Bonfire.Common.Cache do
+  use Decorator.Define, cache: 0
   use Bonfire.Common.Utils
-
-  # TODO: use Decorator lib to support decorating functions to cache them
+  require Logger
 
   # 6 hours
   @default_cache_ttl 1_000 * 60 * 60 * 6
   # 5 min
   @error_cache_ttl 1_000 * 60 * 5
+
+  # TODO: use Decorator lib to support decorating functions to cache them
+  def cache(fn_body, context) do
+  end
 
   def maybe_apply_cached(fun, args, opts \\ [])
 
@@ -16,7 +20,7 @@ defmodule Bonfire.Common.Cache do
     |> Keyword.put_new_lazy(:cache_key, fn ->
       key_for_call(fun, args)
     end)
-    |> do_maybe_apply_cached(nil, fun, args, ...)
+    |> do_maybe_apply_cached(fun, args, ...)
   end
 
   def maybe_apply_cached({module, fun}, args, opts)
@@ -46,7 +50,7 @@ defmodule Bonfire.Common.Cache do
     "#{String.trim_leading(Atom.to_string(module), "Elixir.")}.#{fun}(#{satinise_args(args)})"
   end
 
-  defp do_maybe_apply_cached(module, fun, args, opts) do
+  defp do_maybe_apply_cached(module \\ nil, fun, args, opts) do
     # debug(opts)
     key = opts[:cache_key]
     ttl = opts[:ttl] || @default_cache_ttl
@@ -62,7 +66,7 @@ defmodule Bonfire.Common.Cache do
             with {:error, e} <- Cachex.get!(cache, key) do
               error(
                 e,
-                "An error was cached, so we'll ignore it and try running the function again"
+                "DEV ONLY: An error was cached, so we'll ignore it and try running the function again"
               )
 
               val = maybe_apply_or_fun(module, fun, args)

@@ -69,18 +69,20 @@ defmodule Bonfire.Common.Pointers do
       pointer_query(filters, opts ++ [skip_boundary_check: true])
       |> repo().exists?()
 
-  def list!(pointers)
+  def list!(pointers, opts \\ [])
+
+  def list!(pointers, opts)
       when is_list(pointers) and length(pointers) > 0 and
              is_struct(hd(pointers)) do
     # means we're already being passed pointers? instead of ids
-    follow!(pointers)
+    follow!(pointers, opts)
   end
 
-  def list!(ids) when is_list(ids) and length(ids) > 0 and not is_nil(hd(ids)) do
-    with {:ok, ptrs} <- many!(id: List.flatten(ids)), do: follow!(ptrs)
+  def list!(ids, opts) when is_list(ids) and length(ids) > 0 and not is_nil(hd(ids)) do
+    with {:ok, ptrs} <- many!([id: List.flatten(ids)], opts), do: follow!(ptrs, opts)
   end
 
-  def list!(ids) do
+  def list!(ids, _opts) do
     warn("Pointers.list: expected a list of pointers or ULIDs, got #{inspect(ids)}")
 
     []
@@ -104,6 +106,7 @@ defmodule Bonfire.Common.Pointers do
     end
   end
 
+  @doc "Prepare a query for generic pointer objects"
   def pointer_query(filters, opts) do
     opts = Utils.to_options(opts)
     q = Queries.query(nil, filters)
@@ -139,6 +142,23 @@ defmodule Bonfire.Common.Pointers do
 
       :character ->
         proload(query, :character)
+
+      :post_content ->
+        proload(query, :post_content)
+
+      :creator ->
+        proload(query,
+          created: [
+            creator: [:character, profile: :icon]
+          ]
+        )
+
+      :creator_of_reply_to ->
+        proload(query,
+          created: [
+            creator: {"reply_to_creator_", [:character, profile: :icon]}
+          ]
+        )
 
       _default ->
         query
