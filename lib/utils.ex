@@ -1174,7 +1174,11 @@ defmodule Bonfire.Common.Utils do
         current_user(context, true)
 
       _ when is_list(current_user_or_socket_or_opts) ->
-        current_user(Map.new(current_user_or_socket_or_opts), true)
+        if Keyword.keyword?(current_user_or_socket_or_opts) do
+          current_user(Map.new(current_user_or_socket_or_opts), true)
+        else
+          Enum.find_value(current_user_or_socket_or_opts, &current_user/1)
+        end
 
       %{current_user_id: user_id} when is_binary(user_id) ->
         current_user(user_id, true)
