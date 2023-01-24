@@ -1021,6 +1021,22 @@ defmodule Bonfire.Common.Utils do
     function_exported?(module, :__struct__, 0)
   end
 
+  def typeof(%{__struct__: type}) when type == Phoenix.LiveView.Socket, do: :socket
+  def typeof(%{__context__: _, __changed__: _}), do: :assigns
+  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
+
+  def typeof(list) when is_list(list) do
+    if Keyword.keyword?(list), do: :keyword, else: :list
+  end
+
+  types = ~w[function integer binary bitstring map float atom tuple pid port reference]
+
+  for type <- types do
+    def typeof(x) when unquote(:"is_#{type}")(x), do: unquote(String.to_atom(type))
+  end
+
+  def typeof(_), do: nil
+
   def random_string(length) do
     :crypto.strong_rand_bytes(length)
     |> Base.url_encode64()
@@ -1197,7 +1213,7 @@ defmodule Bonfire.Common.Utils do
     end ||
       (
         if recursing != true,
-          do: debug(current_user_or_socket_or_opts, "No current_user found in")
+          do: debug(typeof(current_user_or_socket_or_opts), "No current_user found in")
 
         nil
       )
@@ -1238,7 +1254,11 @@ defmodule Bonfire.Common.Utils do
     end ||
       (
         if recursing != true,
-          do: debug(current_user_or_socket_or_opts, "No current_user_id or current_user found in")
+          do:
+            debug(
+              typeof(current_user_or_socket_or_opts),
+              "No current_user_id or current_user found in"
+            )
 
         nil
       )
@@ -1262,7 +1282,7 @@ defmodule Bonfire.Common.Utils do
         Keyword.new(user_or_socket_or_opts)
 
       _ ->
-        debug("No opts found in #{inspect(user_or_socket_or_opts)}")
+        debug(typeof(user_or_socket_or_opts), "No opts found in")
         []
     end
   end
@@ -1309,7 +1329,7 @@ defmodule Bonfire.Common.Utils do
   def current_account(other) do
     case current_user(other, true) do
       nil ->
-        debug(other, "No current_account found in")
+        debug(typeof(other), "No current_account found in")
         nil
 
       user ->
@@ -1370,24 +1390,24 @@ defmodule Bonfire.Common.Utils do
 
   def current_account_and_or_user_ids(_), do: nil
 
-  def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
-    maybe_apply(Phoenix.LiveView, :connected?, socket, fn _, _ -> nil end)
-  end
-
   def socket_connected?(%{socket_connected?: bool}) do
     bool
   end
 
-  def socket_connected?(%{__context__: assigns}) do
-    socket_connected?(assigns)
+  def socket_connected?(%{__context__: %{socket_connected?: bool}}) do
+    bool
   end
 
-  def socket_connected?(%{assigns: assigns}) do
-    socket_connected?(assigns)
+  def socket_connected?(%{assigns: %{__context__: %{socket_connected?: bool}}}) do
+    bool
+  end
+
+  def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
+    maybe_apply(Phoenix.LiveView, :connected?, socket, fn _, _ -> nil end)
   end
 
   def socket_connected?(assigns) do
-    info(assigns, "Unable to find :socket_connected? info in provided assigns")
+    info(typeof(assigns), "Unable to find Socket or :socket_connected? info in")
     nil
   end
 
