@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.PubSub do
   import Untangle
+  use Bonfire.Common.Utils
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Utils
   alias Bonfire.Common.PubSub
 
   @doc """
@@ -24,7 +24,7 @@ defmodule Bonfire.Common.PubSub do
   end
 
   def subscribe(topic, socket) do
-    with topic when is_binary(topic) and topic != "" <- Utils.maybe_to_string(topic) do
+    with topic when is_binary(topic) and topic != "" <- Types.maybe_to_string(topic) do
       debug(topic, "transformed the topic into a string we can subscribe to")
       subscribe(topic, socket)
     else
@@ -71,7 +71,7 @@ defmodule Bonfire.Common.PubSub do
   defp do_broadcast(topic, data) do
     # endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
     # endpoint.broadcast_from(self(), topic, step, state)
-    Phoenix.PubSub.broadcast(Bonfire.Common.PubSub, Utils.maybe_to_string(topic), data)
+    Phoenix.PubSub.broadcast(Bonfire.Common.PubSub, Types.maybe_to_string(topic), data)
   end
 
   @doc "Broadcast while attaching telemetry info. The receiving module must `use Bonfire.Common.PubSub` to correctly unwrap the Event"

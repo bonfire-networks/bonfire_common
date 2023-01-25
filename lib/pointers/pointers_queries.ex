@@ -5,6 +5,8 @@ defmodule Bonfire.Common.Pointers.Queries do
   import EctoSparkles
   import Untangle
   alias Bonfire.Common.Utils
+  alias Bonfire.Common
+  alias Common.Types
 
   @behaviour Bonfire.Common.QueryModule
   def schema_module, do: Pointer
@@ -37,7 +39,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   ## by fields
 
   def filter(q, {:id, id}) when not is_list(id) do
-    case Utils.ulid(id) do
+    case Types.ulid(id) do
       id when is_binary(id) ->
         where(q, [main_object: p], p.id == ^id)
 

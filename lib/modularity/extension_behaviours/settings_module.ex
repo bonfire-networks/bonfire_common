@@ -4,7 +4,8 @@ defmodule Bonfire.Common.SettingsModule do
   Settings nav & components
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
-  use Bonfire.Common.Utils, only: [filter_empty: 2]
+  use Bonfire.Common.Utils, only: []
+  import Bonfire.Common.Enums, only: [filter_empty: 2]
 
   @doc "Declares a component component"
   @callback declared_component() :: any

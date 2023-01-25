@@ -16,6 +16,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Enums
 
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
@@ -65,7 +66,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
       app, acc ->
         case modules_with_behaviour(Application.spec(app, :modules) || [], behaviour) do
           modules when is_list(modules) and modules != [] ->
-            Utils.deep_merge(acc, %{app => modules})
+            Enums.deep_merge(acc, %{app => modules})
 
           _ ->
             acc
@@ -81,7 +82,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> Enum.reduce(%{}, fn
       {app, modules}, acc ->
         case behaviours_with_app_modules(modules, behaviours, app) do
-          modules when is_list(modules) and modules != [] -> Utils.deep_merge(acc, modules)
+          modules when is_list(modules) and modules != [] -> Enums.deep_merge(acc, modules)
           _ -> acc
         end
 
@@ -101,7 +102,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
       behaviour, acc ->
         case modules_with_behaviour(modules, behaviour) do
           modules when is_list(modules) and modules != [] ->
-            Utils.deep_merge(acc, %{behaviour => %{app => modules}})
+            Enums.deep_merge(acc, %{behaviour => %{app => modules}})
 
           _ ->
             acc
@@ -161,7 +162,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   def linked_modules(modules, fun) do
     modules
     |> Enum.flat_map(&linked_module(&1, fun))
-    |> Utils.filter_empty([])
+    |> Enums.filter_empty([])
   end
 
   defp linked_module(module, fun) do

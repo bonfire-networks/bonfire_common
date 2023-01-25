@@ -5,6 +5,7 @@ defmodule Bonfire.Common.RepoTemplate do
     quote do
       import Bonfire.Common.Config, only: [repo: 0]
       alias Bonfire.Common.Utils
+      alias Bonfire.Common.Errors
 
       use Ecto.Repo,
         otp_app: Bonfire.Common.Config.get!(:otp_app),
@@ -318,7 +319,7 @@ defmodule Bonfire.Common.RepoTemplate do
       # end
 
       defp handle_postgrex_exception(exception, stacktrace, _, fallback) do
-        Utils.debug_exception(
+        Errors.debug_exception(
           Utils.e(exception, :message, "A database error occurred"),
           exception,
           stacktrace

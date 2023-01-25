@@ -8,7 +8,7 @@ defmodule Bonfire.Common.Pointers do
   import Ecto.Query
   import EctoSparkles
   alias Bonfire.Common.Pointers.Queries
-  alias Bonfire.Common.Utils
+  use Bonfire.Common.Utils
   alias Bonfire.Common.Cache
   alias Bonfire.Common.ContextModule
   alias Pointers.NotFound
@@ -95,7 +95,7 @@ defmodule Bonfire.Common.Pointers do
     do: pointer_query(filters, opts) |> repo().many()
 
   def filter_one(filters) do
-    if Bonfire.Common.Utils.is_ulid?(filters) do
+    if Bonfire.Common.Types.is_ulid?(filters) do
       [id: filters]
     else
       if String.starts_with?(filters, "http") do
@@ -229,7 +229,7 @@ defmodule Bonfire.Common.Pointers do
       # info(table_id, "virtual - skip following ")
       if function_exported?(schema, :__struct__, 0) do
         # debug("schema is available in the compiled app")
-        struct(schema, Utils.maybe_from_struct(pointer))
+        struct(schema, Enums.maybe_from_struct(pointer))
       else
         debug("schema is not available in the compiled app")
         pointer
@@ -250,7 +250,7 @@ defmodule Bonfire.Common.Pointers do
       %{pointed: followed_pointer} ->
         debug("merge any assocs previously preloaded on pointer to the returned object")
 
-        Utils.maybe_merge_to_struct(followed_pointer, pointer_or_pointers)
+        Enums.maybe_merge_to_struct(followed_pointer, pointer_or_pointers)
 
       followed_pointers when is_list(followed_pointers) ->
         Enum.map(followed_pointers, & &1.pointed)

@@ -15,7 +15,27 @@ defmodule Bonfire.Common.Text do
 
   def blank?(str_or_nil), do: "" == str_or_nil |> to_string() |> String.trim()
 
-  # |> debug("contains_html?")
+  def strlen(x) when is_nil(x), do: 0
+  def strlen(%{} = obj) when obj == %{}, do: 0
+  def strlen(%{}), do: 1
+  def strlen(x) when is_binary(x), do: String.length(x)
+  def strlen(x) when is_list(x), do: length(x)
+  def strlen(x) when x > 0, do: 1
+  # let's just say that 0 is nothing
+  def strlen(x) when x == 0, do: 0
+
+  def contains?(string, substring)
+      when is_binary(string) and is_binary(substring),
+      do: string =~ substring
+
+  def contains?(_, _), do: nil
+
+  def random_string(length) do
+    :crypto.strong_rand_bytes(length)
+    |> Base.url_encode64()
+    |> binary_part(0, length)
+  end
+
   def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
 
   def truncate(text, max_length \\ 250, add_to_end \\ nil)

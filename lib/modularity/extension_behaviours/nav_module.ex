@@ -4,7 +4,8 @@ defmodule Bonfire.Common.NavModule do
   Add items to extensions' navigation sidebar.
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
-  use Bonfire.Common.Utils, only: [filter_empty: 2]
+  use Bonfire.Common.Utils, only: []
+  import Bonfire.Common.Enums, only: [filter_empty: 2]
 
   @doc "Declares a nav module, with links or nav components"
   @callback declared_nav() :: any

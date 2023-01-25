@@ -124,7 +124,7 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
       labels =
         Utils.e(issue, "labels", "edges", [])
         |> Enum.map(&Utils.e(&1, "node", "name", nil))
-        |> Utils.filter_empty(nil)
+        |> Enums.filter_empty(nil)
 
       grouping_texts = labels || [Utils.e(issue, "title", "")]
 

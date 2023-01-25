@@ -11,7 +11,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   import Untangle
 
   def one(id) when is_binary(id) do
-    if Bonfire.Common.Utils.is_ulid?(id) do
+    if Bonfire.Common.Types.is_ulid?(id) do
       one(id: id)
     else
       {:error, :not_found}

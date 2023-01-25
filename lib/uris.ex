@@ -4,8 +4,11 @@ defmodule Bonfire.Common.URIs do
   import Bonfire.Common.Extend
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Enums
   alias Bonfire.Common.Cache
   alias Bonfire.Me.Characters
+  alias Bonfire.Common
+  alias Common.Types
 
   def validate_uri(str) do
     uri = URI.parse(str)
@@ -96,7 +99,7 @@ defmodule Bonfire.Common.URIs do
   def path(%{id: id} = object, args) do
     args_with_id =
       ([path_id(object)] ++ args)
-      |> Utils.filter_empty([])
+      |> Enums.filter_empty([])
 
     # |> debug("args")
 
@@ -164,7 +167,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
-    reply_to_path <> "#" <> (Utils.ulid(object) || "")
+    reply_to_path <> "#" <> (Types.ulid(object) || "")
   end
 
   defp reply_path(object, _) do
@@ -180,7 +183,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def path_by_id(id, args, object \\ %{}) when is_binary(id) do
-    if Utils.is_ulid?(id) do
+    if Types.is_ulid?(id) do
       with {:ok, pointer} <-
              Cache.maybe_apply_cached(&Bonfire.Common.Pointers.one/2, [
                id,
@@ -324,7 +327,7 @@ defmodule Bonfire.Common.URIs do
 
   def maybe_generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
-    prefix = if Utils.is_ulid?(id), do: "/objects/", else: "/actors/"
+    prefix = if Types.is_ulid?(id), do: "/objects/", else: "/actors/"
     base_url() <> ap_base_path <> prefix <> id
   end
 

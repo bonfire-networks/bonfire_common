@@ -1,8 +1,205 @@
 defmodule Bonfire.Common.Types do
-  use Bonfire.Common.Utils
   use Untangle
+  import Bonfire.Common.Extend
+  require Bonfire.Common.Localise.Gettext
+  import Bonfire.Common.Localise.Gettext.Helpers
+
+  alias Bonfire.Common.Utils
   alias Pointers.Pointer
   alias Bonfire.Common.Cache
+  alias Bonfire.Common.Enums
+  alias Bonfire.Common.Text
+
+  def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
+
+  def ulid(input) when is_binary(input) do
+    # ulid is always 26 chars
+    id = String.slice(input, 0, 26)
+
+    if is_ulid?(id) do
+      id
+    else
+      e = "Expected a ULID ID (or an object with one), got #{inspect(input)}"
+
+      # throw {:error, e}
+      warn(e)
+      nil
+    end
+  end
+
+  def ulid(ids) when is_list(ids),
+    do: ids |> List.flatten() |> Enum.map(&ulid/1) |> Enums.filter_empty(nil)
+
+  def ulid(id) do
+    case Enums.id(id) do
+      id when is_binary(id) or is_list(id) ->
+        ulid(id)
+
+      _ ->
+        e = "Expected a ULID ID (or an object with one), got #{inspect(id)}"
+
+        # throw {:error, e}
+        debug(e)
+        nil
+    end
+  end
+
+  def ulids(objects), do: ulid(objects) |> List.wrap()
+
+  def ulid!(object) do
+    case ulid(object) do
+      id when is_binary(id) ->
+        id
+
+      _ ->
+        error(object, "Expected an object or ID (ULID), but got")
+        raise "Expected an object or ID (ULID)"
+    end
+  end
+
+  def is_numeric(str) do
+    case Float.parse(str) do
+      {_num, ""} -> true
+      _ -> false
+    end
+  end
+
+  def to_number(str) do
+    case Float.parse(str) do
+      {num, ""} -> num
+      _ -> 0
+    end
+  end
+
+  def is_ulid?(str) when is_binary(str) and byte_size(str) == 26 do
+    with :error <- Pointers.ULID.cast(str) do
+      false
+    else
+      _ -> true
+    end
+  end
+
+  def is_ulid?(_), do: false
+
+  # not sure why but seems needed
+  def maybe_to_atom("false"), do: false
+
+  def maybe_to_atom(str) when is_binary(str) do
+    maybe_to_atom!(str) || str
+  end
+
+  def maybe_to_atom(other), do: other
+
+  def maybe_to_atom!(str) when is_binary(str) do
+    try do
+      String.to_existing_atom(str)
+    rescue
+      ArgumentError -> nil
+    end
+  end
+
+  def maybe_to_atom!(atom) when is_atom(atom), do: atom
+  def maybe_to_atom!(_), do: nil
+
+  def maybe_to_module(str, force \\ true)
+
+  def maybe_to_module(str, force) when is_binary(str) do
+    case maybe_to_atom(str) do
+      module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom, force)
+      # module doesn't exist
+      "Elixir." <> str -> nil
+      _ -> maybe_to_module("Elixir." <> str, force)
+    end
+  end
+
+  def maybe_to_module(atom, force) when is_atom(atom) do
+    if force != true or module_enabled?(atom) do
+      atom
+    else
+      nil
+    end
+  end
+
+  def maybe_to_module(_, _), do: nil
+
+  def module_to_str(str) when is_binary(str) do
+    case str do
+      "Elixir." <> name -> name
+      other -> other
+    end
+  end
+
+  def module_to_str(atom) when is_atom(atom),
+    do: maybe_to_string(atom) |> module_to_str()
+
+  def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
+    Atom.to_string(atom)
+  end
+
+  def maybe_to_string(list) when is_list(list) do
+    # IO.inspect(list, label: "list")
+    List.to_string(list)
+  end
+
+  def maybe_to_string({key, val}) do
+    maybe_to_string(key) <> ":" <> maybe_to_string(val)
+  end
+
+  def maybe_to_string(other) do
+    to_string(other)
+  end
+
+  @decorate time()
+  def module_to_human_readable(module) do
+    module
+    |> module_to_str()
+    |> String.split(".")
+    |> List.last()
+    |> Recase.to_title()
+  end
+
+  def maybe_convert_ulids(list) when is_list(list),
+    do: Enum.map(list, &maybe_convert_ulids/1)
+
+  def maybe_convert_ulids(%{} = map) do
+    map |> Enum.map(&maybe_convert_ulids/1) |> Map.new()
+  end
+
+  def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
+    with {:ok, ulid} <- Pointers.ULID.load(val) do
+      {key, ulid}
+    else
+      _ ->
+        {key, val}
+    end
+  end
+
+  def maybe_convert_ulids({:ok, val}), do: {:ok, maybe_convert_ulids(val)}
+  def maybe_convert_ulids(val), do: val
+
+  def maybe_to_snake(string), do: Recase.to_snake("#{string}")
+
+  def maybe_to_snake_atom(string), do: maybe_to_atom!(maybe_to_snake(string))
+
+  def typeof(%{__struct__: type}) when type == Phoenix.LiveView.Socket, do: :socket
+  def typeof(%{__context__: _, __changed__: _}), do: :assigns
+  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
+
+  def typeof(list) when is_list(list) do
+    if Keyword.keyword?(list), do: :keyword, else: :list
+  end
+
+  types = ~w[function integer binary bitstring map float atom tuple pid port reference]
+
+  for type <- types do
+    def typeof(x) when unquote(:"is_#{type}")(x), do: unquote(String.to_atom(type))
+  end
+
+  def typeof(_), do: nil
+
+  def defines_struct?(module) do
+    function_exported?(module, :__struct__, 0)
+  end
 
   @decorate time()
   def object_type(object)
@@ -196,7 +393,7 @@ defmodule Bonfire.Common.Types do
   """
   def all_object_type_names() do
     Bonfire.Common.SchemaModule.modules()
-    |> Enum.filter(&Bonfire.Common.Utils.defines_struct?/1)
+    |> Enum.filter(&defines_struct?/1)
     |> Enum.flat_map(fn t ->
       t =
         t
@@ -207,13 +404,13 @@ defmodule Bonfire.Common.Types do
         do: [t, "Delete this #{t}"],
         else: []
     end)
-    |> filter_empty([])
+    |> Enums.filter_empty([])
 
     # |> IO.inspect(label: "Making all object types localisable")
   end
 
   def table_types(types) when is_list(types),
-    do: Enum.map(types, &table_type/1) |> Utils.filter_empty([])
+    do: Enum.map(types, &table_type/1) |> Enums.filter_empty([])
 
   def table_types(type),
     do: table_types(List.wrap(type))

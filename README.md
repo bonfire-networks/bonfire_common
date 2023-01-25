@@ -4,7 +4,7 @@
 
 - Many common functions in `Bonfire.Common.Utils`
 - Path and URL generators in `Bonfire.Common.URIs`
-- Date and time helpers in `Bonfire.Common.DateTimes`
+- Date and time helpers in `Bonfire.Common.DatesTimes`
 - Etc
 
 ## Handy commands
