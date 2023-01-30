@@ -10,6 +10,7 @@ defmodule Bonfire.Common.Utils do
   alias Common.Text
   alias Common.Config
   alias Common.Enums
+  alias Common.Errors
   alias Common.Types
 
   # 6 hours
