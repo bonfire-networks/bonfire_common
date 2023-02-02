@@ -154,8 +154,8 @@ defmodule Bonfire.Common.Extensions do
   def get_link(%{lock: {:git, url, _, [branch: branch]}}),
     do: "#{url}/tree/#{branch}"
 
-  def get_link(%{git: url, branch: branch}), do: "#{url}/tree/#{branch}"
   def get_link(%{lock: {:git, url, _, _}}), do: url
+  def get_link(%{git: url, branch: branch}), do: "#{url}/tree/#{branch}"
   def get_link(%{git: url}), do: url
 
   def get_link(dep) do

@@ -11,22 +11,22 @@ defmodule Bonfire.Common.Presence do
   @doc "Join a user to the list of those who are present"
   def present!(socket, meta \\ %{}) do
     if Utils.socket_connected?(socket) do
-      user = Utils.current_user_id(socket)
+      user_id = Utils.current_user_id(socket)
 
-      if user do
+      if user_id do
         {:ok, _} =
           track(
             self(),
             @presence,
-            user,
+            user_id,
             Enum.into(meta, %{
-              # name: user[:name],
+              # name: user_id[:name],
               pid: self(),
               joined_at: :os.system_time(:seconds)
             })
           )
 
-        debug(user, "joined")
+        debug(user_id, "joined")
       else
         debug("skip because we have no user")
       end
@@ -38,9 +38,8 @@ defmodule Bonfire.Common.Presence do
   end
 
   @doc "Check if a given user (or the current user) is in the list of those who are present"
-  def present?(user \\ nil, socket) do
-    present_meta(user, socket)
-    |> debug()
+  def present?(user_id \\ nil, socket) do
+    present_meta(user_id, socket)
   end
 
   def present_meta(user \\ nil, socket) do
@@ -54,6 +53,7 @@ defmodule Bonfire.Common.Presence do
         user_id
       )
       |> Utils.e(:metas, [])
+      |> debug()
     end
   end
 
