@@ -753,4 +753,16 @@ defmodule Bonfire.Common.Enums do
   defp group_map_item({key, value}, acc)
        when not is_map_key(acc, key),
        do: Map.put(acc, key, value)
+
+  def enum_maybe_apply(map, fun, args) when is_map(map) do
+    Utils.maybe_apply(Map, fun, [map] ++ List.wrap(args))
+  end
+
+  def enum_maybe_apply(list, fun, args) when is_list(list) do
+    if Keyword.keyword?(list) do
+      Utils.maybe_apply(Keyword, fun, [list] ++ List.wrap(args))
+    else
+      Utils.maybe_apply(List, fun, [list] ++ List.wrap(args))
+    end
+  end
 end
