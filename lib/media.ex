@@ -1,4 +1,7 @@
 defmodule Bonfire.Common.Media do
+  use Arrows
+  import Untangle
+
   def media_url(%{media_type: "remote", path: url} = _media) do
     url
   end
@@ -91,4 +94,31 @@ defmodule Bonfire.Common.Media do
   def banner_url(%{image: url}) when is_binary(url), do: url
   def banner_url(%{profile: profile}), do: banner_url(profile)
   def banner_url(_obj), do: "/images/bonfires.png"
+
+  @doc """
+  Returns a map containing all files and their contents from a tar or compressed tar.gz archive.
+  """
+  def extract_tar(archive, opts \\ [:compressed, :memory]) do
+    with {:ok, files} <- :erl_tar.extract(archive, opts) do
+      files
+      |> Enum.map(fn {filename, content} -> {to_string(filename), content} end)
+      |> Map.new()
+    end
+  end
+
+  def read_tar_files(archive, file_or_files, opts \\ [:compressed, :verbose]) do
+    # opts
+    # |> Keyword.put_new(:cwd, Path.dirname(archive))
+    # |> Keyword.put_new(:files, List.wrap(file_or_files))
+    # |> debug("opts")
+    # |> extract_tar(archive, ...)
+    # the above doesn't seem to work so resort to tar command instead
+
+    with {contents, 0} <- System.cmd("tar", ["-xvf", archive, "-O"] ++ List.wrap(file_or_files)) do
+      {:ok, contents}
+    else
+      _ ->
+        error("File not found")
+    end
+  end
 end

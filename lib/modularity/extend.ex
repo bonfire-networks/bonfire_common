@@ -1,4 +1,5 @@
 defmodule Bonfire.Common.Extend do
+  use Arrows
   import Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
@@ -198,5 +199,76 @@ defmodule Bonfire.Common.Extend do
   # generate an updated reverse router based on extensions that are enabled/disabled
   def generate_reverse_router!() do
     Utils.maybe_apply(Config.get!(:endpoint_module), :generate_reverse_router!)
+  end
+
+  def module_code(module) do
+    code_file =
+      module.__info__(:compile)[:source]
+      |> to_string()
+      |> debug()
+
+    if Config.get(:prod) do
+      # supports doing this in release by using the code in the gzipped code 
+
+      tar_file =
+        Path.absname("priv/static/source.tar.gz", Config.get(:project_path))
+        |> debug()
+
+      code_file =
+        code_file
+        |> Path.relative_to(Config.get(:project_path))
+        |> debug()
+
+      with {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, code_file) do
+        String.replace(code_file, "extensions/", "deps/")
+        |> String.replace("forks/", "deps/")
+        |> debug()
+        |> Bonfire.Common.Media.read_tar_files(tar_file, ...)
+      end
+    else
+      code_file
+      |> File.read()
+    end
+
+    # |> debug()
+  end
+
+  def function_line_number(module, fun) when is_atom(module) do
+    module_code(module)
+    ~> function_line_number(fun)
+  end
+
+  def function_line_number(module_code, fun) when is_binary(module_code) do
+    module_code
+    |> Code.string_to_quoted!()
+    # |> debug()
+    |> Macro.prewalk(fn
+      result = {:def, [line: number], [{^fun, _, _} | _]} -> throw(number)
+      result = {:defp, [line: number], [{^fun, _, _} | _]} -> throw(number)
+      result = {:def, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
+      result = {:defp, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
+      other -> other
+    end)
+  catch
+    number ->
+      number
+  end
+
+  def function_ast(module, fun) do
+    module_code(module)
+    ~> Code.string_to_quoted!()
+    # |> debug()
+    |> Macro.prewalk([], fn
+      result = {:def, _, [{^fun, _, _} | _]}, acc -> {result, acc ++ [result]}
+      result = {:defp, _, [{^fun, _, _} | _]}, acc -> {result, acc ++ [result]}
+      result = {:def, _, [{:when, _, [{^fun, _, _} | _]} | _]}, acc -> {result, acc ++ [result]}
+      result = {:defp, _, [{:when, _, [{^fun, _, _} | _]} | _]}, acc -> {result, acc ++ [result]}
+      other, acc -> {other, acc}
+    end)
+    |> elem(1)
+  end
+
+  def macro_inspect(fun) do
+    fun.() |> Macro.expand(__ENV__) |> Macro.to_string() |> debug("Macro")
   end
 end

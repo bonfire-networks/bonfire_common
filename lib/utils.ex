@@ -377,7 +377,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def socket_connected?(assigns) do
-    info(Types.typeof(assigns), "Unable to find Socket or :socket_connected? info in")
+    warn(Types.typeof(assigns), "Unable to find Socket or :socket_connected? info in")
     nil
   end
 
@@ -524,10 +524,6 @@ defmodule Bonfire.Common.Utils do
 
   def replace_nil(nil, value), do: value
   def replace_nil(other, _), do: other
-
-  def macro_inspect(fun) do
-    fun.() |> Macro.expand(__ENV__) |> Macro.to_string() |> debug("Macro:")
-  end
 
   def ok_unwrap(val, fallback \\ nil)
   def ok_unwrap({:ok, val}, _fallback), do: val

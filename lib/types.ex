@@ -10,6 +10,46 @@ defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Text
 
+  def typeof(%{__struct__: type}) when type == Phoenix.LiveView.Socket,
+    do: Phoenix.LiveView.Socket
+
+  def typeof(%{__context__: _, __changed__: _}), do: :assigns
+  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
+  def typeof(struct) when is_struct(struct), do: object_type(struct) || :struct
+
+  def typeof(list) when is_list(list) do
+    if Keyword.keyword?(list), do: Keyword, else: List
+  end
+
+  def typeof(string) when is_binary(string) or is_bitstring(string) do
+    if is_ulid?(string) do
+      object_type(string) || Pointers.ULID
+    else
+      case maybe_to_module(string) do
+        nil -> String
+        module -> typeof(module)
+      end
+    end
+  end
+
+  def typeof(atom) when is_atom(atom) do
+    if module_exists?(atom) do
+      if defines_struct?(atom), do: object_type(atom) || :struct, else: Module
+    else
+      Atom
+    end
+  end
+
+  def typeof(number) when is_integer(number), do: Integer
+  def typeof(map) when is_map(map), do: object_type(map) || Map
+  def typeof(float) when is_float(float), do: Float
+  def typeof(tuple) when is_tuple(tuple), do: Tuple
+  def typeof(function) when is_function(function), do: Function
+  def typeof(pid) when is_pid(pid), do: Process
+  def typeof(port) when is_port(port), do: Port
+  def typeof(reference) when is_reference(reference), do: :reference
+  def typeof(_), do: nil
+
   def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
 
   def ulid(input) when is_binary(input) do
@@ -180,22 +220,6 @@ defmodule Bonfire.Common.Types do
   def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
   def maybe_to_snake_atom(string), do: maybe_to_atom!(maybe_to_snake(string))
-
-  def typeof(%{__struct__: type}) when type == Phoenix.LiveView.Socket, do: :socket
-  def typeof(%{__context__: _, __changed__: _}), do: :assigns
-  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
-
-  def typeof(list) when is_list(list) do
-    if Keyword.keyword?(list), do: :keyword, else: :list
-  end
-
-  types = ~w[function integer binary bitstring map float atom tuple pid port reference]
-
-  for type <- types do
-    def typeof(x) when unquote(:"is_#{type}")(x), do: unquote(String.to_atom(type))
-  end
-
-  def typeof(_), do: nil
 
   def defines_struct?(module) do
     function_exported?(module, :__struct__, 0)
@@ -380,7 +404,7 @@ defmodule Bonfire.Common.Types do
   end
 
   def object_type_display(object) when not is_nil(object) do
-    object_type(object)
+    typeof(object)
     |> object_type_display()
   end
 

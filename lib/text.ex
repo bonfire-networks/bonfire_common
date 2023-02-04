@@ -212,6 +212,8 @@ defmodule Bonfire.Common.Text do
   defp md_tag_text(text) when is_binary(text), do: text
   defp md_tag_text(_), do: ""
 
+  def code_syntax(text), do: Makeup.highlight(text)
+
   @doc """
   It is recommended to call this before storing any that data is coming in from the user or from a remote instance
   """
