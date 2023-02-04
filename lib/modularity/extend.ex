@@ -201,25 +201,25 @@ defmodule Bonfire.Common.Extend do
     Utils.maybe_apply(Config.get!(:endpoint_module), :generate_reverse_router!)
   end
 
-  def module_code(module) do
+  def module_file_code(module) do
     code_file =
       module.__info__(:compile)[:source]
       |> to_string()
       |> debug()
 
-    if Config.get(:prod) do
+    rel_code_file =
+      code_file
+      |> Path.relative_to(Config.get(:project_path))
+      |> debug()
+
+    if Config.get(:env) == :prod do
       # supports doing this in release by using the code in the gzipped code 
 
       tar_file =
         Path.absname("priv/static/source.tar.gz", Config.get(:project_path))
         |> debug()
 
-      code_file =
-        code_file
-        |> Path.relative_to(Config.get(:project_path))
-        |> debug()
-
-      with {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, code_file) do
+      with {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file) do
         String.replace(code_file, "extensions/", "deps/")
         |> String.replace("forks/", "deps/")
         |> debug()
@@ -229,8 +229,15 @@ defmodule Bonfire.Common.Extend do
       code_file
       |> File.read()
     end
+    ~> {:ok, rel_code_file, ...}
 
     # |> debug()
+  end
+
+  def module_code(module) do
+    with {:ok, rel_code_file, code} <- module_file_code(module) do
+      {:ok, code}
+    end
   end
 
   def function_line_number(module, fun) when is_atom(module) do

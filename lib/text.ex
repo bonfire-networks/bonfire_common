@@ -151,9 +151,17 @@ defmodule Bonfire.Common.Text do
 
   def maybe_markdown_to_html(content) do
     # debug(content, "input")
-    if module_enabled?(Earmark) do
+
+    # if module_enabled?(Makedown) do
+    # # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
+    #   Makedown
+    # else
+    processor = if module_enabled?(Earmark), do: Earmark
+    # end
+
+    if processor do
       content
-      |> Earmark.as_html!(
+      |> processor.as_html!(
         # inner_html: true,
         escape: false,
         breaks: true,
@@ -169,7 +177,8 @@ defmodule Bonfire.Common.Text do
         ]
       )
       |> markdown_checkboxes()
-      |> debug("MD output for: #{content}")
+
+      # |> debug("MD output for: #{content}")
     else
       content
     end
@@ -212,7 +221,38 @@ defmodule Bonfire.Common.Text do
   defp md_tag_text(text) when is_binary(text), do: text
   defp md_tag_text(_), do: ""
 
-  def code_syntax(text), do: Makeup.highlight(text)
+  def code_syntax(text, filename) do
+    if makeup_supported?(filename) do
+      Makeup.highlight(text)
+    else
+      Phoenix.HTML.Tag.content_tag(:pre, Phoenix.HTML.Tag.content_tag(:code, text),
+        class: "highlight"
+      )
+    end
+  end
+
+  defp makeup_supported?(filename) do
+    (module_enabled?(Makeup) and
+       Path.extname(filename) in [
+         ".ex",
+         ".exs",
+         ".sface",
+         ".heex",
+         ".erl",
+         ".hrl",
+         ".escript",
+         ".json",
+         ".js",
+         ".html",
+         ".htm",
+         ".diff",
+         ".sql",
+         ".gql",
+         ".graphql"
+       ]) ||
+      filename in ["rebar.config", "rebar.config.script"] ||
+      String.ends_with?(filename, ".app.src")
+  end
 
   @doc """
   It is recommended to call this before storing any that data is coming in from the user or from a remote instance
