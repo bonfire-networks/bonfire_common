@@ -115,6 +115,7 @@ defmodule Bonfire.Common.Media do
     # the above doesn't seem to work so resort to tar command instead
 
     with {contents, 0} <- System.cmd("tar", ["-xvf", archive, "-O"] ++ List.wrap(file_or_files)) do
+      # FIXME: seems the filename is being included as line 1 of contents
       {:ok, contents}
     else
       _ ->

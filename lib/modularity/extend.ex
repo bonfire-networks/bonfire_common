@@ -214,9 +214,8 @@ defmodule Bonfire.Common.Extend do
 
     if Config.get(:env) == :prod do
       # supports doing this in release by using the code in the gzipped code 
-
       tar_file =
-        Path.absname("priv/static/source.tar.gz", Config.get(:project_path))
+        Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
         |> debug()
 
       with {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file) do
