@@ -4,6 +4,7 @@
 .hex
 .mix
 assets/node_modules
+priv/cldr
 
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
