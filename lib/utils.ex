@@ -158,9 +158,7 @@ defmodule Bonfire.Common.Utils do
         [context: user_or_socket_or_opts]
 
       _
-      when is_list(user_or_socket_or_opts) or
-             (is_map(user_or_socket_or_opts) and
-                not is_struct(user_or_socket_or_opts)) ->
+      when is_list(user_or_socket_or_opts) or is_map(user_or_socket_or_opts) ->
         Keyword.new(user_or_socket_or_opts)
 
       _ ->
@@ -395,7 +393,7 @@ defmodule Bonfire.Common.Utils do
         args,
         fallback_fun
       )
-      when is_atom(module) and is_list(funs) and is_list(args) do
+      when is_atom(module) and not is_nil(module) and is_list(funs) and is_list(args) do
     arity = length(args)
 
     fallback_fun = if not is_function(fallback_fun), do: &apply_error/2, else: fallback_fun
