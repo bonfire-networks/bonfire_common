@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Repo do
   """
   use Bonfire.Common.RepoTemplate
 
-  defmacro __using__(opts) do
+  defmacro __using__(_opts) do
     quote do
       # import the repo() function
       import Bonfire.Common.Config, only: [repo: 0]

@@ -117,7 +117,7 @@ defmodule Bonfire.Common.Pointers.Tables do
           {:error, "Code and DB have differing IDs for the same table", name, p.id, t.id}
         end
       else
-        e ->
+        _e ->
           {:error, "Table present in DB but not in code", name}
       end
     end)

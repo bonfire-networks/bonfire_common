@@ -32,7 +32,7 @@ defmodule Bonfire.Common.Repo.Preload do
     do: Map.put(page, :edges, maybe_preload(list, preloads, opts))
 
   # deprecate
-  def maybe_preload(obj, preloads, false = follow_pointers?),
+  def maybe_preload(obj, preloads, false = _follow_pointers?),
     do: maybe_preload(obj, preloads, follow_pointers: false)
 
   def maybe_preload(obj, preloads, opts)
@@ -51,12 +51,11 @@ defmodule Bonfire.Common.Repo.Preload do
         "maybe_preload #{opts[:label]}: trying to preload (without following pointers): #{inspect(preloads)}"
       )
 
-      obj =
-        if Keyword.get(opts, :with_cache, false) do
-          maybe_preload_from_cache(obj, preloads, opts)
-        else
-          try_repo_preload(obj, preloads, opts)
-        end
+      if Keyword.get(opts, :with_cache, false) do
+        maybe_preload_from_cache(obj, preloads, opts)
+      else
+        try_repo_preload(obj, preloads, opts)
+      end
     end
   end
 

@@ -130,7 +130,7 @@ defmodule Bonfire.Common.QueryModule do
     end
   end
 
-  def query_function_error(error, _args, level \\ :info) do
+  def query_function_error(error, _args, _level \\ :info) do
     warn(
       error,
       "QueryModule - there's no known query module for this schema, because one of: 1) No function query_module/0 on a context or schema module 1) No function schema_module/0 on a context or query module, that returns this schema's atom. 3)"

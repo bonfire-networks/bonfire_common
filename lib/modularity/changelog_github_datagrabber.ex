@@ -9,6 +9,7 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
 
     import Untangle
     alias Bonfire.Common.Utils
+    alias Bonfire.Common.Enums
     # alias Versioce.Changelog.Sections
     alias Versioce.Changelog.Anchors
     alias Versioce.Config

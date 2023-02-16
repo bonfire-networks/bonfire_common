@@ -188,9 +188,9 @@ defmodule Bonfire.Common.Pointers do
 
   def is_pointable?(%struct{}), do: is_pointable?(struct)
 
-  def is_pointable?(schema),
+  def is_pointable?(schema) when is_atom(schema) and not is_nil(schema),
     do:
-      function_exported?(schema, :__pointers__, 1) &&
+      function_exported?(schema, :__pointers__, 1) and
         schema.__pointers__(:role) in [:pointable, :virtual]
 
   def is_pointable?(_), do: false
@@ -245,7 +245,7 @@ defmodule Bonfire.Common.Pointers do
     do_follow!(pointers, opts)
   end
 
-  defp do_follow!(pointer_or_pointers, opts \\ []) do
+  defp do_follow!(pointer_or_pointers, opts) do
     case preload!(pointer_or_pointers, opts) do
       %{pointed: followed_pointer} ->
         debug("merge any assocs previously preloaded on pointer to the returned object")
@@ -352,7 +352,7 @@ defmodule Bonfire.Common.Pointers do
     )
     # ++ [cache: true]
     |> generic_query_all(id_binary(id_filters), opts)
-    |> Utils.maybe_convert_ulids()
+    |> Types.maybe_convert_ulids()
   end
 
   defp generic_query_all(schema_or_query, id_filters, opts) do

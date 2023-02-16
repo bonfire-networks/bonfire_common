@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Types do
   require Bonfire.Common.Localise.Gettext
   import Bonfire.Common.Localise.Gettext.Helpers
 
-  alias Bonfire.Common.Utils
+  # alias Bonfire.Common.Utils
   alias Pointers.Pointer
   alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
@@ -147,7 +147,8 @@ defmodule Bonfire.Common.Types do
     case maybe_to_atom(str) do
       module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom, force)
       # module doesn't exist
-      "Elixir." <> str -> nil
+      "Elixir." <> _str -> nil
+      # try with prefix
       _ -> maybe_to_module("Elixir." <> str, force)
     end
   end

@@ -4,19 +4,14 @@ defmodule Bonfire.Common.Utils do
   import Common.Extend
   # require Bonfire.Common.Localise.Gettext
   # import Bonfire.Common.Localise.Gettext.Helpers
-  import Common.Config, only: [repo: 0]
+  # import Common.Config, only: [repo: 0]
   use Untangle
   require Logger
-  alias Common.Text
-  alias Common.Config
+  # alias Common.Text
+  # alias Common.Config
   alias Common.Enums
   alias Common.Errors
   alias Common.Types
-
-  # 6 hours
-  @default_cache_ttl 1_000 * 60 * 60 * 6
-  # 5 min
-  @error_cache_ttl 1_000 * 60 * 5
 
   defmacro __using__(opts) do
     quote do
@@ -168,6 +163,8 @@ defmodule Bonfire.Common.Utils do
   end
 
   def maybe_from_opts(opts, key, fallback \\ nil)
+
+  def maybe_from_opts(opts, key, fallback)
       when is_list(opts) or is_map(opts),
       do: opts[key] || fallback
 
@@ -496,7 +493,7 @@ defmodule Bonfire.Common.Utils do
         module,
         fun,
         args,
-        fallback_fun
+        _fallback_fun
       ),
       do:
         apply_error(

@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Pointers.Queries do
   alias Pointers.Pointer
   import EctoSparkles
   import Untangle
-  alias Bonfire.Common.Utils
+  # alias Bonfire.Common.Utils
   alias Bonfire.Common
   alias Common.Types
 

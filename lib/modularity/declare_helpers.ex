@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Modularity.DeclareHelpers do
-  alias Bonfire.Common.Extend
+  # alias Bonfire.Common.Extend
 
   defmacro declare_extension(name, opts \\ []) do
     quote do

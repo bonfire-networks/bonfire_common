@@ -121,15 +121,13 @@ defmodule Bonfire.Common.Extend do
   # end
 
   def quoted_use_if_enabled(module, fallback_module, _) do
-    debug(module, "Found module to use")
-
     if is_atom(module) and module_enabled?(module) do
-      # debug(module, "Found module to use")
+      # Logger.debug("Found module to use: #{module}")
       quote do
         use unquote(module)
       end
     else
-      # warn(module, "Did not find module to use")
+      # Logger.debug("Did not find module to use: #{module}")
       if is_atom(fallback_module) and not is_nil(fallback_module) and
            module_enabled?(fallback_module) do
         quote do
@@ -151,14 +149,14 @@ defmodule Bonfire.Common.Extend do
         fallback_module
       )
 
-  def quoted_import_if_enabled(module, fallback_module, caller) do
+  def quoted_import_if_enabled(module, fallback_module, _caller) do
     if is_atom(module) and module_enabled?(module) do
-      # debug(module, "Found module to import")
+      # Logger.debug(module, "Found module to import")
       quote do
         import unquote(module)
       end
     else
-      warn(module, "Did not find module to import")
+      # Logger.debug(module, "Did not find module to import")
 
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
@@ -180,14 +178,14 @@ defmodule Bonfire.Common.Extend do
         fallback_module
       )
 
-  def quoted_require_if_enabled(module, fallback_module, caller) do
+  def quoted_require_if_enabled(module, fallback_module, _caller) do
     if is_atom(module) and module_enabled?(module) do
-      # debug(module, "Found module to require")
+      # Logger.debug("Found module to require: #{module}")
       quote do
         require unquote(module)
       end
     else
-      # warn(module, "Did not find module to require")
+      # Logger.debug("Did not find module to require: #{module}")
       if is_atom(fallback_module) and module_enabled?(fallback_module) do
         quote do
           require unquote(fallback_module)
@@ -249,10 +247,10 @@ defmodule Bonfire.Common.Extend do
     |> Code.string_to_quoted!()
     # |> debug()
     |> Macro.prewalk(fn
-      result = {:def, [line: number], [{^fun, _, _} | _]} -> throw(number)
-      result = {:defp, [line: number], [{^fun, _, _} | _]} -> throw(number)
-      result = {:def, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
-      result = {:defp, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
+      {:def, [line: number], [{^fun, _, _} | _]} -> throw(number)
+      {:defp, [line: number], [{^fun, _, _} | _]} -> throw(number)
+      {:def, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
+      {:defp, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]} -> throw(number)
       other -> other
     end)
   catch

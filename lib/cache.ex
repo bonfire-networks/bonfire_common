@@ -8,9 +8,9 @@ defmodule Bonfire.Common.Cache do
   # 5 min
   @error_cache_ttl 1_000 * 60 * 5
 
-  # TODO: use Decorator lib to support decorating functions to cache them
-  def cache(fn_body, context) do
-  end
+  # TODO: explore using Decorator lib to support decorating functions to cache them
+  # def cache(fn_body, context) do
+  # end
 
   def maybe_apply_cached(fun, args, opts \\ [])
 
@@ -76,7 +76,7 @@ defmodule Bonfire.Common.Cache do
           end
 
         {:ok, false} ->
-          with {:error, e} = ret <- maybe_apply_or_fun(module, fun, args) do
+          with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args) do
             debug(key, "got an error, putting in cache with short TTL")
             Cachex.put!(cache, key, ret, ttl: @error_cache_ttl)
             ret
@@ -128,7 +128,7 @@ defmodule Bonfire.Common.Cache do
 
       Enum.each(not_cached, fn {id, v} ->
         # TODO: longer cache TTL?
-        Cachex.put(cache, "#{name}:{id}", v)
+        Cachex.put(cache, "#{name}:#{id}", v)
       end)
 
       # cached = Enum.reject(maybe_cached, fn {_, v} -> is_nil(v) end)
@@ -153,7 +153,7 @@ defmodule Bonfire.Common.Cache do
     maybe_apply(module, fun, args)
   end
 
-  def maybe_apply_or_fun(module, fun, args) when is_function(fun) do
+  def maybe_apply_or_fun(_module, fun, args) when is_function(fun) do
     maybe_fun(fun, args)
   end
 

@@ -96,7 +96,7 @@ defmodule Bonfire.Common.URIs do
 
   def path(%{pointer_id: id} = object, args), do: path_by_id(id, args, object)
 
-  def path(%{id: id} = object, args) do
+  def path(%{id: _id} = object, args) do
     args_with_id =
       ([path_id(object)] ++ args)
       |> Enums.filter_empty([])
@@ -166,13 +166,13 @@ defmodule Bonfire.Common.URIs do
     path(Bonfire.UI.Social.DiscussionLive, args)
   end
 
-  defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
-    reply_to_path <> "#" <> (Types.ulid(object) || "")
-  end
+  # defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
+  #   reply_to_path <> "#" <> (Types.ulid(object) || "")
+  # end
 
-  defp reply_path(object, _) do
-    path(object)
-  end
+  # defp reply_path(object, _) do
+  #   path(object)
+  # end
 
   defp voodoo_error(_error, [_endpoint, _type_module, args]) do
     fallback(args)
@@ -223,7 +223,7 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{display_username: display_username}),
     do: path_id(display_username)
 
-  defp path_id(%{__struct__: schema, character: character} = obj)
+  defp path_id(%{__struct__: schema, character: _character} = obj)
        when schema != Pointers.Pointer,
        do:
          obj

@@ -17,13 +17,13 @@ defmodule Bonfire.Common.TestSummary do
     {:noreply, config}
   end
 
-  def handle_cast({:module_finished, %{tests: tests} = tested_module}, config) do
+  def handle_cast({:module_finished, %{tests: tests} = _tested_module}, config) do
     # info(tested_module, "Tests for module done")
     Enum.each(tests, &handle_test(&1, config))
     {:noreply, config}
   end
 
-  def handle_cast({:suite_finished, times_us}, config) do
+  def handle_cast({:suite_finished, _times_us}, config) do
     # info(times_us, "Tests finished")
 
     # select_all = :ets.fun2ms(&(&1))
@@ -39,7 +39,7 @@ defmodule Bonfire.Common.TestSummary do
     handle_cast({:suite_finished, nil}, config)
   end
 
-  def handle_cast(event, config) do
+  def handle_cast(_event, config) do
     # info(event, "Other test event")
     {:noreply, config}
   end
@@ -90,7 +90,7 @@ defmodule Bonfire.Common.TestSummary do
     end
   end
 
-  defp formatter(:blame_diff, msg, %{colors: colors} = config) do
+  defp formatter(:blame_diff, msg, %{colors: _colors} = _config) do
     "-" <> msg <> "-"
   end
 

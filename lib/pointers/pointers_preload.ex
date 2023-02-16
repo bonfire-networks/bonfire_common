@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Pointers.Preload do
-  import Bonfire.Common.Config, only: [repo: 0]
+  # import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Enums
   import Untangle
 
   def maybe_preload_pointers(object, keys, opts \\ [])
@@ -76,7 +77,7 @@ defmodule Bonfire.Common.Pointers.Preload do
   defp nested_keys(keys) do
     # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
     # |> debug("flatten nested keys")
-    keys |> Utils.flatter() |> Enum.map(&Access.key!(&1))
+    keys |> Enums.flatter() |> Enum.map(&Access.key!(&1))
   end
 
   defp do_maybe_preload_nested_pointers(object, keylist, opts)
@@ -93,7 +94,9 @@ defmodule Bonfire.Common.Pointers.Preload do
     end
   end
 
-  def maybe_preload_pointer(%Pointers.Pointer{} = pointer, opts \\ []) do
+  def maybe_preload_pointer(pointer, opts \\ [])
+
+  def maybe_preload_pointer(%Pointers.Pointer{} = pointer, opts) do
     debug("maybe_preload_pointer: follow")
 
     with {:ok, obj} <- Bonfire.Common.Pointers.get(pointer, opts) do

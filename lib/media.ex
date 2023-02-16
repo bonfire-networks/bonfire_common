@@ -39,7 +39,7 @@ defmodule Bonfire.Common.Media do
   def avatar_url(%{image: url}) when is_binary(url), do: url
   def avatar_url(%{id: id, shared_user: nil}), do: avatar_fallback(id)
   # for Teams/Orgs
-  def avatar_url(%{id: id, shared_user: %{id: _}} = obj),
+  def avatar_url(%{id: id, shared_user: %{id: _}} = _obj),
     do: "https://picsum.photos/seed/#{id}/128/128?blur"
 
   # def avatar_url(%{id: id, shared_user: _} = user), do: repo().maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
@@ -106,7 +106,7 @@ defmodule Bonfire.Common.Media do
     end
   end
 
-  def read_tar_files(archive, file_or_files, opts \\ [:compressed, :verbose]) do
+  def read_tar_files(archive, file_or_files, _opts \\ [:compressed, :verbose]) do
     # opts
     # |> Keyword.put_new(:cwd, Path.dirname(archive))
     # |> Keyword.put_new(:files, List.wrap(file_or_files))

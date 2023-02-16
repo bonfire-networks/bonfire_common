@@ -92,8 +92,8 @@ defmodule Bonfire.Common.Extensions.Diff do
 
   def git!(args, repo_path \\ ".", into \\ default_into()) do
     root = root()
-    debug(inspect(%{repo: repo_path, git: args, cwd: root}))
-    original_cwd = root
+    debug(%{repo: repo_path, git: args, cwd: root})
+    # original_cwd = root
 
     File.cd!(repo_path, fn ->
       opts = cmd_opts(into: into, stderr_to_stdout: true)

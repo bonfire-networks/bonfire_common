@@ -65,7 +65,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp do_sentence_truncate(input, length \\ 250) do
+  defp do_sentence_truncate(input, length) do
     length_minus_1 = length - 1
 
     case input do
@@ -185,17 +185,17 @@ defmodule Bonfire.Common.Text do
   end
 
   # This will only be applied to nodes as it will become a TagSpecificProcessors
-  defp md_add_target(node) do
-    # debug(node)
-    if Regex.match?(
-         ~r{\.x\.com\z},
-         Earmark.AstTools.find_att_in_node(node, "href", "")
-       ),
-       do: Earmark.AstTools.merge_atts_in_node(node, target: "_blank"),
-       else: node
-  end
+  # defp md_add_target(node) do
+  #   # debug(node)
+  #   if Regex.match?(
+  #        ~r{\.x\.com\z},
+  #        Earmark.AstTools.find_att_in_node(node, "href", "")
+  #      ),
+  #      do: Earmark.AstTools.merge_atts_in_node(node, target: "_blank"),
+  #      else: node
+  # end
 
-  defp md_heading_anchors({tag, attrs, text, extra} = _node) do
+  defp md_heading_anchors({tag, _attrs, text, extra} = _node) do
     # node
     # |> debug()
     {tag,
@@ -287,7 +287,7 @@ defmodule Bonfire.Common.Text do
   def maybe_normalize_html(html_string) do
     if module_enabled?(Floki) do
       html_string
-      |> Floki.parse()
+      |> Floki.parse_fragment()
       |> Floki.raw_html()
     else
       html_string
@@ -373,7 +373,7 @@ defmodule Bonfire.Common.Text do
     Regex.scan(regex, text)
   end
 
-  def regex_list(text, regex), do: nil
+  def regex_list(_text, _regex), do: nil
 
   def upcase_first(<<first::utf8, rest::binary>>),
     do: String.upcase(<<first::utf8>>) <> rest
@@ -420,7 +420,7 @@ defmodule Bonfire.Common.Text do
   """
   def verb_infinitive(verb_conjugated) do
     with [{infinitive, _}] <-
-           Enum.filter(Irregulars.verb_forms(), fn {infinitive, conjugations} ->
+           Enum.filter(Irregulars.verb_forms(), fn {_infinitive, conjugations} ->
              verb_conjugated in conjugations
            end) do
       infinitive

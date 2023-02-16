@@ -56,12 +56,12 @@ defmodule Bonfire.Common.Errors do
 
     if Config.get!(:env) == :dev and
          Config.get(:show_debug_errors_in_dev) != false do
-      {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace, opts)
+      {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace, opts)
 
       {:error,
        Enum.join(
          Bonfire.Common.Enums.filter_empty(
-           [error_msg(msg), exception, stacktrace],
+           [error_msg(msg), exception_banner, stacktrace],
            []
          ),
          "\n"
@@ -122,15 +122,13 @@ defmodule Bonfire.Common.Errors do
     end
   end
 
-  defp debug_maybe_sentry(_, _, _stacktrace), do: nil
-
   def debug_banner_with_trace(kind, exception, stacktrace, opts \\ []) do
     exception = if exception, do: debug_banner(kind, exception, stacktrace, opts)
     stacktrace = if stacktrace, do: format_stacktrace(stacktrace, opts)
     {exception, stacktrace}
   end
 
-  defp debug_banner(kind, errors, stacktrace, opts \\ [])
+  defp debug_banner(kind, errors, stacktrace, opts)
 
   defp debug_banner(kind, errors, stacktrace, opts) when is_list(errors) do
     errors
@@ -142,9 +140,10 @@ defmodule Bonfire.Common.Errors do
     debug_banner(kind, error, stacktrace, opts)
   end
 
-  defp debug_banner(_kind, %Ecto.Changeset{} = cs, _, _opts) do
-    # EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
-  end
+  # defp debug_banner(_kind, %Ecto.Changeset{} = _cs, _, _opts) do
+  #   # TODO?
+  #   EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
+  # end
 
   defp debug_banner(kind, %_{} = exception, stacktrace, opts)
        when not is_nil(stacktrace) and stacktrace != [] do
@@ -200,11 +199,11 @@ defmodule Bonfire.Common.Errors do
   end
 
   def format_banner(:exit, reason, _stacktrace, _opts) do
-    "** (exit) " <> Exception.format_exit(reason, <<"\n    ">>)
+    "** (exit) " <> Exception.format_exit(reason)
   end
 
   def format_banner({:EXIT, pid}, reason, _stacktrace, _opts) do
-    "** (EXIT from #{inspect(pid)}) " <> Exception.format_exit(reason, <<"\n    ">>)
+    "** (EXIT from #{inspect(pid)}) " <> Exception.format_exit(reason)
   end
 
   @doc """
@@ -252,7 +251,7 @@ defmodule Bonfire.Common.Errors do
       mf_maybe_link_to_code(format_location(location), mod, fun, opts) <> mfa_formated
   end
 
-  def format_stacktrace_entry({fun, arity, location}, opts) do
+  def format_stacktrace_entry({fun, arity, location}, _opts) do
     format_location(location) <> Exception.format_fa(fun, arity)
   end
 

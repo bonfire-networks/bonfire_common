@@ -17,7 +17,7 @@ defmodule Bonfire.Common.StartupTimer do
           # Some dependencies like :kernel may have already been started, we can ignore them
           {time, {:error, {:already_started, _}}} -> {time, app}
           # Raise an exception if we get an non-successful return value
-          {time, error} -> raise(error)
+          {_time, error} -> raise(error)
         end
       end)
 

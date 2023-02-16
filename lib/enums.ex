@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Enums do
   import Bonfire.Common.Extend
   alias Ecto.Changeset
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Text
+  # alias Bonfire.Common.Text
   alias Bonfire.Common.Types
   alias Bonfire.Common.Utils
 
@@ -117,7 +117,7 @@ defmodule Bonfire.Common.Enums do
     ret
   end
 
-  defp magic_filter_empty(val, map, key, fallback \\ nil)
+  defp magic_filter_empty(val, map, key, fallback)
 
   defp magic_filter_empty(
          %Ecto.Association.NotLoaded{},
@@ -229,7 +229,7 @@ defmodule Bonfire.Common.Enums do
   @doc "recursively merge structs, maps or lists (into a struct or map)"
   def deep_merge(left, right, opts \\ [])
 
-  def deep_merge(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, opts) do
+  def deep_merge(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, _opts) do
     merge_changesets(left, right)
   end
 
@@ -255,12 +255,12 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def deep_merge(left, right, _opts) do
+  def deep_merge(_left, right, _opts) do
     right
   end
 
   # Key exists in both maps - these can be merged recursively.
-  defp deep_resolve(_key, left, right, opts \\ [])
+  defp deep_resolve(_key, left, right, opts)
 
   defp deep_resolve(_key, left, right, opts)
        when (is_map(left) or is_list(left)) and
@@ -381,9 +381,9 @@ defmodule Bonfire.Common.Enums do
   """
   def flatter(list), do: list |> do_flatter() |> List.flatten()
 
+  defp do_flatter([element | nil]), do: do_flatter(element)
   defp do_flatter([head | tail]), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter([]), do: []
-  defp do_flatter([element]), do: do_flatter(element)
   defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter(element), do: element
 
@@ -434,7 +434,7 @@ defmodule Bonfire.Common.Enums do
   """
   def maybe_to_keyword_list(obj, recursive \\ false)
 
-  def maybe_to_keyword_list(obj, true = recursive)
+  def maybe_to_keyword_list(obj, true = _recursive)
       when is_map(obj) or is_list(obj) do
     obj
     |> maybe_to_keyword_list(false)
@@ -647,7 +647,7 @@ defmodule Bonfire.Common.Enums do
     |> maybe_to_struct(type)
   end
 
-  defp maybe_to_structs_recurse(%{} = data, parent_id) do
+  defp maybe_to_structs_recurse(%{} = data, _parent_id) do
     Map.new(data, fn {k, v} ->
       {k, maybe_to_structs_recurse(v, Utils.e(data, :id, nil))}
     end)
@@ -661,7 +661,7 @@ defmodule Bonfire.Common.Enums do
   defp maybe_add_mixin_id(data, parent_id) when not is_nil(parent_id),
     do: Map.merge(data, %{id: parent_id})
 
-  defp maybe_add_mixin_id(data, parent_id), do: data
+  defp maybe_add_mixin_id(data, _parent_id), do: data
 
   def maybe_to_struct(obj, type \\ nil)
 

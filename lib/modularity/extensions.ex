@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Extensions do
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
-  import Untangle
+  # import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
 
@@ -144,7 +144,7 @@ defmodule Bonfire.Common.Extensions do
 
   def get_branch(%{git: _, branch: branch}), do: branch
   def get_branch(%{lock: {:git, _url, _, [branch: branch]}}), do: branch
-  def get_branch(dep), do: ""
+  def get_branch(_dep), do: ""
 
   def get_link(%{opts: opts}) when is_list(opts),
     do: get_link(Enum.into(opts, %{}))

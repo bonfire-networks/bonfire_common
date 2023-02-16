@@ -13,7 +13,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   local garbage collection.
   """
   use GenServer, restart: :transient
-  import Untangle
+  # import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
   alias Bonfire.Common.Enums
@@ -54,7 +54,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc """
   Given a behaviour module, filters app modules to only those that implement that behaviour
   """
-  defp adopters_of_behaviour(behaviour) when is_atom(behaviour) do
+  def adopters_of_behaviour(behaviour) when is_atom(behaviour) do
     Config.get([:extensions_grouped, behaviour], [:bonfire, :bonfire_common])
     # |> debug()
     |> apps_with_behaviour(behaviour)
@@ -138,7 +138,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   def behaviours() do
     cached_behaviours()
   rescue
-    e in ArgumentError ->
+    _e in ArgumentError ->
       populate()
   end
 
@@ -154,7 +154,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> modules_only()
   end
 
-  defp modules_only(app_modules \\ nil) do
+  defp modules_only(app_modules) do
     app_modules
     |> Enum.flat_map(fn {_app, modules} -> modules end)
   end
