@@ -284,11 +284,15 @@ defmodule Bonfire.Common.Text do
     maybe_normalize_html(content)
   end
 
-  def maybe_normalize_html(html_string) do
+  def maybe_normalize_html(html_string) when is_binary(html_string) do
     if module_enabled?(Floki) do
-      html_string
-      |> Floki.parse_fragment()
-      |> Floki.raw_html()
+      with {:ok, fragment} <- Floki.parse_fragment(html_string) do
+        Floki.raw_html(fragment)
+      else
+        e ->
+          warn(e, "seems to be invalid HTML, converting to text-only instead")
+          text_only(html_string)
+      end
     else
       html_string
     end

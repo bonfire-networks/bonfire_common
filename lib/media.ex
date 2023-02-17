@@ -1,20 +1,31 @@
 defmodule Bonfire.Common.Media do
   use Arrows
   import Untangle
+  alias Bonfire.Common.Utils
 
-  def media_url(%{media_type: "remote", path: url} = _media) do
-    url
-  end
+  @external ["remote", "website", "article"]
 
   def media_url(%{path: "http" <> _ = url} = _media) do
     url
+  end
+
+  def media_url(%{media_type: media_type, path: url} = _media)
+      when media_type in @external and is_binary(url) do
+    if String.contains?(url, "://") do
+      url
+    else
+      "http://#{url}"
+    end
   end
 
   def media_url(%{media_type: media_type} = media) do
     if String.starts_with?(media_type, "image") do
       image_url(media)
     else
-      Bonfire.Files.DocumentUploader.remote_url(media)
+      debug(media, "non-image url")
+
+      Utils.e(media, :metadata, :canonical_url, nil) ||
+        Bonfire.Files.DocumentUploader.remote_url(media)
     end
   end
 
@@ -52,6 +63,11 @@ defmodule Bonfire.Common.Media do
   # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
   def image_url(url) when is_binary(url), do: url
+
+  def image_url(%{media_type: media_type, path: url} = _media) when media_type in @external do
+    nil
+  end
+
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
 
