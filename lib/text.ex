@@ -102,7 +102,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp do_underscore_truncate(input, length \\ 250) do
+  defp do_underscore_truncate(input, length) do
     length_minus_1 = length - 1
 
     case input do

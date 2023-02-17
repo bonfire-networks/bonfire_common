@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Pointers.Preload do
   # import Bonfire.Common.Config, only: [repo: 0]
-  alias Bonfire.Common.Utils
+  # alias Bonfire.Common.Utils
   alias Bonfire.Common.Enums
   import Untangle
 

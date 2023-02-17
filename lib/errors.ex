@@ -61,7 +61,7 @@ defmodule Bonfire.Common.Errors do
       {:error,
        Enum.join(
          Bonfire.Common.Enums.filter_empty(
-           [error_msg(msg), exception_banner, stacktrace],
+           [error_msg(msg), ":\n", exception_banner, stacktrace],
            []
          ),
          "\n"
@@ -81,13 +81,14 @@ defmodule Bonfire.Common.Errors do
   def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
 
   def debug_log(msg, exception, stacktrace, kind) do
-    error(exception, msg)
-
     if exception && stacktrace do
-      {exception, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
+      {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
 
+      error(exception_banner, msg)
       Logger.info(stacktrace, limit: :infinity, printable_limit: :infinity)
       # Logger.warn(stacktrace, truncate: :infinity)
+    else
+      error(exception, msg)
     end
 
     debug_maybe_sentry(msg, exception, stacktrace)

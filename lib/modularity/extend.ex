@@ -232,7 +232,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   def module_code(module) do
-    with {:ok, rel_code_file, code} <- module_file_code(module) do
+    with {:ok, _rel_code_file, code} <- module_file_code(module) do
       {:ok, code}
     end
   end

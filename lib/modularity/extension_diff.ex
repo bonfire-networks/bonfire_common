@@ -99,7 +99,7 @@ defmodule Bonfire.Common.Extensions.Diff do
       opts = cmd_opts(into: into, stderr_to_stdout: true)
 
       case System.cmd("git", args, opts) do
-        {response, 0} ->
+        {_response, 0} ->
           # debug(response, "git_response")
           :ok
 
