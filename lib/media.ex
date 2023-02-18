@@ -35,6 +35,7 @@ defmodule Bonfire.Common.Media do
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
+  def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
 
   def avatar_url(%{icon: %{id: _} = media}),
     do: Bonfire.Files.IconUploader.remote_url(media)
@@ -70,6 +71,7 @@ defmodule Bonfire.Common.Media do
 
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
+  def image_url(%{icon: %{path: "http" <> _ = url}}), do: url
 
   def image_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.ImageUploader.remote_url(media)

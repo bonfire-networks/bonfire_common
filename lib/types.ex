@@ -368,12 +368,12 @@ defmodule Bonfire.Common.Types do
   end
 
   def object_type(type) when is_atom(type) and not is_nil(type) do
-    debug("atom might be a schema type: #{inspect(type)}")
+    debug(type, "atom might be a schema type")
     type
   end
 
   def object_type(type) do
-    error("no pattern matched for #{inspect(type)}")
+    warn(type, "no pattern matched")
     nil
   end
 
@@ -385,13 +385,14 @@ defmodule Bonfire.Common.Types do
 
     case Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
       {:ok, %{table_id: "601NTERTAB1EF0RA11TAB1ES00"}} ->
-        debug("This is the ID of an unknown Pointable")
+        info("This is the ID of an unknown Pointable")
         nil
 
       {:ok, %{table_id: table_id}} ->
         object_type(table_id)
 
       _ ->
+        info("This is not the ID of a known Pointer")
         nil
     end
   end
