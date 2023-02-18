@@ -65,7 +65,7 @@ defmodule Bonfire.Common.Media do
 
   def image_url(url) when is_binary(url), do: url
 
-  def image_url(%{media_type: media_type, path: url} = _media) when media_type in @external do
+  def image_url(%{media_type: media_type} = _media) when media_type in @external do
     nil
   end
 
