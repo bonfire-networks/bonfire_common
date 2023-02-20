@@ -163,21 +163,22 @@ defmodule Bonfire.Common.Enums do
     do:
       enum
       # |> debug()
-      |> filter_empty_enum()
+      |> filter_empty_enum(true)
       |> Enum.into(%{})
       |> re_filter_empty(fallback)
 
   def filter_empty(val, _fallback), do: val
 
-  defp filter_empty_enum(enum),
+  defp filter_empty_enum(enum, filter_keys? \\ false),
     do:
       enum
       |> Enum.map(fn
-        {key, val} -> {key, filter_empty(val, nil)}
+        {key, val} -> {filter_empty(key, nil), filter_empty(val, nil)}
         val -> filter_empty(val, nil)
       end)
       |> Enum.filter(fn
-        {_key, nil} -> false
+        {nil, nil} -> false
+        {_, nil} when filter_keys? == true -> false
         nil -> false
         _ -> true
       end)
