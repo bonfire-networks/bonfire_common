@@ -51,6 +51,7 @@ defmodule Bonfire.Common.Types do
   def typeof(_), do: nil
 
   def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
+  def ulid(%{pointer: %{id: id}}) when is_binary(id), do: ulid(id)
 
   def ulid(input) when is_binary(input) do
     # ulid is always 26 chars
@@ -120,6 +121,15 @@ defmodule Bonfire.Common.Types do
   end
 
   def is_ulid?(_), do: false
+
+  def is_uuid?(uuid) do
+    with true <- is_binary(uuid),
+         {:ok, _} <- Ecto.UUID.cast(uuid) do
+      true
+    else
+      _ -> false
+    end
+  end
 
   # not sure why but seems needed
   def maybe_to_atom("false"), do: false

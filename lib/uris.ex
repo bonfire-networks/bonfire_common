@@ -327,8 +327,12 @@ defmodule Bonfire.Common.URIs do
 
   def maybe_generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
-    prefix = if Types.is_ulid?(id), do: "/objects/", else: "/actors/"
-    base_url() <> ap_base_path <> prefix <> id
+
+    if Types.is_ulid?(id) or Types.is_uuid?(id) do
+      "#{base_url()}#{ap_base_path}/objects/#{id}"
+    else
+      "#{base_url()}#{ap_base_path}/actors/#{id}"
+    end
   end
 
   def maybe_generate_canonical_url(%{"id" => id}),
