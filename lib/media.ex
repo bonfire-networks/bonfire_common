@@ -33,6 +33,10 @@ defmodule Bonfire.Common.Media do
     media_url(media)
   end
 
+  def avatar_media(%{profile: %{icon: media}}), do: media
+  def avatar_media(%{icon: media}), do: media
+  def avatar_media(%{} = maybe_media), do: maybe_media
+
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
