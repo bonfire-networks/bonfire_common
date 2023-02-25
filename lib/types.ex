@@ -232,6 +232,13 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_snake_atom(string), do: maybe_to_atom!(maybe_to_snake(string))
 
+  def maybe_to_integer(val, fallback \\ 0) do
+    case Integer.parse(val) do
+      {int, _} -> int
+      _ -> fallback
+    end
+  end
+
   def defines_struct?(module) do
     function_exported?(module, :__struct__, 0)
   end
