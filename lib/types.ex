@@ -153,17 +153,21 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_module(str, force \\ true)
 
-  def maybe_to_module(str, force) when is_binary(str) do
+  def maybe_to_module("Elixir." <> _ = str, force) do
     case maybe_to_atom(str) do
-      module_or_atom when is_atom(module_or_atom) -> maybe_to_module(module_or_atom, force)
-      # module doesn't exist
-      "Elixir." <> _str -> nil
-      # try with prefix
-      _ -> maybe_to_module("Elixir." <> str, force)
+      module_or_atom when is_atom(module_or_atom) and not is_nil(module_or_atom) ->
+        maybe_to_module(module_or_atom, force)
+
+      _ ->
+        nil
     end
   end
 
-  def maybe_to_module(atom, force) when is_atom(atom) do
+  def maybe_to_module(str, force) when is_binary(str) do
+    maybe_to_module("Elixir." <> str, force)
+  end
+
+  def maybe_to_module(atom, force) when is_atom(atom) and not is_nil(atom) do
     if force != true or module_enabled?(atom) do
       atom
     else
