@@ -310,6 +310,23 @@ defmodule Bonfire.Common.Text do
   end
 
   # open outside links in a new tab
+  def make_local_links_live(content)
+      when is_binary(content) and byte_size(content) > 20 do
+    local_instance = Bonfire.Common.URIs.base_url()
+
+    content
+    # handle internal links
+    |> Regex.replace(
+      ~r/(<a [^>]*href=\")\/(.+\")/U,
+      ...,
+      " \\1/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+    )
+
+    # |> debug(content)
+  end
+
+  def make_local_links_live(content), do: content
+
   def normalise_links(content)
       when is_binary(content) and byte_size(content) > 20 do
     local_instance = Bonfire.Common.URIs.base_url()
@@ -319,29 +336,24 @@ defmodule Bonfire.Common.Text do
     |> Regex.replace(
       ~r/(<a [^>]*href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
       ...,
-      "\\1/character/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+      " \\1/character/\\2"
     )
     # handle AP objects
     |> Regex.replace(
       ~r/(<a [^>]*href=\")#{local_instance}\/pub\/objects\/(.+\")/U,
       ...,
-      "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+      " \\1/discussion/\\2"
     )
     # handle local links
     |> Regex.replace(
       ~r/(<a [^>]*href=\")#{local_instance}(.+\")/U,
       ...,
-      "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+      " \\1\\2"
     )
-    # handle internal links
-    |> Regex.replace(
-      ~r/(<a [^>]*href=\")\/(.+\")/U,
-      ...,
-      "\\1/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
-    )
-    # handle external links
-    |> Regex.replace(~r/<a ([^>]*href=\"http.+)/U, ..., "<a target=\"_blank\" \\1")
-    |> debug(content)
+    # handle external links (in new tab)
+    |> Regex.replace(~r/<a ([^>]*href=\"http.+)/U, ..., " <a target=\"_blank\" \\1")
+
+    # |> debug(content)
   end
 
   def normalise_links(content), do: content
