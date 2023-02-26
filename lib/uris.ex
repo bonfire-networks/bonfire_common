@@ -221,7 +221,10 @@ defmodule Bonfire.Common.URIs do
     do: path_id(display_username)
 
   defp path_id(%{display_username: display_username}),
-    do: path_id(display_username)
+    do: display_username
+
+  defp path_id(%{__struct__: schema, name: tag}) when schema == Bonfire.Tag.Hashtag,
+    do: tag
 
   defp path_id(%{__struct__: schema, character: _character} = obj)
        when schema != Pointers.Pointer,

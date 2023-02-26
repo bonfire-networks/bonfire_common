@@ -317,24 +317,31 @@ defmodule Bonfire.Common.Text do
     content
     # handle AP actors
     |> Regex.replace(
-      ~r/(href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
+      ~r/(<a [^>]*href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
       ...,
       "\\1/character/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
     )
     # handle AP objects
     |> Regex.replace(
-      ~r/(href=\")#{local_instance}\/pub\/objects\/(.+\")/U,
+      ~r/(<a [^>]*href=\")#{local_instance}\/pub\/objects\/(.+\")/U,
       ...,
       "\\1/discussion/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
     )
-    # handle internal links
+    # handle local links
     |> Regex.replace(
-      ~r/(href=\")#{local_instance}(.+\")/U,
+      ~r/(<a [^>]*href=\")#{local_instance}(.+\")/U,
       ...,
       "\\1\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
     )
+    # handle internal links
+    |> Regex.replace(
+      ~r/(<a [^>]*href=\")\/(.+\")/U,
+      ...,
+      "\\1/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
+    )
     # handle external links
-    |> Regex.replace(~r/(href=\"http.+\")/U, ..., "\\1 target=\"_blank\"")
+    |> Regex.replace(~r/<a ([^>]*href=\"http.+)/U, ..., "<a target=\"_blank\" \\1")
+    |> debug(content)
   end
 
   def normalise_links(content), do: content
