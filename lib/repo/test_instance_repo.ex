@@ -11,13 +11,17 @@ defmodule Bonfire.Common.TestInstanceRepo do
     fun.()
   after
     repo = default_repo()
-    Process.put(:phoenix_endpoint_module, default_endpoint())
-    Process.put(:ecto_repo_module, repo)
+
+    process_put(
+      phoenix_endpoint_module: default_endpoint(),
+      ecto_repo_module: repo
+    )
+
     repo.put_dynamic_repo(repo)
     Logger.metadata(instance: :primary)
   end
 
-  def maybe_declare_test_instance(Bonfire.Web.FakeRemoteEndpoint) do
+  def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
     declare_test_instance()
   end
 
@@ -27,9 +31,17 @@ defmodule Bonfire.Common.TestInstanceRepo do
   end
 
   defp declare_test_instance do
-    Process.put(:phoenix_endpoint_module, Bonfire.Web.FakeRemoteEndpoint)
-    Process.put(:ecto_repo_module, Bonfire.Common.TestInstanceRepo)
+    process_put(
+      phoenix_endpoint_module: Bonfire.Web.FakeRemoteEndpoint,
+      ecto_repo_module: Bonfire.Common.TestInstanceRepo
+    )
+
     default_repo().put_dynamic_repo(Bonfire.Common.TestInstanceRepo)
     Logger.metadata(instance: :test)
+  end
+
+  # todo: put somewhere reusable
+  def process_put(enum) when is_list(enum) or is_map(enum) do
+    Enum.map(enum, fn {k, v} -> Process.put(k, v) end)
   end
 end

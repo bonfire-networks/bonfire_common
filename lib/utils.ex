@@ -507,6 +507,17 @@ defmodule Bonfire.Common.Utils do
     {:error, error}
   end
 
+  @doc "Like `Task.async/1` but with support for multi-tenancy in the child process"
+  def async_task(fun) do
+    # pid = self()
+    current_endpoint = Process.get(:phoenix_endpoint_module)
+
+    Task.async(fn ->
+      Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+      fun.()
+    end)
+  end
+
   def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
   def empty?(_), do: false
 

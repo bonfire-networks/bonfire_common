@@ -40,9 +40,7 @@ defmodule Bonfire.Common.URIs do
   def path(view_module_or_path_name_or_object, args)
       when is_atom(view_module_or_path_name_or_object) and
              not is_nil(view_module_or_path_name_or_object) and is_list(args) do
-    endpoint = Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint)
-
-    ([endpoint, view_module_or_path_name_or_object] ++ args)
+    ([Bonfire.Common.Config.endpoint_module(), view_module_or_path_name_or_object] ++ args)
     # |> debug("args")
     |> case Utils.maybe_apply(
               Bonfire.Web.Router.Reverse,
@@ -394,8 +392,7 @@ defmodule Bonfire.Common.URIs do
   def base_url(%{host: host}), do: "http://#{host}"
 
   def base_url(_) do
-    case Process.get(:phoenix_endpoint_module) ||
-           Bonfire.Common.Config.get(:endpoint_module, Bonfire.Web.Endpoint) do
+    case Common.Config.endpoint_module() do
       endpoint when is_atom(endpoint) ->
         if module_enabled?(endpoint) do
           base_url(endpoint)

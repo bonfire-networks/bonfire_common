@@ -38,7 +38,7 @@ defmodule Bonfire.Common.PubSub do
   defp do_subscribe(topic) when is_binary(topic) and topic != "" do
     debug(topic, "subscribed")
 
-    endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    endpoint = Bonfire.Common.Config.endpoint_module()
 
     # endpoint.unsubscribe(maybe_to_string(topic)) # to avoid duplicate subscriptions?
     endpoint.subscribe(topic)
@@ -68,7 +68,7 @@ defmodule Bonfire.Common.PubSub do
   def broadcast(_, _), do: warn("pubsub did not broadcast")
 
   defp do_broadcast(topic, data) do
-    # endpoint = Config.get(:endpoint_module, Bonfire.Web.Endpoint)
+    # endpoint = Bonfire.Common.Config.endpoint_module()
     # endpoint.broadcast_from(self(), topic, step, state)
     Phoenix.PubSub.broadcast(Bonfire.Common.PubSub, Types.maybe_to_string(topic), data)
   end

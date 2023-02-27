@@ -269,7 +269,12 @@ defmodule Bonfire.Common.Config do
 
   # some aliases to specific config keys for convienience
 
-  def repo, do: Process.get(:ecto_repo_module) || get!(:repo_module)
+  def repo, do: Process.get(:ecto_repo_module) || get(:repo_module, Bonfire.Common.Repo)
+
+  def endpoint_module,
+    do:
+      Process.get(:phoenix_endpoint_module) ||
+        get(:endpoint_module, Bonfire.Web.Endpoint)
 end
 
 # finally, check that bonfire_common is configured, required so that this module can function
