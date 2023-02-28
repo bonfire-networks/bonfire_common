@@ -126,7 +126,7 @@ defmodule Bonfire.Common.Enums do
          fallback
        )
        when is_map(map) and is_atom(key) do
-    if Config.get!(:env) == :dev && Config.get(:e_auto_preload, false) do
+    if Config.env() == :dev && Config.get(:e_auto_preload, false) do
       warn(
         "The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query..."
       )

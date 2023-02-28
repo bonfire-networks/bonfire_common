@@ -275,6 +275,8 @@ defmodule Bonfire.Common.Config do
     do:
       Process.get(:phoenix_endpoint_module) ||
         get(:endpoint_module, Bonfire.Web.Endpoint)
+
+  def env, do: get(:env)
 end
 
 # finally, check that bonfire_common is configured, required so that this module can function

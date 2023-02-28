@@ -60,7 +60,7 @@ defmodule Bonfire.Common.Cache do
         {:ok, true} ->
           debug(key, "getting from cache")
 
-          if Config.get(:env) != :dev do
+          if Config.env() != :dev do
             Cachex.get!(cache, key)
           else
             with {:error, e} <- Cachex.get!(cache, key) do

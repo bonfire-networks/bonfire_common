@@ -210,7 +210,7 @@ defmodule Bonfire.Common.Extend do
       |> Path.relative_to(Config.get(:project_path))
       |> debug()
 
-    if Config.get(:env) == :prod do
+    if Config.env() == :prod do
       # supports doing this in release by using the code in the gzipped code 
       tar_file =
         Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")

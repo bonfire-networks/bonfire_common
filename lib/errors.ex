@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Errors do
   def debug_exception(msg, exception, stacktrace, kind, opts) do
     debug_log(msg, exception, stacktrace, kind)
 
-    if Config.get!(:env) == :dev and
+    if Config.env() == :dev and
          Config.get(:show_debug_errors_in_dev) != false do
       {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace, opts)
 

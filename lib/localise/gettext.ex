@@ -12,7 +12,7 @@ defmodule Bonfire.Common.Localise.Gettext do
   It is recommended to use the more convenient macros in `Bonfire.Common.Localise.Gettext.Helpers` instead.
   """
 
-  # if Bonfire.Common.Config.get(:env) == :dev do
+  # if Bonfire.Common.Config.env() == :dev do
   #   use PseudoGettext,
   #     otp_app: :bonfire_common,
   #     default_locale: Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :default_locale], "en"),
