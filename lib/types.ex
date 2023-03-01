@@ -236,7 +236,10 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_snake_atom(string), do: maybe_to_atom!(maybe_to_snake(string))
 
-  def maybe_to_integer(val, fallback \\ 0) do
+  def maybe_to_integer(val, fallback \\ 0)
+  def maybe_to_integer(val, _fallback) when is_integer(val), do: val
+
+  def maybe_to_integer(val, fallback) do
     case Integer.parse(val) do
       {int, _} -> int
       _ -> fallback

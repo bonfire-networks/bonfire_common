@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.Extend do
   use Arrows
+  require Logger
   import Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
@@ -127,7 +128,8 @@ defmodule Bonfire.Common.Extend do
         use unquote(module)
       end
     else
-      # Logger.debug("Did not find module to use: #{module}")
+      Logger.debug("Did not find module to use: #{module}")
+
       if is_atom(fallback_module) and not is_nil(fallback_module) and
            module_enabled?(fallback_module) do
         quote do
