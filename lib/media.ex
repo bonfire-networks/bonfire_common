@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Media do
   import Untangle
   alias Bonfire.Common.Utils
 
-  @external ["remote", "website", "article"]
+  @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
 
   def media_url(%{path: "http" <> _ = url} = _media) do
     url
@@ -79,6 +79,10 @@ defmodule Bonfire.Common.Media do
 
   def image_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.ImageUploader.remote_url(media)
+
+  def image_url(%{path: "http" <> _ = url} = media) do
+    if String.ends_width?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+  end
 
   def image_url(%{path: _} = media),
     do: Bonfire.Files.ImageUploader.remote_url(media)
