@@ -282,7 +282,7 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       def many(query, opts \\ []) do
-        all(query, opts)
+        if opts[:return] == :query, do: query, else: all(query, opts)
       rescue
         exception in Postgrex.Error ->
           handle_postgrex_exception(exception, __STACKTRACE__)

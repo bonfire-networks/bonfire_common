@@ -98,12 +98,11 @@ defmodule Bonfire.Common.URIs do
     args_with_id =
       ([path_id(object)] ++ args)
       |> Enums.filter_empty([])
-
-    # |> debug("args")
+      |> debug("args_with_id")
 
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) and not is_nil(type) ->
-        # debug(type, "detected object_type for object")
+        debug(type, "detected object_type for object")
         path(type, args_with_id)
 
       none ->
@@ -187,7 +186,7 @@ defmodule Bonfire.Common.URIs do
                id,
                [skip_boundary_check: true, preload: :character]
              ]) do
-        debug("path_by_id: found a pointer #{inspect(pointer)}")
+        debug(pointer, "path_by_id: found a pointer")
 
         object
         |> Map.merge(pointer)
@@ -213,16 +212,18 @@ defmodule Bonfire.Common.URIs do
   end
 
   # defp path_id("@"<>username), do: username
-  defp path_id(%{username: username}), do: username
+  defp path_id(%{username: username}) when is_binary(username), do: username
 
   defp path_id(%{display_username: "@" <> display_username}),
-    do: path_id(display_username)
+    do: display_username
 
-  defp path_id(%{display_username: display_username}),
+  defp path_id(%{display_username: display_username}) when is_binary(display_username),
     do: display_username
 
   defp path_id(%{__struct__: schema, name: tag}) when schema == Bonfire.Tag.Hashtag,
     do: tag
+
+  defp path_id(%{character: %{username: username}}) when is_binary(username), do: username
 
   defp path_id(%{__struct__: schema, character: _character} = obj)
        when schema != Pointers.Pointer,

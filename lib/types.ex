@@ -271,6 +271,9 @@ defmodule Bonfire.Common.Types do
   # for activities
   def object_type(%{object: object}), do: object_type(object)
 
+  # for groups/topics
+  def object_type(%{__struct__: Bonfire.Classify.Category, type: type}), do: type || :topic
+
   def object_type(%{__struct__: schema}) when schema != Pointer,
     do: object_type(schema)
 
@@ -394,6 +397,14 @@ defmodule Bonfire.Common.Types do
   def object_type(type) when is_atom(type) and not is_nil(type) do
     debug(type, "atom might be a schema type")
     type
+  end
+
+  def object_type(%{activity: %{id: _} = activity}) do
+    object_type(activity)
+  end
+
+  def object_type(%{object: %{id: _} = object}) do
+    object_type(object)
   end
 
   def object_type(type) do

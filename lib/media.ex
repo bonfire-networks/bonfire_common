@@ -33,6 +33,10 @@ defmodule Bonfire.Common.Media do
     media_url(media)
   end
 
+  def media_url(_) do
+    nil
+  end
+
   def avatar_media(%{profile: %{icon: media}}), do: media
   def avatar_media(%{icon: media}), do: media
   def avatar_media(%{} = maybe_media), do: maybe_media
