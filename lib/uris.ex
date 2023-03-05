@@ -34,6 +34,11 @@ defmodule Bonfire.Common.URIs do
       when not is_struct(args),
       do: path(view_module_or_path_name_or_object, [id])
 
+  # not sure what this one is for? ^
+
+  def path(%{id: _id} = object, action) when is_atom(action),
+    do: path(Types.object_type(object), [path_id(object), action])
+
   def path(view_module_or_path_name_or_object, args) when not is_list(args),
     do: path(view_module_or_path_name_or_object, [args])
 
@@ -67,6 +72,8 @@ defmodule Bonfire.Common.URIs do
         error,
         "path: could not find a matching route for #{inspect(view_module_or_path_name_or_object)}"
       )
+
+      debug(args, "path args used")
 
       nil
 

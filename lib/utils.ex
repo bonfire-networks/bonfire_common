@@ -98,20 +98,23 @@ defmodule Bonfire.Common.Utils do
         # attempt using key as atom or string, fallback if doesn't exist or is nil
         Enums.enum_get(map, key, fallback)
 
-      list when is_list(list) and length(list) == 1 ->
-        if not Keyword.keyword?(list) do
-          # if object is a list with 1 element, look inside
-          e(List.first(list), key, fallback)
-        else
+      # and length(list) == 1
+      list when is_list(list) ->
+        if Keyword.keyword?(list) do
           list |> Map.new() |> e(key, fallback)
+        else
+          Enum.find_value(list, &e(&1, key, nil)) || fallback
         end
 
-      list when is_list(list) ->
-        if not Keyword.keyword?(list) do
-          list |> Enum.reject(&is_nil/1) |> Enum.map(&e(&1, key, fallback))
-        else
-          list |> Map.new() |> e(key, fallback)
-        end
+      # list when is_list(list) ->
+      #   if not Keyword.keyword?(list) do
+      #     list |> Enum.reject(&is_nil/1) |> Enum.map(&e(&1, key, fallback))
+      #   else
+      #     list |> Map.new() |> e(key, fallback)
+      #   end
+
+      {k, v} when k == key ->
+        v || fallback
 
       _ ->
         fallback
@@ -151,6 +154,9 @@ defmodule Bonfire.Common.Utils do
 
       _ when is_struct(user_or_socket_or_opts) ->
         [context: user_or_socket_or_opts]
+
+      {k, v} when is_atom(k) ->
+        Keyword.new([{k, v}])
 
       _
       when is_list(user_or_socket_or_opts) or is_map(user_or_socket_or_opts) ->
@@ -203,13 +209,16 @@ defmodule Bonfire.Common.Utils do
         if Keyword.keyword?(current_user_or_socket_or_opts) do
           current_user(Map.new(current_user_or_socket_or_opts), true)
         else
-          Enum.find_value(current_user_or_socket_or_opts, &current_user/1)
+          Enum.find_value(current_user_or_socket_or_opts, &current_user(&1, true))
         end
 
       %{current_user_id: user_id} when is_binary(user_id) ->
-        current_user(user_id, true)
+        Types.ulid(user_id)
 
       %{current_user: user_id} when is_binary(user_id) ->
+        Types.ulid(user_id)
+
+      {:current_user, user_id} ->
         current_user(user_id, true)
 
       %{user_id: user_id} when is_binary(user_id) ->
@@ -250,9 +259,16 @@ defmodule Bonfire.Common.Utils do
         current_user_id(context, true)
 
       _ when is_list(current_user_or_socket_or_opts) ->
-        current_user_id(Map.new(current_user_or_socket_or_opts), true)
+        if Keyword.keyword?(current_user_or_socket_or_opts) do
+          current_user_id(Map.new(current_user_or_socket_or_opts), true)
+        else
+          Enum.find_value(current_user_or_socket_or_opts, &current_user_id/1)
+        end
 
       %{current_user_id: user_id} when is_binary(user_id) ->
+        current_user_id(user_id, true)
+
+      {:current_user_id, user_id} ->
         current_user_id(user_id, true)
 
       user_id when is_binary(user_id) ->
@@ -278,10 +294,19 @@ defmodule Bonfire.Common.Utils do
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
   def current_account(list) when is_list(list) do
-    current_account(Map.new(list))
+    if Keyword.keyword?(list) do
+      current_account(Map.new(list))
+    else
+      Enum.find_value(list, &current_account/1)
+    end
   end
 
   def current_account(%{current_account: current_account} = _assigns)
+      when not is_nil(current_account) do
+    current_account
+  end
+
+  def current_account({:current_account, current_account} = _tuple)
       when not is_nil(current_account) do
     current_account
   end

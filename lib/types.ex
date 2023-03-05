@@ -272,7 +272,7 @@ defmodule Bonfire.Common.Types do
   def object_type(%{object: object}), do: object_type(object)
 
   # for groups/topics
-  def object_type(%{__struct__: Bonfire.Classify.Category, type: type}), do: type || :topic
+  def object_type(%{__struct__: Bonfire.Classify.Category, type: :group}), do: :group
 
   def object_type(%{__struct__: schema}) when schema != Pointer,
     do: object_type(schema)
