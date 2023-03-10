@@ -627,7 +627,7 @@ defmodule Bonfire.Common.Enums do
   def input_to_atoms("true", _, true = _including_values), do: true
 
   def input_to_atoms(v, _, true = _including_values) when is_binary(v) do
-    Types.maybe_to_module(v, false) || v
+    Types.maybe_to_module(v, false) || Types.maybe_to_atom(v) || v
   end
 
   def input_to_atoms(v, _, _), do: v
