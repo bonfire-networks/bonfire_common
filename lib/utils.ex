@@ -29,6 +29,7 @@ defmodule Bonfire.Common.Utils do
       alias Common.Media
       alias Common.URIs
       alias Bonfire.Me.Settings
+      alias Bonfire.Boundaries
 
       require Utils
       # can import specific functions with `only` or `except`

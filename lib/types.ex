@@ -285,6 +285,7 @@ defmodule Bonfire.Common.Types do
   def object_type("@" <> _), do: Bonfire.Data.Identity.User
   def object_type("%40" <> _), do: Bonfire.Data.Identity.User
   def object_type("+" <> _), do: Bonfire.Classify.Category
+  def object_type("&" <> _), do: Bonfire.Classify.Category
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
