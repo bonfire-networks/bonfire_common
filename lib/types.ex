@@ -10,11 +10,13 @@ defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Text
 
-  def typeof(%{__struct__: type}) when type == Phoenix.LiveView.Socket,
-    do: Phoenix.LiveView.Socket
+  def typeof(%{__struct__: exception_struct}) when is_exception(exception_struct),
+    do: exception_struct
 
+  def typeof(exception) when is_exception(exception), do: Exception
   def typeof(%{__context__: _, __changed__: _}), do: :assigns
   def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
+  def typeof(%{__struct__: struct}), do: struct
   def typeof(struct) when is_struct(struct), do: object_type(struct) || :struct
 
   def typeof(list) when is_list(list) do

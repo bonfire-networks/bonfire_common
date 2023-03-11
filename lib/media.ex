@@ -40,6 +40,7 @@ defmodule Bonfire.Common.Media do
   def avatar_media(%{profile: %{icon: media}}), do: media
   def avatar_media(%{icon: media}), do: media
   def avatar_media(%{} = maybe_media), do: maybe_media
+  def avatar_media(_), do: nil
 
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
