@@ -1,0 +1,11 @@
+defmodule Bonfire.Common.TextExtended do
+   import Bonfire.Common.Module.Extend
+   extend Bonfire.Common.Text
+
+   def blank?(str_or_nil \\ 1) do
+      require Logger
+      Logger.info("Check if #{str_or_nil} is considered blank")
+      # call function from original module:
+      super(str_or_nil)
+   end
+end

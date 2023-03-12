@@ -260,9 +260,14 @@ defmodule Bonfire.Common.Extend do
       number
   end
 
-  def function_ast(module, fun) do
-    module_code(module)
-    ~> Code.string_to_quoted!()
+  def function_ast(module, fun) when is_atom(module) do
+    with {:ok, code} <- module_code(module) do
+      function_ast(code, fun)
+    end
+  end
+  def function_ast(module_code, fun) when is_binary(module_code) do
+    module_code
+    |> Code.string_to_quoted!()
     # |> debug()
     |> Macro.prewalk([], fn
       result = {:def, _, [{^fun, _, _} | _]}, acc -> {result, acc ++ [result]}
