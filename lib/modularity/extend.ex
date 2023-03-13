@@ -6,6 +6,84 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Settings
 
+  defmacro extend_module(module) do
+    require Logger
+
+    module = Macro.expand(module, __CALLER__)
+
+    Logger.info("[Modularity.Module.Extend] Extending module #{inspect(module)}")
+
+    functions = module.__info__(:functions)
+
+    signatures =
+      Enum.map(functions, fn {name, arity} ->
+        args =
+          if arity == 0 do
+            []
+          else
+            Enum.map(1..arity, fn i ->
+              {String.to_atom(<<?x, ?A + i - 1>>), [], nil}
+            end)
+          end
+
+        {name, [], args}
+      end)
+
+    zipped = List.zip([signatures, functions])
+
+    for sig_func <- zipped do
+      quote do
+        Module.register_attribute(__MODULE__, :extend_module, persist: true, accumulate: false)
+        @extend_module unquote(module)
+
+        defdelegate unquote(elem(sig_func, 0)), to: unquote(module)
+        defoverridable unquote([elem(sig_func, 1)])
+      end
+    end
+  end
+
+  # defmacro extend_module(module \\ nil) do
+
+  #   quote do
+
+  #   caller = __CALLER__.module
+  #   module = unquote(module) || Module.get_attribute(caller, :extend_module)
+
+  #   IO.puts("[Bonfire.Common.Extend] Extending module #{inspect(module)} in #{inspect caller}")
+
+  #   functions = module.__info__(:functions)
+  #   |> IO.inspect
+
+  #   signatures =
+  #     Enum.map(functions, fn {name, arity} ->
+  #       args =
+  #         if arity == 0 do
+  #           []
+  #         else
+  #           Enum.map(1..arity, fn i ->
+  #             {String.to_atom(<<?x, ?A + i - 1>>), [], nil}
+  #           end)
+  #         end
+
+  #       {name, [], args}
+  #     end)
+  #   |> IO.inspect
+
+  #   zipped = List.zip([signatures, functions])
+  #   |> IO.inspect
+
+  #   for sig_func <- zipped do
+  #       defdelegate (elem(sig_func, 0)), to: (module)
+  #       defoverridable ([elem(sig_func, 1)])
+  #     end
+  #   end
+  # end
+
+  @doc "Make the current module extend another module (i.e. declare `defdelegate` and `defoverridable` for all of that module's functions) "
+  # defmacro __using__(opts) do
+  #   extend_module()
+  # end 
+
   @doc """
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
   # TODO: also make it possible to disable individual modules in config?
@@ -201,27 +279,29 @@ defmodule Bonfire.Common.Extend do
     Utils.maybe_apply(Bonfire.Common.Config.endpoint_module(), :generate_reverse_router!)
   end
 
+  def module_file(module) when is_atom(module) do
+    module.__info__(:compile)[:source]
+    |> to_string()
+  end
+
   def module_file_code(module) do
-    code_file =
-      module.__info__(:compile)[:source]
-      |> to_string()
-      |> debug()
+    code_file = module_file(module)
 
     rel_code_file =
       code_file
       |> Path.relative_to(Config.get(:project_path))
-      |> debug()
+
+    # |> debug()
 
     if Config.env() == :prod do
       # supports doing this in release by using the code in the gzipped code 
-      tar_file =
-        Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
-        |> debug()
+      tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
+      # |> debug()
 
       with {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file) do
         String.replace(code_file, "extensions/", "deps/")
         |> String.replace("forks/", "deps/")
-        |> debug()
+        # |> debug()
         |> Bonfire.Common.Media.read_tar_files(tar_file, ...)
       end
     else
@@ -239,6 +319,60 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  def function_code(module, fun) do
+    with {:ok, code} <- module_code(module),
+         {first_line, last_line} <- function_line_numbers(module, fun) do
+      code
+      |> split_lines()
+      |> Enum.slice((first_line - 1)..(last_line - 1))
+      |> Enum.join("\n")
+    end
+  end
+
+  @doc "Return the numbers (as a tuple) of the first and last lines of a function's definition in a module"
+  def function_line_numbers(module, fun) when is_atom(module) do
+    module_code(module)
+    ~> function_line_numbers(fun)
+  end
+
+  def function_line_numbers(module_code, fun) when is_binary(module_code) do
+    module_code
+    |> Code.string_to_quoted!()
+    |> function_line_numbers(fun)
+  end
+
+  def function_line_numbers(module_ast, fun) do
+    module_ast
+    # |> debug()
+    |> Macro.prewalk(nil, fn
+      result = {:def, [line: number], [{^fun, _, _} | _]}, acc ->
+        {result, acc || number}
+
+      result = {:defp, [line: number], [{^fun, _, _} | _]}, acc ->
+        {result, acc || number}
+
+      result = {:def, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]}, acc ->
+        {result, acc || number}
+
+      result = {:defp, [line: number], [{:when, _, [{^fun, _, _} | _]} | _]}, acc ->
+        {result, acc || number}
+
+      other = {prefix, [line: number], _}, acc when prefix in [:def, :defp] ->
+        if acc do
+          throw({acc, number - 1})
+        else
+          {other, acc}
+        end
+
+      other, acc ->
+        {other, acc}
+    end)
+  catch
+    numbers ->
+      numbers
+  end
+
+  @doc "Return the number of the first line where a function is defined in a module"
   def function_line_number(module, fun) when is_atom(module) do
     module_code(module)
     ~> function_line_number(fun)
@@ -247,6 +381,11 @@ defmodule Bonfire.Common.Extend do
   def function_line_number(module_code, fun) when is_binary(module_code) do
     module_code
     |> Code.string_to_quoted!()
+    |> function_line_number(fun)
+  end
+
+  def function_line_number(module_ast, fun) do
+    module_ast
     # |> debug()
     |> Macro.prewalk(fn
       {:def, [line: number], [{^fun, _, _} | _]} -> throw(number)
@@ -265,6 +404,7 @@ defmodule Bonfire.Common.Extend do
       function_ast(code, fun)
     end
   end
+
   def function_ast(module_code, fun) when is_binary(module_code) do
     module_code
     |> Code.string_to_quoted!()
@@ -279,7 +419,41 @@ defmodule Bonfire.Common.Extend do
     |> elem(1)
   end
 
+  def inject_function(module, fun, target_module \\ nil) do
+    module_file = module_file(module)
+    orig_module = target_module || List.first(module.__info__(:attributes)[:extend_module])
+    code = function_code(orig_module, fun)
+
+    info(code, "Injecting the code from `orig_module.fun` into module_file")
+
+    inject_before_final_end(module_file, code)
+  end
+
+  defp inject_before_final_end(file_path, content_to_inject) do
+    file = File.read!(file_path)
+
+    if String.contains?(file, content_to_inject) do
+      :ok
+    else
+      Mix.shell().info([:green, "* injecting ", :reset, Path.relative_to_cwd(file_path)])
+
+      content =
+        file
+        |> String.trim_trailing()
+        |> String.trim_trailing("end")
+        |> Kernel.<>("\n" <> content_to_inject)
+        |> Kernel.<>("\nend\n")
+
+      formatted_content = Code.format_string!(content) |> IO.iodata_to_binary()
+
+      File.write!(file_path, formatted_content)
+    end
+  end
+
   def macro_inspect(fun) do
     fun.() |> Macro.expand(__ENV__) |> Macro.to_string() |> debug("Macro")
   end
+
+  def split_lines(string) when is_binary(string),
+    do: :binary.split(string, ["\r", "\n", "\r\n"], [:global])
 end

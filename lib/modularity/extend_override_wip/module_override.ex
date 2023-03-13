@@ -6,12 +6,13 @@ defmodule Bonfire.Common.Module.Override do
   require Logger
 
   defmacro __using__(_opts) do
-    quote do 
-      alias unquote(Bonfire.Common.Module.Override.module_original_name_atom(__CALLER__.module)), as: Original
+    quote do
+      alias unquote(Bonfire.Common.Module.Override.module_original_name_atom(__CALLER__.module)),
+        as: Original
 
       import Bonfire.Common.Module.Extend
       # extend the archived module
-      extend Original
+      extend(Original)
     end
   end
 
@@ -20,9 +21,7 @@ defmodule Bonfire.Common.Module.Override do
   """
   def clone(old_module, new_module) when is_atom(old_module) do
     Logger.info(
-      "[Modularity.Module.Override] Cloning module #{module_name_string(old_module)} as #{
-        new_module
-      }"
+      "[Modularity.Module.Override] Cloning module #{module_name_string(old_module)} as #{new_module}"
     )
 
     with {:module, _module} <- Code.ensure_compiled(old_module),
@@ -52,8 +51,12 @@ defmodule Bonfire.Common.Module.Override do
     do: clone(old_module, module_original_name_str(old_module, prefix))
 
   def module_original_name_str(module, prefix \\ nil), do: "#{prefix || "Original"}.#{module}"
-  def module_original_name_atom(module, prefix \\ nil), do: module_original_name_str(module, prefix) |> module_name_atom()
+
+  def module_original_name_atom(module, prefix \\ nil),
+    do: module_original_name_str(module, prefix) |> module_name_atom()
 
   def module_name_string(module), do: String.replace("#{module}", "Elixir.", "")
-  def module_name_atom(module), do: String.to_existing_atom("Elixir.#{module_name_string(module)}")
+
+  def module_name_atom(module),
+    do: String.to_existing_atom("Elixir.#{module_name_string(module)}")
 end
