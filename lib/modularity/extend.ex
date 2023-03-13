@@ -6,6 +6,12 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Utils
   alias Bonfire.Me.Settings
 
+  @doc """
+  Extend a module (i.e. define `defdelegate` and `defoverridable` for all functions from the source module in the current module. 
+  Usage:
+  import Module.Extend
+  extend_module Common.Text
+  """
   defmacro extend_module(module) do
     require Logger
 
@@ -419,14 +425,20 @@ defmodule Bonfire.Common.Extend do
     |> elem(1)
   end
 
+  @doc """
+  Copy the code defining a function from its original module to one that extends it (or a manually specified module). 
+  Usage: `Module.Extend.inject_function(Common.TextExtended, :blank?)`
+  """
   def inject_function(module, fun, target_module \\ nil) do
-    module_file = module_file(module)
-    orig_module = target_module || List.first(module.__info__(:attributes)[:extend_module])
-    code = function_code(orig_module, fun)
+    with module_file when is_binary(module_file) <- module_file(module),
+         orig_module when not is_nil(orig_module) <-
+           target_module || List.first(module.__info__(:attributes)[:extend_module]) do
+      code = function_code(orig_module, fun)
 
-    info(code, "Injecting the code from `orig_module.fun` into module_file")
+      IO.inspect(code, label: "Injecting the code from `#{orig_module}.#{fun}`")
 
-    inject_before_final_end(module_file, code)
+      inject_before_final_end(module_file, code)
+    end
   end
 
   defp inject_before_final_end(file_path, content_to_inject) do
@@ -435,7 +447,7 @@ defmodule Bonfire.Common.Extend do
     if String.contains?(file, content_to_inject) do
       :ok
     else
-      Mix.shell().info([:green, "* injecting ", :reset, Path.relative_to_cwd(file_path)])
+      Mix.shell().info([:green, "\n* injecting ", :reset, Path.relative_to_cwd(file_path)])
 
       content =
         file
