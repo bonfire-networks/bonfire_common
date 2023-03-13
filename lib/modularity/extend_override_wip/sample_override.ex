@@ -1,24 +1,27 @@
+# # what module we want to override
+# module = Bonfire.Common.Text
+
 # # start by archiving the old module
-# Bonfire.Common.Module.Override.clone(CommonsPub.Utils.Simulation, Original.CommonsPub.Utils.Simulation)
+# Bonfire.Common.Module.Override.clone_original(module)
 
-# defmodule CommonsPub.Utils.Simulation do
-#   import Bonfire.Common.Module.Extend
-#   alias Original.CommonsPub.Utils.Simulation, as: Original
-
-#   # extend the archived module
-#   extend Original
+# defmodule module do
+#   use Bonfire.Common.Module.Override
 
 #   ####
 #   # Redefine existing functions, or add new ones:
 #   ####
 
 #   # example of straight up replacing a function
-#   def name(), do: Faker.Person.last_name()
+#   def random_string(max_length), do: Enum.random(0..max_length)
 
 #   # example of modifying the input of a function
-#   # def maybe_one_of(list), do: list ++ [""] |> Original.maybe_one_of()
+#   def strlen(x), do: x |> String.trim() |> Original.strlen()
 
 #   # example of modifying the output of a function
-#   def location(), do: Original.location() |> String.replace(",", " -")
-
+#   def blank?(str_or_nil \\ 1) do
+#       require Logger
+#       Logger.info("Check if #{str_or_nil} is considered blank")
+#       # call function from original module:
+#       Original.blank?(str_or_nil)
+#    end
 # end
