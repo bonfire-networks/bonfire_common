@@ -388,6 +388,10 @@ defmodule Bonfire.Common.Types do
       when type in [ValueFlows.Process, "Process", "4AYF0R1NPVTST0BEC0ME0VTPVT"],
       do: ValueFlows.Process
 
+  def object_type(type)
+      when type in [Bonfire.Classify.Category, "Category", "2AGSCANBECATEG0RY0RHASHTAG"],
+      do: Bonfire.Classify.Category
+
   def object_type(id) when is_binary(id) do
     with {:ok, schema} <- Pointers.Tables.schema(id) do
       schema

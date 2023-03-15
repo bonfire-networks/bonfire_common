@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Pointers.Queries do
 
   def filter(q, {:username, username}) when is_binary(username) do
     q
-    |> proload(:character)
+    |> proload([:profile, character: [:peered]])
     |> where([character: character], character.username == ^username)
   end
 

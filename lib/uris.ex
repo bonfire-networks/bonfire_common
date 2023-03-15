@@ -63,7 +63,7 @@ defmodule Bonfire.Common.URIs do
         path
 
       other ->
-        error(other, "Router didn't return a valid path")
+        warn(other, "Router didn't return a valid path")
         fallback(args)
     end
   rescue
@@ -136,7 +136,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args) do
-    error("path: could not figure out the type of this pointer: #{inspect(object)}")
+    warn(object, "path: could not figure out the type of this pointer")
 
     fallback(id, args)
   end
@@ -149,8 +149,12 @@ defmodule Bonfire.Common.URIs do
     path_by_id(id, args, object)
   end
 
+  def fallback(id, type, args) do
+    do_fallback(List.wrap(type) ++ List.wrap(id) ++ List.wrap(args), 1)
+  end
+
   def fallback(id, args) do
-    fallback([id] ++ args)
+    fallback(List.wrap(id) ++ List.wrap(args))
   end
 
   def fallback(nil) do
@@ -166,8 +170,29 @@ defmodule Bonfire.Common.URIs do
   end
 
   def fallback(args) do
-    debug(args)
-    path(Bonfire.UI.Social.DiscussionLive, args)
+    List.wrap(args)
+    |> do_fallback(0)
+  end
+
+  defp do_fallback(args, id_at \\ 0) do
+    debug(args, id_at)
+
+    # TODO: configurable
+    fallback_route = Bonfire.UI.Social.DiscussionLive
+    fallback_character_route = Bonfire.Data.Identity.Character
+
+    case path_id(Enum.at(args, id_at) |> debug()) |> debug() do
+      maybe_username_or_id
+      when is_binary(maybe_username_or_id) and not is_nil(maybe_username_or_id) ->
+        if Types.is_ulid?(maybe_username_or_id) do
+          path(fallback_route, args)
+        else
+          path(fallback_character_route, args)
+        end
+
+      _ ->
+        path(fallback_route, args)
+    end
   end
 
   # defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
@@ -178,8 +203,8 @@ defmodule Bonfire.Common.URIs do
   #   path(object)
   # end
 
-  defp voodoo_error(_error, [_endpoint, _type_module, args]) do
-    fallback(args)
+  defp voodoo_error(_error, [_endpoint, type_module, args]) do
+    fallback([], type_module, args)
   end
 
   defp voodoo_error(_error, [_endpoint, args]) do
@@ -200,21 +225,12 @@ defmodule Bonfire.Common.URIs do
         |> path(args)
       else
         _ ->
-          error("path_by_id: could not find a Pointer with id #{id}")
+          warn("path_by_id: could not find a Pointer with id #{id}")
           fallback(id, args)
       end
     else
-      case path_id(id) do
-        maybe_username
-        when is_binary(maybe_username) and not is_nil(maybe_username) ->
-          debug("path_by_id: possibly found a username #{inspect(maybe_username)}")
-
-          path(Bonfire.Data.Identity.User, maybe_username)
-
-        _ ->
-          error("path_by_id: could not find a matching route for #{id}")
-          fallback(id, args)
-      end
+      warn("path_by_id: could not find a matching route for #{id}, using fallback path")
+      fallback(id, args)
     end
   end
 
