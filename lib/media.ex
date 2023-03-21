@@ -86,7 +86,7 @@ defmodule Bonfire.Common.Media do
     do: Bonfire.Files.ImageUploader.remote_url(media)
 
   def image_url(%{path: "http" <> _ = url} = media) do
-    if String.ends_width?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
   end
 
   def image_url(%{path: _} = media),
