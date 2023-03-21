@@ -56,7 +56,7 @@ defmodule Bonfire.Common.Utils do
     Enums.filter_empty(val, fallback)
   end
 
-  @doc "Returns a value from a map, or a fallback if not present"
+  @doc "Extracts a value from a map (and various other data structures), or returns a fallback if not present or empty. If more arguments are provided it looks for nested data (with the last argument always being the fallback)."
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
   # def e(object, :current_user = key, fallback) do #temporary
