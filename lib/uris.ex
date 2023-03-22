@@ -10,6 +10,9 @@ defmodule Bonfire.Common.URIs do
   alias Bonfire.Common
   alias Common.Types
 
+  @doc """
+  Validates a URI string.
+  """
   def validate_uri(str) do
     uri = URI.parse(str)
 
@@ -20,6 +23,9 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  @doc """
+  Returns true if the given string is a valid URI.
+  """
   def is_uri?(str) do
     case URI.parse(str) do
       %URI{scheme: nil} -> false
@@ -28,6 +34,9 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  @doc """
+  Returns the path (URL on the local instance) for the given object/struct (eg. a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
+  """
   def path(view_module_or_path_name_or_object, args \\ [])
 
   def path(view_module_or_path_name_or_object, %{id: id} = args)
@@ -260,10 +269,12 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 
+  @doc "Returns the full URL (including domain and path) for a given object, module, or path name."
   def url_path(view_module_or_path_name_or_object, args \\ []) do
     base_url() <> path(view_module_or_path_name_or_object, args)
   end
 
+  @doc "Returns the canonical URL (i.e. the one used for ActivityPub federation) of an object"
   def canonical_url(%{canonical_uri: canonical_url})
       when is_binary(canonical_url) do
     canonical_url
@@ -379,6 +390,7 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
+  @doc "Return the homepage URL of the local instance"
   def base_url(conn_or_socket \\ nil)
 
   def base_url(%{endpoint: endpoint} = _socket), do: base_url(endpoint)

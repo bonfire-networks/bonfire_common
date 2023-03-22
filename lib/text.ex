@@ -217,6 +217,9 @@ defmodule Bonfire.Common.Text do
     |> URI.encode()
   end
 
+  @doc "takes a string as input and converts it to snake_case"
+  def maybe_to_snake(string), do: Recase.to_snake("#{string}")
+
   defp md_tag_text({_tag, _attrs, text, _extra}), do: md_tag_text(text)
   defp md_tag_text(text) when is_binary(text), do: text
   defp md_tag_text(_), do: ""
@@ -312,7 +315,7 @@ defmodule Bonfire.Common.Text do
   # open outside links in a new tab
   def make_local_links_live(content)
       when is_binary(content) and byte_size(content) > 20 do
-    local_instance = Bonfire.Common.URIs.base_url()
+    # local_instance = Bonfire.Common.URIs.base_url()
 
     content
     # handle internal links

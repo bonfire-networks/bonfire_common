@@ -1,10 +1,12 @@
 defmodule Bonfire.Common.Media do
+  @moduledoc "Helpers for handling images and media URLs"
   use Arrows
   import Untangle
   alias Bonfire.Common.Utils
 
   @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
 
+  @doc "Takes a Media map (or an object containing one) and returns a URL for the media"
   def media_url(%{path: "http" <> _ = url} = _media) do
     url
   end
@@ -37,6 +39,7 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
+  @doc "Takes a Media map (or an object containing one) and returns the avatar's URL."
   def avatar_media(%{profile: %{icon: media}}), do: media
   def avatar_media(%{icon: media}), do: media
   def avatar_media(%{} = maybe_media), do: maybe_media
@@ -78,6 +81,7 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
+  @doc "Takes a Media map (or an object containing one) and returns the image's URL."
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
   def image_url(%{icon: %{path: "http" <> _ = url}}), do: url
@@ -85,7 +89,7 @@ defmodule Bonfire.Common.Media do
   def image_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.ImageUploader.remote_url(media)
 
-  def image_url(%{path: "http" <> _ = url} = media) do
+  def image_url(%{path: "http" <> _ = url} = _media) do
     if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
   end
 
@@ -110,6 +114,7 @@ defmodule Bonfire.Common.Media do
 
   def image_url(_obj), do: nil
 
+  @doc "Takes a Media map (or an object containing one) and returns the banner's URL."
   def banner_url(%{profile: %{image: _} = profile}), do: banner_url(profile)
   def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
 

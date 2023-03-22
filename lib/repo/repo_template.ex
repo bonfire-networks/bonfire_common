@@ -74,6 +74,9 @@ defmodule Bonfire.Common.RepoTemplate do
           handle_postgrex_exception(exception, __STACKTRACE__)
       end
 
+      @doc """
+      Like `put/1` but for multiple `changesets`
+      """
       def put_many(things) do
         case Enum.filter(things, fn {_, %Changeset{valid?: v}} -> not v end) do
           [] -> transact_with(fn -> put_many(things, %{}) end)
@@ -90,6 +93,13 @@ defmodule Bonfire.Common.RepoTemplate do
         end
       end
 
+      @doc """
+      Inserts or updates data in the database with upsert semantics.
+
+      * `cs` - The changeset or schema to insert or update.
+      * `keys_or_attrs_to_update` - A list of keys or a map of attributes to update.
+      * `conflict_target` - The column(s) or constraint to check for conflicts, defaults to `[:id]`.
+      """
       def upsert(cs, keys_or_attrs_to_update \\ nil, conflict_target \\ [:id])
 
       def upsert(cs, attrs, conflict_target)
@@ -152,15 +162,18 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       @doc """
-      Like Repo.one, but returns an ok/error tuple.
+      Execute a query for one result and return either an `{:ok, result}` or `{:error, :not_found}` tuple
       """
       def single(q) do
         one(limit(q, 1)) |> ret_single()
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__)
+          handle_postgrex_exception(exception, __STACKTRACE__, nil, {:error, :not_found})
       end
 
+      @doc """
+      Execute a query for one result and return either an result or a fallback value (`nil` by default)
+      """
       def maybe_one(q, fallback \\ nil) do
         one(limit(q, 1))
       rescue
@@ -173,7 +186,7 @@ defmodule Bonfire.Common.RepoTemplate do
             "DBConnection.ConnectionError prevented a database query, returning #{inspect(fallback)} as fallback"
           )
 
-          nil
+          fallback
       end
 
       defp ret_single(nil), do: {:error, :not_found}
@@ -189,7 +202,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defp ret_find(other, _changeset, _field), do: {:ok, other}
 
-      @doc "Like Repo.get, but returns an ok/error tuple"
+      @doc "Execute a query for one result where the primary key matches the given id, and return either an {:ok, result} tuple or a {:error, :not_found} "
       @spec fetch(atom, integer | binary) :: {:ok, atom} | {:error, :not_found}
       def fetch(queryable, id) do
         case get(queryable, id) do
@@ -198,7 +211,7 @@ defmodule Bonfire.Common.RepoTemplate do
         end
       end
 
-      @doc "Like Repo.get_by, but returns an ok/error tuple"
+      @doc "Execute a query for one result (using a keyword list to specify the key/value to query with), and return either an {:ok, result} tuple or a {:error, :not_found} "
       def fetch_by(queryable, term) do
         case get_by(queryable, term) do
           nil -> {:error, :not_found}
@@ -206,9 +219,10 @@ defmodule Bonfire.Common.RepoTemplate do
         end
       end
 
-      def fetch_all(queryable, ids) when is_binary(ids) do
+      @doc "Execute a query for multiple results given one or multiple IDs."
+      def fetch_all(queryable, id_or_ids) do
         queryable
-        |> where([t], t.id in ^ids)
+        |> where([t], t.id in ^List.wrap(id_or_ids))
         |> all()
       end
 
@@ -261,7 +275,8 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       @doc """
-      Main implementation for pagination using Paginator (used by most extensions)
+      Execute a query for multiple results and return one page of results.
+      This uses the main implementation for pagination, which is cursor-based and powered by the `Paginator` library.
       """
       def many_paginated(queryable, opts \\ [], repo_opts \\ [])
 
@@ -281,13 +296,15 @@ defmodule Bonfire.Common.RepoTemplate do
         |> paginator_paginate(opts, repo_opts)
       end
 
+      @doc "Execute a query for multiple results and return the results."
       def many(query, opts \\ []) do
         if opts[:return] == :query, do: query, else: all(query, opts)
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__)
+          handle_postgrex_exception(exception, __STACKTRACE__, nil, [])
       end
 
+      @doc "Execute a query to delete all matching records."
       def delete_many(query) do
         query
         |> Ecto.Query.exclude(:order_by)

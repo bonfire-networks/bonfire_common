@@ -1,4 +1,7 @@
 defmodule Bonfire.Common.Utils do
+  @moduledoc """
+  Various very commonly used utility functions for the Bonfire application.
+  """
   use Arrows
   alias Bonfire.Common
   import Common.Extend
@@ -148,10 +151,16 @@ defmodule Bonfire.Common.Utils do
     |> e(key6, fallback)
   end
 
+  @doc """
+  Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
+  """
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do
       %{assigns: assigns} = _socket ->
         Keyword.new(assigns)
+
+      %{__struct__: schema} when schema == Bonfire.Data.Identity.User ->
+        [current_user: user_or_socket_or_opts]
 
       _ when is_struct(user_or_socket_or_opts) ->
         [context: user_or_socket_or_opts]
@@ -160,23 +169,37 @@ defmodule Bonfire.Common.Utils do
         Keyword.new([{k, v}])
 
       _
-      when is_list(user_or_socket_or_opts) or is_map(user_or_socket_or_opts) ->
+      when is_map(user_or_socket_or_opts) ->
         Keyword.new(user_or_socket_or_opts)
+
+      _
+      when is_list(user_or_socket_or_opts) ->
+        if Keyword.keyword?(user_or_socket_or_opts),
+          do: user_or_socket_or_opts,
+          else: [context: user_or_socket_or_opts]
 
       _ ->
         debug(Types.typeof(user_or_socket_or_opts), "No opts found in")
-        []
+        [context: user_or_socket_or_opts]
     end
   end
 
+  @doc """
+  Returns the value of a key from options keyword list or map, or a fallback if not present or empty.
+  """
   def maybe_from_opts(opts, key, fallback \\ nil)
 
   def maybe_from_opts(opts, key, fallback)
       when is_list(opts) or is_map(opts),
-      do: opts[key] || fallback
+      do: e(opts, key, nil) || force_maybe_from_opts(opts, key, fallback)
 
-  def maybe_from_opts(_opts, _key, fallback), do: fallback
+  def maybe_from_opts(opts, key, fallback), do: force_maybe_from_opts(opts, key, fallback)
 
+  defp force_maybe_from_opts(opts, key, fallback), do: to_options(opts) |> e(key, nil) || fallback
+
+  @doc """
+  Returns the current user from socket, assigns, or options.
+  """
   def current_user(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
       %{current_user: %{id: _} = user} = _options ->
@@ -239,6 +262,9 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  @doc """
+  Returns the current user ID from socket, assigns, or options.
+  """
   def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
       %{current_user_id: id} = _options ->
@@ -294,6 +320,9 @@ defmodule Bonfire.Common.Utils do
   def current_user_required!(context),
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
+  @doc """
+  Returns the current account from socket, assigns, or options.
+  """
   def current_account(list) when is_list(list) do
     if Keyword.keyword?(list) do
       current_account(Map.new(list))
@@ -402,7 +431,7 @@ defmodule Bonfire.Common.Utils do
     nil
   end
 
-  @doc "Helpers for calling hypothetical functions in other modules"
+  @doc "Helpers for calling hypothetical functions in other modules. Returns the result of calling a function with the given arguments, or the result of fallback function if the primary function is not defined (by default just logging an error message)."
   def maybe_apply(
         module,
         fun,
@@ -533,7 +562,7 @@ defmodule Bonfire.Common.Utils do
     {:error, error}
   end
 
-  @doc "Like `Task.async/1` but with support for multi-tenancy in the child process"
+  @doc "Runs a function asynchronously in a Task. Like `Task.async/1` but with support for multi-tenancy in the child process"
   def async_task(fun) do
     # pid = self()
     current_endpoint = Process.get(:phoenix_endpoint_module)
@@ -544,7 +573,9 @@ defmodule Bonfire.Common.Utils do
     end)
   end
 
+  @doc "Returns true if the given value is nil, an empty map, an empty list, or an empty string."
   def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
+  def empty?(v) when is_binary(v), do: String.trim(v) == ""
   def empty?(_), do: false
 
   @doc "Applies change_fn if the first parameter is not nil."
@@ -554,9 +585,9 @@ defmodule Bonfire.Common.Utils do
     change_fn.(val)
   end
 
-  def replace_nil(nil, value), do: value
-  def replace_nil(other, _), do: other
-
+  @doc """
+  Unwraps an `{:ok, val}` tuple, returning the value, or returns a fallback value (nil by default) if the tuple is `{:error, _}` or `:error`.
+  """
   def ok_unwrap(val, fallback \\ nil)
   def ok_unwrap({:ok, val}, _fallback), do: val
   def ok_unwrap({:error, _val}, fallback), do: fallback

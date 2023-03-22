@@ -1,9 +1,11 @@
 defmodule Bonfire.Common.DatesTimes do
+  @moduledoc """
+  Date/time helpers
+  """
   use Arrows
   import Untangle
 
-  def date_from_now(nil), do: nil
-
+  @doc "Takes a ULID ID (or an object with one) or a `DateTime` struct, and turns the date into a relative phrase, e.g. `2 days ago`, using the `Timex` library."
   def date_from_now(%DateTime{} = date) do
     date
     |> Timex.format("{relative}", :relative)
@@ -16,8 +18,12 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def date_from_now(object), do: date_from_pointer(object) |> date_from_now()
+  def date_from_now(object) when is_map(object) or is_binary(object),
+    do: date_from_pointer(object) |> date_from_now()
 
+  def date_from_now(_), do: nil
+
+  @doc "Takes an object (or string with an ULID) and converts the ULID ID to a `DateTime` struct."
   def date_from_pointer(object) do
     with id when is_binary(id) <- Bonfire.Common.Types.ulid(object),
          {:ok, ts} <- Pointers.ULID.timestamp(id),

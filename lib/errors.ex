@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Errors do
   import Bonfire.Common.Extend
   alias Bonfire.Common.Config
 
+  @doc "Turns various kind of errors into an error message string. Used to format errors in a way that can be easily read by the user."
   def error_msg(errors) when is_list(errors) do
     errors
     |> Enum.map(&error_msg/1)

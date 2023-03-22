@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Enums do
-  @moduledoc "Missing functions from Enum"
+  @moduledoc "Extra functions to manipulate enumerables, basically an extension of `Enum`"
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]
@@ -13,6 +13,9 @@ defmodule Bonfire.Common.Enums do
 
   @compile {:inline, group: 3}
 
+  @doc """
+  Extracts a binary ID from various data structures, such as a map containing the key :id or "id", a changeset, or a tuple containing the atom :id.
+  """
   def id(id) when is_binary(id), do: id
   def id(%{id: id}) when is_binary(id), do: id
   def id(%Changeset{} = cs), do: id(Changeset.get_field(cs, :id))
@@ -31,6 +34,7 @@ defmodule Bonfire.Common.Enums do
     nil
   end
 
+  @doc "Takes an enumerable object and converts it to a map. If it is not an enumerable, a map is created with the data under a fallback key (`:data` by default)."
   def map_new(data, fallback_key \\ :data) do
     if Enumerable.impl_for(data),
       do: Map.new(data),
@@ -38,7 +42,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Attempt geting a value out of a map by atom key, or try with string key, or return a fallback
+  Attempt getting a value out of a map by atom key, or try with string key, or return a fallback
   """
   def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
     case maybe_get(map, key, :empty) do
@@ -47,7 +51,7 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  # doc """ Attempt geting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
+  # doc """ Attempt getting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
   def enum_get(map, key, fallback) when is_map(map) and is_binary(key) do
     case maybe_get(map, key, :empty) do
       :empty ->
@@ -81,6 +85,7 @@ defmodule Bonfire.Common.Enums do
 
   def maybe_get(_, _, fallback), do: fallback
 
+  @doc "Checks if the given list contains any duplicates. Takes an optional function that can be used to extract and/or compute the value to compare for each element in the list."
   def has_duplicates?(list, fun \\ nil),
     do: check_has_duplicates?(list, %{}, fun || fn x -> x end)
 
@@ -100,10 +105,18 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  @doc "Takes a list of maps that have an id field and returns a list with only the unique maps. Uniqueness is determined based on the id field and not the full contents of the maps."
   def uniq_by_id(list) do
     Enum.uniq_by(list, &Utils.e(&1, :id, &1))
   end
 
+  @doc """
+  This function is used to insert a new value into a nested map data structure, where the path to the location of the value is specified as a list of keys.
+
+  When the path is a single-element list, if the key already exists in the map, it returns the original map; otherwise, it inserts the key-value pair.
+
+  When the path is a list of more than one key, the first element of the list (key) represents the key for the current level of the nested map, and the remaining elements (path) represent the keys for the nested map at the next level. The function starts by retrieving the value at the current level of the map (if it exists) and updates the map with the new value.
+  """
   def put_new_in(%{} = map, [key], val) do
     Map.put_new(map, key, val)
   end
@@ -145,6 +158,7 @@ defmodule Bonfire.Common.Enums do
 
   defp magic_filter_empty(val, _, _, fallback), do: filter_empty(val, fallback)
 
+  @doc "Takes a value and a fallback value. If the value is empty (e.g. an empty map, a non-loaded association, an empty list, an empty string, or nil), the fallback value is returned."
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
   def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
@@ -196,16 +210,22 @@ defmodule Bonfire.Common.Enums do
     val
   end
 
-  def elem_or(verb, index, _fallback) when is_tuple(verb), do: elem(verb, index)
-  def elem_or(_verb, _index, fallback), do: fallback
+  @doc """
+  Takes a tuple, an index and a fallback value and returns either the tuple value at that index (if not nil or false) or the fallback. If the tuple doesn't contain such an index, it raises `ArgumentError`.
+  """
+  def elem_or(tuple, index, fallback) when is_tuple(tuple), do: elem(tuple, index) || fallback
+  def elem_or(_, _index, fallback), do: fallback
 
-  @doc "Rename a key in a map"
+  @doc "Renames a key in a map. Optionally changes the value as well."
   def map_key_replace(%{} = map, key, new_key, new_value \\ nil) do
     map
     |> Map.put(new_key, new_value || Map.get(map, key))
     |> Map.delete(key)
   end
 
+  @doc """
+  Renames a key in a `map`, only if the key exists in the `map`. Optionally changes the value as well.
+  """
   def map_key_replace_existing(%{} = map, key, new_key, new_value \\ nil) do
     if Map.has_key?(map, key) do
       map_key_replace(map, key, new_key, new_value)
@@ -214,20 +234,30 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  @doc """
+  Gets the value of a key in a map and returns the ID of that value (i.e. either the :id field of that association, or the value itself).
+  """
   def attr_get_id(attrs, field_name) do
     if is_map(attrs) and Map.has_key?(attrs, field_name) do
       Map.get(attrs, field_name)
-      |> Types.ulid()
+      |> Types.id()
     end
   end
 
-  @doc "conditionally update a map"
+  @doc """
+  Updates a `map` with the given `key` and `value`, but only if the `value` is not `nil`, an empty list or an empty string.
+  """
   def maybe_put(map, _key, nil), do: map
   def maybe_put(map, _key, []), do: map
   def maybe_put(map, _key, ""), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  @doc "recursively merge structs, maps or lists (into a struct or map)"
+  @doc """
+  Recursively merges two data structures (`left` and `right`), which can be structs, maps or lists.
+  If `left` and `right` are `Ecto.Changeset`s, `merge_changesets/2` is called on them.
+  If `left` is a struct, a similar struct is returned with the merged values.
+  If `left` and `right` are lists, they are concatenated unless `:replace_lists` option is set to `true`.
+  """
   def deep_merge(left, right, opts \\ [])
 
   def deep_merge(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, _opts) do
@@ -276,6 +306,7 @@ defmodule Bonfire.Common.Enums do
     right
   end
 
+  @doc "Deep merges a list of maps into a single map."
   def deep_merge_reduce(list_or_map, opts \\ [])
   def deep_merge_reduce([], _opts), do: []
   # to avoid Enum.EmptyError
@@ -287,7 +318,7 @@ defmodule Bonfire.Common.Enums do
     end)
   end
 
-  @doc "merge maps or lists (into a map)"
+  @doc "Merges two maps or lists into a single map"
   def merge_as_map(left, right, opts \\ [])
 
   def merge_as_map(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, _opts) do
@@ -345,18 +376,18 @@ defmodule Bonfire.Common.Enums do
     right
   end
 
+  @doc "Merges two `Ecto` changesets. If both changesets have a prepare field, the function concatenates the values of the prepare fields. Either way it also calls `Ecto.Changeset.merge/2` operation."
   def merge_changesets(%Ecto.Changeset{prepare: p1} = cs1, %Ecto.Changeset{prepare: p2} = cs2)
       when is_list(p1) and is_list(p2) and p2 != [] do
-    info("workaround for `Ecto.Changeset.merge` not merging prepare")
+    # workaround for `Ecto.Changeset.merge` not merging prepare
     %{Ecto.Changeset.merge(cs1, cs2) | prepare: p1 ++ p2}
   end
 
   def merge_changesets(%Ecto.Changeset{} = cs1, %Ecto.Changeset{} = cs2) do
-    info(cs1.prepare, "merge without prepare")
-    info(cs2.prepare, "merge without prepare")
     Ecto.Changeset.merge(cs1, cs2)
   end
 
+  @doc "Merges two maps map_1 and map_2, but only keeps the keys that exist in map_1."
   def merge_keeping_only_first_keys(map_1, map_2) do
     map_1
     |> Map.keys()
@@ -364,7 +395,7 @@ defmodule Bonfire.Common.Enums do
     |> then(&Map.merge(map_1, &1))
   end
 
-  @doc "Append an item to a list if it is not nil"
+  @doc "Appends a value to a list, but only if the value is not nil or an empty list. "
   @spec maybe_append([any()], any()) :: [any()]
   def maybe_append(list, value) when is_nil(value) or value == [], do: list
 
@@ -374,13 +405,14 @@ defmodule Bonfire.Common.Enums do
   def maybe_append(list, value) when is_list(list), do: [value | list]
   def maybe_append(obj, value), do: maybe_append([obj], value)
 
+  @doc "Flattens the list if provided a list, otherwise just return the input"
   def maybe_flatten(list) when is_list(list), do: List.flatten(list)
   def maybe_flatten(other), do: other
 
   @doc """
-  Flattens a list by recursively flattening the head and tail of the list
+  Takes a list and recursively flattens it by recursively flattening the head and tail of the list
   """
-  def flatter(list), do: list |> do_flatter() |> List.flatten()
+  def flatter(list), do: list |> do_flatter() |> maybe_flatten()
 
   defp do_flatter([element | nil]), do: do_flatter(element)
   defp do_flatter([head | tail]), do: [do_flatter(head), do_flatter(tail)]
@@ -388,6 +420,7 @@ defmodule Bonfire.Common.Enums do
   defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter(element), do: element
 
+  @doc "If given a struct, returns a map representation of it"
   def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
   def maybe_from_struct(obj), do: obj
 
@@ -401,8 +434,8 @@ defmodule Bonfire.Common.Enums do
 
   def struct_to_map(other), do: other
 
+  @doc "Returns a map representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to maps as well."
   def maybe_to_map(obj, recursive \\ false)
-
   def maybe_to_map(struct = %{__struct__: _}, false), do: struct_to_map(struct)
 
   def maybe_to_map(data, false) when is_list(data) do
@@ -430,7 +463,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Converts an enumerable to a list recursively
+  Returns a keyword list representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to keyword lists as well.
   Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first
   """
   def maybe_to_keyword_list(obj, recursive \\ false)
@@ -463,16 +496,21 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  @doc "Recursively converts all nested structs to maps."
   def nested_structs_to_maps(struct = %type{}) when type != DateTime,
-    do: nested_structs_to_maps(struct_to_map(struct))
+    do: struct_to_map(struct) |> nested_structs_to_maps()
 
-  def nested_structs_to_maps(v) when not is_map(v), do: v
-
-  def nested_structs_to_maps(map = %{}) do
-    map
-    |> Enum.map(fn {k, v} -> {k, nested_structs_to_maps(v)} end)
-    |> Enum.into(%{})
+  def nested_structs_to_maps(enum) when is_map(enum) or is_list(enum) do
+    if is_map(enum) or Keyword.keyword?(enum) do
+      enum
+      |> Enum.map(fn {k, v} -> {k, nested_structs_to_maps(v)} end)
+      |> Enum.into(%{})
+    else
+      enum
+    end
   end
+
+  def nested_structs_to_maps(v), do: v
 
   def maybe_merge_to_struct(first, precedence) when is_struct(first),
     do: struct(first, maybe_from_struct(precedence))
@@ -519,6 +557,7 @@ defmodule Bonfire.Common.Enums do
   def merge_structs_as_map(target, merge) when is_map(target) and is_map(merge),
     do: Map.merge(target, merge)
 
+  @doc "Recursively filters nil values from a map"
   def map_filter_empty(data) when is_map(data) and not is_struct(data) do
     Enum.map(data, &map_filter_empty/1)
     |> Enum.reject(fn {_, v} -> is_nil(v) end)
@@ -534,10 +573,9 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Convert map atom keys to strings
+  Takes a map or keyword list, and returns a map with any atom keys converted to string keys. It can optionally do so recursively. 
   """
   def stringify_keys(map, recursive \\ false)
-
   def stringify_keys(nil, _recursive), do: nil
 
   def stringify_keys(object, true) when is_map(object) or is_list(object) do
@@ -569,6 +607,7 @@ defmodule Bonfire.Common.Enums do
     not_a_map
   end
 
+  @doc "Takes a data structure and converts any keys in maps to (previously defined) atoms, recursively. By default any unknown string keys will be discarded. It can optionally also convert string values to known atoms as well."
   def input_to_atoms(
         data,
         discard_unknown_keys \\ true,
@@ -632,6 +671,7 @@ defmodule Bonfire.Common.Enums do
 
   def input_to_atoms(v, _, _), do: v
 
+  @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
   def maybe_to_structs(v) when is_struct(v), do: v
 
   def maybe_to_structs(v),
@@ -664,6 +704,7 @@ defmodule Bonfire.Common.Enums do
 
   defp maybe_add_mixin_id(data, _parent_id), do: data
 
+  @doc "Takes a data structure and tries to convert it to a struct, using some hints in the data (eg. `__type` or `index_type` fields) or a manually-provided type."
   def maybe_to_struct(obj, type \\ nil)
 
   def maybe_to_struct(%{__struct__: struct_type} = obj, target_type)
@@ -681,13 +722,12 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def maybe_to_struct(obj, module) when is_atom(module) do
-    debug("to_struct with module #{module}")
+  def maybe_to_struct(obj, type) when is_atom(type) do
     # if module_enabled?(module) and module_enabled?(Mappable) do
     #   Mappable.to_struct(obj, module)
     # else
-    if module_enabled?(module),
-      do: struct(module, obj),
+    if module_enabled?(type),
+      do: struct(type, obj),
       else: obj
 
     # end
@@ -715,14 +755,15 @@ defmodule Bonfire.Common.Enums do
     |> Map.merge(a_struct, ...)
   end
 
-  def count_where(collection, function) do
+  @doc "Counts the number of items in an enumerable that satisfy the given function."
+  def count_where(collection, function \\ &is_nil/1) do
     Enum.reduce(collection, 0, fn item, count ->
       if function.(item), do: count + 1, else: count
     end)
   end
 
   @doc """
-  Like group_by, except children are required to be unique (will throw
+  Like `Enum.group_by/3`, except children are required to be unique (will throw
   otherwise!) and the resulting map does not wrap each item in a list
   """
   def group([], fun) when is_function(fun, 1), do: %{}
@@ -755,6 +796,7 @@ defmodule Bonfire.Common.Enums do
        when not is_map_key(acc, key),
        do: Map.put(acc, key, value)
 
+  @doc "Applies a function from one of Elixir's `Map`, `Keyword`, or `List` modules depending on the type of the given enumerable."
   def enum_maybe_apply(map, fun, args) when is_map(map) do
     Utils.maybe_apply(Map, fun, [map] ++ List.wrap(args))
   end

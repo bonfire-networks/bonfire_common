@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Cache do
+  @moduledoc "Helpers for caching data and operations"
+
   use Decorator.Define, cache: 0
   use Bonfire.Common.Utils
   require Logger
@@ -12,6 +14,7 @@ defmodule Bonfire.Common.Cache do
   # def cache(fn_body, context) do
   # end
 
+  @doc "Takes a function (or module and function names) and a set of arguments for that function, and tries to fetch the previous result of running that function from the in-memory cache. If it's not in the cache, it executes the function, and caches and returns the result."
   def maybe_apply_cached(fun, args, opts \\ [])
 
   def maybe_apply_cached(fun, args, opts) when is_function(fun) do
@@ -32,8 +35,17 @@ defmodule Bonfire.Common.Cache do
     |> do_maybe_apply_cached(module, fun, args, ...)
   end
 
+  @doc "It removes the result of a given function from the cache."
   def reset(fun, args, opts \\ []) do
-    Cachex.del(cache_key(opts), key_for_call(fun, args))
+    key_for_call(fun, args)
+    |> remove(opts)
+  end
+
+  @doc "It removes the entry associated with a key from the cache."
+  def remove(key, opts \\ []) do
+    cache_key(opts)
+    |> Cachex.del(key)
+    ~> debug("Removed from cache: #{key}")
   end
 
   defp key_for_call(fun, args) when is_function(fun) do
@@ -98,12 +110,6 @@ defmodule Bonfire.Common.Cache do
     opts[:cache_store] || :bonfire_cache
   end
 
-  def remove(key, opts \\ []) do
-    cache_key(opts)
-    |> Cachex.del(key)
-    ~> debug("Removed from cache: #{key}")
-  end
-
   def cached_preloads_for_objects(name, objects, fun)
       when is_list(objects) and is_function(fun) do
     Cachex.execute!(cache_key(), fn cache ->
@@ -148,36 +154,36 @@ defmodule Bonfire.Common.Cache do
     |> inspect()
   end
 
-  def maybe_apply_or_fun(module, fun, args)
-      when not is_nil(module) and is_atom(fun) do
+  defp maybe_apply_or_fun(module, fun, args)
+       when not is_nil(module) and is_atom(fun) do
     maybe_apply(module, fun, args)
   end
 
-  def maybe_apply_or_fun(_module, fun, args) when is_function(fun) do
+  defp maybe_apply_or_fun(_module, fun, args) when is_function(fun) do
     maybe_fun(fun, args)
   end
 
-  def maybe_fun(fun, [arg]) when is_function(fun) do
+  defp maybe_fun(fun, [arg]) when is_function(fun) do
     fun.(arg)
   end
 
-  def maybe_fun(fun, [arg1, arg2]) when is_function(fun) do
+  defp maybe_fun(fun, [arg1, arg2]) when is_function(fun) do
     fun.(arg1, arg2)
   end
 
-  def maybe_fun(fun, [arg1, arg2, arg3]) when is_function(fun) do
+  defp maybe_fun(fun, [arg1, arg2, arg3]) when is_function(fun) do
     fun.(arg1, arg2, arg3)
   end
 
-  def maybe_fun(fun, [arg1, arg2, arg3, arg4]) when is_function(fun) do
+  defp maybe_fun(fun, [arg1, arg2, arg3, arg4]) when is_function(fun) do
     fun.(arg1, arg2, arg3, arg4)
   end
 
-  def maybe_fun(fun, [arg1, arg2, arg3, arg4, arg5]) when is_function(fun) do
+  defp maybe_fun(fun, [arg1, arg2, arg3, arg4, arg5]) when is_function(fun) do
     fun.(arg1, arg2, arg3, arg4, arg5)
   end
 
-  def maybe_fun(fun, arg) when is_function(fun) do
+  defp maybe_fun(fun, arg) when is_function(fun) do
     fun.(arg)
   end
 end
