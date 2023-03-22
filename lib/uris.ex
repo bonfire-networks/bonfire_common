@@ -48,14 +48,12 @@ defmodule Bonfire.Common.URIs do
   def path(%{id: _id} = object, action) when is_atom(action),
     do: path(Types.object_type(object), [path_id(object), action])
 
-  def path(view_module_or_path_name_or_object, args) when not is_list(args),
-    do: path(view_module_or_path_name_or_object, [args])
-
   def path(view_module_or_path_name_or_object, args)
       when is_atom(view_module_or_path_name_or_object) and
-             not is_nil(view_module_or_path_name_or_object) and is_list(args) do
-    ([Bonfire.Common.Config.endpoint_module(), view_module_or_path_name_or_object] ++ args)
-    # |> debug("args")
+             not is_nil(view_module_or_path_name_or_object) do
+    ([Bonfire.Common.Config.endpoint_module(), view_module_or_path_name_or_object] ++
+       List.wrap(args))
+    |> debug("args")
     |> case Utils.maybe_apply(
               Bonfire.Web.Router.Reverse,
               :path,
