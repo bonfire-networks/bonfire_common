@@ -304,8 +304,9 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
-    repo().maybe_preload(object, :peered)
-    |> Utils.e(:peered, :canonical_uri, nil) ||
+    object = repo().maybe_preload(object, :peered)
+
+    Utils.e(object, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
@@ -314,14 +315,16 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
-    repo().maybe_preload(object, created: [:peered])
-    |> Utils.e(:created, :peered, :canonical_uri, nil) ||
+    object = repo().maybe_preload(object, created: [:peered])
+
+    Utils.e(object, :created, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
   def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object) do
-    repo().maybe_preload(object, character: [:peered])
-    |> Utils.e(:character, :peered, :canonical_uri, nil) ||
+    object = repo().maybe_preload(object, character: [:peered])
+
+    Utils.e(object, :character, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
@@ -346,17 +349,16 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  def maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
-    if module_enabled?(Characters) do
-      debug("check if object is a Character (in which case use actor URL)")
+  def maybe_generate_canonical_url(%{character: %{username: id}}) when is_binary(id) do
+    maybe_generate_canonical_url(id)
+  end
 
-      case Characters.character_url(thing) do
-        nil -> maybe_generate_canonical_url(id)
-        character_url -> character_url
-      end
-    else
-      maybe_generate_canonical_url(id)
-    end
+  def maybe_generate_canonical_url(%{username: id} = thing) when is_binary(id) do
+    maybe_generate_canonical_url(id)
+  end
+
+  def maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
+    maybe_generate_canonical_url(id)
   end
 
   def maybe_generate_canonical_url(id) when is_binary(id) do
