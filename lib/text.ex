@@ -36,6 +36,11 @@ defmodule Bonfire.Common.Text do
     |> binary_part(0, length)
   end
 
+  def hash(seed, opts \\ []) do
+    :crypto.hash(opts[:algorithm] || :md5, seed)
+    |> Base.url_encode64(padding: opts[:padding] || false)
+  end
+
   def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
 
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
