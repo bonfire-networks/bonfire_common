@@ -47,7 +47,7 @@ defmodule Bonfire.Common.Pointers.Preload do
   end
 
   def maybe_preload_pointers(object, keys, _opts) do
-    debug("ignore #{inspect(keys)}")
+    debug(keys, "ignore #{inspect(keys)}")
     object
   end
 
