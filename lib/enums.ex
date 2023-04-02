@@ -318,6 +318,12 @@ defmodule Bonfire.Common.Enums do
     end)
   end
 
+  def merge_uniq(left, right) when is_list(left) and is_list(right) do
+    Keyword.merge(left, right, fn _k, _v1, v2 ->
+      v2
+    end)
+  end
+
   @doc "Merges two maps or lists into a single map"
   def merge_as_map(left, right, opts \\ [])
 

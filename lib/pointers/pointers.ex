@@ -108,9 +108,12 @@ defmodule Bonfire.Common.Pointers do
 
   @doc "Prepare a query for generic pointer objects"
   def pointer_query(filters, opts) do
-    opts = Utils.to_options(opts)
+    opts =
+      Utils.to_options(opts)
+      |> debug("opts")
+
     q = Queries.query(nil, filters)
-    # |> info()
+    # |> debug()
 
     # note: cannot use boundarise macro to avoid depedency cycles
     Utils.maybe_apply(
