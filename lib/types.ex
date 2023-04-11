@@ -139,7 +139,7 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_integer(val, fallback) do
     maybe_to_float(val, fallback)
-    |> Float.round()
+    |> round()
   end
 
   @doc "Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier)"
