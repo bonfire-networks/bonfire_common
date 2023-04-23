@@ -353,7 +353,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defp rollback_unexpected(ret) do
         error(
-          "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{inspect(ret)}"
+          "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{inspect(ret)}. Rolling back the DB transaction..."
         )
 
         rollback("transact_with_unexpected_case")
