@@ -390,70 +390,101 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
-  @doc "Return the homepage URL of the local instance"
-  def base_url(conn_or_socket \\ nil)
+  @doc "Return the homepage URI (as struct) of the local instance"
+  def base_uri(conn_or_socket \\ nil)
 
-  def base_url(%{endpoint: endpoint} = _socket), do: base_url(endpoint)
+  def base_uri(%{endpoint: endpoint} = _socket), do: base_uri(endpoint)
 
-  def base_url(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
+  def base_uri(endpoint) when not is_nil(endpoint) and is_atom(endpoint) do
     if module_enabled?(endpoint) do
       endpoint.struct_url()
-      # |> info(endpoint)
-      |> base_url()
+      # |> debug(endpoint)
     else
-      error("endpoint module not found: #{inspect(endpoint)}")
-      base_url(nil)
+      if endpoint != Common.Config.endpoint_module(),
+        do: base_uri(nil),
+        else: error(endpoint, "endpoint module not available")
     end
   rescue
     e ->
-      error(e, "could not get struct_url from endpoint")
-      base_url(nil)
+      if endpoint != Common.Config.endpoint_module(),
+        do: base_uri(nil),
+        else: error(e, "could not get struct_url from endpoint")
   end
 
-  def base_url(%{host: host, port: 80}),
-    do: "http://" <> host
-
-  def base_url(%{host: host, port: 443}),
-    do: "https://" <> host
-
-  def base_url(%{scheme: scheme, host: host, port: port}),
-    do: "#{scheme}://#{host}:#{port}"
-
-  def base_url(%{scheme: scheme, host: host}),
-    do: "#{scheme}://#{host}"
-
-  def base_url(%{host: host, port: port}),
-    do: "http://#{host}:#{port}"
-
-  def base_url(%{host: host}), do: "http://#{host}"
-
-  def base_url(_) do
+  def base_uri(_) do
     case Common.Config.endpoint_module() do
       endpoint when is_atom(endpoint) ->
         if module_enabled?(endpoint) do
-          base_url(endpoint)
+          base_uri(endpoint)
         else
           error("endpoint module #{endpoint} not available")
-          ""
         end
 
       _ ->
         error("requires a conn or :endpoint_module in Config")
+    end
+  end
+
+  @doc "Return the homepage URL of the local instance"
+  def base_url(conn_or_socket_or_uri \\ nil)
+
+  def base_url(%{host: host, port: 80}) when is_binary(host),
+    do: "http://" <> host
+
+  def base_url(%{host: host, port: 443}) when is_binary(host),
+    do: "https://" <> host
+
+  def base_url(%{scheme: scheme, host: host, port: port})
+      when is_binary(host) and not is_nil(scheme) and not is_nil(port),
+      do: "#{scheme}://#{host}:#{port}"
+
+  def base_url(%{scheme: scheme, host: host}) when is_binary(host) and not is_nil(scheme),
+    do: "#{scheme}://#{host}"
+
+  def base_url(%{host: host, port: port}) when is_binary(host) and not is_nil(port),
+    do: "http://#{host}:#{port}"
+
+  def base_url(%{host: host}) when is_binary(host), do: "http://#{host}"
+
+  def base_url(%URI{} = uri), do: error(uri, "instance has no valid host")
+
+  def base_url(url) when is_binary(url) do
+    url
+    |> URI.parse()
+    |> base_url()
+  end
+
+  def base_url(other) do
+    with %URI{} = uri <- base_uri(other) do
+      base_url(uri)
+    end
+  end
+
+  def instance_domain(uri_or_endpoint_or_conn \\ nil)
+
+  def instance_domain(%URI{} = uri) do
+    case uri do
+      %{host: host, port: port} when port not in [80, 443] ->
+        "#{host}:#{port}"
+
+      %{host: host} when is_binary(host) ->
+        host
+
+      other ->
+        error(other, "instance has no valid host")
         ""
     end
   end
 
-  def instance_domain(endpoint_or_conn \\ nil) do
-    case base_url(endpoint_or_conn) |> URI.parse() do
-      %{host: host, port: port} when port not in [80, 443] ->
-        "#{host}:#{port}"
+  def instance_domain(url) when is_binary(url) do
+    url
+    |> URI.parse()
+    |> instance_domain()
+  end
 
-      %{host: host} ->
-        host
-
-      other ->
-        error(other, "base_url returned no host")
-        ""
+  def instance_domain(endpoint_or_conn) do
+    with %URI{} = uri <- base_uri(endpoint_or_conn) do
+      instance_domain(uri)
     end
   end
 end
