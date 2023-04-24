@@ -303,6 +303,7 @@ defmodule Bonfire.Common.Types do
   def object_type(%{pointer_id: type}), do: object_type(type)
   # for search results
   def object_type(%{index_type: type}), do: object_type(maybe_to_atom(type))
+  def object_type(%{"index_type" => type}), do: object_type(maybe_to_atom(type))
   # for activities
   def object_type(%{object: object}), do: object_type(object)
 
@@ -328,6 +329,7 @@ defmodule Bonfire.Common.Types do
   def object_type(type)
       when type in [
              Bonfire.Data.Identity.User,
+             "Bonfire.Data.Identity.User",
              "5EVSER1S0STENS1B1YHVMAN01D",
              "User",
              "Users",
