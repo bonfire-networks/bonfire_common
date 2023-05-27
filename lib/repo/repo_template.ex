@@ -241,17 +241,26 @@ defmodule Bonfire.Common.RepoTemplate do
       defp paginator_paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
 
       defp paginator_paginate(queryable, opts, repo_opts) when is_list(opts) do
-        opts =
-          (opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
-          |> Keyword.new()
+        merged_opts =
+          Keyword.merge(
+            pagination_defaults(),
+            Keyword.merge(
+              @default_cursor_fields,
+              Keyword.new(opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
+            )
+          )
+          |> Keyword.update(:limit, 10, fn existing_value ->
+            if is_number(opts[:multiply_limit]),
+              do: existing_value * opts[:multiply_limit],
+              else: existing_value
+          end)
+          |> debug("merged opts")
 
-        # info(opts, "opts")
-        Keyword.merge(
-          pagination_defaults(),
-          Keyword.merge(@default_cursor_fields, opts)
-        )
-        |> debug("merged opts")
-        |> Paginator.paginate(queryable, ..., __MODULE__, repo_opts)
+        if opts[:return] == :query or merged_opts[:return] == :query do
+          Paginator.paginated_query(queryable, merged_opts)
+        else
+          Paginator.paginate(queryable, merged_opts, __MODULE__, repo_opts)
+        end
       end
 
       defp paginator_paginate(queryable, opts, repo_opts)
