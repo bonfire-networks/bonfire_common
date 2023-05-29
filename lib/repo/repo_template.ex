@@ -251,7 +251,7 @@ defmodule Bonfire.Common.RepoTemplate do
           )
           |> Keyword.update(:limit, 10, fn existing_value ->
             if is_number(opts[:multiply_limit]),
-              do: existing_value * opts[:multiply_limit],
+              do: ceil(existing_value * opts[:multiply_limit]),
               else: existing_value
           end)
           |> debug("merged opts")
@@ -386,6 +386,12 @@ defmodule Bonfire.Common.RepoTemplate do
       def sql(raw_sql, data \\ [], opts \\ []) do
         Ecto.Adapters.SQL.query!(__MODULE__, raw_sql, data, opts)
       end
+
+      # def to_sql_raw(sql, kind \\ :all) do
+      #   case to_sql(kind, sql) do
+      #     {query, params} -> EctoSparkles.Log.inline_params(query, Map.new(params))
+      #   end
+      # end
 
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
