@@ -121,7 +121,7 @@ defmodule Bonfire.Common.PubSub do
     "#{inspect(env.module)}.#{fun}/#{arity}"
   end
 
-  defp socket_connected_or_user?(%Phoenix.LiveView.Socket{} = socket),
+  defp socket_connected_or_user?(%struct{} = socket) when struct == Phoenix.LiveView.Socket,
     do: Utils.socket_connected?(socket)
 
   defp socket_connected_or_user?(other),
