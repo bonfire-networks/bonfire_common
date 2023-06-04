@@ -602,3 +602,9 @@ defmodule Bonfire.Common.Types do
   def sanitise_name("Care Closure"), do: nil
   def sanitise_name(type), do: Text.verb_infinitive(type) || type
 end
+
+defimpl Jason.Encoder, for: Tuple do
+  def encode(data, opts) when is_tuple(data) do
+    Jason.Encode.map(Map.new([data]), opts)
+  end
+end
