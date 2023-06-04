@@ -321,7 +321,7 @@ defmodule Bonfire.Common.Types do
   def object_type("@" <> _), do: Bonfire.Data.Identity.User
   def object_type("%40" <> _), do: Bonfire.Data.Identity.User
   def object_type("+" <> _), do: Bonfire.Classify.Category
-  def object_type("&" <> _), do: Bonfire.Classify.Category
+  def object_type("&" <> _), do: :group
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
@@ -356,9 +356,23 @@ defmodule Bonfire.Common.Types do
              Bonfire.Classify.Category,
              "Category",
              "Categories",
+             "Group",
+             "Groups",
+             :Category,
+             :Group,
+             :group,
+             "2AGSCANBECATEG0RY0RHASHTAG"
+           ],
+      do: :group
+
+  def object_type(type)
+      when type in [
+             #  Bonfire.Classify.Category,
+             #  "Category",
+             #  "Categories",
              "Topic",
              "Topics",
-             :Category,
+             #  :Category,
              :Topic
            ],
       do: Bonfire.Classify.Category
@@ -422,10 +436,6 @@ defmodule Bonfire.Common.Types do
   def object_type(type)
       when type in [ValueFlows.Process, "Process", "4AYF0R1NPVTST0BEC0ME0VTPVT"],
       do: ValueFlows.Process
-
-  def object_type(type)
-      when type in [Bonfire.Classify.Category, "Category", "2AGSCANBECATEG0RY0RHASHTAG"],
-      do: Bonfire.Classify.Category
 
   def object_type(id) when is_binary(id) do
     with {:ok, schema} <- Pointers.Tables.schema(id) do
