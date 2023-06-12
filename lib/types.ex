@@ -91,6 +91,18 @@ defmodule Bonfire.Common.Types do
 
   def ulids(objects), do: ulid(objects) |> List.wrap()
 
+  def ulids_or(objects, fallback_or_fun) when is_list(objects) do
+    Enum.flat_map(objects, &ulids_or(&1, fallback_or_fun))
+  end
+
+  def ulids_or(object, fun) when is_function(fun) do
+    List.wrap(ulid(object) || fun.(object))
+  end
+
+  def ulids_or(object, fallback) do
+    List.wrap(ulid(object) || fallback)
+  end
+
   @doc "Takes an object and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID if present in the object. Throws an error if the ULID ID is not present."
   def ulid!(object) do
     case ulid(object) do
