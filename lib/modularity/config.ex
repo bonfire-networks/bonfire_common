@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
+  alias Bonfire.Common.Enums
   import Extend
   import Untangle
 
@@ -165,7 +166,10 @@ defmodule Bonfire.Common.Config do
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_map(tree) do
-    put_tree(parent_keys, Keyword.new(tree), otp_app)
+    case Enums.maybe_to_keyword_list(tree) do
+      tree when is_list(tree) -> put_tree(parent_keys, tree, otp_app)
+      tree -> put(parent_keys, tree, otp_app)
+    end
   end
 
   defp put_tree(k, v, otp_app) do

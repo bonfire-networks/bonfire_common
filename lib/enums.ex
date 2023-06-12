@@ -213,6 +213,7 @@ defmodule Bonfire.Common.Enums do
   @doc """
   Takes a tuple, an index and a fallback value and returns either the tuple value at that index (if not nil or false) or the fallback. If the tuple doesn't contain such an index, it raises `ArgumentError`.
   """
+  def elem_or(tuple, index, fallback \\ nil)
   def elem_or(tuple, index, fallback) when is_tuple(tuple), do: elem(tuple, index) || fallback
   def elem_or(_, _index, fallback), do: fallback
 
@@ -470,36 +471,50 @@ defmodule Bonfire.Common.Enums do
 
   @doc """
   Returns a keyword list representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to keyword lists as well.
-  Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first
+  Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first, otherwise the enumerable(s) containing a string key won't be converted.
   """
   def maybe_to_keyword_list(obj, recursive \\ false)
 
   def maybe_to_keyword_list(obj, true = _recursive)
       when is_map(obj) or is_list(obj) do
     obj
-    |> maybe_to_keyword_list(false)
-    |> do_maybe_to_keyword_list()
+    |> maybe_to_keyword_list_recurse()
   end
 
-  def maybe_to_keyword_list(obj, false = _recursive)
-      when is_map(obj) or is_list(obj) do
-    Enum.filter(obj, fn
-      {k, _v} -> is_atom(k)
-      v -> v
-    end)
+  def maybe_to_keyword_list(object, false = _recursive)
+      when is_map(object) or is_list(object) do
+    maybe_keyword_new(object)
   end
 
   def maybe_to_keyword_list(obj, _), do: obj
 
-  defp do_maybe_to_keyword_list(object) do
-    if Keyword.keyword?(object) or is_map(object) do
-      Keyword.new(object, fn
-        {k, v} -> {k, maybe_to_keyword_list(v, true)}
-        v -> maybe_to_keyword_list(v, true)
-      end)
-    else
-      object
+  defp maybe_to_keyword_list_recurse(object) do
+    case maybe_keyword_new(object) do
+      object when is_map(object) ->
+        Map.filter(object, fn
+          {k, v} -> {k, maybe_to_keyword_list(v, true)}
+          v -> maybe_to_keyword_list(v, true)
+        end)
+
+      object when is_list(object) ->
+        Enum.filter(object, fn
+          {k, v} -> {k, maybe_to_keyword_list(v, true)}
+          v -> maybe_to_keyword_list(v, true)
+        end)
+
+      object ->
+        object
     end
+  end
+
+  defp maybe_keyword_new(object) do
+    if Enumerable.impl_for(object),
+      do: Keyword.new(object),
+      else: object
+  rescue
+    e ->
+      warn(e)
+      object
   end
 
   @doc "Recursively converts all nested structs to maps."
@@ -803,15 +818,25 @@ defmodule Bonfire.Common.Enums do
        do: Map.put(acc, key, value)
 
   @doc "Applies a function from one of Elixir's `Map`, `Keyword`, or `List` modules depending on the type of the given enumerable."
-  def enum_maybe_apply(map, fun, args) when is_map(map) do
+  def fun(map, fun, args \\ [])
+
+  def fun(map, fun, args) when is_map(map) do
     Utils.maybe_apply(Map, fun, [map] ++ List.wrap(args))
   end
 
-  def enum_maybe_apply(list, fun, args) when is_list(list) do
+  def fun(list, fun, args) when is_list(list) do
     if Keyword.keyword?(list) do
       Utils.maybe_apply(Keyword, fun, [list] ++ List.wrap(args))
     else
       Utils.maybe_apply(List, fun, [list] ++ List.wrap(args))
     end
+  end
+
+  defp maybe_fun(module, enum, fun, args) when is_map(enum) do
+    args = [enum] ++ List.wrap(args)
+
+    if function_exported?(module, fun, length(args)),
+      do: Utils.maybe_apply(module, fun, args),
+      else: Utils.maybe_apply(Enum, fun, args)
   end
 end

@@ -209,12 +209,12 @@ defmodule Bonfire.Common.Text do
      ], text, extra}
   end
 
-  defp slug({_tag, _attrs, text, _extra}), do: slug(text)
+  def slug({_tag, _attrs, text, _extra}), do: slug(text)
 
-  defp slug(text) when is_list(text),
+  def slug(text) when is_list(text),
     do: text |> Enum.map(&md_tag_text/1) |> Enum.join("-") |> slug()
 
-  defp slug(text) do
+  def slug(text) do
     text
     |> String.trim()
     |> String.downcase()
