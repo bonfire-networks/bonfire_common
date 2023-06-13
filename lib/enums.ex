@@ -282,7 +282,7 @@ defmodule Bonfire.Common.Enums do
       if opts[:replace_lists] do
         right
       else
-        left ++ right
+        Enum.uniq(left ++ right)
       end
     end
   end
@@ -320,9 +320,13 @@ defmodule Bonfire.Common.Enums do
   end
 
   def merge_uniq(left, right) when is_list(left) and is_list(right) do
-    Keyword.merge(left, right, fn _k, _v1, v2 ->
-      v2
-    end)
+    if Keyword.keyword?(left) and Keyword.keyword?(right) do
+      Keyword.merge(left, right, fn _k, _v1, v2 ->
+        v2
+      end)
+    else
+      Enum.uniq(left ++ right)
+    end
   end
 
   @doc "Merges two maps or lists into a single map"
