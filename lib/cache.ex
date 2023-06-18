@@ -48,6 +48,13 @@ defmodule Bonfire.Common.Cache do
     ~> debug("Removed from cache: #{key}")
   end
 
+  def remove_all(opts \\ []) do
+    store = cache_key(opts)
+
+    Cachex.clear(store)
+    ~> debug("Cleared cache: #{store}")
+  end
+
   defp key_for_call(fun, args) when is_function(fun) do
     mod_fun =
       String.split(inspect(fun), " in ")
