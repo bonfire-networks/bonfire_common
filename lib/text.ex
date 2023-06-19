@@ -150,7 +150,7 @@ defmodule Bonfire.Common.Text do
   #   maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
   def maybe_markdown_to_html("<" <> _ = content) do
-    warn("not processing markup in content that starts with an HTML tag")
+    warn("skipping processing of content that starts with an HTML tag")
     content
   end
 
@@ -306,7 +306,8 @@ defmodule Bonfire.Common.Text do
     end
     |> String.trim("<p><br/></p>")
     |> String.trim("<br/>")
-    |> debug(html_string)
+
+    # |> debug(html_string)
   end
 
   def maybe_emote(content) do
