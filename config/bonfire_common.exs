@@ -16,7 +16,7 @@ config :bonfire_common, Bonfire.Common.Localise.Cldr,
   default_locale: default_locale,
   # locales that will be made available on top of those for which gettext localisation files are available
   locales: ["fr", "en", "es"],
-  providers: [Cldr.Language],
+  providers: [Cldr.Language, Cldr.DateTime, Cldr.Number, Cldr.Calendar],
   gettext: Bonfire.Common.Localise.Gettext,
   # extra Gettex modules from dependencies not using the one from Bonfire.Common, so we can change their locale too
   extra_gettext: [Timex.Gettext],

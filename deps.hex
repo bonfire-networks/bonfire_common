@@ -2,6 +2,7 @@ gettext = "~> 0.22.1" # localisation
 ex_cldr = "~> 2.30" # internationalisation, let ex_cldr_languages pull it in, see https://github.com/elixir-cldr/cldr/issues/188
 ex_cldr_languages = "~> 0.3.3" # localise language names
 ex_cldr_plugs = "~> 1.2"
+ex_cldr_dates_times = "~> 2.0"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.7.0" # string recasing
 jason = "~> 1.4.0" # json parsing
