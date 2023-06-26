@@ -89,7 +89,7 @@ defmodule Bonfire.Common.Errors do
 
       error(exception_banner, msg_text)
       Logger.info(stacktrace, limit: :infinity, printable_limit: :infinity)
-      # Logger.warn(stacktrace, truncate: :infinity)
+      # Logger.warning(stacktrace, truncate: :infinity)
     else
       error(exception, msg_text)
     end
