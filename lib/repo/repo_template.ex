@@ -32,7 +32,7 @@ defmodule Bonfire.Common.RepoTemplate do
       Run a transaction, similar to `Repo.transaction/1`, but it expects an ok or error
       tuple. If an error tuple is returned, the transaction is aborted.
       """
-      @spec transact_with(fun :: (() -> {:ok, any} | {:error, any})) ::
+      @spec transact_with(fun :: (-> {:ok, any} | {:error, any})) ::
               {:ok, any} | {:error, any}
       def transact_with(fun) do
         transaction(fn ->
