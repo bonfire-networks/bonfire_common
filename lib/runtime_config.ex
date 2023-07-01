@@ -12,7 +12,7 @@ defmodule Bonfire.Common.RuntimeConfig do
       adapter_options: [
         ssl_options: [
           # Workaround for remote server certificate chain issues
-          partial_chain: &:hackney_connect.partial_chain/1,
+          # partial_chain: &:hackney_connect.partial_chain/1,
           # We don't support TLS v1.3 yet
           versions: [:tlsv1, :"tlsv1.1", :"tlsv1.2"]
         ]

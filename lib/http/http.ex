@@ -55,7 +55,8 @@ defmodule Bonfire.Common.HTTP do
   end
 
   defp process_request_options(options) do
-    Keyword.merge(Connection.hackney_options([]), options)
+    {_adapter, opts} = Connection.adapter_options([])
+    Keyword.merge(opts, options)
   end
 
   defp process_sni_options(options, nil), do: options
