@@ -47,6 +47,7 @@ defmodule Bonfire.Common.Enums do
   def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
     case maybe_get(map, key, :empty) do
       :empty -> maybe_get(map, Atom.to_string(key), fallback)
+      %Pointers.Pointer{deleted_at: del} when not is_nil(del) -> fallback
       val -> val
     end
   end
@@ -58,6 +59,9 @@ defmodule Bonfire.Common.Enums do
         case maybe_get(map, Recase.to_camel(key), :empty) do
           :empty ->
             maybe_get(map, Types.maybe_to_atom(key), fallback)
+
+          %Pointers.Pointer{deleted_at: del} when not is_nil(del) ->
+            fallback
 
           val ->
             val
@@ -163,6 +167,10 @@ defmodule Bonfire.Common.Enums do
   @doc "Takes a value and a fallback value. If the value is empty (e.g. an empty map, a non-loaded association, an empty list, an empty string, or nil), the fallback value is returned."
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
+
+  def filter_empty(%Pointers.Pointer{deleted_at: del}, fallback) when not is_nil(del),
+    do: fallback
+
   def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   def filter_empty([], fallback), do: fallback
   def filter_empty("", fallback), do: fallback

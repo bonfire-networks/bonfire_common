@@ -374,9 +374,15 @@ defmodule Bonfire.Common.Utils do
       user ->
         case user do
           # |> repo().maybe_preload(accounted: :account) do
-          %{accounted: %{account: %{id: _} = account}} -> account
-          # %{accounted: %{account_id: account_id}} -> account_id
-          _ -> nil
+          %{accounted: %{account: %{id: _} = account}} ->
+            account
+
+          %{accounted: %{account_id: account_id}} ->
+            account_id
+
+          _ ->
+            debug(user, "no account in current_user")
+            nil
         end
     end
   end
