@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Text do
 
   def contains?(_, _), do: nil
 
-  def random_string(length) do
+  def random_string(length \\ 10) do
     :crypto.strong_rand_bytes(length)
     |> Base.url_encode64()
     |> binary_part(0, length)

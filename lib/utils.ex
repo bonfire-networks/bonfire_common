@@ -381,7 +381,7 @@ defmodule Bonfire.Common.Utils do
             account_id
 
           _ ->
-            debug(user, "no account in current_user")
+            debug(Enums.id(user), "no account in current_user")
             nil
         end
     end
