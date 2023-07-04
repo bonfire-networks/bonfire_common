@@ -320,6 +320,27 @@ defmodule Bonfire.Common.Utils do
   def current_user_required!(context),
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
+  def current_user_auth!(context, password) do
+    current_user = current_user(context)
+    current_account_id = Enums.id(current_account(context))
+
+    if not is_nil(current_user) and not is_nil(current_account_id) and
+         e(current_user, :accounted, :account_id, nil) == current_account_id and
+         Bonfire.Me.Accounts.login_valid?(current_account_id, password),
+       do: current_user,
+       else: raise(Bonfire.Fail.Auth, :invalid_credentials)
+  end
+
+  def current_account_auth!(context, password) do
+    current_account = current_account(context)
+    current_account_id = Enums.id(current_account)
+
+    if not is_nil(current_account_id) and
+         Bonfire.Me.Accounts.login_valid?(current_account_id, password),
+       do: current_account,
+       else: raise(Bonfire.Fail.Auth, :invalid_credentials)
+  end
+
   @doc """
   Returns the current account from socket, assigns, or options.
   """

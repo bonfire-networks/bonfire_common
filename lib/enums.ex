@@ -44,6 +44,8 @@ defmodule Bonfire.Common.Enums do
   @doc """
   Attempt getting a value out of a map by atom key, or try with string key, or return a fallback
   """
+  def enum_get(map, key, fallback \\ nil)
+
   def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
     case maybe_get(map, key, :empty) do
       :empty -> maybe_get(map, Atom.to_string(key), fallback)
@@ -193,6 +195,8 @@ defmodule Bonfire.Common.Enums do
 
   def filter_empty(val, _fallback), do: val
 
+  def filter_empty(val, _fallback), do: val
+
   defp filter_empty_enum(enum, filter_keys? \\ false),
     do:
       enum
@@ -211,6 +215,30 @@ defmodule Bonfire.Common.Enums do
   defp re_filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   defp re_filter_empty(nil, fallback), do: fallback
   defp re_filter_empty(val, _fallback), do: val
+
+  def filter_empty(%{key: nil}, fallback, key) do
+    fallback
+  end
+
+  def filter_empty(enum, fallback, key) when is_atom(key) or is_binary(key) do
+    case enum_get(enum, key) do
+      nil -> fallback
+      _ -> filter_empty(enum, fallback)
+    end
+  end
+
+  # def filter_empty(enum, fallback, keys) when is_list(keys)  do
+  #   case enum do
+  #     _ when is_map(enum) -> 
+  #       enum_keys = Map.keys(enum)
+  #       if Enum.any?(keys, fn key -> key in keys end) fallback
+  #     nil -> fallback
+  #     _ -> filter_empty(enum, fallback)
+  #   end
+  # end
+  # def filter_empty(enum, fallback, key) do
+  #   filter_empty(enum, fallback, [key])
+  # end
 
   def maybe_list(val, change_fn) when is_list(val) do
     change_fn.(val)
