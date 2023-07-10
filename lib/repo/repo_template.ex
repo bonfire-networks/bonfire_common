@@ -395,6 +395,12 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
+
+      defdelegate preload_all(obj, opts \\ []),
+        to: Bonfire.Common.Repo.Preload
+
+      defdelegate preload_mixins(obj, opts \\ []),
+        to: Bonfire.Common.Repo.Preload
     end
   end
 end

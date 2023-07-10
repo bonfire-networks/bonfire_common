@@ -16,7 +16,24 @@ defmodule Bonfire.Common.Repo.Preload do
   use Arrows
 
   alias Pointers.Pointer
+  alias Pointers.Tables
   alias Bonfire.Common.Pointers
+
+  def preload_all(%{} = structure, opts \\ []) do
+    for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(structure), do: key)
+    |> maybe_preload(structure, ..., opts)
+  end
+
+  def preload_mixins(%{} = structure, opts \\ []) do
+    maybe_preload(structure, schema_mixins(structure), opts)
+  end
+
+  def schema_mixins(%{} = structure) do
+    mixin_modules = Tables.mixin_modules()
+
+    for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(structure), do: key)
+    |> Enum.filter(&(&1 in mixin_modules))
+  end
 
   # def maybe_preload(obj, :context) do
   # # follow the context Pointer
