@@ -136,25 +136,32 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def maybe_markdown_to_html(nothing)
+  def maybe_markdown_to_html(nothing, opts \\ [])
+
+  def maybe_markdown_to_html(nothing, _opts)
       when not is_binary(nothing) or nothing == "" do
     nil
   end
 
-  # def maybe_markdown_to_html("<p>"<>content) do
+  def maybe_markdown_to_html(nothing, _opts)
+      when not is_binary(nothing) or nothing == "" do
+    nil
+  end
+
+  # def maybe_markdown_to_html("<p>"<>content, opts) do
   #   content
   #   |> String.trim_trailing("</p>")
-  #   |> maybe_markdown_to_html() # workaround for weirdness with Earmark's parsing of markdown within html
+  #   |> maybe_markdown_to_html(opts) # workaround for weirdness with Earmark's parsing of markdown within html
   # end
-  # def maybe_markdown_to_html("<"<>_ = content) do
-  #   maybe_markdown_to_html(" "<>content) # workaround for weirdness with Earmark's parsing of html when it starts a line
+  # def maybe_markdown_to_html("<"<>_ = content, opts) do
+  #   maybe_markdown_to_html(" "<>content, opts) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
-  def maybe_markdown_to_html("<" <> _ = content) do
+  def maybe_markdown_to_html("<" <> _ = content, _opts) do
     warn("skipping processing of content that starts with an HTML tag")
     content
   end
 
-  def maybe_markdown_to_html(content) do
+  def maybe_markdown_to_html(content, opts) do
     # debug(content, "input")
 
     # if module_enabled?(Makedown) do
@@ -165,8 +172,7 @@ defmodule Bonfire.Common.Text do
     # end
 
     if processor do
-      content
-      |> processor.as_html!(
+      [
         # inner_html: true,
         escape: false,
         breaks: true,
@@ -180,7 +186,9 @@ defmodule Bonfire.Common.Text do
           {"h5", &md_heading_anchors/1},
           {"h6", &md_heading_anchors/1}
         ]
-      )
+      ]
+      |> Keyword.merge(opts)
+      |> processor.as_html!(content, ...)
       |> markdown_checkboxes()
 
       # |> debug("MD output for: #{content}")
