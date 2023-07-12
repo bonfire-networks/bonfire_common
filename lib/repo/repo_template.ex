@@ -113,7 +113,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
         keys =
           if not Keyword.keyword?(keys) do
-            Enum.map(keys, &{&1, Ecto.Changeset.get_field(cs, &1)})
+            Enum.map(keys, &{&1, Pointers.Changesets.get_field(cs, &1)})
           else
             keys
           end
