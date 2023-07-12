@@ -279,7 +279,7 @@ defmodule Bonfire.Common.Enums do
   def attr_get_id(attrs, field_name) do
     if is_map(attrs) and Map.has_key?(attrs, field_name) do
       Map.get(attrs, field_name)
-      |> Types.id()
+      |> id()
     end
   end
 

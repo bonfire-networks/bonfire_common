@@ -113,7 +113,7 @@ defmodule Bonfire.Common.Repo.Preload do
       obj
 
     e ->
-      warn("maybe_preload skipped with rescue: #{inspect(e)}")
+      warn(preloads, "maybe_preload skipped with rescue: #{inspect(e)} // attempted preloads")
       obj
   catch
     :exit, e ->
