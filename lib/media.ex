@@ -115,13 +115,13 @@ defmodule Bonfire.Common.Media do
   def image_url(_obj), do: nil
 
   @doc "Takes a Media map (or an object containing one) and returns the banner's URL."
-  def banner_url(%{profile: %{image: _} = profile}), do: banner_url(profile)
+  def banner_url(%{profile: %{image: %{id: _} = media} = _profile}), do: banner_url(media)
   def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
 
   def banner_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.BannerUploader.remote_url(media)
 
-  def banner_url(%{path: _} = media),
+  def banner_url(%{path: path} = media) when is_binary(path),
     do: Bonfire.Files.BannerUploader.remote_url(media)
 
   def banner_url(%{image_id: image_id}) when is_binary(image_id),
