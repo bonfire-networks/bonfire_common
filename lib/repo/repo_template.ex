@@ -143,22 +143,34 @@ defmodule Bonfire.Common.RepoTemplate do
         )
       end
 
-      def insert_or_ignore(cs) when is_struct(cs) or is_atom(cs) do
-        cs
+      def insert_or_ignore(cs_or_struct) when is_struct(cs_or_struct) or is_atom(cs_or_struct) do
+        cs_or_struct
         # FIXME?
         |> Map.put(:repo_opts, on_conflict: :ignore)
-        # |> debug("insert_or_ignore cs")
+        # |> debug()
         |> insert(on_conflict: :nothing)
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__)
+          handle_postgrex_exception(exception, __STACKTRACE__, exception)
+
+        exception in Ecto.ConstraintError ->
+          handle_postgrex_exception(exception, __STACKTRACE__, exception)
+      end
+
+      def insert_or_ignore(schema, object) when is_map(object) do
+        struct(schema, object)
+        |> insert_or_ignore()
+      end
+
+      def insert_or_ignore(schema, objects) when is_list(objects) do
+        Enum.map(objects, &insert_or_ignore(schema, &1))
       end
 
       def insert_all_or_ignore(schema, data) when is_atom(schema) do
         insert_all(schema, data, on_conflict: :nothing)
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__)
+          handle_postgrex_exception(exception, __STACKTRACE__, exception)
       end
 
       @doc """
@@ -168,7 +180,7 @@ defmodule Bonfire.Common.RepoTemplate do
         one(limit(q, 1)) |> ret_single()
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__, nil, {:error, :not_found})
+          handle_postgrex_exception(exception, __STACKTRACE__, {:error, :not_found})
       end
 
       @doc """
@@ -178,7 +190,7 @@ defmodule Bonfire.Common.RepoTemplate do
         one(limit(q, 1))
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__, nil, fallback)
+          handle_postgrex_exception(exception, __STACKTRACE__, fallback)
 
         e in DBConnection.ConnectionError ->
           error(
@@ -310,7 +322,7 @@ defmodule Bonfire.Common.RepoTemplate do
         if opts[:return] == :query, do: query, else: all(query, opts)
       rescue
         exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__, nil, [])
+          handle_postgrex_exception(exception, __STACKTRACE__, [])
       end
 
       @doc "Execute a query to delete all matching records."
@@ -320,7 +332,7 @@ defmodule Bonfire.Common.RepoTemplate do
         |> delete_all()
       end
 
-      defp handle_postgrex_exception(exception, stacktrace, changeset \\ nil, fallback \\ false)
+      defp handle_postgrex_exception(exception, stacktrace, fallback \\ false, changeset \\ nil)
 
       defp handle_postgrex_exception(
              %{postgres: %{code: :undefined_file} = pg},
@@ -339,12 +351,12 @@ defmodule Bonfire.Common.RepoTemplate do
       # defp handle_postgrex_exception(
       #        %{postgres: %{code: :integrity_constraint_violation}},
       #        _,
-      #        changeset, fallback
+      #        fallback, changeset
       #      ) do
       #   {:error, %{changeset | valid?: false}}
       # end
 
-      defp handle_postgrex_exception(exception, stacktrace, _, fallback) do
+      defp handle_postgrex_exception(exception, stacktrace, fallback, _) do
         Errors.debug_exception(
           Utils.e(exception, :message, "A database error occurred"),
           exception,
