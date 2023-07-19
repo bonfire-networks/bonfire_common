@@ -682,7 +682,8 @@ defmodule Bonfire.Common.Enums do
       opts[:discard_unknown] || true,
       opts[:values] || false,
       opts[:nested] || true,
-      false
+      false,
+      opts[:to_snake] || false
     )
   end
 
@@ -692,15 +693,17 @@ defmodule Bonfire.Common.Enums do
       "WARNING: only do this with enums who's keys are defined in the code (not user generated or coming from an HTTP request or socket, etc) !"
     )
 
-    input_to_atoms(data, false, false, false, true)
+    input_to_atoms(data, false, false, false, true, false)
   end
 
   # skip structs
-  defp input_to_atoms(data, _, _, _, _) when is_struct(data) do
+  defp input_to_atoms(enum, discard_unknown_keys, including_values, nested, force, to_snake) 
+
+  defp input_to_atoms(data, _, _, _, _, _) when is_struct(data) do
     data
   end
 
-  defp input_to_atoms(%{} = data, true = discard_unknown_keys, including_values, nested, force) do
+  defp input_to_atoms(%{} = data, true = discard_unknown_keys, including_values, nested, force, to_snake) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
     :maps.filter(
       fn k, _v -> is_atom(k) end,
@@ -708,27 +711,27 @@ defmodule Bonfire.Common.Enums do
       |> Map.drop(["_csrf_token"])
       |> Map.new(fn {k, v} ->
         {
-          maybe_key_to_snake_atom_or_module(k, force),
-          input_to_atoms(v, discard_unknown_keys, including_values, nested, force)
+          maybe_key_to_snake_atom_or_module(k, force, to_snake),
+          input_to_atoms(v, discard_unknown_keys, including_values, nested, force, to_snake)
         }
       end)
     )
   end
 
-  defp input_to_atoms(%{} = data, false = discard_unknown_keys, including_values, nested, force) do
+  defp input_to_atoms(%{} = data, false = discard_unknown_keys, including_values, nested, force, to_snake) do
     data
     |> Map.drop(["_csrf_token"])
     |> Map.new(fn {k, v} ->
       {
-        maybe_key_to_snake_atom_or_module(k, force) || k,
-        input_to_atoms(v, discard_unknown_keys, including_values, nested, force)
+        maybe_key_to_snake_atom_or_module(k, force, to_snake) || k,
+        input_to_atoms(v, discard_unknown_keys, including_values, nested, force, to_snake)
       }
     end)
   end
 
-  defp input_to_atoms(list, true = _discard_unknown_keys, including_values, true = nested, force)
+  defp input_to_atoms(list, true = _discard_unknown_keys, including_values, true = nested, force, to_snake)
        when is_list(list) do
-    list = Enum.map(list, &input_to_atoms(&1, true, including_values, nested, force))
+    list = Enum.map(list, &input_to_atoms(&1, true, including_values, nested, force, to_snake))
 
     if Keyword.keyword?(list) do
       Keyword.filter(list, fn {k, _v} -> is_atom(k) end)
@@ -737,32 +740,39 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  defp input_to_atoms(list, _, including_values, true = nested, force) when is_list(list) do
-    Enum.map(list, &input_to_atoms(&1, false, including_values, nested, force))
+  defp input_to_atoms(list, _, including_values, true = nested, force, to_snake) when is_list(list) do
+    Enum.map(list, &input_to_atoms(&1, false, including_values, nested, force, to_snake))
   end
 
   # support truthy/falsy values
-  defp input_to_atoms("nil", _, true = _including_values, _, _), do: nil
-  defp input_to_atoms("false", _, true = _including_values, _, _), do: false
-  defp input_to_atoms("true", _, true = _including_values, _, _), do: true
+  defp input_to_atoms("nil", _, true = _including_values, _, _, _), do: nil
+  defp input_to_atoms("false", _, true = _including_values, _, _, _), do: false
+  defp input_to_atoms("true", _, true = _including_values, _, _, _), do: true
 
-  defp input_to_atoms(v, _, true = _including_values, _, force) when is_binary(v) do
+  defp input_to_atoms(v, _, true = _including_values, _, force, _to_snake) when is_binary(v) do
     Types.maybe_to_module(v, force) || Types.maybe_to_atom(v) || v
   end
 
-  defp input_to_atoms(v, _, _, _, _), do: v
+  defp input_to_atoms(v, _, _, _, _, _), do: v
 
-  defp maybe_key_to_snake_atom_or_module(k, true = force),
+  defp maybe_key_to_snake_atom_or_module(k, true = force, true = _to_snake),
     do: Types.maybe_to_module(k, force) || Text.maybe_to_snake(k) |> String.to_atom()
 
-  defp maybe_key_to_snake_atom_or_module(k, _false = force),
+  defp maybe_key_to_snake_atom_or_module(k, _false = force, true = _to_snake),
     do: Types.maybe_to_snake_atom(k) || Types.maybe_to_module(k, force)
 
-  @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
-  def maybe_to_structs(v) when is_struct(v), do: v
+  defp maybe_key_to_snake_atom_or_module(k, true = force, _false = _to_snake),
+    do: Types.maybe_to_module(k, force) || String.to_atom(k)
 
-  def maybe_to_structs(v),
-    do: v |> input_to_atoms() |> maybe_to_structs_recurse()
+  defp maybe_key_to_snake_atom_or_module(k, _false = force, _false = _to_snake),
+    do: Types.maybe_to_atom(k) || Types.maybe_to_module(k, force)
+
+  @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
+  def maybe_to_structs(v, opts \\ [])
+  def maybe_to_structs(v, _opts) when is_struct(v), do: v
+
+  def maybe_to_structs(v, opts),
+    do: v |> input_to_atoms(opts) |> maybe_to_structs_recurse()
 
   defp maybe_to_structs_recurse(data, parent_id \\ nil)
 
