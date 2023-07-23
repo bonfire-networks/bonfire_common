@@ -558,6 +558,7 @@ defmodule Bonfire.Common.Enums do
   rescue
     e ->
       warn(e)
+      debug(__STACKTRACE__)
       object
   end
 
@@ -770,9 +771,19 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  defp input_to_atoms(list, _, including_values, true = nested, force, to_snake)
+  defp input_to_atoms(
+         list,
+         _false = discard_unknown_keys,
+         including_values,
+         true = nested,
+         force,
+         to_snake
+       )
        when is_list(list) do
-    Enum.map(list, &input_to_atoms(&1, false, including_values, nested, force, to_snake))
+    Enum.map(
+      list,
+      &input_to_atoms(&1, discard_unknown_keys, including_values, nested, force, to_snake)
+    )
   end
 
   # support truthy/falsy values
@@ -793,13 +804,13 @@ defmodule Bonfire.Common.Enums do
     do: Types.maybe_to_module(k, force) || Text.maybe_to_snake(k) |> String.to_atom()
 
   defp maybe_to_atom_or_module(k, _false = force, true = _to_snake),
-    do: Types.maybe_to_snake_atom(k) || Types.maybe_to_module(k, force)
+    do: Types.maybe_to_module(k, force) || Types.maybe_to_snake_atom(k)
 
   defp maybe_to_atom_or_module(k, true = force, _false = _to_snake) when is_binary(k),
     do: Types.maybe_to_module(k, force) || String.to_atom(k)
 
   defp maybe_to_atom_or_module(k, _false = force, _false = _to_snake),
-    do: Types.maybe_to_atom(k) || Types.maybe_to_module(k, force)
+    do: Types.maybe_to_module(k, force) || Types.maybe_to_atom(k)
 
   @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
   def maybe_to_structs(v, opts \\ [])
