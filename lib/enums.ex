@@ -34,6 +34,8 @@ defmodule Bonfire.Common.Enums do
     nil
   end
 
+  def ids(objects), do: id(objects) |> List.wrap()
+
   @doc "Takes an enumerable object and converts it to a map. If it is not an enumerable, a map is created with the data under a fallback key (`:data` by default)."
   def map_new(data, fallback_key \\ :data) do
     if Enumerable.impl_for(data),
@@ -677,13 +679,20 @@ defmodule Bonfire.Common.Enums do
       )
 
   def input_to_atoms(data, opts) do
+    opts =
+      opts
+      |> Keyword.put_new(:discard_unknown, true)
+      |> Keyword.put_new(:values, false)
+      |> Keyword.put_new(:nested, true)
+      |> Keyword.put_new(:to_snake, false)
+
     input_to_atoms(
       data,
-      opts[:discard_unknown] || true,
-      opts[:values] || false,
-      opts[:nested] || true,
+      opts[:discard_unknown],
+      opts[:values],
+      opts[:nested],
       false,
-      opts[:to_snake] || false
+      opts[:to_snake]
     )
   end
 
