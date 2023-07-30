@@ -176,8 +176,6 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc "Takes a string and returns an atom if it can be converted to one, else returns the input itself"
-  def maybe_to_atom("false"), do: false
-
   def maybe_to_atom(str) when is_binary(str) do
     maybe_to_atom!(str) || str
   end
@@ -185,6 +183,10 @@ defmodule Bonfire.Common.Types do
   def maybe_to_atom(other), do: other
 
   @doc "Takes a string or an atom and returns an atom if it is one or can be converted to one, else returns nil."
+  def maybe_to_atom!("false"), do: false
+  def maybe_to_atom!("nil"), do: nil
+  def maybe_to_atom!(""), do: nil
+
   def maybe_to_atom!(str) when is_binary(str) do
     try do
       String.to_existing_atom(str)
