@@ -21,6 +21,8 @@ defmodule Bonfire.Common.Enums do
   def id(%Changeset{} = cs), do: id(Changeset.get_field(cs, :id))
   def id({:id, id}) when is_binary(id), do: id
   def id(%{"id" => id}) when is_binary(id), do: id
+  def id(%{value: value}), do: id(value)
+  def id(%{"value" => value}), do: id(value)
 
   def id(ids) when is_list(ids),
     do: ids |> maybe_flatten() |> Enum.map(&id/1) |> filter_empty(nil)
@@ -685,6 +687,7 @@ defmodule Bonfire.Common.Enums do
       |> Keyword.put_new(:discard_unknown, true)
       |> Keyword.put_new(:values, false)
       |> Keyword.put_new(:nested, true)
+      # |> Keyword.put_new(:nested_discard_unknown, false)
       |> Keyword.put_new(:to_snake, false)
 
     input_to_atoms(
@@ -729,7 +732,7 @@ defmodule Bonfire.Common.Enums do
       |> Map.new(fn {k, v} ->
         {
           maybe_to_atom_or_module(k, force, to_snake),
-          input_to_atoms(v, discard_unknown_keys, including_values, nested, force, to_snake)
+          input_to_atoms(v, false, including_values, nested, force, to_snake)
         }
       end)
     )
@@ -762,7 +765,7 @@ defmodule Bonfire.Common.Enums do
          to_snake
        )
        when is_list(list) do
-    list = Enum.map(list, &input_to_atoms(&1, true, including_values, nested, force, to_snake))
+    list = Enum.map(list, &input_to_atoms(&1, false, including_values, nested, force, to_snake))
 
     if Keyword.keyword?(list) do
       Keyword.filter(list, fn {k, _v} -> is_atom(k) end)

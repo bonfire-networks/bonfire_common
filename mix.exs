@@ -26,7 +26,7 @@ defmodule Bonfire.Common.MixProject do
         Mess.deps([
           {:zest, "~> 0.1", optional: true},
           {:sentry, "~> 8.0", optional: true},
-          {:dataloader, "~> 1.0", optional: true},
+          {:dataloader, "~> 2.0", optional: true},
           {:floki, "~> 0.33.1", optional: true},
           {:emote,
            git: "https://github.com/bonfire-networks/emote",
