@@ -22,4 +22,6 @@ defmodule Bonfire.Common.Repo do
       import Untangle
     end
   end
+
+  def migrate, do: EctoSparkles.AutoMigrator.startup_migrations()
 end
