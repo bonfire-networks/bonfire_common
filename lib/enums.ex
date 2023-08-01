@@ -689,6 +689,7 @@ defmodule Bonfire.Common.Enums do
       |> Keyword.put_new(:nested, true)
       # |> Keyword.put_new(:nested_discard_unknown, false)
       |> Keyword.put_new(:to_snake, false)
+      |> Keyword.put_new(:values_to_integers, false)
 
     input_to_atoms(
       data,
@@ -696,7 +697,8 @@ defmodule Bonfire.Common.Enums do
       opts[:values],
       opts[:nested],
       false,
-      opts[:to_snake]
+      opts[:to_snake],
+      opts[:values_to_integers]
     )
   end
 
@@ -706,13 +708,21 @@ defmodule Bonfire.Common.Enums do
       "WARNING: only do this with enums who's keys are defined in the code (not user generated or coming from an HTTP request or socket, etc) !"
     )
 
-    input_to_atoms(data, false, false, false, true, false)
+    input_to_atoms(data, false, false, false, true, false, false)
   end
 
   # skip structs
-  defp input_to_atoms(enum, discard_unknown_keys, including_values, nested, force, to_snake)
+  defp input_to_atoms(
+         enum,
+         discard_unknown_keys,
+         including_values,
+         nested,
+         force,
+         to_snake,
+         values_to_integers
+       )
 
-  defp input_to_atoms(data, _, _, _, _, _) when is_struct(data) do
+  defp input_to_atoms(data, _, _, _, _, _, _) when is_struct(data) do
     data
   end
 
@@ -722,7 +732,8 @@ defmodule Bonfire.Common.Enums do
          including_values,
          nested,
          force,
-         to_snake
+         to_snake,
+         values_to_integers
        ) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
     :maps.filter(
@@ -732,7 +743,7 @@ defmodule Bonfire.Common.Enums do
       |> Map.new(fn {k, v} ->
         {
           maybe_to_atom_or_module(k, force, to_snake),
-          input_to_atoms(v, false, including_values, nested, force, to_snake)
+          input_to_atoms(v, false, including_values, nested, force, to_snake, values_to_integers)
         }
       end)
     )
@@ -744,14 +755,23 @@ defmodule Bonfire.Common.Enums do
          including_values,
          nested,
          force,
-         to_snake
+         to_snake,
+         values_to_integers
        ) do
     data
     |> Map.drop(["_csrf_token"])
     |> Map.new(fn {k, v} ->
       {
         maybe_to_atom_or_module(k, force, to_snake) || k,
-        input_to_atoms(v, discard_unknown_keys, including_values, nested, force, to_snake)
+        input_to_atoms(
+          v,
+          discard_unknown_keys,
+          including_values,
+          nested,
+          force,
+          to_snake,
+          values_to_integers
+        )
       }
     end)
   end
@@ -762,10 +782,15 @@ defmodule Bonfire.Common.Enums do
          including_values,
          true = nested,
          force,
-         to_snake
+         to_snake,
+         values_to_integers
        )
        when is_list(list) do
-    list = Enum.map(list, &input_to_atoms(&1, false, including_values, nested, force, to_snake))
+    list =
+      Enum.map(
+        list,
+        &input_to_atoms(&1, false, including_values, nested, force, to_snake, values_to_integers)
+      )
 
     if Keyword.keyword?(list) do
       Keyword.filter(list, fn {k, _v} -> is_atom(k) end)
@@ -780,25 +805,52 @@ defmodule Bonfire.Common.Enums do
          including_values,
          true = nested,
          force,
-         to_snake
+         to_snake,
+         values_to_integers
        )
        when is_list(list) do
     Enum.map(
       list,
-      &input_to_atoms(&1, discard_unknown_keys, including_values, nested, force, to_snake)
+      &input_to_atoms(
+        &1,
+        discard_unknown_keys,
+        including_values,
+        nested,
+        force,
+        to_snake,
+        values_to_integers
+      )
     )
   end
 
   # support truthy/falsy values
-  defp input_to_atoms("nil", _, true = _including_values, _, _, _), do: nil
-  defp input_to_atoms("false", _, true = _including_values, _, _, _), do: false
-  defp input_to_atoms("true", _, true = _including_values, _, _, _), do: true
+  defp input_to_atoms("nil", _, true = _including_values, _, _, _, _), do: nil
+  defp input_to_atoms("false", _, true = _including_values, _, _, _, _), do: false
+  defp input_to_atoms("true", _, true = _including_values, _, _, _, _), do: true
 
-  defp input_to_atoms(v, _, true = _including_values, _, force, _to_snake) when is_binary(v) do
+  defp input_to_atoms(
+         v,
+         _,
+         true = _including_values,
+         _,
+         force,
+         _to_snake,
+         true = _values_to_integers
+       )
+       when is_binary(v) do
+    Types.maybe_to_module(v, force) || Types.maybe_to_atom(v) || Types.maybe_to_integer(v, nil) ||
+      v
+  end
+
+  defp input_to_atoms(v, _, true = _including_values, _, force, _to_snake, _values_to_integers)
+       when is_binary(v) do
     Types.maybe_to_module(v, force) || Types.maybe_to_atom(v) || v
   end
 
-  defp input_to_atoms(v, _, _, _, _, _), do: v
+  defp input_to_atoms(v, _, _, _, _, _, true = _values_to_integers),
+    do: Types.maybe_to_integer(v, nil) || v
+
+  defp input_to_atoms(v, _, _, _, _, _, _), do: v
 
   defp maybe_to_atom_or_module(k, _force, _to_snake) when is_atom(k),
     do: k

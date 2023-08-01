@@ -4,6 +4,7 @@ defmodule Bonfire.Common.DatesTimes do
   """
   use Arrows
   import Untangle
+  alias Bonfire.Common.Types
 
   @doc "Takes a ULID ID (or an object with one) or a `DateTime` struct, and turns the date into a relative phrase, e.g. `2 days ago`, using the `Cldr.DateTime` or `Timex` library."
   def date_from_now(date, opts \\ [])
@@ -25,7 +26,7 @@ defmodule Bonfire.Common.DatesTimes do
 
   def date_from_now(_, _), do: nil
 
-  def timex_date_from_now(%DateTime{} = date) do
+  defp timex_date_from_now(%DateTime{} = date) do
     date
     |> Timex.format("{relative}", :relative)
     |> with({:ok, relative} <- ...) do
@@ -52,11 +53,21 @@ defmodule Bonfire.Common.DatesTimes do
 
   def now(), do: DateTime.utc_now()
 
+  def past(amount_to_remove, unit \\ :second), do: remove(now(), amount_to_remove, unit)
+
+  def remove(dt, amount_to_remove, unit \\ :second)
+
+  def remove(%DateTime{} = dt, amount_to_remove, unit) when is_binary(amount_to_remove),
+    do: remove(dt, Types.maybe_to_integer(amount_to_remove), unit)
+
+  def remove(%DateTime{} = dt, amount_to_remove, unit),
+    do: DateTime.add(dt, -amount_to_remove, unit)
+
   def past?(%DateTime{} = dt) do
-    DateTime.compare(now(), dt) == :gt
+    DateTime.before?(dt, now())
   end
 
   def future?(%DateTime{} = dt) do
-    DateTime.compare(now(), dt) == :lt
+    DateTime.after?(dt, now())
   end
 end

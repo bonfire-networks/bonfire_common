@@ -150,8 +150,13 @@ defmodule Bonfire.Common.Types do
   def maybe_to_integer(val, _fallback) when is_integer(val), do: val
 
   def maybe_to_integer(val, fallback) do
-    maybe_to_float(val, fallback)
-    |> round()
+    case maybe_to_float(val, nil) do
+      nil ->
+        fallback
+
+      float ->
+        round(float)
+    end
   end
 
   @doc "Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier)"
