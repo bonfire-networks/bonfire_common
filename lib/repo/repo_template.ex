@@ -258,7 +258,10 @@ defmodule Bonfire.Common.RepoTemplate do
             pagination_defaults(),
             Keyword.merge(
               @default_cursor_fields,
-              Keyword.new(opts[:paginate] || opts[:paginated] || opts[:pagination] || opts)
+              Keyword.merge(
+                opts,
+                Keyword.new(opts[:paginate] || opts[:paginated] || opts[:pagination] || [])
+              )
             )
           )
           |> Keyword.update(:limit, 10, fn existing_value ->
@@ -266,7 +269,6 @@ defmodule Bonfire.Common.RepoTemplate do
               do: ceil(existing_value * opts[:multiply_limit]),
               else: existing_value
           end)
-          |> debug("merged opts")
 
         if opts[:return] == :query or merged_opts[:return] == :query do
           Paginator.paginated_query(queryable, merged_opts)
@@ -304,7 +306,7 @@ defmodule Bonfire.Common.RepoTemplate do
       def many_paginated(%{order_bys: order} = queryable, opts, repo_opts)
           when is_list(order) and length(order) > 0 do
         # info(opts, "opts")
-        # debug(order, "order_bys")
+        debug(order, "order_bys")
         paginator_paginate(queryable, opts, repo_opts)
       end
 
@@ -404,6 +406,12 @@ defmodule Bonfire.Common.RepoTemplate do
       #     {query, params} -> EctoSparkles.Log.inline_params(query, Map.new(params))
       #   end
       # end
+
+      def make_subquery(query) do
+        query
+        |> Ecto.Query.exclude(:preload)
+        |> subquery()
+      end
 
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
