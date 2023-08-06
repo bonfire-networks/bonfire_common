@@ -88,6 +88,10 @@ defmodule Bonfire.Common.Pointers do
     []
   end
 
+  def list_by_type!(table_id_or_schema, filters \\ [], opts \\ []) do
+    loader(table_id_or_schema, filters, opts)
+  end
+
   def many(filters \\ [], opts \\ []),
     do: {:ok, pointer_query(filters, opts) |> repo().many()}
 

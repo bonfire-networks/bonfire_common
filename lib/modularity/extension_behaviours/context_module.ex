@@ -13,7 +13,7 @@ defmodule Bonfire.Common.ContextModule do
   @callback schema_module() :: atom
 
   @doc "Points to the related queries module"
-  @callback queries_module() :: atom
+  @callback query_module() :: atom
 
   @doc """
   Given an object or schema module name, run a function on the associated context module.
