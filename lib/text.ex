@@ -162,7 +162,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def maybe_markdown_to_html(content, opts) do
-    # debug(content, "input")
+    debug(content, "input")
 
     # if module_enabled?(Makedown) do
     # # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
@@ -190,8 +190,7 @@ defmodule Bonfire.Common.Text do
       |> Keyword.merge(opts)
       |> processor.as_html!(content, ...)
       |> markdown_checkboxes()
-
-      # |> debug("MD output for: #{content}")
+      |> debug("MD output for: #{content}")
     else
       content
     end
@@ -349,6 +348,8 @@ defmodule Bonfire.Common.Text do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
+    #
+    |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
     # handle AP actors
     |> Regex.replace(
       ~r/(<a [^>]*href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
