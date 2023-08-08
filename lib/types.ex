@@ -479,7 +479,8 @@ defmodule Bonfire.Common.Types do
   end
 
   def object_type(type) do
-    warn(type, "no pattern matched")
+    #warn(type, "no pattern matched")
+    #typeof(type)
     nil
   end
 
