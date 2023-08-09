@@ -259,7 +259,7 @@ defmodule Bonfire.Common.RepoTemplate do
             Keyword.merge(
               @default_cursor_fields,
               Keyword.merge(
-                opts,
+                Utils.to_options(opts),
                 Keyword.new(opts[:paginate] || opts[:paginated] || opts[:pagination] || [])
               )
             )
