@@ -642,7 +642,39 @@ defmodule Bonfire.Common.Utils do
   """
   def ok_unwrap(val, fallback \\ nil)
   def ok_unwrap({:ok, val}, _fallback), do: val
-  def ok_unwrap({:error, _val}, fallback), do: fallback
+
+  def ok_unwrap({:error, val}, fallback) do
+    error(val)
+    fallback
+  end
+
   def ok_unwrap(:error, fallback), do: fallback
   def ok_unwrap(val, fallback), do: val || fallback
+
+  def round_nearest(num) when is_number(num) do
+    case maybe_apply(Bonfire.Common.Localise.Cldr.Number, :to_string, [num, [format: :short]]) do
+      {:ok, formatted} ->
+        formatted
+
+      other when is_integer(num) ->
+        warn(other)
+        do_round_nearest(num, num |> Integer.digits() |> length())
+
+      other ->
+        error(other)
+        nil
+    end
+  end
+
+  defp do_round_nearest(num, digit_count)
+  defp do_round_nearest(num, 1), do: num
+  defp do_round_nearest(num, 2), do: round_nearest(num, 10)
+  defp do_round_nearest(num, 3), do: round_nearest(num, 100)
+  defp do_round_nearest(num, 4), do: round_nearest(num, 1000)
+  defp do_round_nearest(num, 5), do: round_nearest(num, 10000)
+  defp do_round_nearest(num, 6), do: round_nearest(num, 100_000)
+  defp do_round_nearest(num, _), do: round_nearest(num, 1_000_000)
+
+  def round_nearest(num, target) when is_number(num) and is_number(target),
+    do: round(num / target) * target
 end

@@ -7,39 +7,64 @@ defmodule Bonfire.Common.DatesTimes do
   alias Bonfire.Common.Types
 
   @doc "Takes a ULID ID (or an object with one) or a `DateTime` struct, and turns the date into a relative phrase, e.g. `2 days ago`, using the `Cldr.DateTime` or `Timex` library."
-  def date_from_now(date, opts \\ [])
+  def date_from_now(date, opts \\ []) do
+    case to_date(date) do
+      nil ->
+        nil
 
-  def date_from_now(%DateTime{} = date, opts) do
-    date
-    |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
-    |> with({:ok, relative} <- ...) do
-      relative
-    else
-      other ->
-        error(date, inspect(other))
-        timex_date_from_now(date)
+      date ->
+        date
+        |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
+        |> with({:ok, relative} <- ...) do
+          relative
+        else
+          other ->
+            error(date, inspect(other))
+            timex_date_from_now(date)
+        end
     end
   end
 
-  def date_from_now(string, opts) when is_binary(string) do
-    if Types.is_ulid?(string) do
-      date_from_pointer(string) |> date_from_now(opts)
-    else
+  def format(date, opts \\ []) do
+    case to_date(date) do
+      nil ->
+        nil
 
+      date ->
+        case Bonfire.Common.Localise.Cldr.DateTime.to_string(date, opts) do
+          {:ok, formatted} ->
+            formatted
+
+          other ->
+            error(other)
+            nil
+        end
+    end
+  end
+
+  def to_date(%DateTime{} = date) do
+    date
+  end
+
+  def to_date(string) when is_binary(string) do
+    if Types.is_ulid?(string) do
+      date_from_pointer(string)
+    else
       case DateTime.from_iso8601(string) do
         {:ok, datetime, 0} ->
-          date_from_now(datetime)
+          datetime
+
         other ->
           error(other)
           nil
+      end
     end
   end
-  end
 
-  def date_from_now(object, opts) when is_map(object) or is_binary(object),
-    do: date_from_pointer(object) |> date_from_now(opts)
+  def to_date(object) when is_map(object),
+    do: date_from_pointer(object)
 
-  def date_from_now(_, _), do: nil
+  def to_date(_), do: nil
 
   defp timex_date_from_now(%DateTime{} = date) do
     date
