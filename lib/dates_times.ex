@@ -21,6 +21,21 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
+  def date_from_now(string, opts) when is_binary(string) do
+    if Types.is_ulid?(string) do
+      date_from_pointer(string) |> date_from_now(opts)
+    else
+
+      case DateTime.from_iso8601(string) do
+        {:ok, datetime, 0} ->
+          date_from_now(datetime)
+        other ->
+          error(other)
+          nil
+    end
+  end
+  end
+
   def date_from_now(object, opts) when is_map(object) or is_binary(object),
     do: date_from_pointer(object) |> date_from_now(opts)
 
