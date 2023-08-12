@@ -100,6 +100,10 @@ defmodule Bonfire.Common.DatesTimes do
   def remove(%DateTime{} = dt, amount_to_remove, unit) when is_binary(amount_to_remove),
     do: remove(dt, Types.maybe_to_integer(amount_to_remove), unit)
 
+  # for compat with elixir 1.13
+  def remove(%DateTime{} = dt, amount_to_remove, :day),
+    do: remove(dt, amount_to_remove * 24 * 60 * 60, :second)
+
   def remove(%DateTime{} = dt, amount_to_remove, unit),
     do: DateTime.add(dt, -amount_to_remove, unit)
 

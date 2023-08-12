@@ -249,10 +249,14 @@ defmodule Bonfire.Common.Errors do
   end
 
   def format_stacktrace_entry({module, fun, arity, location}, opts) do
-    {mod, fun, mfa_formated} = format_mfa(module, fun, arity)
-
-    format_application(module) <>
-      mf_maybe_link_to_code(format_location(location), mod, fun, opts) <> mfa_formated
+    with {mod, fun, mfa_formated} <- format_mfa(module, fun, arity) do
+      format_application(module) <>
+        mf_maybe_link_to_code(format_location(location), mod, fun, opts) <> mfa_formated
+    else
+      _ ->
+        format_application(module) <>
+          mf_maybe_link_to_code(format_location(location), module, fun, opts)
+    end
   end
 
   def format_stacktrace_entry({fun, arity, location}, _opts) do
@@ -275,23 +279,25 @@ defmodule Bonfire.Common.Errors do
   "anonymous fn in func/arity"
   """
   def format_mfa(module, fun, arity) when is_atom(module) and is_atom(fun) do
-    mod = Macro.inspect_atom(:literal, module)
+    if function_exported?(Macro, :inspect_atom, 2) do
+      mod = Macro.inspect_atom(:literal, module)
 
-    case Code.Identifier.extract_anonymous_fun_parent(fun) do
-      {outer_name, outer_arity} ->
-        fun = Macro.inspect_atom(:remote_call, outer_name)
+      case Code.Identifier.extract_anonymous_fun_parent(fun) do
+        {outer_name, outer_arity} ->
+          fun = Macro.inspect_atom(:remote_call, outer_name)
 
-        {mod, fun,
-         "anonymous fn#{format_arity(arity)} in " <>
+          {mod, fun,
+           "anonymous fn#{format_arity(arity)} in " <>
+             "#{mod}." <>
+             "#{fun}/#{outer_arity}"}
+
+        :error ->
+          fun = Macro.inspect_atom(:remote_call, fun)
+
+          {mod, fun,
            "#{mod}." <>
-           "#{fun}/#{outer_arity}"}
-
-      :error ->
-        fun = Macro.inspect_atom(:remote_call, fun)
-
-        {mod, fun,
-         "#{mod}." <>
-           "#{fun}#{format_arity(arity)}"}
+             "#{fun}#{format_arity(arity)}"}
+      end
     end
   end
 
