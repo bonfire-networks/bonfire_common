@@ -547,4 +547,19 @@ defmodule Bonfire.Common.Pointers do
       default_params: %{context: context}
     )
   end
+
+  def maybe_resolve(parent, field, args, context) do
+    # WIP
+    case Map.get(parent, :field, :no_such_field) do
+      %Ecto.Association.NotLoaded{} ->
+        # dataloader(:source, :members).(parent, args, context)
+        Absinthe.Resolution.Helpers.dataloader(Pointers.Pointer).(parent, args, context)
+
+      :no_such_field ->
+        Absinthe.Resolution.Helpers.dataloader(Pointers.Pointer).(parent, args, context)
+
+      already_loaded ->
+        {:ok, already_loaded}
+    end
+  end
 end
