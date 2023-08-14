@@ -138,8 +138,9 @@ defmodule Bonfire.Common.URIs do
   def path(id, args) when is_binary(id), do: path_by_id(id, args)
 
   def path(other, _) do
-    error("path: could not find any matching route for #{inspect(other)}")
-    "#unrecognised-#{inspect(other)}"
+    error(other, "path: could not find any matching route")
+    # "#unrecognised-#{inspect(other)}"
+    nil
   end
 
   defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args) do
