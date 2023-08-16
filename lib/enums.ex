@@ -23,6 +23,7 @@ defmodule Bonfire.Common.Enums do
   def id(%{"id" => id}) when is_binary(id), do: id
   def id(%{value: value}), do: id(value)
   def id(%{"value" => value}), do: id(value)
+  def id(%{pointer: %{id: id}}), do: id
 
   def id(ids) when is_list(ids),
     do: ids |> maybe_flatten() |> Enum.map(&id/1) |> filter_empty(nil)
