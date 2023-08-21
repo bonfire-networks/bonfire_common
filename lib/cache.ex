@@ -10,9 +10,24 @@ defmodule Bonfire.Common.Cache do
   # 5 min
   @error_cache_ttl 1_000 * 60 * 5
 
+  @default_store :bonfire_cache
+
   # TODO: explore using Decorator lib to support decorating functions to cache them
   # def cache(fn_body, context) do
   # end
+
+  def put(key, value, opts \\ []) do
+    Cachex.put(cache_store(opts), key, value, opts |> Keyword.put_new(:ttl, @default_cache_ttl))
+  end
+
+  def get(key, opts \\ []), do: Cachex.get(cache_store(opts), key)
+
+  def get!(key, opts \\ []) do
+    case get(key, opts) do
+      {:ok, val} -> val
+      _ -> nil
+    end
+  end
 
   @doc "Takes a function (or module and function names) and a set of arguments for that function, and tries to fetch the previous result of running that function from the in-memory cache, using the MFA (module name/function name/arguments used) to generate the cache key. If it's not in the cache, it executes the function, and caches and returns the result."
   def maybe_apply_cached(fun, args, opts \\ [])
@@ -35,6 +50,10 @@ defmodule Bonfire.Common.Cache do
     |> do_maybe_apply_cached(module, fun, args, ...)
   end
 
+  def cache_store(opts \\ []) do
+    opts[:cache_store] || @default_store
+  end
+
   @doc "It removes the result of a given function from the cache."
   def reset(fun, args, opts \\ []) do
     key_for_call(fun, args)
@@ -43,13 +62,13 @@ defmodule Bonfire.Common.Cache do
 
   @doc "It removes the entry associated with a key from the cache."
   def remove(key, opts \\ []) do
-    cache_key(opts)
+    cache_store(opts)
     |> Cachex.del(key)
     ~> debug("Removed from cache: #{key}")
   end
 
   def remove_all(opts \\ []) do
-    store = cache_key(opts)
+    store = cache_store(opts)
 
     Cachex.clear(store)
     ~> debug("Cleared cache: #{store}")
@@ -74,7 +93,7 @@ defmodule Bonfire.Common.Cache do
     key = opts[:cache_key]
     ttl = opts[:ttl] || @default_cache_ttl
 
-    Cachex.execute!(cache_key(opts), fn cache ->
+    Cachex.execute!(cache_store(opts), fn cache ->
       case Cachex.exists?(cache, key) do
         {:ok, true} ->
           debug(key, "getting from cache")
@@ -113,13 +132,9 @@ defmodule Bonfire.Common.Cache do
     end)
   end
 
-  def cache_key(opts \\ []) do
-    opts[:cache_store] || :bonfire_cache
-  end
-
   def cached_preloads_for_objects(name, objects, fun)
       when is_list(objects) and is_function(fun) do
-    Cachex.execute!(cache_key(), fn cache ->
+    Cachex.execute!(cache_store(), fn cache ->
       maybe_cached =
         Enum.map(objects, fn obj ->
           id = ulid(obj)
