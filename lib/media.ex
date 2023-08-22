@@ -2,13 +2,21 @@ defmodule Bonfire.Common.Media do
   @moduledoc "Helpers for handling images and media URLs"
   use Arrows
   import Untangle
-  alias Bonfire.Common.Utils
+  alias Bonfire.Common
+  alias Common.Utils
 
   @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
 
   @doc "Takes a Media map (or an object containing one) and returns a URL for the media"
   def media_url(%{path: "http" <> _ = url} = _media) do
     url
+  end
+
+  def media_url(%{metadata: %{"module" => module}} = media) do
+    case Common.Types.maybe_to_module(module) do
+      nil -> Map.drop(media, [:metadata]) |> media_url()
+      module -> Utils.maybe_apply(module, :remote_url, media)
+    end
   end
 
   def media_url(%{media_type: media_type, path: url} = _media)

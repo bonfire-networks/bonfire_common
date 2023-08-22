@@ -32,8 +32,8 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
     end
 
     def fetch_issues(opts \\ []) do
-      # make HTTP client available in mix task
-      Application.ensure_all_started(:httpoison)
+      # pick HTTP client 
+      Neuron.Config.set(connection_module: Bonfire.Common.HTTP)
 
       org = Keyword.get(opts, :org, "bonfire-networks")
 
