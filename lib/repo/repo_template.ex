@@ -3,12 +3,13 @@ defmodule Bonfire.Common.RepoTemplate do
 
   defmacro __using__(_) do
     quote do
-      import Bonfire.Common.Config, only: [repo: 0]
+      alias Bonfire.Common.Config
+      import Config, only: [repo: 0]
       alias Bonfire.Common.Utils
       alias Bonfire.Common.Errors
 
       use Ecto.Repo,
-        otp_app: Bonfire.Common.Config.get!(:otp_app),
+        otp_app: Config.get!(:otp_app),
         adapter: Ecto.Adapters.Postgres
 
       import Ecto.Query
@@ -240,10 +241,10 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defp pagination_defaults,
         do: [
-          # sets the default limit TODO: put in config
+          # sets the default limit 
           limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),
-          # sets the maximum limit TODO: put in config
-          maximum_limit: 200,
+          # sets the maximum limit 
+          maximum_limit: Config.get(:pagination_hard_max_limit, 500),
           # include total count by default?
           include_total_count: false,
           # sets the total_count_primary_key_field to uuid for calculating total_count
