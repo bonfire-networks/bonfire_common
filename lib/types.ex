@@ -230,6 +230,21 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_module(_, _), do: nil
 
+  def maybe_to_atom_or_module(k, _force, _to_snake) when is_atom(k),
+    do: k
+
+  def maybe_to_atom_or_module(k, true = force, true = _to_snake),
+    do: maybe_to_module(k, force) || Text.maybe_to_snake(k) |> String.to_atom()
+
+  def maybe_to_atom_or_module(k, _false = force, true = _to_snake),
+    do: maybe_to_module(k, force) || maybe_to_snake_atom(k)
+
+  def maybe_to_atom_or_module(k, true = force, _false = _to_snake) when is_binary(k),
+    do: maybe_to_module(k, force) || String.to_atom(k)
+
+  def maybe_to_atom_or_module(k, _false = force, _false = _to_snake),
+    do: maybe_to_module(k, force) || maybe_to_atom(k)
+
   @doc "Takes a module atom and converts it to a string, or a string and removes the `Elixir.` prefix if it exists."
   def module_to_str(str) when is_binary(str) do
     case str do
