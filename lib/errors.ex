@@ -59,10 +59,19 @@ defmodule Bonfire.Common.Errors do
          Config.get(:show_debug_errors_in_dev) != false do
       {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace, opts)
 
+      # error(stacktrace, inspect exception_banner)
+
       {:error,
        Enum.join(
          Bonfire.Common.Enums.filter_empty(
-           [error_msg(msg), ":\n", exception_banner, stacktrace],
+           [
+             error_msg(msg),
+             "",
+             exception_banner |> String.slice(0..1000),
+             "\n",
+             stacktrace |> String.slice(0..1000),
+             ""
+           ],
            []
          ),
          "\n"
@@ -218,7 +227,7 @@ defmodule Bonfire.Common.Errors do
   def format_stacktrace(trace \\ nil, opts) do
     case trace || last_stacktrace() do
       [] -> "\n"
-      _ -> Enum.map_join(trace, "\n", &format_stacktrace_entry(&1, opts)) <> "\n"
+      trace -> Enum.map_join(trace, "\n", &format_stacktrace_entry_sliced(&1, opts)) <> "\n"
     end
   end
 
@@ -227,6 +236,9 @@ defmodule Bonfire.Common.Errors do
       {:current_stacktrace, t} -> Enum.drop(t, 3)
     end
   end
+
+  def format_stacktrace_entry_sliced(entry, opts),
+    do: format_stacktrace_entry(IO.inspect(entry, label: "eeee"), opts) |> String.slice(0..200)
 
   @doc """
   Receives a stacktrace entry and formats it into a string.

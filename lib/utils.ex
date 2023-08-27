@@ -527,7 +527,7 @@ defmodule Bonfire.Common.Utils do
 
             e =
               fallback_fun.(
-                "A pattern matching error occured when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
                 args
               )
 
@@ -540,7 +540,7 @@ defmodule Bonfire.Common.Utils do
 
             e =
               fallback_fun.(
-                "An argument error occured when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
                 args
               )
 
