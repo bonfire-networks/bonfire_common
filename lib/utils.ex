@@ -236,16 +236,13 @@ defmodule Bonfire.Common.Utils do
       %{id: _, character: _} ->
         current_user_or_socket_or_opts
 
-      # %{id: _} when is_struct(current_user_or_socket_or_opts) ->
-      #   current_user_or_socket_or_opts
+      %Bonfire.Data.Identity.User{} ->
+        current_user_or_socket_or_opts
 
       %{assigns: %{} = assigns} = _socket ->
         current_user(assigns, true)
 
       %{__context__: %{current_user: _} = context} = _assigns ->
-        current_user(context, true)
-
-      %{__context__: %{current_user_id: _} = context} = _assigns ->
         current_user(context, true)
 
       %{socket: socket} = _socket ->
@@ -261,23 +258,15 @@ defmodule Bonfire.Common.Utils do
           Enum.find_value(current_user_or_socket_or_opts, &current_user(&1, true))
         end
 
-      %{current_user_id: user_id} when is_binary(user_id) ->
-        Types.ulid(user_id)
+      {:current_user, user} ->
+        current_user(user, true)
 
-      %{current_user: user_id} when is_binary(user_id) ->
-        Types.ulid(user_id)
-
-      {:current_user, user_id} ->
-        current_user(user_id, true)
-
-      %{user_id: user_id} when is_binary(user_id) ->
-        Types.ulid(user_id)
-
-      user_id when is_binary(user_id) ->
-        Types.ulid(user_id)
-
-      _ ->
+      nil ->
         nil
+
+      other ->
+        warn(other, "No current_user found, will fallback to looking for a current user_id")
+        current_user_id(current_user_or_socket_or_opts, :skip)
     end ||
       (
         if recursing != true,
@@ -310,25 +299,26 @@ defmodule Bonfire.Common.Utils do
       %{context: %{} = context} = _api_opts ->
         current_user_id(context, true)
 
-      _ when is_list(current_user_or_socket_or_opts) ->
-        if Keyword.keyword?(current_user_or_socket_or_opts) do
-          current_user_id(Map.new(current_user_or_socket_or_opts), true)
-        else
-          Enum.find_value(current_user_or_socket_or_opts, &current_user_id/1)
-        end
-
       %{current_user_id: user_id} when is_binary(user_id) ->
         current_user_id(user_id, true)
 
       {:current_user_id, user_id} ->
         current_user_id(user_id, true)
 
+      %{current_user: %{id: user_id}} when is_binary(user_id) ->
+        Types.ulid(user_id)
+
+      %{current_user: user_id} when is_binary(user_id) ->
+        Types.ulid(user_id)
+
       user_id when is_binary(user_id) ->
         Types.ulid(user_id)
 
       _ ->
-        current_user(current_user_or_socket_or_opts)
-        |> Types.ulid()
+        if recursing != :skip,
+          do:
+            current_user(current_user_or_socket_or_opts)
+            |> Types.ulid()
     end ||
       (
         if recursing != true,
@@ -347,7 +337,7 @@ defmodule Bonfire.Common.Utils do
 
   def current_user_auth!(context, password) do
     current_user = current_user(context)
-    current_account_id = Enums.id(current_account(context))
+    current_account_id = current_account_id(context)
 
     if not is_nil(current_user) and not is_nil(current_account_id) and
          e(current_user, :accounted, :account_id, nil) == current_account_id and
@@ -369,98 +359,152 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Returns the current account from socket, assigns, or options.
   """
-  def current_account(list) when is_list(list) do
-    if Keyword.keyword?(list) do
-      current_account(Map.new(list))
-    else
-      Enum.find_value(list, &current_account/1)
-    end
-  end
+  def current_account(current_account_or_socket_or_opts, recursing \\ false) do
+    case current_account_or_socket_or_opts do
+      %{current_account: %{id: _} = account} = _options ->
+        account
 
-  def current_account(%{current_account: current_account} = _assigns)
-      when not is_nil(current_account) do
-    current_account
-  end
+      %Bonfire.Data.Identity.Account{id: _} = current_account ->
+        current_account
 
-  def current_account({:current_account, current_account} = _tuple)
-      when not is_nil(current_account) do
-    current_account
-  end
+      %{account: %{id: _} = account} = _user ->
+        account
 
-  def current_account(%Bonfire.Data.Identity.Account{id: _} = current_account) do
-    current_account
-  end
+      %{accounted: %{account: %{id: _} = account}} = _user ->
+        account
 
-  def current_account(%{accounted: %{account: %{id: _} = account}} = _user) do
-    account
-  end
+      %{assigns: %{} = assigns} = _socket ->
+        current_account(assigns, true)
 
-  def current_account(%{__context__: %{} = context} = _assigns) do
-    current_account(context)
-  end
+      %{__context__: %{} = context} = _assigns ->
+        current_account(context, true)
 
-  def current_account(%{assigns: %{} = assigns} = _socket) do
-    current_account(assigns)
-  end
+      %{socket: socket} = _socket ->
+        current_account(socket, true)
 
-  def current_account(%{socket: %{} = socket} = _socket) do
-    current_account(socket)
-  end
+      %{context: %{} = context} = _api_opts ->
+        current_account(context, true)
 
-  def current_account(%{context: %{} = context} = _api_opts) do
-    current_account(context)
-  end
+      _ when is_list(current_account_or_socket_or_opts) ->
+        if Keyword.keyword?(current_account_or_socket_or_opts) do
+          current_account(Map.new(current_account_or_socket_or_opts), true)
+        else
+          Enum.find_value(current_account_or_socket_or_opts, &current_account(&1, true))
+        end
 
-  def current_account(other) do
-    case current_user(other, true) do
+      %{current_account: account_id} when is_binary(account_id) ->
+        Types.ulid(account_id)
+
+      {:current_account, account_id} ->
+        current_account(account_id, true)
+
       nil ->
-        debug(Types.typeof(other), "No current_account found in")
         nil
 
-      user ->
-        case user do
-          # |> repo().maybe_preload(accounted: :account) do
-          %{accounted: %{account: %{id: _} = account}} ->
-            account
-
-          %{accounted: %{account_id: account_id}} ->
-            account_id
-
-          _ ->
-            debug(Enums.id(user), "no account in current_user")
+      other ->
+        case current_user(other, true) do
+          nil ->
             nil
-        end
+
+          user ->
+            case user do
+              # |> repo().maybe_preload(accounted: :account) do
+              %{account: %{id: _} = account} ->
+                account
+
+              %{accounted: %{account: %{id: _} = account}} ->
+                account
+
+              %{accounted: %{account_id: account_id}} ->
+                account_id
+
+              _ ->
+                debug(Enums.id(user), "no account in current_user")
+                nil
+            end
+        end ||
+          (
+            warn(
+              other,
+              "No current_account found, will fallback to looking for a current account_id"
+            )
+
+            current_account_id(other, :skip)
+          )
+    end ||
+      (
+        if recursing != true,
+          do:
+            debug(Types.typeof(current_account_or_socket_or_opts), "No current_account found in")
+
+        nil
+      )
+  end
+
+  def current_account_id(current_account_or_socket_or_opts, recursing \\ false) do
+    case current_account_or_socket_or_opts do
+      %{current_account_id: id} = _options ->
+        Types.ulid(id)
+
+      %{account_id: id} = _options ->
+        Types.ulid(id)
+
+      %{assigns: %{} = assigns} = _socket ->
+        current_account_id(assigns, true)
+
+      %{__context__: %{current_account_id: _} = context} = _assigns ->
+        current_account_id(context, true)
+
+      %{socket: socket} = _socket ->
+        current_account_id(socket, true)
+
+      %{context: %{} = context} = _api_opts ->
+        current_account_id(context, true)
+
+      %{current_account_id: account_id} when is_binary(account_id) ->
+        current_account_id(account_id, true)
+
+      {:current_account_id, account_id} ->
+        current_account_id(account_id, true)
+
+      %{current_user: %{account: %{id: account_id}}} ->
+        account_id
+
+      %{current_user: %{accounted: %{account_id: account_id}}} ->
+        account_id
+
+      %{current_user: %{accounted: %{account: %{id: account_id}}}} ->
+        account_id
+
+      account_id when is_binary(account_id) ->
+        Types.ulid(account_id)
+
+      _ ->
+        if recursing != :skip,
+          do:
+            current_account(current_account_or_socket_or_opts)
+            |> Types.ulid()
+    end ||
+      (
+        if recursing != true,
+          do:
+            debug(
+              Types.typeof(current_account_or_socket_or_opts),
+              "No current_account_id or current_account found in"
+            )
+
+        nil
+      )
+  end
+
+  def current_account_and_or_user_ids(assigns) do
+    case {current_account_id(assigns), current_user_id(assigns)} do
+      {nil, nil} -> []
+      {current_account, nil} -> [{:account, current_account}]
+      {nil, current_user} -> [{:user, current_user}]
+      {current_account, current_user} -> [{:account, current_account}, {:user, current_user}]
     end
   end
-
-  def current_account_and_or_user_ids(%{assigns: assigns}),
-    do: current_account_and_or_user_ids(assigns)
-
-  def current_account_and_or_user_ids(%{
-        current_account: %{id: account_id},
-        current_user: %{id: user_id}
-      }) do
-    [{:account, account_id}, {:user, user_id}]
-  end
-
-  def current_account_and_or_user_ids(%{
-        current_user: %{id: user_id, accounted: %{account_id: account_id}}
-      }) do
-    [{:account, account_id}, {:user, user_id}]
-  end
-
-  def current_account_and_or_user_ids(%{current_user: %{id: user_id}}) do
-    [{:user, user_id}]
-  end
-
-  def current_account_and_or_user_ids(%{current_account: %{id: account_id}}) do
-    [{:account, account_id}]
-  end
-
-  def current_account_and_or_user_ids(%{__context__: context}),
-    do: current_account_and_or_user_ids(context)
-
-  def current_account_and_or_user_ids(_), do: nil
 
   def socket_connected?(%{socket_connected?: bool}) do
     bool
