@@ -658,15 +658,36 @@ defmodule Bonfire.Common.Utils do
     {:error, error}
   end
 
-  @doc "Runs a function asynchronously in a Task. Like `Task.async/1` but with support for multi-tenancy in the child process"
-  def async_task(fun) do
-    # pid = self()
+  @doc """
+  Runs a function asynchronously in a Task. Simply a shorthand for calling functions in `Task` and `Task.Supervisor` but with support for multi-tenancy in the spawned process. 
+
+  - `Task.async/1` the caller creates a new process links and monitors it. Once the task action finishes, a message is sent to the caller with the result. `Task.await/2` is used to read the message sent by the task. When using `async`, you *must* `await` a reply as they are always sent. 
+
+  - `Task.start_link/1` is suggested instead if you are not expecting a reply. It starts a statically supervised task as part of a supervision tree, linked to the calling process (meaning it will be stopped when the caller stops). 
+
+  - `Task.start/1` can be used for fire-and-forget tasks, like side-effects, when you have no interest on its results nor if it completes successfully (because if the server is shut down it won't be restarted).
+
+  For more serious tasks, consider using `Oban` or `apply_task_supervised/3` for supervised tasks when possible:
+
+  - `Task.Supervisor.start_child/2` allows you to start a fire-and-forget task when you don't care about its results or if it completes successfully or not.
+
+  - `Task.Supervisor.async/2` + `Task.await/2` allows you to execute tasks concurrently and retrieve its result. If the task fails, the caller will also fail.
+  """
+  def apply_task(function \\ :async, fun, opts \\ []) do
+    pid = self()
     current_endpoint = Process.get(:phoenix_endpoint_module)
 
-    Task.async(fn ->
-      Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
-      fun.()
-    end)
+    apply(opts[:module] || Task, function, [
+      fn ->
+        Process.put(:task_parent_pid, pid)
+        Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+        fun.()
+      end
+    ])
+  end
+
+  def apply_task_supervised(function \\ :async, fun, opts \\ []) do
+    apply_task(function, fun, opts ++ [module: Task.Supervisor])
   end
 
   @doc "Returns true if the given value is nil, an empty map, an empty list, or an empty string."
