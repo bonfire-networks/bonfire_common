@@ -414,6 +414,52 @@ defmodule Bonfire.Common.RepoTemplate do
         |> subquery()
       end
 
+      @doc "Can be used to log specific queries (by calling function) in production"
+      def trace(fun) when is_function(fun, 0) do
+        prefix = config()[:telemetry_prefix]
+
+        this_process = self()
+
+        ref = make_ref()
+
+        # here we're attaching a handler to the query event. When the query is performed in the same process as called this function
+        # we want to basically "export" those values out to a list for investigation. Handlers are global though, so we need to
+        # only `send` when we are in the current process.
+        :telemetry.attach(
+          "__help__",
+          prefix ++ [:query],
+          fn _, measurements, metadata, _config ->
+            if self() == this_process do
+              send(this_process, {ref, %{measurements: measurements, metadata: metadata}})
+            end
+          end,
+          %{}
+        )
+
+        result = transaction(fun)
+
+        :telemetry.detach("__help__")
+
+        do_get_trace_messages(ref)
+
+        result
+      end
+
+  defp do_get_trace_messages(ref) do
+    receive do
+      {^ref, %{metadata: metadata, measurements: measurements} = message} ->
+        EctoSparkles.Log.handle_event(nil, measurements, metadata, nil)
+        [message | do_get_trace_messages(ref)]
+      {^ref, message} ->
+        info(message)
+        [message | do_get_trace_messages(ref)]
+    after
+      0 -> []
+    end
+  end
+
+
+
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
 
