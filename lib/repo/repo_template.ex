@@ -445,20 +445,19 @@ defmodule Bonfire.Common.RepoTemplate do
         result
       end
 
-  defp do_get_trace_messages(ref) do
-    receive do
-      {^ref, %{metadata: metadata, measurements: measurements} = message} ->
-        EctoSparkles.Log.handle_event(nil, measurements, metadata, nil)
-        [message | do_get_trace_messages(ref)]
-      {^ref, message} ->
-        info(message)
-        [message | do_get_trace_messages(ref)]
-    after
-      0 -> []
-    end
-  end
+      defp do_get_trace_messages(ref) do
+        receive do
+          {^ref, %{metadata: metadata, measurements: measurements} = message} ->
+            EctoSparkles.Log.handle_event(nil, measurements, metadata, nil)
+            [message | do_get_trace_messages(ref)]
 
-
+          {^ref, message} ->
+            info(message)
+            [message | do_get_trace_messages(ref)]
+        after
+          0 -> []
+        end
+      end
 
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
