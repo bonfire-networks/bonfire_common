@@ -238,7 +238,13 @@ defmodule Bonfire.Common.Errors do
   end
 
   def format_stacktrace_entry_sliced(entry, opts),
-    do: format_stacktrace_entry(IO.inspect(entry, label: "eeee"), opts) |> String.slice(0..200)
+    do:
+      format_stacktrace_entry(
+        entry,
+        # |> IO.inspect(label: "eeee"),
+        opts
+      )
+      |> String.slice(0..200)
 
   @doc """
   Receives a stacktrace entry and formats it into a string.
