@@ -56,7 +56,8 @@ defmodule Bonfire.Common.Repo.Preload do
       when is_struct(obj) or (is_list(obj) and is_list(opts)) do
     if Keyword.get(opts, :follow_pointers, true) do
       debug(
-        "maybe_preload #{opts[:label]}: trying to preload (and follow pointers): #{inspect(preloads)}"
+        preloads,
+        "maybe_preload #{opts[:label]}: trying to preload (and follow pointers)"
       )
 
       try_repo_preload(obj, preloads, opts)
@@ -65,7 +66,8 @@ defmodule Bonfire.Common.Repo.Preload do
       # TODO: cache this as well (only if not needing to double check pointer boundaries)
     else
       debug(
-        "maybe_preload #{opts[:label]}: trying to preload (without following pointers): #{inspect(preloads)}"
+        preloads,
+        "maybe_preload #{opts[:label]}: trying to preload (without following pointers)"
       )
 
       if Keyword.get(opts, :with_cache, false) do
@@ -105,22 +107,24 @@ defmodule Bonfire.Common.Repo.Preload do
     repo().preload(obj, preloads, opts)
   rescue
     e in ArgumentError ->
-      info(
+      error(
         preloads,
         "maybe_preload skipped due to wrong argument: #{inspect(e)}"
       )
 
+      # TODO: we should still preload the assocs that do exist when one in the list was invalid
+
       obj
 
     e ->
-      warn(preloads, "maybe_preload skipped with rescue: #{inspect(e)} // attempted preloads")
+      error(preloads, "maybe_preload skipped with rescue: #{inspect(e)} // attempted preloads")
       obj
   catch
     :exit, e ->
-      warn("maybe_preload skipped with exit: #{inspect(e)}")
+      error("maybe_preload skipped with exit: #{inspect(e)}")
 
     e ->
-      warn("maybe_preload skipped with catch: #{inspect(e)}")
+      error("maybe_preload skipped with catch: #{inspect(e)}")
   end
 
   defp try_repo_preload(obj, _, _), do: obj
