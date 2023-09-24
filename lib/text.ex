@@ -317,9 +317,9 @@ defmodule Bonfire.Common.Text do
     # |> debug(html_string)
   end
 
-  def maybe_emote(content) do
+  def maybe_emote(content, custom_emoji \\ []) do
     if module_enabled?(Emote) do
-      Emote.convert_text(content)
+      Emote.convert_text(content, custom_emoji || [])
     else
       content
     end

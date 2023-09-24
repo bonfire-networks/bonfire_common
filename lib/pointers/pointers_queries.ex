@@ -13,6 +13,9 @@ defmodule Bonfire.Common.Pointers.Queries do
 
   def query(Pointer) do
     from(p in Pointer, as: :main_object)
+    |> where([p], is_nil(p.deleted_at))
+
+    # TODO: add filter to opt-in to including deleted ones
   end
 
   def query(filters), do: query(Pointer) |> query(filters)
