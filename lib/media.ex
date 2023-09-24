@@ -92,7 +92,10 @@ defmodule Bonfire.Common.Media do
   @doc "Takes a Media map (or an object containing one) and returns the image's URL."
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
-  def image_url(%{icon: %{path: "http" <> _ = url}}), do: url
+
+  def image_url(%{icon: %{path: "http" <> _ = url}}) do
+    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+  end
 
   def image_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.ImageUploader.remote_url(media)
@@ -125,6 +128,14 @@ defmodule Bonfire.Common.Media do
   @doc "Takes a Media map (or an object containing one) and returns the banner's URL."
   def banner_url(%{profile: %{image: %{id: _} = media} = _profile}), do: banner_url(media)
   def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
+
+  def banner_url(%{image: %{path: "http" <> _ = url}}) do
+    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+  end
+
+  def banner_url(%{path: "http" <> _ = url} = _media) do
+    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+  end
 
   def banner_url(%{image: %{id: _} = media}),
     do: Bonfire.Files.BannerUploader.remote_url(media)
