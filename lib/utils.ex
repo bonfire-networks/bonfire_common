@@ -265,7 +265,7 @@ defmodule Bonfire.Common.Utils do
         nil
 
       other ->
-        warn(other, "No current_user found, will fallback to looking for a current user_id")
+        warn(other, "No current_user found, will fallback to looking for a current_user_id")
         current_user_id(current_user_or_socket_or_opts, :skip)
     end ||
       (
@@ -284,8 +284,8 @@ defmodule Bonfire.Common.Utils do
       %{current_user_id: id} = _options ->
         Types.ulid(id)
 
-      %{user_id: id} = _options ->
-        Types.ulid(id)
+      # %{user_id: id} = _options ->
+      #   Types.ulid(id)
 
       %{assigns: %{} = assigns} = _socket ->
         current_user_id(assigns, true)
@@ -446,8 +446,8 @@ defmodule Bonfire.Common.Utils do
       %{current_account_id: id} = _options ->
         Types.ulid(id)
 
-      %{account_id: id} = _options ->
-        Types.ulid(id)
+      # %{account_id: id} = _options ->
+      #   Types.ulid(id)
 
       %{assigns: %{} = assigns} = _socket ->
         current_account_id(assigns, true)
