@@ -1,12 +1,16 @@
 defmodule Bonfire.Common.Extensions.Diff do
   import Untangle
+  use Bonfire.Common.Localise
 
-  def generate_diff(repo_path) do
-    case repo_latest_diff(repo_path) do
-      {:ok, diff} ->
+  def generate_diff(ref_or_branch, repo_path) when is_binary(repo_path) do
+    case repo_latest_diff(ref_or_branch, repo_path) do
+      {:ok, msg, diff} ->
         # IO.inspect(diff)
         # render_diff(diff)
-        {:ok, diff}
+        {:ok, msg, diff}
+
+      {:error, e} when is_binary(e) ->
+        {:error, e}
 
       other ->
         error(other)
@@ -14,31 +18,48 @@ defmodule Bonfire.Common.Extensions.Diff do
     end
   catch
     :throw, {:error, :invalid_diff} ->
-      {:error, "Invalid diff."}
+      {:error, l("Invalid diff.")}
   end
 
-  def repo_latest_diff(repo_path) do
+  def repo_latest_diff(ref_or_branch, repo_path, msg \\ nil) when is_binary(repo_path) do
     path_diff = tmp_path(Regex.replace(~r/[^a-z0-9_]+/i, repo_path, "_"))
 
     with :ok <- git_fetch(repo_path),
          :ok <- git_pre_configure(repo_path),
          :ok <- git_add_all(repo_path),
-         :ok <- git_diff(repo_path, path_diff),
+         :ok <- git_generate_diff(ref_or_branch, repo_path, path_diff),
          {:ok, diff} <- parse_repo_latest_diff(path_diff) do
-      {:ok, diff}
+      {:ok, msg, diff}
     else
+      {:error, :no_diff} ->
+        case git!(["rev-list", "--max-parents=0", "HEAD"], repo_path, "")
+             |> debug("first commit") do
+          ref when is_binary(ref) and ref != ref_or_branch ->
+            repo_latest_diff(
+              ref,
+              repo_path,
+              l("No changes were found. Here is the full code of the extension:")
+            )
+
+          _ ->
+            {:error, l("No changes found.")}
+        end
+
       error ->
         error(error, "Failed to create diff for #{repo_path} at #{path_diff}")
     end
   end
 
-  def parse_repo_latest_diff(path_diff) do
+  def parse_repo_latest_diff(path_diff) when is_binary(path_diff) do
     with diff when is_binary(diff) and diff != "" <- File.read!(path_diff) do
       # |> debug("path_diff")
       GitDiff.parse_patch(diff)
     else
-      _ ->
-        error("No diff patch generated")
+      "" ->
+        {:error, :no_diff}
+
+      e ->
+        error(e, "Could not find a diff patch")
     end
   end
 
@@ -72,7 +93,7 @@ defmodule Bonfire.Common.Extensions.Diff do
     git!(["add", "."], repo_path)
   end
 
-  def git_diff(repo_path, path_output, extra_opt \\ "--cached") do
+  def git_generate_diff(ref_or_branch, repo_path, path_output, extra_opt \\ "--cached") do
     git!(
       [
         "-c",
@@ -84,31 +105,39 @@ defmodule Bonfire.Common.Extensions.Diff do
         # optionally diff staged changes (older git versions don't support the equivalent --staged)
         extra_opt,
         "--no-color",
-        "--output=#{path_output}"
+        "--output=#{path_output}",
+        ref_or_branch
       ],
       repo_path
     )
   end
 
-  def git!(args, repo_path \\ ".", into \\ default_into()) do
-    root = root()
-    debug(%{repo: repo_path, git: args, cwd: root})
-    # original_cwd = root
+  def git!(args, repo_path \\ ".", into \\ default_into(), original_cwd \\ root())
+      when is_list(args) do
+    args = ["-C", Path.join(original_cwd, repo_path)] ++ args
 
-    File.cd!(repo_path, fn ->
-      opts = cmd_opts(into: into, stderr_to_stdout: true)
+    debug("Run command: git #{Enum.join(args, " ")}")
 
-      case System.cmd("git", args, opts) do
-        {_response, 0} ->
-          # debug(response, "git_response")
-          :ok
+    # original_cwd 
+    # |> debug("cwd")
 
-        {response, _} ->
-          raise(
-            "Command \"git #{Enum.join(args, " ")}\" failed with reason: #{inspect(response)}"
-          )
-      end
-    end)
+    opts = [into: into, stderr_to_stdout: true]
+    # |> cmd_opts()
+
+    case System.cmd("git", args, opts) do
+      {response, 0} ->
+        info(response, "git_response")
+        if into == "" and is_binary(response), do: String.trim(response), else: :ok
+
+      {response, _} ->
+        # File.cd(original_cwd)
+        raise("Command \"git #{Enum.join(args, " ")}\" failed with reason: #{inspect(response)}")
+    end
+  rescue
+    e in File.Error ->
+      # File.cd(original_cwd)
+      error(e, "could not read file")
+      {:error, l("Could not read the code file(s).")}
   end
 
   defp default_into() do

@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Extensions do
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
-  # import Untangle
+  import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
 
@@ -159,15 +159,18 @@ defmodule Bonfire.Common.Extensions do
   def get_link(%{git: url}), do: url
 
   def get_link(dep) do
-    IO.inspect(dep)
+    warn(dep, "dunno how")
     "#"
   end
 
   def get_version_link(%{opts: opts}) when is_list(opts),
     do: get_version_link(Enum.into(opts, %{}))
 
+  def get_version_link(%{path: file, lock: {:git, _, ref, [branch: branch]}}),
+    do: "/settings/extensions/diff?ref=#{ref || branch}&local=#{file}"
+
   def get_version_link(%{path: file}),
-    do: "/settings/extensions/diff?local=" <> file
+    do: "/settings/extensions/diff?local=#{file}"
 
   def get_version_link(%{
         lock: {:git, "https://github.com/" <> url, ref, [branch: branch]}
