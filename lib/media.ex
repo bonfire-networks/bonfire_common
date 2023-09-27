@@ -77,8 +77,9 @@ defmodule Bonfire.Common.Media do
   # def avatar_url(%{id: id, shared_user: _} = user), do: repo().maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
   def avatar_url(%{id: id}) when is_binary(id), do: avatar_fallback(id)
-  def avatar_url(obj), do: avatar_fallback(Bonfire.Common.Types.ulid(obj))
+  def avatar_url(obj), do: avatar_fallback(Bonfire.Common.Enums.id(obj))
 
+  # TODO: configurable
   def avatar_fallback(_ \\ nil), do: "/images/avatar.png"
 
   # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
@@ -148,7 +149,10 @@ defmodule Bonfire.Common.Media do
 
   def banner_url(%{image: url}) when is_binary(url), do: url
   def banner_url(%{profile: profile}), do: banner_url(profile)
-  def banner_url(_obj), do: "/images/bonfires.png"
+  def banner_url(_obj), do: banner_fallback()
+
+  # TODO: configurable
+  def banner_fallback, do: "/images/bonfires.png"
 
   @doc """
   Returns a map containing all files and their contents from a tar or compressed tar.gz archive.
