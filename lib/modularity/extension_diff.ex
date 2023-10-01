@@ -9,8 +9,8 @@ defmodule Bonfire.Common.Extensions.Diff do
         # render_diff(diff)
         {:ok, msg, diff}
 
-      {:error, e} when is_binary(e) ->
-        {:error, e}
+      {:error, e} ->
+        error(e)
 
       other ->
         error(other)
@@ -32,18 +32,20 @@ defmodule Bonfire.Common.Extensions.Diff do
       {:ok, msg, diff}
     else
       {:error, :no_diff} ->
-        case git!(["rev-list", "--max-parents=0", "HEAD"], repo_path, "")
-             |> debug("first commit") do
-          ref when is_binary(ref) and ref != ref_or_branch ->
-            repo_latest_diff(
-              ref,
-              repo_path,
-              l("No changes were found. Here is the full code of the extension:")
-            )
+        {:error, :no_diff}
 
-          _ ->
-            {:error, l("No changes found.")}
-        end
+      # case git!(["rev-list", "--max-parents=0", "HEAD"], repo_path, "")
+      #      |> debug("first commit") do
+      #   ref when is_binary(ref) and ref != ref_or_branch ->
+      #     repo_latest_diff(
+      #       ref,
+      #       repo_path,
+      #       l("No changes were found. Here is the full code of the extension:")
+      #     )
+
+      #   _ ->
+      #     {:error, l("No changes found.")}
+      # end
 
       error ->
         error(error, "Failed to create diff for #{repo_path} at #{path_diff}")

@@ -146,8 +146,8 @@ defmodule Bonfire.Common.Extensions do
   def get_branch(%{lock: {:git, _url, _, [branch: branch]}}), do: branch
   def get_branch(_dep), do: ""
 
-  def get_link(%{opts: opts}) when is_list(opts),
-    do: get_link(Enum.into(opts, %{}))
+  def get_link(%{app: app, opts: opts}) when is_list(opts),
+    do: get_link(Enum.into(opts, %{app: app}))
 
   def get_link(%{hex: hex}), do: "https://hex.pm/packages/#{hex}"
 
@@ -168,15 +168,14 @@ defmodule Bonfire.Common.Extensions do
 
   def get_code_link(dep), do: get_version_link(dep)
 
+  def get_version_link(%{app: app, opts: opts}) when is_list(opts),
+    do: get_version_link(Enum.into(opts, %{app: app}))
 
-  def get_version_link(%{opts: opts}) when is_list(opts),
-    do: get_version_link(Enum.into(opts, %{}))
+  def get_version_link(%{app: app, path: file, lock: {:git, _, ref, [branch: branch]}}),
+    do: "/settings/extensions/diff?app=#{app}&ref=#{ref || branch}&local=#{file}"
 
-  def get_version_link(%{path: file, lock: {:git, _, ref, [branch: branch]}}),
-    do: "/settings/extensions/diff?ref=#{ref || branch}&local=#{file}"
-
-  def get_version_link(%{path: file}),
-    do: "/settings/extensions/diff?local=#{file}"
+  def get_version_link(%{app: app, path: file}),
+    do: "/settings/extensions/diff?app=#{app}&local=#{file}"
 
   def get_version_link(%{
         lock: {:git, "https://github.com/" <> url, ref, [branch: branch]}

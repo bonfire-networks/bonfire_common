@@ -296,32 +296,36 @@ defmodule Bonfire.Common.Extend do
     rel_code_file =
       code_file_path
       |> Path.relative_to(Config.get(:project_path))
+
     # |> debug()
 
-    # if Config.env() == :prod do
+    if Config.env() == :prod do
       # supports doing this in release by using the code in the gzipped code 
       tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
       # |> debug()
 
       with true <- File.exists?(tar_file),
-        {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file),
-        {:error, _} <- code_file_path
-        |> String.replace("extensions/", "deps/")
-        |> String.replace("forks/", "deps/")
-        # |> debug()
-        |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
+           {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file),
+           {:error, _} <-
+             code_file_path
+             |> String.replace("extensions/", "deps/")
+             |> String.replace("forks/", "deps/")
+             # |> debug()
+             |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
         # supports doing this in release by using the code in the gzipped code 
         BeamFile.elixir_code(module, docs: true)
-        else 
-          {:ok, code} ->
-            {:ok, code}
-          false -> 
-            BeamFile.elixir_code(module, docs: true)
+      else
+        {:ok, code} ->
+          {:ok, code}
+
+        false ->
+          BeamFile.elixir_code(module, docs: true)
       end
-    # else
-    #   code_file_path
-    #   |> File.read()
-    # end
+    else
+      # dev or test env
+      code_file_path
+      |> File.read()
+    end
     ~> {:ok, rel_code_file, ...}
 
     # |> debug()
