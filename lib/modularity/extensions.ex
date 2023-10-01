@@ -163,6 +163,12 @@ defmodule Bonfire.Common.Extensions do
     "#"
   end
 
+  def get_code_link(%{app: app}),
+    do: "/settings/extensions/code/#{app}"
+
+  def get_code_link(dep), do: get_version_link(dep)
+
+
   def get_version_link(%{opts: opts}) when is_list(opts),
     do: get_version_link(Enum.into(opts, %{}))
 
