@@ -227,6 +227,9 @@ defmodule Bonfire.Common.Utils do
   """
   def current_user(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
+      {:ok, ret} = _socket ->
+        current_user(ret)
+
       %{current_user: %{id: _} = user} = _options ->
         user
 

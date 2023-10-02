@@ -37,18 +37,18 @@ defmodule Bonfire.Common.URIs do
   @doc """
   Returns the path (URL on the local instance) for the given object/struct (eg. a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
   """
-  def path(view_module_or_path_name_or_object, args \\ [])
+  def path(view_module_or_path_name_or_object, args \\ [], opts \\ [])
 
-  def path(view_module_or_path_name_or_object, %{id: id} = args)
+  def path(view_module_or_path_name_or_object, %{id: id} = args, opts)
       when not is_struct(args),
-      do: path(view_module_or_path_name_or_object, [id])
+      do: path(view_module_or_path_name_or_object, [id], opts)
 
   # not sure what this one is for? ^
 
-  def path(%{id: _id} = object, action) when is_atom(action),
-    do: path(Types.object_type(object), [path_id(object), action])
+  def path(%{id: _id} = object, action, opts) when is_atom(action),
+    do: path(Types.object_type(object), [path_id(object), action], opts)
 
-  def path(view_module_or_path_name_or_object, args)
+  def path(view_module_or_path_name_or_object, args, opts)
       when is_atom(view_module_or_path_name_or_object) and
              not is_nil(view_module_or_path_name_or_object) do
     ([Bonfire.Common.Config.endpoint_module(), view_module_or_path_name_or_object] ++
@@ -58,7 +58,15 @@ defmodule Bonfire.Common.URIs do
               Bonfire.Web.Router.Reverse,
               :path,
               ...,
-              &voodoo_error/2
+              fn error, details ->
+                IO.inspect(error, label: "reverse_failed")
+
+                if opts[:fallback] == false do
+                  debug(details, inspect(error))
+                else
+                  voodoo_fallback(error, details)
+                end
+              end
             ) do
       "/%40" <> username ->
         "/@" <> username
@@ -71,7 +79,7 @@ defmodule Bonfire.Common.URIs do
 
       other ->
         warn(other, "Router didn't return a valid path")
-        fallback(args)
+        if opts[:fallback] != false, do: fallback(args)
     end
   rescue
     error in FunctionClauseError ->
@@ -93,22 +101,22 @@ defmodule Bonfire.Common.URIs do
       nil
   end
 
-  # def path(%{replied: %{reply_to: %{id: _} = reply_to}} = object, args) do
+  # def path(%{replied: %{reply_to: %{id: _} = reply_to}} = object, args, opts) do
   #   reply_path(object, path(reply_to))
   # end
-  # def path(%{replied: %{thread_id: thread_id}} = object, args) when is_binary(thread_id) do
+  # def path(%{replied: %{thread_id: thread_id}} = object, args, opts) when is_binary(thread_id) do
   #   reply_path(object, path(thread_id))
   # end
-  # def path(%{reply_to: %{id: _} = reply_to} = object, args) do
+  # def path(%{reply_to: %{id: _} = reply_to} = object, args, opts) do
   #   reply_path(object, path(reply_to))
   # end
-  # def path(%{thread_id: thread_id} = object, args) when is_binary(thread_id) do
+  # def path(%{thread_id: thread_id} = object, args, opts) when is_binary(thread_id) do
   #   reply_path(object, path(thread_id))
   # end
 
-  def path(%{pointer_id: id} = object, args), do: path_by_id(id, args, object)
+  def path(%{pointer_id: id} = object, args, opts), do: path_by_id(id, args, object, opts)
 
-  def path(%{id: _id} = object, args) do
+  def path(%{id: _id} = object, args, opts) do
     args_with_id =
       ([path_id(object)] ++ args)
       |> Enums.filter_empty([])
@@ -117,11 +125,11 @@ defmodule Bonfire.Common.URIs do
     case Bonfire.Common.Types.object_type(object) do
       type when is_atom(type) and not is_nil(type) ->
         debug(type, "detected object_type for object")
-        path(type, args_with_id)
+        path(type, args_with_id, opts)
 
       none ->
         debug(none, "path_maybe_lookup_pointer")
-        path_maybe_lookup_pointer(object, args)
+        path_maybe_lookup_pointer(object, args, opts)
     end
 
     # rescue
@@ -130,31 +138,54 @@ defmodule Bonfire.Common.URIs do
     #     case object do
     #       %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
     #       %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
-    #       %{id: id} -> fallback(id, args)
-    #       _ -> fallback(object, args)
+    #       %{id: id} -> if opts[:fallback] !=false, do: fallback(id, args)
+    #       _ -> if opts[:fallback] !=false, do: fallback(object, args)
     #     end
   end
 
-  def path(id, args) when is_binary(id), do: path_by_id(id, args)
+  def path(id, args, opts) when is_binary(id), do: path_by_id(id, args, nil, opts)
 
-  def path(other, _) do
+  def path(other, _, _opts) do
     error(other, "path: could not find any matching route")
     # "#unrecognised-#{inspect(other)}"
     nil
   end
 
-  defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args) do
+  defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args, opts) do
     warn(object, "path: could not figure out the type of this pointer")
 
-    fallback(id, args)
+    if opts[:fallback] != false, do: fallback(id, args)
   end
 
-  defp path_maybe_lookup_pointer(%{id: id} = object, args) do
+  defp path_maybe_lookup_pointer(%{id: id} = object, args, opts) do
     debug(
       "path: could not figure out the type of this object, gonna try checking the pointer table"
     )
 
-    path_by_id(id, args, object)
+    path_by_id(id, args, object, opts)
+  end
+
+  def path_by_id(id, args, object, opts) when is_binary(id) do
+    if Types.is_ulid?(id) do
+      with {:ok, pointer} <-
+             Cache.maybe_apply_cached(&Bonfire.Common.Pointers.one/2, [
+               id,
+               [skip_boundary_check: true, preload: :character]
+             ]) do
+        debug(pointer, "path_by_id: found a pointer")
+
+        (object || %{})
+        |> Map.merge(pointer)
+        |> path(args, opts)
+      else
+        _ ->
+          warn("path_by_id: could not find a Pointer with id #{id}")
+          if opts[:fallback] != false, do: fallback(id, args)
+      end
+    else
+      warn("path_by_id: could not find a matching route for #{id}, using fallback path")
+      if opts[:fallback] != false, do: fallback(id, args)
+    end
   end
 
   def fallback(id, type, args) do
@@ -183,23 +214,24 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp do_fallback(args, id_at \\ 0) do
-    debug(args, id_at)
+    # debug(args, id_at)
+    IO.inspect(args, label: "path_fallback")
 
     # TODO: configurable
-    fallback_route = Bonfire.UI.Social.DiscussionLive
+    fallback_route = Pointers.Pointer
     fallback_character_route = Bonfire.Data.Identity.Character
 
     case path_id(Enum.at(args, id_at) |> debug()) |> debug() do
       maybe_username_or_id
       when is_binary(maybe_username_or_id) and not is_nil(maybe_username_or_id) ->
         if Types.is_ulid?(maybe_username_or_id) do
-          path(fallback_route, args)
+          path(fallback_route, args, fallback: false)
         else
-          path(fallback_character_route, args)
+          path(fallback_character_route, args, fallback: false)
         end
 
       _ ->
-        path(fallback_route, args)
+        path(fallback_route, args, fallback: false)
     end
   end
 
@@ -211,35 +243,12 @@ defmodule Bonfire.Common.URIs do
   #   path(object)
   # end
 
-  defp voodoo_error(_error, [_endpoint, type_module, args]) do
+  defp voodoo_fallback(_error, [_endpoint, type_module, args]) do
     fallback([], type_module, args)
   end
 
-  defp voodoo_error(_error, [_endpoint, args]) do
+  defp voodoo_fallback(_error, [_endpoint, args]) do
     fallback(args)
-  end
-
-  def path_by_id(id, args, object \\ %{}) when is_binary(id) do
-    if Types.is_ulid?(id) do
-      with {:ok, pointer} <-
-             Cache.maybe_apply_cached(&Bonfire.Common.Pointers.one/2, [
-               id,
-               [skip_boundary_check: true, preload: :character]
-             ]) do
-        debug(pointer, "path_by_id: found a pointer")
-
-        object
-        |> Map.merge(pointer)
-        |> path(args)
-      else
-        _ ->
-          warn("path_by_id: could not find a Pointer with id #{id}")
-          fallback(id, args)
-      end
-    else
-      warn("path_by_id: could not find a matching route for #{id}, using fallback path")
-      fallback(id, args)
-    end
   end
 
   # defp path_id("@"<>username), do: username
