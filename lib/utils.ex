@@ -31,7 +31,7 @@ defmodule Bonfire.Common.Utils do
       alias Common.DatesTimes
       alias Common.Media
       alias Common.URIs
-      alias Bonfire.Me.Settings
+      alias Bonfire.Common.Settings
       alias Bonfire.Boundaries
 
       require Utils

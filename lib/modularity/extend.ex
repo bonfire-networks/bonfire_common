@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Extend do
   import Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
-  alias Bonfire.Me.Settings
+  alias Bonfire.Common.Settings
 
   @doc """
   Extend a module (i.e. define `defdelegate` and `defoverridable` for all functions from the source module in the current module. 
