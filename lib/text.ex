@@ -164,6 +164,40 @@ defmodule Bonfire.Common.Text do
   def maybe_markdown_to_html(content, opts) do
     debug(content, "input")
 
+    if Config.get(:markdown_library) == :earmark,
+      do: markdown_as_html_earmark(content, opts),
+      else: markdown_as_html_mdex(content, opts)
+  end
+
+  def markdown_as_html_mdex(content, opts) do
+    [
+      parse: [
+        smart: false
+      ],
+      render: [
+        hardbreaks: true,
+        _unsafe: opts[:__unsafe__],
+        escape: !opts[:__unsafe__]
+      ],
+      extension: [
+        strikethrough: true,
+        tasklist: true,
+        # can't use because things @ mentions are emails
+        autolink: false,
+        table: true,
+        tagfilter: true
+        # header_ids: fn text -> slug(text) end
+      ],
+      features: [
+        # TODO: auto-set appropriate theme based on user's daisy theme
+        syntax_highlight_theme: "adwaita_dark"
+      ]
+    ]
+    |> Keyword.merge(opts)
+    |> MDEx.to_html(content, ...)
+  end
+
+  def markdown_as_html_earmark(content, opts) do
     # if module_enabled?(Makedown) do
     # # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
     #   Makedown
@@ -343,7 +377,36 @@ defmodule Bonfire.Common.Text do
 
   def make_local_links_live(content), do: content
 
-  def normalise_links(content)
+  def normalise_links(content, format \\ :markdown)
+
+  def normalise_links(content, :markdown)
+      when is_binary(content) and byte_size(content) > 20 do
+    local_instance = Bonfire.Common.URIs.base_url()
+
+    content
+    # handle AP actors
+    |> Regex.replace(
+      ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U,
+      ...,
+      "\\1/character/\\2"
+    )
+    # handle AP objects
+    |> Regex.replace(
+      ~r/(\()#{local_instance}\/pub\/objects\/(.+\))/U,
+      ...,
+      "\\1/discussion/\\2"
+    )
+    # handle local links
+    |> Regex.replace(
+      ~r/(\]\()#{local_instance}(.+\))/U,
+      ...,
+      "\\1\\2"
+    )
+
+    # |> debug(content)
+  end
+
+  def normalise_links(content, _html)
       when is_binary(content) and byte_size(content) > 20 do
     local_instance = Bonfire.Common.URIs.base_url()
 
@@ -374,7 +437,7 @@ defmodule Bonfire.Common.Text do
     # |> debug(content)
   end
 
-  def normalise_links(content), do: content
+  def normalise_links(content, _format), do: content
 
   def markdown_checkboxes(text) do
     text
