@@ -47,6 +47,32 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
+  def thumbnail_url(%{metadata: %{"module" => module}} = media) do
+    case Common.Types.maybe_to_module(module) do
+      nil ->
+        Map.drop(media, [:metadata]) |> media_url()
+
+      Elixir.Bonfire.Files.DocumentUploader ->
+        Bonfire.Files.DocumentUploader.remote_url(media, :thumbnail)
+
+      module ->
+        Utils.maybe_apply(module, :remote_url, [media, :thumbnail])
+    end
+  end
+
+  def thumbnail_url(%{media_type: media_type} = media) do
+    if String.starts_with?(media_type, "image") do
+      image_url(media)
+    else
+      # Utils.e(media, :metadata, :canonical_url, nil) ||
+      Bonfire.Files.DocumentUploader.remote_url(media, :thumbnail)
+    end
+  end
+
+  def thumbnail_url(_) do
+    nil
+  end
+
   @doc "Takes a Media map (or an object containing one) and returns the avatar's URL."
   def avatar_media(%{profile: %{icon: media}}), do: media
   def avatar_media(%{icon: media}), do: media
