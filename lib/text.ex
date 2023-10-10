@@ -384,6 +384,8 @@ defmodule Bonfire.Common.Text do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
+    # special for MD links coming from milkdown
+    |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
     # handle AP actors
     |> Regex.replace(
       ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U,
@@ -411,7 +413,7 @@ defmodule Bonfire.Common.Text do
     local_instance = Bonfire.Common.URIs.base_url()
 
     content
-    #
+    # special for MD links coming from milkdown
     |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
     # handle AP actors
     |> Regex.replace(
