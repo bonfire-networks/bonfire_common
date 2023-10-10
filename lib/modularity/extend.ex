@@ -283,6 +283,7 @@ defmodule Bonfire.Common.Extend do
   # generate an updated reverse router based on extensions that are enabled/disabled
   def generate_reverse_router!() do
     Utils.maybe_apply(Bonfire.Common.Config.endpoint_module(), :generate_reverse_router!)
+    |> debug("reverse_router generated?")
   end
 
   def module_file(module) when is_atom(module) do
