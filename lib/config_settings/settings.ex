@@ -103,16 +103,20 @@ defmodule Bonfire.Common.Settings do
   defp fetch_all_scopes(otp_app, opts) do
     # debug(opts, "opts")
     current_user = current_user(opts)
+    current_user_id = id(current_user)
     current_account = current_account(opts)
+    current_account_id = id(current_account)
     scope = e(opts, :scope, nil) || if is_atom(opts), do: opts
     scope_id = id(scope)
     # debug(current_user, "current_user")
     # debug(current_account, "current_account")
 
-    if scope != :instance and not is_map(current_user) and not is_map(current_account) do
+    if (scope != :instance and not is_map(current_user) and not is_map(current_account)) or
+         (is_struct(current_user) and not Ecto.assoc_loaded?(current_user.settings)) or
+         (is_struct(current_account) and not Ecto.assoc_loaded?(current_account.settings)) do
       warn(
         otp_app,
-        "You should pass a current_user and/or current_account in `opts` depending on what scope of Settings you want for OTP app"
+        "You should pass a current_user and/or current_account (with settings assoc preloaded) in `opts` depending on what scope of Settings you want for OTP app"
       )
 
       # debug(opts)
@@ -123,26 +127,32 @@ defmodule Bonfire.Common.Settings do
        Config.get_ext(otp_app)
      ] ++
        [
-         maybe_fetch(current_account, opts)
-         |> e(:data, otp_app, nil)
+         if(current_account_id,
+           do:
+             maybe_fetch(current_account, opts)
+             |> e(:data, otp_app, nil)
+         )
        ] ++
        [
-         maybe_fetch(current_user, opts)
-         #  |> debug()
-         #  |> e(:data, otp_app, nil)
-         |> e(:data, nil)
-         #  |> debug()
-         |> e(otp_app, nil)
+         if(current_user_id,
+           do:
+             maybe_fetch(current_user, opts)
+             #  |> debug()
+             #  |> e(:data, otp_app, nil)
+             |> e(:data, nil)
+             #  |> debug()
+             |> e(otp_app, nil)
+         )
          #  |> debug()
        ] ++
-       if(is_map(scope) and scope_id != id(current_user) and scope_id != id(current_account),
+       if(is_map(scope) and scope_id != current_user_id and scope_id != current_account_id,
          do: [
            maybe_fetch(scope, opts)
            |> e(:data, otp_app, nil)
          ],
          else: []
        ))
-    # |> debug()
+    |> debug()
     |> filter_empty([])
 
     # |> debug("list of different configs and settings for #{inspect(otp_app)}")
@@ -316,7 +326,7 @@ defmodule Bonfire.Common.Settings do
 
   # TODO: find a better, more pluggable way to add hooks to settings
   defp set_with_hooks(
-         %{Bonfire.Me.Users => %{discoverable: false}, scope: :user} = attrs,
+         %{Bonfire.Me.Users => %{undiscoverable: true}, scope: :user} = attrs,
          opts
        ) do
     current_user = current_user_required!(opts)
@@ -335,7 +345,7 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp set_with_hooks(
-         %{Bonfire.Me.Users => %{discoverable: true}, scope: :user} = attrs,
+         %{Bonfire.Me.Users => %{undiscoverable: _}, scope: :user} = attrs,
          opts
        ) do
     current_user = current_user_required!(opts)

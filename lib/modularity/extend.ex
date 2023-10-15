@@ -92,10 +92,14 @@ defmodule Bonfire.Common.Extend do
 
   @doc """
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
-  # TODO: also make it possible to disable individual modules in config?
   """
   def module_enabled?(module, opts \\ []) do
-    module_exists?(module) and extension_enabled?(module, opts)
+    context = opts == [] || Utils.current_user(opts) || Utils.current_account(opts)
+    # debug(context, "context")
+
+    module_exists?(module) and
+      do_extension_enabled?(module, context) and
+      is_disabled?(module, context) != true
   end
 
   def module_exists?(module) when is_atom(module) do
@@ -106,12 +110,19 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
-    extension = maybe_extension_loaded(module_or_otp_app)
     context = opts == [] || Utils.current_user(opts) || Utils.current_account(opts)
-    # debug(context)
-    extension_loaded?(extension) and
-      Config.get_ext(extension, :disabled) != true and
-      (is_atom(context) or Settings.get([extension, :disabled], nil, context) != true)
+    do_extension_enabled?(module_or_otp_app, context)
+  end
+
+  defp do_extension_enabled?(module_or_otp_app, context) when is_atom(module_or_otp_app) do
+    extension = maybe_extension_loaded(module_or_otp_app)
+    # debug(context, "context")
+    extension_loaded?(extension) and is_disabled?(extension, context) != true
+  end
+
+  defp is_disabled?(module_or_extension, context) do
+    Config.get_ext(module_or_extension, :disabled) ||
+      if not is_atom(context), do: Settings.get([module_or_extension, :disabled], nil, context)
   end
 
   @doc """
