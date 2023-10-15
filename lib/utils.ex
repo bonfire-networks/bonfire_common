@@ -522,7 +522,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
-    maybe_apply(Phoenix.LiveView, :connected?, socket, fn _, _ -> nil end)
+    maybe_apply(Phoenix.LiveView, :connected?, socket, fallback_return: nil)
   end
 
   def socket_connected?(assigns) do
@@ -535,7 +535,7 @@ defmodule Bonfire.Common.Utils do
         module,
         fun,
         args \\ [],
-        fallback_fun \\ &apply_error/2
+        opts \\ []
       )
 
   def maybe_apply(
@@ -544,12 +544,30 @@ defmodule Bonfire.Common.Utils do
         args,
         fallback_fun
       )
-      when is_atom(module) and not is_nil(module) and is_list(funs) and is_list(args) do
+      when is_function(fallback_fun),
+      do:
+        maybe_apply(
+          module,
+          funs,
+          args,
+          fallback_fun: fallback_fun
+        )
+
+  def maybe_apply(
+        module,
+        funs,
+        args,
+        opts
+      )
+      when is_atom(module) and not is_nil(module) and is_list(funs) and is_list(args) and
+             is_list(opts) do
     arity = length(args)
 
-    fallback_fun = if not is_function(fallback_fun), do: &apply_error/2, else: fallback_fun
-
-    fallback_return = if not is_function(fallback_fun), do: fallback_fun
+    fallback_fun =
+      case opts[:fallback_fun] do
+        fallback_fun when is_function(fallback_fun) -> fallback_fun
+        _ -> &apply_error/2
+      end
 
     if module_enabled?(module) do
       # debug(module, "module_enabled")
@@ -564,34 +582,38 @@ defmodule Bonfire.Common.Utils do
       if fun do
         # debug({fun, arity}, "function_exists")
 
-        try do
+        if opts[:no_argument_rescue] do
           apply(module, fun, args)
-        rescue
-          e in FunctionClauseError ->
-            {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
+        else
+          try do
+            apply(module, fun, args)
+          rescue
+            e in FunctionClauseError ->
+              {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
 
-            error(stacktrace, exception)
+              error(stacktrace, exception)
 
-            e =
-              fallback_fun.(
-                "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
-                args
-              )
+              e =
+                fallback_fun.(
+                  "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                  args
+                )
 
-            fallback_return || e
+              opts[:fallback_return] || e
 
-          e in ArgumentError ->
-            {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
+            e in ArgumentError ->
+              {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
 
-            error(stacktrace, exception)
+              error(stacktrace, exception)
 
-            e =
-              fallback_fun.(
-                "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
-                args
-              )
+              e =
+                fallback_fun.(
+                  "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                  args
+                )
 
-            fallback_return || e
+              opts[:fallback_return] || e
+          end
         end
       else
         e =
@@ -600,7 +622,7 @@ defmodule Bonfire.Common.Utils do
             args
           )
 
-        fallback_return || e
+        opts[:fallback_return] || e
       end
     else
       e =
@@ -609,7 +631,7 @@ defmodule Bonfire.Common.Utils do
           args
         )
 
-      fallback_return || e
+      opts[:fallback_return] || e
     end
   end
 
@@ -617,7 +639,7 @@ defmodule Bonfire.Common.Utils do
         module,
         fun,
         args,
-        fallback_fun
+        opts
       )
       when not is_list(args),
       do:
@@ -625,14 +647,14 @@ defmodule Bonfire.Common.Utils do
           module,
           fun,
           [args],
-          fallback_fun
+          opts
         )
 
   def maybe_apply(
         module,
         fun,
         args,
-        fallback_fun
+        opts
       )
       when not is_list(fun),
       do:
@@ -640,14 +662,14 @@ defmodule Bonfire.Common.Utils do
           module,
           [fun],
           args,
-          fallback_fun
+          opts
         )
 
   def maybe_apply(
         module,
         fun,
         args,
-        _fallback_fun
+        _opts
       ),
       do:
         apply_error(

@@ -124,7 +124,7 @@ defmodule Bonfire.Common.Pointers do
       Bonfire.Boundaries.Queries,
       :object_boundarised,
       [q, opts],
-      q
+      fallback_return: q
     )
     |> pointer_preloads(opts[:preload])
 
@@ -415,7 +415,7 @@ defmodule Bonfire.Common.Pointers do
           Bonfire.Boundaries.Queries,
           :object_boundarised,
           [q, opts],
-          q
+          fallback_return: q
         )
       end
     end
