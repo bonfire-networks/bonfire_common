@@ -25,7 +25,7 @@ defmodule Bonfire.Common.Settings do
 
     debug(keys_tree, "Get settings in #{inspect(otp_app)} for")
 
-    case get_for_ext(otp_app, opts) do
+    case get_for_ext(otp_app, to_options(opts)) do
       [] ->
         default
 
@@ -68,7 +68,7 @@ defmodule Bonfire.Common.Settings do
   defp the_otp_app(module_or_otp_app),
     do: Extend.maybe_extension_loaded!(module_or_otp_app) || Config.top_level_otp_app()
 
-  def get_for_ext(module_or_otp_app, opts \\ []) do
+  defp get_for_ext(module_or_otp_app, opts \\ []) do
     if e(opts, :one_scope_only, false) do
       the_otp_app(module_or_otp_app)
       |> fetch_one_scope(opts)
@@ -80,7 +80,7 @@ defmodule Bonfire.Common.Settings do
   @doc """
   Get all config keys/values for a Bonfire extension or OTP app
   """
-  def get_merged_ext(module_or_otp_app, opts \\ []) do
+  defp get_merged_ext(module_or_otp_app, opts \\ []) do
     the_otp_app(module_or_otp_app)
     |> fetch_all_scopes(opts)
     |> deep_merge_reduce()
@@ -88,7 +88,7 @@ defmodule Bonfire.Common.Settings do
     # |> debug("domino-merged settings for #{inspect(otp_app)}")
   end
 
-  def get_merged_ext!(module_or_otp_app, opts \\ []) do
+  defp get_merged_ext!(module_or_otp_app, opts \\ []) do
     case get_merged_ext(module_or_otp_app, opts) do
       nil ->
         raise "Missing settings or configuration for extension: #{inspect(module_or_otp_app, pretty: true)}"
@@ -152,7 +152,7 @@ defmodule Bonfire.Common.Settings do
          ],
          else: []
        ))
-    |> debug()
+    # |> debug()
     |> filter_empty([])
 
     # |> debug("list of different configs and settings for #{inspect(otp_app)}")
@@ -205,28 +205,28 @@ defmodule Bonfire.Common.Settings do
     |> e(:data, nil)
   end
 
-  def maybe_fetch(scope, opts \\ [])
+  defp maybe_fetch(scope, opts \\ [])
 
-  def maybe_fetch({_scope, scoped} = _scope_tuple, opts) do
+  defp maybe_fetch({_scope, scoped} = _scope_tuple, opts) do
     maybe_fetch(scoped, opts)
   end
 
-  def maybe_fetch(scope_id, opts) when is_binary(scope_id) do
+  defp maybe_fetch(scope_id, opts) when is_binary(scope_id) do
     if e(opts, :preload, nil) do
       do_fetch(scope_id)
     else
-      if Config.env() != :test,
+      if !e(opts, :preload, nil) and Config.env() != :test,
         do:
-          error(
+          warn(
             scope_id,
-            "cannot lookup Settings since they aren't already preloaded in scoped object"
+            "cannot lookup Settings since an ID was provided as cope instead of an object with Settings preloaded"
           )
 
       nil
     end
   end
 
-  def maybe_fetch(scope, opts) when is_map(scope) do
+  defp maybe_fetch(scope, opts) when is_map(scope) do
     case id(scope) do
       nil ->
         # if is_map(scope) or Keyword.keyword?(scope) do
@@ -245,19 +245,27 @@ defmodule Bonfire.Common.Settings do
       scope_id ->
         case scope do
           %{settings: %Ecto.Association.NotLoaded{}} ->
-            maybe_fetch(scope_id, opts)
+            maybe_fetch(scope_id, opts ++ [recursing: true])
 
           %{settings: settings} ->
             settings
 
           _ ->
-            maybe_fetch(scope_id, opts)
-        end
+            maybe_fetch(scope_id, opts ++ [recursing: true])
+        end ||
+          if Config.env() != :test do
+            warn(
+              Types.object_type(scope),
+              "cannot lookup Settings since they aren't preloaded in scoped object"
+            )
+
+            nil
+          end
     end
   end
 
-  def maybe_fetch(scope, _opts) do
-    debug(scope, "invalid scope")
+  defp maybe_fetch(scope, _opts) do
+    warn(scope, "invalid scope")
     nil
   end
 
@@ -300,13 +308,13 @@ defmodule Bonfire.Common.Settings do
     attrs
     |> input_to_atoms(discard_unknown_keys: true, values: true, values_to_integers: true)
     |> debug("settings as atoms")
-    |> set_with_hooks(opts)
+    |> set_with_hooks(to_options(opts))
   end
 
   def set(settings, opts) when is_list(settings) do
     # FIXME: optimise (do not convert to map and then back)
     Enum.into(settings, %{})
-    |> set_with_hooks(opts)
+    |> set_with_hooks(to_options(opts))
   end
 
   def reset_instance() do
@@ -484,7 +492,7 @@ defmodule Bonfire.Common.Settings do
     do: Map.put(object, :settings, settings)
 
   defp fetch_or_empty(scoped, opts) do
-    maybe_fetch(scoped, to_options(opts) ++ [preload: true]) ||
+    maybe_fetch(scoped, opts ++ [preload: true]) ||
       struct(Bonfire.Data.Identity.Settings)
   end
 

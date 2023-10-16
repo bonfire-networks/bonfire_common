@@ -427,8 +427,8 @@ defmodule Bonfire.Common.Utils do
             end
         end ||
           (
-            warn(
-              other,
+            debug(
+              # other,
               "No current_account found, will fallback to looking for a current account_id"
             )
 

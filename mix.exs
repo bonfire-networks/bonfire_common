@@ -24,6 +24,7 @@ defmodule Bonfire.Common.MixProject do
 
       deps:
         Mess.deps([
+          {:assert_value, ">= 0.0.0", only: [:dev, :test]},
           {:zest, "~> 0.1", optional: true},
           {:sentry, "~> 8.0", optional: true},
           {:dataloader, "~> 2.0", optional: true},
