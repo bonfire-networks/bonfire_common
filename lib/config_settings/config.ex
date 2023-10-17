@@ -67,9 +67,8 @@ defmodule Bonfire.Common.Config do
 
   # if no extension is specified, use the top-level Bonfire app
   def get(keys_tree, default, nil) do
-    # FIXME: needs to be fixed and then made to trigger by removing `top_level_otp_app()`
     {[otp_app], keys_tree} = keys_tree(keys_tree) |> Enum.split(1)
-    debug(keys_tree, "Get config for app #{otp_app}")
+    # debug(keys_tree, "Get config for app #{otp_app}")
 
     get(keys_tree, default, otp_app)
   end
@@ -125,7 +124,12 @@ defmodule Bonfire.Common.Config do
 
   def put(key, value, otp_app \\ nil)
 
-  def put(key, value, nil), do: put(key, value, top_level_otp_app())
+  def put(keys, value, nil) do
+    {[otp_app], keys_tree} = keys_tree(keys) |> Enum.split(1)
+    # |> debug("otp_app and keys_tree")
+
+    put(keys_tree, value, otp_app)
+  end
 
   def put([key], value, otp_app), do: put(key, value, otp_app)
 
