@@ -556,7 +556,19 @@ defmodule Bonfire.Common.Enums do
 
   defp maybe_keyword_new(object) do
     if Enumerable.impl_for(object),
-      do: Keyword.new(object),
+      do: Keyword.new(object, fn 
+        {key, val} when is_atom(key) -> {key, val} 
+        {key, val} when is_binary(key) -> 
+          case Types.maybe_to_atom!(key) do
+            nil -> 
+              warn(key, "Discarding item with non-atom key")
+              {:__item_discarded__, true}
+            key -> {key, val} 
+          end
+        other -> 
+              warn(other, "Discarding item that isn't a key/value pair")
+              {:__item_discarded__, true}
+      end),
       else: object
   rescue
     e ->
