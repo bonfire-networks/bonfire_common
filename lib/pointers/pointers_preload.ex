@@ -15,13 +15,13 @@ defmodule Bonfire.Common.Pointers.Preload do
       when is_list(keys) and length(keys) == 1 do
     # TODO: handle any size list and merge with accelerator?
     key = List.first(keys)
-    debug("list with one key: #{inspect(key)}")
+    debug(key, "list with one key")
     maybe_preload_pointers(object, key, opts)
   end
 
   def maybe_preload_pointers(object, key, opts)
       when is_struct(object) and is_map(object) and is_atom(key) do
-    debug("one field: #{inspect(key)}")
+    debug(key, "one field")
 
     case Map.get(object, key) do
       %Pointers.Pointer{} = pointer ->
@@ -34,7 +34,7 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   def maybe_preload_pointers(object, {key, nested_keys}, opts)
       when is_struct(object) do
-    debug("key #{key} with nested keys #{inspect(nested_keys)}")
+    debug(nested_keys, "key #{inspect(key)} with nested keys")
 
     object
     |> maybe_preload_pointer(opts)
