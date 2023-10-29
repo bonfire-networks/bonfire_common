@@ -64,10 +64,10 @@ defmodule Bonfire.Common.Types do
     if is_ulid?(id) do
       id
     else
-      e = "Expected a ULID ID (or an object with one), got #{inspect(input)}"
+      e = "Expected a ULID ID (or an object with one)"
 
       # throw {:error, e}
-      warn(e)
+      warn(input, e)
       nil
     end
   end
@@ -81,10 +81,10 @@ defmodule Bonfire.Common.Types do
         ulid(id)
 
       _ ->
-        e = "Expected a ULID ID (or an object with one), got #{inspect(id)}"
-
+        # e = "Expected a ULID ID (or an object with one)"
         # throw {:error, e}
-        debug(e)
+        # debug(id, e)
+        # not showing the error because `Enums.id` already outputs one ^
         nil
     end
   end
@@ -137,8 +137,8 @@ defmodule Bonfire.Common.Types do
         num
 
       {num, extra} ->
-        warn(extra, "Float.parse found extra data in the input")
-        num
+        warn(extra, "Do not convert value because Float.parse found extra data in the input")
+        fallback
 
       _ ->
         fallback

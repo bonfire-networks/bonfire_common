@@ -31,9 +31,9 @@ defmodule Bonfire.Common.Enums do
   def id({:ok, other}), do: id(other)
 
   def id(id) do
-    e = "Expected an ID (or an object with one), got #{inspect(id)}"
+    e = "Expected an ID (or an object with one)"
     # throw {:error, e}
-    debug(e)
+    debug(id, e)
     nil
   end
 

@@ -245,22 +245,16 @@ defmodule Bonfire.Common.Settings do
       scope_id ->
         case scope do
           %{settings: %Ecto.Association.NotLoaded{}} ->
-            maybe_fetch(scope_id, opts ++ [recursing: true])
+            maybe_fetch(scope_id, opts ++ [recursing: true]) ||
+              maybe_warn_not_fetched(scope, opts[:recursing])
 
           %{settings: settings} ->
             settings
 
           _ ->
-            maybe_fetch(scope_id, opts ++ [recursing: true])
-        end ||
-          if Config.env() != :test do
-            warn(
-              Types.object_type(scope),
-              "cannot lookup Settings since they aren't preloaded in scoped object"
-            )
-
-            nil
-          end
+            maybe_fetch(scope_id, opts ++ [recursing: true]) ||
+              maybe_warn_not_fetched(scope, opts[:recursing])
+        end
     end
   end
 
@@ -268,6 +262,19 @@ defmodule Bonfire.Common.Settings do
     warn(scope, "invalid scope")
     nil
   end
+
+  if Config.env() != :test do
+    defp maybe_warn_not_fetched(scope, nil) do
+      warn(
+        Types.object_type(scope),
+        "cannot lookup Settings since they aren't preloaded in scoped object"
+      )
+
+      nil
+    end
+  end
+
+  defp maybe_warn_not_fetched(_, _), do: nil
 
   defp do_fetch(id) do
     query_filter(Bonfire.Data.Identity.Settings, %{id: id})
