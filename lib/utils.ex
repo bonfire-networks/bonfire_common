@@ -593,45 +593,37 @@ defmodule Bonfire.Common.Utils do
 
               error(stacktrace, exception)
 
-              e =
+              opts[:fallback_return] ||
                 fallback_fun.(
                   "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
                   args
                 )
-
-              opts[:fallback_return] || e
 
             e in ArgumentError ->
               {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
 
               error(stacktrace, exception)
 
-              e =
+              opts[:fallback_return] ||
                 fallback_fun.(
                   "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
                   args
                 )
-
-              opts[:fallback_return] || e
           end
         end
       else
-        e =
+        opts[:fallback_return] ||
           fallback_fun.(
             "None of the functions #{inspect(funs)} are defined at #{module} with arity #{arity}",
             args
           )
-
-        opts[:fallback_return] || e
       end
     else
-      e =
+      opts[:fallback_return] ||
         fallback_fun.(
           "No such module (#{module}) could be loaded.",
           args
         )
-
-      opts[:fallback_return] || e
     end
   end
 
