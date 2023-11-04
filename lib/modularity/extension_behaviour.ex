@@ -188,7 +188,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   def populate() do
-    IO.puts("Gathering a list of behaviour modules...")
+    IO.puts("Analysing the app to prepare a list of extensions and their behaviour modules...")
 
     {time, indexed} = :timer.tc(__MODULE__, :find_adopters_of_behaviours, [])
     # indexed = find_adopters_of_behaviours()

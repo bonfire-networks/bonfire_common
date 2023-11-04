@@ -515,7 +515,7 @@ defmodule Bonfire.Common.Settings do
 
     existing_data
     # |> debug("existing_data")
-    |> deep_merge(data)
+    |> deep_merge(data, replace_lists: true)
     |> debug("merged settings to set")
     |> do_update(settings, ...)
   end

@@ -839,7 +839,7 @@ defmodule Bonfire.Common.Enums do
          values_to_integers
        )
        when is_list(list) do
-    if Keyword.keyword?(list) do
+    if Keyword.keyword?(list) and list != [] do
       Map.new(list)
       |> input_to_atoms(
         discard_unknown_keys,
@@ -867,7 +867,7 @@ defmodule Bonfire.Common.Enums do
          values_to_integers
        )
        when is_list(list) do
-    if Keyword.keyword?(list) do
+    if Keyword.keyword?(list) and list != [] do
       Map.new(list)
       |> input_to_atoms(
         discard_unknown_keys,
