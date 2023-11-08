@@ -23,6 +23,9 @@ defmodule Bonfire.Common.RepoTemplate do
 
       @default_cursor_fields [cursor_fields: [{:id, :desc}]]
 
+      def default_repo_opts,
+        do: [timeout: Config.get([Bonfire.Common.Repo, :timeout], 20000)] |> debug()
+
       # def default_options(:all) do
       #   [
       #     returning: true
@@ -251,7 +254,11 @@ defmodule Bonfire.Common.RepoTemplate do
           total_count_primary_key_field: Pointers.ULID
         ]
 
-      defp paginator_paginate(queryable, opts \\ @default_cursor_fields, repo_opts \\ [])
+      defp paginator_paginate(
+             queryable,
+             opts \\ @default_cursor_fields,
+             repo_opts \\ default_repo_opts()
+           )
 
       defp paginator_paginate(queryable, opts, repo_opts) when is_list(opts) do
         merged_opts =
@@ -261,7 +268,11 @@ defmodule Bonfire.Common.RepoTemplate do
               @default_cursor_fields,
               Keyword.merge(
                 Utils.to_options(opts),
-                Keyword.new(opts[:paginate] || opts[:paginated] || opts[:pagination] || [])
+                Keyword.new(
+                  if is_list(opts[:paginate]),
+                    do: opts[:paginate],
+                    else: opts[:paginated] || opts[:pagination] || []
+                )
               )
             )
           )
@@ -302,7 +313,7 @@ defmodule Bonfire.Common.RepoTemplate do
       Execute a query for multiple results and return one page of results.
       This uses the main implementation for pagination, which is cursor-based and powered by the `Paginator` library.
       """
-      def many_paginated(queryable, opts \\ [], repo_opts \\ [])
+      def many_paginated(queryable, opts \\ [], repo_opts \\ default_repo_opts())
 
       def many_paginated(%{order_bys: order} = queryable, opts, repo_opts)
           when is_list(order) and length(order) > 0 do
