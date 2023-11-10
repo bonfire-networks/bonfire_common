@@ -5,8 +5,6 @@ defmodule Bonfire.Common.Repo.Delete do
   use Bonfire.Common.Utils
   alias Ecto.Changeset
 
-  def federation_module, do: "Delete"
-
   @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
   @doc "Just marks an entry as deleted in the database"
   def soft_delete(it), do: deletion_result(do_soft_delete(it))
