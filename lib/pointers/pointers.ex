@@ -43,6 +43,10 @@ defmodule Bonfire.Common.Pointers do
       {:error, :not_found}
   end
 
+  # def get([%Pointer{}|_] = pointers, opts) do
+  #   do_follow!(pointers, opts)
+  # end
+
   def get(other, _) do
     error("Cannot get a pointer with #{inspect(other)}")
     {:error, :not_found}
@@ -323,9 +327,9 @@ defmodule Bonfire.Common.Pointers do
        when not is_nil(pointed),
        do: acc
 
-  defp preload_search(_force, pointer, acc) do
-    ids = [pointer.id | Map.get(acc, pointer.table_id, [])]
-    Map.put(acc, pointer.table_id, ids)
+  defp preload_search(_force, %{id: id, table_id: table_id}, acc) do
+    ids = [id | Map.get(acc, table_id, [])]
+    Map.put(acc, table_id, ids)
   end
 
   defp preload_per_table({table_id, ids}, acc, opts) do
