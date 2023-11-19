@@ -164,7 +164,7 @@ defmodule Bonfire.Common.Text do
   def maybe_markdown_to_html(content, opts) do
     debug(content, "input")
 
-    if Config.get(:markdown_library) == :earmark,
+    if Config.get(:markdown_library) == Earmark,
       do: markdown_as_html_earmark(content, opts),
       else: markdown_as_html_mdex(content, opts)
   end
@@ -185,8 +185,8 @@ defmodule Bonfire.Common.Text do
         # can't use because things @ mentions are emails
         autolink: false,
         table: true,
-        tagfilter: true
-        # header_ids: fn text -> slug(text) end
+        tagfilter: true,
+        header_ids: ""
       ],
       features: [
         # TODO: auto-set appropriate theme based on user's daisy theme
