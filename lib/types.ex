@@ -148,6 +148,7 @@ defmodule Bonfire.Common.Types do
   @doc "Converts a value to an integer if possible. If the value is not an integer, it attempts to convert it to a float and then rounds it to the nearest integer. Otherwise it returns a fallback value (which defaults to 0 if not provided)."
   def maybe_to_integer(val, fallback \\ 0)
   def maybe_to_integer(val, _fallback) when is_integer(val), do: val
+  def maybe_to_integer(val, _fallback) when is_float(val), do: round(val)
 
   def maybe_to_integer(val, fallback) do
     case maybe_to_float(val, nil) do
