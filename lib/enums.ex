@@ -119,7 +119,7 @@ defmodule Bonfire.Common.Enums do
   @doc "Takes a list of maps that have an id field and returns a list with only the unique maps. Uniqueness is determined based on the id field and not the full contents of the maps."
   def uniq_by_id(list) do
     list
-    |> Enum.uniq_by(&Utils.e(&1, :id, &1))
+    |> Enum.uniq_by(&id/1)
     |> filter_empty([])
   end
 
