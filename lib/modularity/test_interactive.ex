@@ -241,7 +241,8 @@ defmodule Bonfire.Common.Test.Interactive do
   `@tag db_sandbox: false`
   """
   def setup_test_repo(tags) do
-    wrap_test_in_transaction_and_rollback = Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false 
+    wrap_test_in_transaction_and_rollback =
+      Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false
 
     # if wrap_test_in_transaction_and_rollback,
     #   do: info("Wrapping tests in DB transactions to be rolled back"),
