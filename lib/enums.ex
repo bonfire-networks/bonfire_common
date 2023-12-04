@@ -219,6 +219,7 @@ defmodule Bonfire.Common.Enums do
   defp re_filter_empty([], fallback), do: fallback
   defp re_filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   defp re_filter_empty(nil, fallback), do: fallback
+  defp re_filter_empty([val], nil), do: val
   defp re_filter_empty(val, _fallback), do: val
 
   def filter_empty(%{key: nil}, fallback, key) do
