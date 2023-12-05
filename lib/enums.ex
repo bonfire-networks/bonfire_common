@@ -761,11 +761,11 @@ defmodule Bonfire.Common.Enums do
       |> Map.new(fn {k, v} ->
         {
           Types.maybe_to_atom_or_module(k, force, to_snake),
-          if(!nested,
+          if(nested,
             do:
               input_to_value(
                 v,
-                false,
+                true,
                 including_values,
                 nested,
                 force,
