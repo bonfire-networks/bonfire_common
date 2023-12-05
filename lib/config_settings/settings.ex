@@ -290,7 +290,12 @@ defmodule Bonfire.Common.Settings do
     # |> debug("Putting settings for")
     map_put_in(keys, value)
     |> debug("map_put_in")
-    |> input_to_atoms(discard_unknown_keys: true, values: true, values_to_integers: true)
+    |> input_to_atoms(
+      discard_unknown_keys: true,
+      values: true,
+      values_to_integers: true,
+      also_discard_unknown_nested_keys: false
+    )
     |> debug("input_to_atoms")
     |> maybe_to_keyword_list(true)
     |> debug("maybe_to_keyword_list")
@@ -313,7 +318,12 @@ defmodule Bonfire.Common.Settings do
   """
   def set(attrs, opts) when is_map(attrs) do
     attrs
-    |> input_to_atoms(discard_unknown_keys: true, values: true, values_to_integers: true)
+    |> input_to_atoms(
+      discard_unknown_keys: true,
+      values: true,
+      values_to_integers: true,
+      also_discard_unknown_nested_keys: false
+    )
     |> debug("settings as atoms")
     |> set_with_hooks(to_options(opts))
   end

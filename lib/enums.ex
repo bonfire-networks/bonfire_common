@@ -704,7 +704,7 @@ defmodule Bonfire.Common.Enums do
       opts
       |> Keyword.put_new(:discard_unknown_keys, true)
       |> Keyword.put_new(:values, false)
-      |> Keyword.put_new(:nested, true)
+      |> Keyword.put_new(:also_discard_unknown_nested_keys, true)
       # |> Keyword.put_new(:nested_discard_unknown, false)
       |> Keyword.put_new(:to_snake, false)
       |> Keyword.put_new(:values_to_integers, false)
@@ -713,7 +713,7 @@ defmodule Bonfire.Common.Enums do
       data,
       opts[:discard_unknown_keys],
       opts[:values],
-      opts[:nested],
+      opts[:also_discard_unknown_nested_keys],
       false,
       opts[:to_snake],
       opts[:values_to_integers]
@@ -734,7 +734,7 @@ defmodule Bonfire.Common.Enums do
          enum,
          discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -748,7 +748,7 @@ defmodule Bonfire.Common.Enums do
          %{} = data,
          true = discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -761,13 +761,13 @@ defmodule Bonfire.Common.Enums do
       |> Map.new(fn {k, v} ->
         {
           Types.maybe_to_atom_or_module(k, force, to_snake),
-          if(nested,
+          if(also_discard_unknown_nested_keys,
             do:
               input_to_value(
                 v,
                 true,
                 including_values,
-                nested,
+                also_discard_unknown_nested_keys,
                 force,
                 to_snake,
                 values_to_integers
@@ -777,7 +777,7 @@ defmodule Bonfire.Common.Enums do
                 v,
                 false,
                 including_values,
-                nested,
+                also_discard_unknown_nested_keys,
                 force,
                 to_snake,
                 values_to_integers
@@ -792,7 +792,7 @@ defmodule Bonfire.Common.Enums do
          %{} = data,
          false = discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -802,27 +802,14 @@ defmodule Bonfire.Common.Enums do
     |> Map.new(fn {k, v} ->
       {
         Types.maybe_to_atom_or_module(k, force, to_snake) || k,
-        if(!nested,
-          do:
-            input_to_value(
-              v,
-              false,
-              including_values,
-              nested,
-              force,
-              to_snake,
-              values_to_integers
-            ),
-          else:
-            input_to_atoms(
-              v,
-              discard_unknown_keys,
-              including_values,
-              nested,
-              force,
-              to_snake,
-              values_to_integers
-            )
+        input_to_atoms(
+          v,
+          discard_unknown_keys,
+          including_values,
+          also_discard_unknown_nested_keys,
+          force,
+          to_snake,
+          values_to_integers
         )
       }
     end)
@@ -832,7 +819,7 @@ defmodule Bonfire.Common.Enums do
          list,
          true = discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -843,7 +830,7 @@ defmodule Bonfire.Common.Enums do
       |> input_to_atoms(
         discard_unknown_keys,
         including_values,
-        nested,
+        also_discard_unknown_nested_keys,
         force,
         to_snake,
         values_to_integers
@@ -851,7 +838,15 @@ defmodule Bonfire.Common.Enums do
     else
       Enum.map(
         list,
-        &input_to_atoms(&1, false, including_values, nested, force, to_snake, values_to_integers)
+        &input_to_atoms(
+          &1,
+          false,
+          including_values,
+          also_discard_unknown_nested_keys,
+          force,
+          to_snake,
+          values_to_integers
+        )
       )
     end
   end
@@ -860,7 +855,7 @@ defmodule Bonfire.Common.Enums do
          list,
          _false = discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -871,7 +866,7 @@ defmodule Bonfire.Common.Enums do
       |> input_to_atoms(
         discard_unknown_keys,
         including_values,
-        nested,
+        also_discard_unknown_nested_keys,
         force,
         to_snake,
         values_to_integers
@@ -879,7 +874,15 @@ defmodule Bonfire.Common.Enums do
     else
       Enum.map(
         list,
-        &input_to_atoms(&1, false, including_values, nested, force, to_snake, values_to_integers)
+        &input_to_atoms(
+          &1,
+          false,
+          including_values,
+          also_discard_unknown_nested_keys,
+          force,
+          to_snake,
+          values_to_integers
+        )
       )
     end
   end
@@ -888,7 +891,7 @@ defmodule Bonfire.Common.Enums do
   #       {key, val},
   #       discard_unknown_keys,
   #       including_values,
-  #       nested,
+  #       also_discard_unknown_nested_keys,
   #       force,
   #       to_snake,
   #       values_to_integers
@@ -898,7 +901,7 @@ defmodule Bonfire.Common.Enums do
          enum,
          discard_unknown_keys,
          including_values,
-         nested,
+         also_discard_unknown_nested_keys,
          force,
          to_snake,
          values_to_integers
@@ -908,7 +911,7 @@ defmodule Bonfire.Common.Enums do
            enum,
            discard_unknown_keys,
            including_values,
-           nested,
+           also_discard_unknown_nested_keys,
            force,
            to_snake,
            values_to_integers
