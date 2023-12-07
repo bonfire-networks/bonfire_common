@@ -253,11 +253,11 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Takes a tuple, an index and a fallback value and returns either the tuple value at that index (if not nil or false) or the fallback. If the tuple doesn't contain such an index, it raises `ArgumentError`.
+  Takes any element, an index and a fallback value. If the element is a Tuple it returns either the tuple value at that index, otherwise it returns the fallback. If the tuple doesn't contain such an index, it raises `ArgumentError`.
   """
-  def elem_or(tuple, index, fallback \\ nil)
-  def elem_or(tuple, index, fallback) when is_tuple(tuple), do: elem(tuple, index) || fallback
-  def elem_or(_, _index, fallback), do: fallback
+  def maybe_elem(tuple, index, fallback \\ nil)
+  def maybe_elem(tuple, index, fallback) when is_tuple(tuple), do: elem(tuple, index)
+  def maybe_elem(_, _index, fallback), do: fallback
 
   @doc "Renames a key in a map. Optionally changes the value as well."
   def map_key_replace(%{} = map, key, new_key, new_value \\ nil) do
