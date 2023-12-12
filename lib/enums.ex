@@ -729,7 +729,6 @@ defmodule Bonfire.Common.Enums do
     input_to_atoms(data, false, false, false, true, false, false)
   end
 
-  # skip structs
   defp input_to_atoms(
          enum,
          discard_unknown_keys,
@@ -741,6 +740,7 @@ defmodule Bonfire.Common.Enums do
        )
 
   defp input_to_atoms(data, _, _, _, _, _, _) when is_struct(data) do
+    # skip structs
     data
   end
 
@@ -757,17 +757,17 @@ defmodule Bonfire.Common.Enums do
     :maps.filter(
       fn k, _v -> is_atom(k) end,
       data
-      |> Map.drop(["_csrf_token"])
+      |> Map.drop(["_csrf_token", "_persistent_id"])
       |> Map.new(fn {k, v} ->
         {
           Types.maybe_to_atom_or_module(k, force, to_snake),
           if(also_discard_unknown_nested_keys,
             do:
-              input_to_value(
+              input_to_atoms(
                 v,
                 true,
                 including_values,
-                also_discard_unknown_nested_keys,
+                true,
                 force,
                 to_snake,
                 values_to_integers
@@ -777,7 +777,7 @@ defmodule Bonfire.Common.Enums do
                 v,
                 false,
                 including_values,
-                also_discard_unknown_nested_keys,
+                false,
                 force,
                 to_snake,
                 values_to_integers
@@ -804,7 +804,7 @@ defmodule Bonfire.Common.Enums do
         Types.maybe_to_atom_or_module(k, force, to_snake) || k,
         input_to_atoms(
           v,
-          discard_unknown_keys,
+          false,
           including_values,
           also_discard_unknown_nested_keys,
           force,
@@ -828,7 +828,7 @@ defmodule Bonfire.Common.Enums do
     if Keyword.keyword?(list) and list != [] do
       Map.new(list)
       |> input_to_atoms(
-        discard_unknown_keys,
+        true,
         including_values,
         also_discard_unknown_nested_keys,
         force,
@@ -864,7 +864,7 @@ defmodule Bonfire.Common.Enums do
     if Keyword.keyword?(list) and list != [] do
       Map.new(list)
       |> input_to_atoms(
-        discard_unknown_keys,
+        false,
         including_values,
         also_discard_unknown_nested_keys,
         force,
@@ -898,7 +898,7 @@ defmodule Bonfire.Common.Enums do
   #     )
 
   defp input_to_atoms(
-         enum,
+         other,
          discard_unknown_keys,
          including_values,
          also_discard_unknown_nested_keys,
@@ -908,7 +908,7 @@ defmodule Bonfire.Common.Enums do
        ),
        do:
          input_to_value(
-           enum,
+           other,
            discard_unknown_keys,
            including_values,
            also_discard_unknown_nested_keys,
