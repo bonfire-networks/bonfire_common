@@ -130,25 +130,26 @@ defmodule Bonfire.Common.Settings do
          if(current_account_id,
            do:
              maybe_fetch(current_account, opts)
-             |> e(:data, otp_app, nil)
+             |> settings_data_for_app(otp_app)
          )
        ] ++
        [
          if(current_user_id,
            do:
              maybe_fetch(current_user, opts)
-             #  |> debug()
-             #  |> e(:data, otp_app, nil)
-             |> e(:data, nil)
-             #  |> debug()
-             |> e(otp_app, nil)
+             |> settings_data_for_app(otp_app)
+           #  #  |> debug()
+           #  #  |> e(:data, otp_app, nil)
+           #  |> e(:data, nil)
+           #  #  |> debug()
+           #  |> e(otp_app, nil)
          )
          #  |> debug()
        ] ++
        if(is_map(scope) and scope_id != current_user_id and scope_id != current_account_id,
          do: [
            maybe_fetch(scope, opts)
-           |> e(:data, otp_app, nil)
+           |> settings_data_for_app(otp_app)
          ],
          else: []
        ))
@@ -189,12 +190,27 @@ defmodule Bonfire.Common.Settings do
     # |> debug("config/settings for #{inspect(otp_app)}")
   end
 
+  defp settings_data(%{json: %{} = data} = settings) when data != %{} do
+    prepare_from_json(data)
+  end
+
+  defp settings_data(%{data: data}) do
+    data
+  end
+
+  defp settings_data(_) do
+    %{}
+  end
+
   defp settings_data_for_app(settings, otp_app) do
-    # dunno why `|> e(:data, otp_app, nil)` messes this up...
-    (settings || %{})
-    |> Map.get(:data, %{})
-    |> Enums.fun(:get, [otp_app, %{}])
-    |> debug("for app #{otp_app}")
+    settings_data(settings)
+    |> e(otp_app, nil)
+
+    # IS THIS NEEDED? workaround for case `|> e(:data, otp_app, nil)` messes this up...
+    # (settings || %{})
+    # |> Map.get(:data, %{})
+    # |> Enums.fun(:get, [otp_app, %{}])
+    # |> debug("for app #{otp_app}")
   end
 
   # not including this line in fetch_all_scopes because load_instance_settings preloads it into Config
@@ -202,7 +218,7 @@ defmodule Bonfire.Common.Settings do
 
   def load_instance_settings() do
     maybe_fetch(instance_scope(), preload: true)
-    |> e(:data, nil)
+    |> settings_data()
   end
 
   defp maybe_fetch(scope, opts \\ [])
@@ -548,7 +564,7 @@ defmodule Bonfire.Common.Settings do
 
   defp upsert(%schema{} = settings, data, scope_id)
        when schema == Bonfire.Data.Identity.Settings do
-    %{id: ulid!(scope_id), data: data}
+    %{id: ulid!(scope_id), data: data, json: prepare_for_json(data)}
     # |> debug()
     |> Bonfire.Data.Identity.Settings.changeset(settings, ...)
     |> info()
@@ -567,8 +583,36 @@ defmodule Bonfire.Common.Settings do
          data
        )
        when schema == Bonfire.Data.Identity.Settings do
-    Bonfire.Data.Identity.Settings.changeset(settings, %{data: data})
+    Bonfire.Data.Identity.Settings.changeset(settings, %{data: data, json: prepare_for_json(data)})
     |> repo().update()
+  end
+
+  defp prepare_for_json(settings) do
+    # WIP: https://github.com/bonfire-networks/bonfire-app/issues/790
+    for_json =
+      settings
+      |> Map.new()
+      |> JsonSerde.Serializer.serialize()
+      ~> info("attempt with JsonSerde")
+
+    prepare_from_json(for_json)
+
+    for_json
+  end
+
+  defp prepare_from_json(settings) do
+    # WIP: https://github.com/bonfire-networks/bonfire-app/issues/790
+
+    settings
+    |> JsonSerde.Deserializer.deserialize(..., ...)
+    ~> info("deserialized")
+    # TODO: add support for atom keys in Map to JsonSerde (see open PR there) so we can avoid needing input_to_atoms here?
+    |> input_to_atoms(
+      discard_unknown_keys: true,
+      values: false,
+      also_discard_unknown_nested_keys: false
+    )
+    |> info("to_atoms")
   end
 
   # def delete(key, opts \\ [])

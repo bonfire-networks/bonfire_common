@@ -7,6 +7,8 @@ ex_cldr_units = "~> 3.0"
 ex_cldr_numbers = "~> 2.32"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.7.0" # string recasing
+
+json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing
 earmark = "~> 1.4.46" # handle markdown (deprecated)
 mdex ="~> 0.1 # handle markdown 
