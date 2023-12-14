@@ -351,7 +351,8 @@ defmodule Bonfire.Common.Enums do
 
   @doc "Deep merges a list of maps into a single map."
   def deep_merge_reduce(list_or_map, opts \\ [])
-  def deep_merge_reduce([], _opts), do: []
+  def deep_merge_reduce([], _opts), do: %{}
+  def deep_merge_reduce(nil, _opts), do: %{}
   # to avoid Enum.EmptyError
   def deep_merge_reduce([only_one], _opts), do: only_one
 
