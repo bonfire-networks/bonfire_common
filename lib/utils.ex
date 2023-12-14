@@ -125,7 +125,7 @@ defmodule Bonfire.Common.Utils do
     if Keyword.keyword?(list) do
       list |> Map.new() |> e(key, fallback)
     else
-      debug(list)
+      debug(list, "trying to find #{key} in a list")
 
       Enum.find_value(list, &e(&1, key, nil))
       |> maybe_fallback(fallback)
