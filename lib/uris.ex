@@ -435,7 +435,7 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  @doc "Return the homepage URL of the local instance"
+  @doc "Return the homepage URL (as string) of the local instance"
   def base_url(conn_or_socket_or_uri \\ nil)
 
   def base_url(%{host: host, port: 80}) when is_binary(host),
@@ -467,12 +467,15 @@ defmodule Bonfire.Common.URIs do
   def base_url(other) do
     with %URI{} = uri <- base_uri(other) do
       base_url(uri)
+    else
+      _error ->
+        ""
     end
   end
 
-  def instance_domain(uri_or_endpoint_or_conn \\ nil)
+  def base_domain(uri_or_endpoint_or_conn \\ nil)
 
-  def instance_domain(%URI{} = uri) do
+  def base_domain(%URI{} = uri) do
     case uri do
       %{host: host, port: port} when port not in [80, 443] ->
         "#{host}:#{port}"
@@ -486,15 +489,15 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  def instance_domain(url) when is_binary(url) do
+  def base_domain(url) when is_binary(url) do
     url
     |> URI.parse()
-    |> instance_domain()
+    |> base_domain()
   end
 
-  def instance_domain(endpoint_or_conn) do
+  def base_domain(endpoint_or_conn) do
     with %URI{} = uri <- base_uri(endpoint_or_conn) do
-      instance_domain(uri)
+      base_domain(uri)
     end
   end
 end
