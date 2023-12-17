@@ -121,7 +121,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp is_disabled?(module_or_extension, context) do
-    Config.get_ext(module_or_extension, :disabled) ||
+    Config.get([module_or_extension, :disabled]) ||
       if not is_atom(context), do: Settings.get([module_or_extension, :disabled], nil, context)
   end
 
