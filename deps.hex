@@ -1,5 +1,5 @@
 gettext = "~> 0.24" # localisation 
-ex_cldr = "~> 2.30" # internationalisation, let ex_cldr_languages pull it in, see https://github.com/elixir-cldr/cldr/issues/188
+ex_cldr = "~> 2.30" # internationalisation
 ex_cldr_languages = "~> 0.3.3" # localise language names
 ex_cldr_plugs = "~> 1.2"
 ex_cldr_dates_times = "~> 2.0"

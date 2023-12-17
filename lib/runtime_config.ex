@@ -17,6 +17,9 @@ defmodule Bonfire.Common.RuntimeConfig do
           versions: [:tlsv1, :"tlsv1.1", :"tlsv1.2"]
         ]
       ]
+
+    config :bonfire_common, Bonfire.Common.Localise.Cldr,
+      locales: Cldr.all_locale_names() |> Keyword.keys()
   end
 
   def skip_test_tags(extras \\ []) do
