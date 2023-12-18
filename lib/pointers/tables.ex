@@ -49,6 +49,7 @@ defmodule Bonfire.Common.Pointers.Tables do
     end
   end
 
+  def table_fields(schema) when is_atom(schema), do: table_fields(schema.__schema__(:source))
   def table_fields(table) when is_binary(table) do
     with rows <-
            repo().many(
@@ -63,6 +64,17 @@ defmodule Bonfire.Common.Pointers.Tables do
         String.to_atom(row[:column_name])
       end
     end
+  end
+
+  
+  def table_fields_meta(schema) when is_atom(schema), do: table_fields_meta(schema.__schema__(:source))
+  def table_fields_meta(table) when is_binary(table) do
+    repo().many(
+      from "columns",
+        prefix: "information_schema",
+        select: [:column_name, :data_type, :column_default, :is_nullable],
+        where: [table_name: ^table]
+    )
   end
 
   # def table_fields(table) when is_binary(table) do
