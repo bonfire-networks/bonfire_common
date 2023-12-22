@@ -3,7 +3,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @moduledoc """
   A Global cache of known Behaviours in Bonfire
 
-  Use of the ExtensionBehaviour Service requires ddding `@behaviour Bonfire.Common.ExtensionBehaviour` in your behaviour modules. This modules when then index those behaviours *and* all the modules that implement those behaviours at startup.
+  Use of the ExtensionBehaviour Service requires declaring `@behaviour Bonfire.Common.ExtensionBehaviour` in your behaviour module. This module will then index those behaviours *and* all the modules that implement those behaviours at app startup.
 
   While this module is a GenServer, it is only responsible for setup
   of the cache and then exits with :ignore having done so. It is not
@@ -13,7 +13,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   local garbage collection.
   """
   use GenServer, restart: :transient
-  # import Untangle
+  import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
   alias Bonfire.Common.Enums
@@ -21,14 +21,14 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
 
-  defp find_behaviours() do
+  def find_extension_behaviours() do
     adopters_of_behaviour(__MODULE__)
     |> modules_only()
 
     # |> debug()
   end
 
-  def find_adopters_of_behaviours(behaviours \\ find_behaviours()) do
+  def find_adopters_of_behaviours(behaviours \\ find_extension_behaviours()) do
     apps_to_scan()
     |> apps_with_behaviour(behaviours)
   end
@@ -54,8 +54,9 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc """
   Given a behaviour module, filters app modules to only those that implement that behaviour
   """
-  def adopters_of_behaviour(behaviour) when is_atom(behaviour) do
-    Config.get([:extensions_grouped, behaviour], [:bonfire, :bonfire_common])
+  def adopters_of_behaviour(behaviour \\ __MODULE__) when is_atom(behaviour) do
+    # Config.get([:extensions_grouped, behaviour], [:bonfire, :bonfire_common])
+    apps_to_scan()
     # |> debug()
     |> apps_with_behaviour(behaviour)
   end
@@ -63,8 +64,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   defp apps_with_behaviour(apps, behaviour) when is_list(apps) and is_atom(behaviour) do
     apps
     |> Enum.reduce(%{}, fn
-      app, acc ->
-        case modules_with_behaviour(Application.spec(app, :modules) || [], behaviour) do
+      {app, modules}, acc ->
+        case modules_with_behaviour(modules, behaviour) do
           modules when is_list(modules) and modules != [] ->
             Enums.deep_merge(acc, %{app => modules})
 
@@ -123,7 +124,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     # |> debug()
   end
 
-  def module_behaviours(module) do
+  def module_behaviours(module \\ __MODULE__) do
     Code.ensure_loaded?(module) and
       module.module_info(:attributes)
       |> Keyword.get_values(:behaviour)
@@ -159,18 +160,29 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> Enum.flat_map(fn {_app, modules} -> modules end)
   end
 
-  def linked_modules(modules, fun) do
+  # TODO: cache the returned data in persistent_term as well
+  def apply_modules(modules, fun) do
     modules
-    |> Enum.flat_map(&linked_module(&1, fun))
+    |> Enum.flat_map(&apply_module(&1, fun))
+    |> debug()
     |> Enums.filter_empty([])
   end
 
-  defp linked_module(module, fun) do
+  defp apply_module(module, fun) do
     case Utils.maybe_apply(module, fun) do
-      linked_module when is_atom(linked_module) and not is_nil(linked_module) ->
-        [{module, linked_module}, {linked_module, module}]
+      {:error, e} ->
+        warn(e, "could not find function or module `#{module}.#{fun}/0`")
+        []
 
-      _ ->
+      ret when is_list(ret) and ret != [] ->
+        [{module, ret}] ++
+          Enum.map(ret, &{&1, module})
+
+      ret when not is_nil(ret) ->
+        [{module, ret}, {ret, module}]
+
+      e ->
+        warn(e, "could not find valid info with `#{module}.#{fun}/0`")
         []
     end
   end

@@ -123,11 +123,13 @@ defmodule Bonfire.Common.ContextModule do
     Bonfire.Common.ExtensionBehaviour.behaviour_modules(__MODULE__)
   end
 
+  # TODO: cache the linked modules
+
   def linked_schema_modules() do
-    Bonfire.Common.ExtensionBehaviour.linked_modules(modules(), :schema_module)
+    Bonfire.Common.ExtensionBehaviour.apply_modules(modules(), :schema_module)
   end
 
   def linked_query_modules() do
-    Bonfire.Common.ExtensionBehaviour.linked_modules(modules(), :query_module)
+    Bonfire.Common.ExtensionBehaviour.apply_modules(modules(), :query_module)
   end
 end
