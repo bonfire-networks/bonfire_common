@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Cache do
   end
 
   @doc "Takes a function (or module and function names) and a set of arguments for that function, and tries to fetch the previous result of running that function from the in-memory cache, using the MFA (module name/function name/arguments used) to generate the cache key. If it's not in the cache, it executes the function, and caches and returns the result."
-  def maybe_apply_cached(fun, args, opts \\ [])
+  def maybe_apply_cached(fun, args \\ [], opts \\ [])
 
   def maybe_apply_cached(fun, args, opts) when is_function(fun) do
     opts

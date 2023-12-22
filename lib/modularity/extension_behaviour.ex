@@ -13,9 +13,10 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   local garbage collection.
   """
   use GenServer, restart: :transient
-  import Untangle
+  use Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
 
   @doc "List modules that implement a behaviour"
@@ -160,12 +161,19 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> Enum.flat_map(fn {_app, modules} -> modules end)
   end
 
-  # TODO: cache the returned data in persistent_term as well
+  @doc "Runs/applies a given function name on each of a list of given modules, returning a map (listing the modules with their result as value) and vice versa (listing the results as key with their calling module as value). It also caches the result on first run."
+  def apply_modules_cached(modules, fun) do
+    Cache.maybe_apply_cached({__MODULE__, :apply_modules}, [modules, fun])
+  end
+
+  @doc "Note: use `apply_modules_cached/2` instead, as it caches the result."
+  @decorate time()
   def apply_modules(modules, fun) do
     modules
     |> Enum.flat_map(&apply_module(&1, fun))
     |> debug()
-    |> Enums.filter_empty([])
+    |> Enums.filter_empty(%{})
+    |> Map.new()
   end
 
   defp apply_module(module, fun) do
