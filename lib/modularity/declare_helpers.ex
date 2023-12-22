@@ -19,7 +19,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_widget(name, opts \\ []) do
     quote do
-      @behaviour Bonfire.Common.WidgetModule
+      @behaviour Bonfire.UI.Common.WidgetModule
       @props_specs component_props(__MODULE__)
 
       def declared_widget do
@@ -36,7 +36,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_nav_component(name, opts \\ []) do
     quote do
-      @behaviour Bonfire.Common.NavModule
+      @behaviour Bonfire.UI.Common.NavModule
       @props_specs component_props(__MODULE__)
 
       def declared_nav do
@@ -55,7 +55,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_nav_link(name, opts) do
     quote do
-      @behaviour Bonfire.Common.NavModule
+      @behaviour Bonfire.UI.Common.NavModule
 
       def declared_nav do
         case unquote(name) do
@@ -79,7 +79,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_settings_component(name, opts \\ []) do
     quote do
-      @behaviour Bonfire.Common.SettingsModule
+      @behaviour Bonfire.UI.Common.SettingsModule
       @props_specs component_props(__MODULE__)
 
       def declared_component do
@@ -97,7 +97,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_settings_nav_component(name, opts \\ []) do
     quote do
-      @behaviour Bonfire.Common.SettingsModule
+      @behaviour Bonfire.UI.Common.SettingsModule
       @props_specs component_props(__MODULE__)
 
       def declared_settings_nav do
@@ -117,7 +117,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
   defmacro declare_settings_nav_link(name, opts) do
     quote do
-      @behaviour Bonfire.Common.SettingsModule
+      @behaviour Bonfire.UI.Common.SettingsModule
 
       def declared_settings_nav do
         case unquote(name) do

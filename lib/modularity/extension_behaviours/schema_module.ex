@@ -23,8 +23,6 @@ defmodule Bonfire.Common.SchemaModule do
     Bonfire.Common.ExtensionBehaviour.behaviour_modules(__MODULE__)
   end
 
-  # TODO: cache the linked modules
-
   def linked_query_modules() do
     Bonfire.Common.ExtensionBehaviour.apply_modules_cached(modules(), :query_module)
   end

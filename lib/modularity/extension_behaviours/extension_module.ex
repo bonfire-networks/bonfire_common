@@ -48,12 +48,12 @@ defmodule Bonfire.Common.ExtensionModule do
 
   def default_nav(%{default_nav: default_nav}) do
     default_nav
-    |> Bonfire.Common.NavModule.nav()
+    |> Bonfire.UI.Common.NavModule.nav()
   end
 
   def default_nav(app) do
     extension(app)[:default_nav]
-    |> Bonfire.Common.NavModule.nav()
+    |> Bonfire.UI.Common.NavModule.nav()
   end
 
   def extension_function_error(error, _args) do
