@@ -104,7 +104,7 @@ defmodule Bonfire.Common.Cache do
             with {:error, e} <- Cachex.get!(cache, key) do
               error(
                 e,
-                "DEV ONLY: An error was cached, so we'll ignore it and try running the function again"
+                "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
               )
 
               val = maybe_apply_or_fun(module, fun, args)
@@ -130,6 +130,10 @@ defmodule Bonfire.Common.Cache do
           maybe_apply_or_fun(module, fun, args)
       end
     end)
+  rescue
+    e in Cachex.ExecutionError ->
+      error(e, "!! Error with the cache, fallback to [re-]running the function without cache !!")
+      maybe_apply_or_fun(module, fun, args)
   end
 
   def cached_preloads_for_objects(name, objects, fun)
