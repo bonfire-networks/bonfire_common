@@ -18,8 +18,7 @@ defmodule Bonfire.Common.RuntimeConfig do
         ]
       ]
 
-    config :bonfire_common, Bonfire.Common.Localise.Cldr,
-      locales: Cldr.all_locale_names() |> Keyword.keys()
+    config :bonfire_common, Bonfire.Common.Localise.Cldr, locales: Cldr.all_locale_names()
   end
 
   def skip_test_tags(extras \\ []) do
