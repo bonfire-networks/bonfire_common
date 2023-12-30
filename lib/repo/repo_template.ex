@@ -16,8 +16,8 @@ defmodule Bonfire.Common.RepoTemplate do
       import Untangle
       use Arrows
 
-      alias Pointers.Changesets
-      alias Pointers.Pointer
+      alias Needle.Changesets
+      alias Needle.Pointer
 
       alias Ecto.Changeset
 
@@ -117,7 +117,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
         keys =
           if not Keyword.keyword?(keys) do
-            Enum.map(keys, &{&1, Pointers.Changesets.get_field(cs, &1)})
+            Enum.map(keys, &{&1, Needle.Changesets.get_field(cs, &1)})
           else
             keys
           end
@@ -251,7 +251,7 @@ defmodule Bonfire.Common.RepoTemplate do
           # include total count by default?
           include_total_count: false,
           # sets the total_count_primary_key_field to uuid for calculating total_count
-          total_count_primary_key_field: Pointers.ULID
+          total_count_primary_key_field: Needle.ULID
         ]
 
       defp paginator_paginate(

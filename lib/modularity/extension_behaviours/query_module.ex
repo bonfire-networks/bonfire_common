@@ -7,7 +7,7 @@ defmodule Bonfire.Common.QueryModule do
   Use of the QueryModule Service requires:
 
   1. Exporting `query_module/0` in relevant modules (in schemas pointing to query modules and/or in query modules pointing to schemas), returning a Module atom
-  2. To populate `:pointers, :search_path` in config the list of OTP applications where query_modules are declared.
+  2. To populate `:nee, :search_path` in config the list of OTP applications where query_modules are declared.
   3. Start the `Bonfire.Common.QueryModule` application before querying.
   4. OTP 21.2 or greater, though we recommend using the most recent
      release available.

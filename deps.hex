@@ -1,3 +1,7 @@
+arrows = "~> 0.1"
+untangle = "~> 0.3" # log/inspect with code location
+needle_ulid = "~> 0.3"
+
 gettext = "~> 0.24" # localisation 
 ex_cldr = "~> 2.30" # internationalisation
 ex_cldr_languages = "~> 0.3.3" # localise language names
@@ -17,7 +21,6 @@ html_sanitize_ex = "~> 1.4" # html sanitation
 
 paginator = "~> 1.1" # paginate queries
 
-untangle = "~> 0.1" # log/inspect with code location
 opentelemetry_api = "~> 1.0"
 decorator = "~> 1.4 # function decorator helper
 # mappable = "~> 0.2.4" # convert between map/struct/keyword list

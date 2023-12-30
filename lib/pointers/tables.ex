@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Pointers.Tables do
+defmodule Bonfire.Common.Needle.Tables do
   use Arrows
   import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]
 
-  alias Pointers.Pointer
-  alias Pointers.Table
-  alias Pointers.NotFound
-  alias Bonfire.Common.Pointers.Tables.Queries
+  alias Needle.Pointer
+  alias Needle.Table
+  alias Needle.NotFound
+  alias Bonfire.Common.Needle.Tables.Queries
   import Untangle
 
   def one(id) when is_binary(id) do
@@ -32,11 +32,11 @@ defmodule Bonfire.Common.Pointers.Tables do
   def table!(%Pointer{table_id: id}), do: table!(id)
 
   def table!(schema_or_tablename_or_id),
-    do: Pointers.Tables.table!(schema_or_tablename_or_id)
+    do: Needle.Tables.table!(schema_or_tablename_or_id)
 
   def schema_or_table!(schema_or_tablename_or_id) do
     # TODO
-    with {:ok, table} <- Pointers.Tables.table(schema_or_tablename_or_id) do
+    with {:ok, table} <- Needle.Tables.table(schema_or_tablename_or_id) do
       table.schema || table.table
     else
       _e ->
@@ -94,10 +94,10 @@ defmodule Bonfire.Common.Pointers.Tables do
   @doc "Lists all Pointable Tables"
   def list_tables(source \\ :code)
 
-  def list_tables(:code), do: Pointers.Tables.data()
+  def list_tables(:code), do: Needle.Tables.data()
 
   def list_tables(:db) do
-    repo().many(Pointers.Table)
+    repo().many(Needle.Table)
     |> Enum.reduce(%{}, fn t, acc ->
       Map.merge(acc, %{t.table => t})
     end)
@@ -124,7 +124,7 @@ defmodule Bonfire.Common.Pointers.Tables do
   defp list_tables_db_vs_code() do
     list_tables(:db)
     |> Enum.map(fn {name, t} ->
-      with {:ok, p} <- Pointers.Tables.table(name) do
+      with {:ok, p} <- Needle.Tables.table(name) do
         if t.id == p.id do
           {:ok, name}
         else

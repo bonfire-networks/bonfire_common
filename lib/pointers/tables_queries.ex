@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Pointers.Tables.Queries do
+defmodule Bonfire.Common.Needle.Tables.Queries do
   import Ecto.Query
-  alias Pointers.Table
+  alias Needle.Table
 
   def query(Table) do
     from(p in Table, as: :table)

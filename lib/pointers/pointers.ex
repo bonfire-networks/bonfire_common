@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Pointers do
+defmodule Bonfire.Common.Needle do
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]
@@ -7,12 +7,12 @@ defmodule Bonfire.Common.Pointers do
   import_if_enabled(Bonfire.Boundaries.Queries)
   import Ecto.Query
   import EctoSparkles
-  alias Bonfire.Common.Pointers.Queries
+  alias Bonfire.Common.Needle.Queries
   use Bonfire.Common.Utils
   alias Bonfire.Common.Cache
   alias Bonfire.Common.ContextModule
-  alias Pointers.NotFound
-  alias Pointers.Pointer
+  alias Needle.NotFound
+  alias Needle.Pointer
 
   def get!(id, opts \\ []) do
     with {:ok, obj} <- get(id, opts) do
@@ -87,7 +87,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def list!(ids, _opts) do
-    warn("Pointers.list: expected a list of pointers or ULIDs, got #{inspect(ids)}")
+    warn("Needle.list: expected a list of pointers or ULIDs, got #{inspect(ids)}")
 
     []
   end
@@ -216,7 +216,7 @@ defmodule Bonfire.Common.Pointers do
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: schema, id: id} = pointed) do
     # debug(forge: pointed)
-    table = Bonfire.Common.Pointers.Tables.table!(schema)
+    table = Bonfire.Common.Needle.Tables.table!(schema)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
 
@@ -228,14 +228,14 @@ defmodule Bonfire.Common.Pointers do
   """
   @spec forge!(table_id :: integer | atom, id :: binary) :: %Pointer{}
   def forge!(table_id, id) do
-    table = Bonfire.Common.Pointers.Tables.table!(table_id)
+    table = Bonfire.Common.Needle.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
   def follow!(pointer_or_pointers, opts \\ [])
 
   def follow!(%Pointer{table_id: table_id} = pointer, opts) do
-    with {:ok, schema} <- Pointers.Tables.schema(table_id),
+    with {:ok, schema} <- Needle.Tables.schema(table_id),
          :virtual <- schema.__pointers__(:role) do
       # info(table_id, "virtual - skip following ")
       if function_exported?(schema, :__struct__, 0) do
@@ -289,7 +289,7 @@ defmodule Bonfire.Common.Pointers do
           %{pointer | pointed: pointed}
 
         other ->
-          debug(other, "Pointers: could not load #{inspect(table_id)}")
+          debug(other, "Needle: could not load #{inspect(table_id)}")
           pointer
       end
     else
@@ -342,24 +342,24 @@ defmodule Bonfire.Common.Pointers do
     do: loader_query(schema, id_filters, opts)
 
   defp loader(table_id, id_filters, opts) do
-    Cache.maybe_apply_cached(&Bonfire.Common.Pointers.Tables.schema_or_table!/1, [table_id])
+    Cache.maybe_apply_cached(&Bonfire.Common.Needle.Tables.schema_or_table!/1, [table_id])
     |> loader_query(id_filters, opts)
   end
 
   defp loader_query(schema, id_filters, opts) when is_atom(schema) do
     query(schema, id_filters, opts)
-    |> debug("Pointers: query with")
+    |> debug("Needle: query with")
     |> repo().many()
   end
 
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
-    debug("Pointers: loading data from a table without a schema module")
+    debug("Needle: loading data from a table without a schema module")
 
     # Cache.maybe_apply_cached(&generic_loader_query/3, [table_name, id_filters, opts])
 
     from(m in table_name, as: :main_object)
     |> select(
-      ^Cache.maybe_apply_cached(&Bonfire.Common.Pointers.Tables.table_fields/1, [table_name])
+      ^Cache.maybe_apply_cached(&Bonfire.Common.Needle.Tables.table_fields/1, [table_name])
     )
     # ++ [cache: true]
     |> generic_query_all(id_binary(id_filters), opts)
@@ -382,7 +382,7 @@ defmodule Bonfire.Common.Pointers do
 
     if filters_override && filters_override != [] do
       debug(
-        "Pointers: Attempting a generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
+        "Needle: Attempting a generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} (provided by opts.filters_override)"
       )
 
       schema_or_query
@@ -393,7 +393,7 @@ defmodule Bonfire.Common.Pointers do
     else
       if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
         debug(
-          "Pointers: Attempting a generic query with NO boundary check (because of opts.skip_boundary_check) on #{inspect(schema_or_query)} with filters: #{inspect(filters)}"
+          "Needle: Attempting a generic query with NO boundary check (because of opts.skip_boundary_check) on #{inspect(schema_or_query)} with filters: #{inspect(filters)}"
         )
 
         id_filter(
@@ -404,7 +404,7 @@ defmodule Bonfire.Common.Pointers do
         # |> IO.inspect
       else
         debug(
-          "Pointers: Attempting generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} + boundary check (if Bonfire.Boundaries extension available)"
+          "Needle: Attempting generic query on #{inspect(schema_or_query)} with filters: #{inspect(filters)} + boundary check (if Bonfire.Boundaries extension available)"
         )
 
         q =
@@ -437,7 +437,7 @@ defmodule Bonfire.Common.Pointers do
            opts
          ]) do
       %Ecto.Query{} = query ->
-        debug("Pointers: using the QueryModule associated with #{schema}")
+        debug("Needle: using the QueryModule associated with #{schema}")
 
         query
 
@@ -495,7 +495,7 @@ defmodule Bonfire.Common.Pointers do
   end
 
   def id_binary(id) when is_binary(id) do
-    with {:ok, ulid} <- Pointers.ULID.dump(id), do: ulid
+    with {:ok, ulid} <- Needle.ULID.dump(id), do: ulid
   end
 
   def filters(schema, id_filters, opts \\ []) do
@@ -525,7 +525,7 @@ defmodule Bonfire.Common.Pointers do
            ) do
       debug(
         schema,
-        "Pointers.follow - there's no follow_filters/0 function declared on the pointable schema or its context module"
+        "Needle.follow - there's no follow_filters/0 function declared on the pointable schema or its context module"
       )
 
       # TODO: apply a boundary check by default?
@@ -547,7 +547,7 @@ defmodule Bonfire.Common.Pointers do
   """
   def dataloader(context) do
     Dataloader.Ecto.new(repo(),
-      query: &Bonfire.Common.Pointers.query/2,
+      query: &Bonfire.Common.Needle.query/2,
       default_params: %{context: context}
     )
   end
@@ -557,10 +557,10 @@ defmodule Bonfire.Common.Pointers do
     case Map.get(parent, :field, :no_such_field) do
       %Ecto.Association.NotLoaded{} ->
         # dataloader(:source, :members).(parent, args, context)
-        Absinthe.Resolution.Helpers.dataloader(Pointers.Pointer).(parent, args, context)
+        Absinthe.Resolution.Helpers.dataloader(Needle.Pointer).(parent, args, context)
 
       :no_such_field ->
-        Absinthe.Resolution.Helpers.dataloader(Pointers.Pointer).(parent, args, context)
+        Absinthe.Resolution.Helpers.dataloader(Needle.Pointer).(parent, args, context)
 
       already_loaded ->
         {:ok, already_loaded}

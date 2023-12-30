@@ -81,7 +81,7 @@ defmodule Bonfire.Common.DatesTimes do
   @doc "Takes an object (or string with an ULID) and converts the ULID ID to a `DateTime` struct."
   def date_from_pointer(object) do
     with id when is_binary(id) <- Bonfire.Common.Types.ulid(object),
-         {:ok, ts} <- Pointers.ULID.timestamp(id),
+         {:ok, ts} <- Needle.ULID.timestamp(id),
          {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
       date
     else

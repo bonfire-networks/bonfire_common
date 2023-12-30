@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Types do
   import Bonfire.Common.Localise.Gettext.Helpers
 
   # alias Bonfire.Common.Utils
-  alias Pointers.Pointer
+  alias Needle.Pointer
   alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Text
@@ -26,7 +26,7 @@ defmodule Bonfire.Common.Types do
 
   def typeof(string) when is_binary(string) or is_bitstring(string) do
     if is_ulid?(string) do
-      object_type(string) || Pointers.ULID
+      object_type(string) || Needle.ULID
     else
       case maybe_to_module(string) do
         nil -> String
@@ -162,7 +162,7 @@ defmodule Bonfire.Common.Types do
 
   @doc "Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier)"
   def is_ulid?(str) when is_binary(str) and byte_size(str) == 26 do
-    with :error <- Pointers.ULID.cast(str) do
+    with :error <- Needle.ULID.cast(str) do
       false
     else
       _ -> true
@@ -293,7 +293,7 @@ defmodule Bonfire.Common.Types do
   end
 
   def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
-    with {:ok, ulid} <- Pointers.ULID.load(val) do
+    with {:ok, ulid} <- Needle.ULID.load(val) do
       {key, ulid}
     else
       _ ->
@@ -473,7 +473,7 @@ defmodule Bonfire.Common.Types do
       do: ValueFlows.Process
 
   def object_type(id) when is_binary(id) do
-    with {:ok, schema} <- Pointers.Tables.schema(id) do
+    with {:ok, schema} <- Needle.Tables.schema(id) do
       schema
     else
       _ ->
@@ -503,10 +503,10 @@ defmodule Bonfire.Common.Types do
   defp object_type_from_db(id) do
     debug(
       id,
-      "This isn't the table_id of a known Pointers.Table schema, querying it to check if it's a Pointable"
+      "This isn't the table_id of a known Needle.Table schema, querying it to check if it's a Pointable"
     )
 
-    case Bonfire.Common.Pointers.one(id, skip_boundary_check: true) do
+    case Bonfire.Common.Needle.one(id, skip_boundary_check: true) do
       {:ok, %{table_id: "601NTERTAB1EF0RA11TAB1ES00"}} ->
         info("This is the ID of an unknown Pointable")
         nil
@@ -584,7 +584,7 @@ defmodule Bonfire.Common.Types do
     iex> table_type(%Bonfire.Data.Social.APActivity{})
     "30NF1REAPACTTAB1ENVMBER0NE"
     
-    iex> table_type(%Pointers.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"})
+    iex> table_type(%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"})
     "30NF1REAPACTTAB1ENVMBER0NE"
 
     iex> table_type(Bonfire.Data.Social.APActivity)

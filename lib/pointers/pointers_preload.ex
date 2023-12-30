@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Pointers.Preload do
+defmodule Bonfire.Common.Needle.Preload do
   # import Bonfire.Common.Config, only: [repo: 0]
   # alias Bonfire.Common.Utils
   alias Bonfire.Common.Enums
@@ -24,7 +24,7 @@ defmodule Bonfire.Common.Pointers.Preload do
     debug(key, "one field")
 
     case Map.get(object, key) do
-      %Pointers.Pointer{} = pointer ->
+      %Needle.Pointer{} = pointer ->
         Map.put(object, key, maybe_preload_pointer(pointer, opts))
 
       _ ->
@@ -96,10 +96,10 @@ defmodule Bonfire.Common.Pointers.Preload do
 
   def maybe_preload_pointer(pointer, opts \\ [])
 
-  def maybe_preload_pointer(%Pointers.Pointer{} = pointer, opts) do
+  def maybe_preload_pointer(%Needle.Pointer{} = pointer, opts) do
     debug("maybe_preload_pointer: follow")
 
-    with {:ok, obj} <- Bonfire.Common.Pointers.get(pointer, opts) do
+    with {:ok, obj} <- Bonfire.Common.Needle.get(pointer, opts) do
       obj
     else
       e ->

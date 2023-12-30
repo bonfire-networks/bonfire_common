@@ -151,7 +151,7 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
-  defp path_maybe_lookup_pointer(%Pointers.Pointer{id: id} = object, args, opts) do
+  defp path_maybe_lookup_pointer(%Needle.Pointer{id: id} = object, args, opts) do
     warn(object, "path: could not figure out the type of this pointer")
 
     if opts[:fallback] != false, do: fallback(id, args)
@@ -168,7 +168,7 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object, opts) when is_binary(id) do
     if Types.is_ulid?(id) do
       with {:ok, pointer} <-
-             Cache.maybe_apply_cached(&Bonfire.Common.Pointers.one/2, [
+             Cache.maybe_apply_cached(&Bonfire.Common.Needle.one/2, [
                id,
                [skip_boundary_check: true, preload: :character]
              ]) do
@@ -218,7 +218,7 @@ defmodule Bonfire.Common.URIs do
     IO.inspect(args, label: "path_fallback")
 
     # TODO: configurable
-    fallback_route = Pointers.Pointer
+    fallback_route = Needle.Pointer
     fallback_character_route = Bonfire.Data.Identity.Character
 
     case path_id(Enum.at(args, id_at) |> debug()) |> debug() do
@@ -266,7 +266,7 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{character: %{username: username}}) when is_binary(username), do: username
 
   defp path_id(%{__struct__: schema, character: _character} = obj)
-       when schema != Pointers.Pointer,
+       when schema != Needle.Pointer,
        do:
          obj
          # |> debug("with character")

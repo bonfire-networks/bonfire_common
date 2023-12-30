@@ -47,7 +47,7 @@ defmodule Bonfire.Common.ContextModule do
   end
 
   def maybe_apply(
-        %Pointers.Pointer{} = object,
+        %Needle.Pointer{} = object,
         fun,
         args,
         fallback_fun

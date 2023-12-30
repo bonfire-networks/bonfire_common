@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Pointers.Queries do
+defmodule Bonfire.Common.Needle.Queries do
   import Ecto.Query
-  alias Pointers.Pointer
+  alias Needle.Pointer
   import EctoSparkles
   import Untangle
   # alias Bonfire.Common.Utils
@@ -72,10 +72,10 @@ defmodule Bonfire.Common.Pointers.Queries do
     do: where(q, [main_object: p], p.table_id == ^id)
 
   def filter(q, {:table, name}) when is_atom(name),
-    do: filter(q, {:table, Pointers.Tables.id!(name)})
+    do: filter(q, {:table, Needle.Tables.id!(name)})
 
   def filter(q, {:table, tables}) when is_list(tables) do
-    tables = Pointers.Tables.ids!(tables)
+    tables = Needle.Tables.ids!(tables)
     where(q, [main_object: p], p.table_id in ^tables)
   end
 

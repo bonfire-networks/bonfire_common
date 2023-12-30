@@ -54,7 +54,7 @@ defmodule Bonfire.Common.Enums do
   def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
     case maybe_get(map, key, :empty) do
       :empty -> maybe_get(map, Atom.to_string(key), fallback)
-      %Pointers.Pointer{deleted_at: del} when not is_nil(del) -> fallback
+      %Needle.Pointer{deleted_at: del} when not is_nil(del) -> fallback
       val -> val
     end
   end
@@ -67,7 +67,7 @@ defmodule Bonfire.Common.Enums do
           :empty ->
             maybe_get(map, Types.maybe_to_atom(key), fallback)
 
-          %Pointers.Pointer{deleted_at: del} when not is_nil(del) ->
+          %Needle.Pointer{deleted_at: del} when not is_nil(del) ->
             fallback
 
           val ->
@@ -175,7 +175,7 @@ defmodule Bonfire.Common.Enums do
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
 
-  def filter_empty(%Pointers.Pointer{deleted_at: del}, fallback) when not is_nil(del),
+  def filter_empty(%Needle.Pointer{deleted_at: del}, fallback) when not is_nil(del),
     do: fallback
 
   def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback

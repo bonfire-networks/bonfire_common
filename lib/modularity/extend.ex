@@ -246,7 +246,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   def maybe_schema_or_pointer(schema_module) do
-    module_exists_or(schema_module, Pointers.Pointer)
+    module_exists_or(schema_module, Needle.Pointer)
   end
 
   def module_exists_or(module, fallback) do

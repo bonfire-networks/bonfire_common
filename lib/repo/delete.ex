@@ -53,10 +53,10 @@ defmodule Bonfire.Common.Repo.Delete do
         "Schema has no #{column} column, will soft-delete the Pointer instead"
       )
 
-      # Bonfire.Common.Pointers.maybe_forge!(it)
-      Bonfire.Common.Pointers.one(ulid!(it), skip_boundary_check: true)
+      # Bonfire.Common.Needle.maybe_forge!(it)
+      Bonfire.Common.Needle.one(ulid!(it), skip_boundary_check: true)
       ~> soft_delete_changeset(
-        {Pointers.Pointer, ...},
+        {Needle.Pointer, ...},
         :deleted_at,
         value,
         error
@@ -65,7 +65,7 @@ defmodule Bonfire.Common.Repo.Delete do
   end
 
   def soft_delete_changeset(it, column, value, error) when is_binary(it) do
-    Bonfire.Common.Pointers.get(it, skip_boundary_check: true)
+    Bonfire.Common.Needle.get(it, skip_boundary_check: true)
     ~> soft_delete_changeset(column, value, error)
   end
 
