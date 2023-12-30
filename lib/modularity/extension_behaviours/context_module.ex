@@ -17,6 +17,7 @@ defmodule Bonfire.Common.ContextModule do
 
   @doc """
   Given an object or schema module name, run a function on the associated context module.
+  TODO: refactor to re-use Utils.maybe_apply?
   """
   def maybe_apply(
         object_schema_or_context,

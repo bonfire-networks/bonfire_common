@@ -17,9 +17,11 @@ defmodule Bonfire.Common.Extensions do
     global_toggle(extension, nil)
   end
 
-  defp global_toggle(extension, enabled?) do
+  defp global_toggle(extension, enable?) do
+    set = if !enable?, do: :disabled
+
     put =
-      Bonfire.Common.Settings.put([extension, :disabled], enabled?,
+      Bonfire.Common.Settings.put([extension, :modularity], set,
         scope: :instance,
         skip_boundary_check: true
       )

@@ -91,15 +91,54 @@ defmodule Bonfire.Common.Extend do
   # end 
 
   @doc """
-  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
+  Given an Elixir module, this returns an Elixir module, as long as the module and extension / OTP app is present AND not disabled (eg. by having in config something like `config Bonfire.Common.Text, modularity: :disabled`)
+
+  Important note: you should make sure to use the returned module, rather than the one provided as argument, as it can be different, this allows for swapping out modules in config or user settings (eg. by having in config something like `config Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
+  """
+  def maybe_module(module, opts \\ []) do
+    modularity = get_modularity(module, opts)
+
+    cond do
+      disabled_value?(modularity) ->
+        # module is disabled
+        nil
+
+      (is_nil(modularity) or modularity == module) and do_extension_enabled?(module, opts) ->
+        # module is not disabled or swapped, and extension is not disabled
+        module
+
+      is_atom(modularity) and module_enabled?(modularity, opts) ->
+        # module is swapped, and the replacement module and extension are not disabled
+        modularity
+
+      not is_nil(modularity) ->
+        warn(
+          modularity,
+          "Seems like the replacement module/extension configured for #{module} was itself disabled"
+        )
+
+        nil
+
+      true ->
+        warn(module, "Seems like the module/extension was disabled")
+        nil
+    end
+  end
+
+  def maybe_module!(module, opts \\ []) do
+    case maybe_module(module, opts) do
+      nil -> raise "Module #{module} is disabled and no replacement was configured"
+      module -> module
+    end
+  end
+
+  @doc """
+  Whether an Elixir module or extension / OTP app is present AND not disabled (eg. by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def module_enabled?(module, opts \\ []) do
-    context = opts == [] || Utils.current_user(opts) || Utils.current_account(opts)
-    # debug(context, "context")
-
     module_exists?(module) and
-      do_extension_enabled?(module, context) and
-      is_disabled?(module, context) != true
+      do_extension_enabled?(module, opts) and
+      is_disabled?(module, opts) != true
   end
 
   def module_exists?(module) when is_atom(module) do
@@ -107,22 +146,43 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, disabled: true`)
+  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
-    context = opts == [] || Utils.current_user(opts) || Utils.current_account(opts)
-    do_extension_enabled?(module_or_otp_app, context)
+    do_extension_enabled?(module_or_otp_app, opts)
   end
 
-  defp do_extension_enabled?(module_or_otp_app, context) when is_atom(module_or_otp_app) do
+  defp do_extension_enabled?(module_or_otp_app, opts) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    # debug(context, "context")
-    extension_loaded?(extension) and is_disabled?(extension, context) != true
+    extension_loaded?(extension) and is_disabled?(extension, opts) != true
   end
 
-  defp is_disabled?(module_or_extension, context) do
-    Config.get([module_or_extension, :disabled]) ||
-      if not is_atom(context), do: Settings.get([module_or_extension, :disabled], nil, context)
+  defp get_modularity(module_or_extension, opts) do
+    if opts != [] do
+      Settings.get([module_or_extension, :modularity], nil, debug(opts))
+    else
+      Config.get([module_or_extension, :modularity])
+    end
+  end
+
+  defp is_disabled?(module_or_extension, opts) do
+    get_modularity(module_or_extension, opts)
+    |> disabled_value?()
+  end
+
+  def disabled_value?(value) do
+    case value do
+      nil -> false
+      false -> false
+      :disable -> true
+      :disabled -> true
+      module when is_atom(module) -> false
+      {:disabled, true} -> true
+      {:disable, true} -> true
+      [disabled: true] -> true
+      [disable: true] -> true
+      _ -> false
+    end
   end
 
   @doc """

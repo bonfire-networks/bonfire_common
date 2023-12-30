@@ -91,7 +91,7 @@ defmodule Bonfire.Common.QueryModule do
   end
 
   def apply_error(error, args) do
-    warn("QueryModule - could not query: #{error} - Query args: #{inspect(args)}")
+    warn("Bonfire.Common.QueryModule - could not query: #{error} - Query args: #{inspect(args)}")
 
     nil
   end
