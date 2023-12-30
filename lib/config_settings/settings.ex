@@ -589,15 +589,14 @@ defmodule Bonfire.Common.Settings do
 
   defp prepare_for_json(settings) do
     # WIP: https://github.com/bonfire-networks/bonfire-app/issues/790
-    for_json =
-      settings
-      |> Map.new()
-      |> JsonSerde.Serializer.serialize()
-      ~> info("attempt with JsonSerde")
-
-    prepare_from_json(for_json)
-
-    for_json
+    # |> info("attempt with JsonSerde")
+    with {:ok, for_json} <-
+           settings
+           |> Map.new()
+           |> JsonSerde.Serializer.serialize() do
+      # prepare_from_json(for_json)
+      for_json
+    end
   end
 
   defp prepare_from_json(settings) do
@@ -605,14 +604,15 @@ defmodule Bonfire.Common.Settings do
 
     settings
     |> JsonSerde.Deserializer.deserialize(..., ...)
-    ~> info("deserialized")
+    # ~> info("deserialized")
     # TODO: add support for atom keys in Map to JsonSerde (see open PR there) so we can avoid needing input_to_atoms here?
-    |> input_to_atoms(
+    ~> input_to_atoms(
       discard_unknown_keys: true,
       values: false,
       also_discard_unknown_nested_keys: false
     )
-    |> info("to_atoms")
+
+    # |> info("to_atoms")
   end
 
   # def delete(key, opts \\ [])

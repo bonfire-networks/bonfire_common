@@ -159,7 +159,7 @@ defmodule Bonfire.Common.Extend do
 
   defp get_modularity(module_or_extension, opts) do
     if opts != [] do
-      Settings.get([module_or_extension, :modularity], nil, debug(opts))
+      Settings.get([module_or_extension, :modularity], nil, opts)
     else
       Config.get([module_or_extension, :modularity])
     end
