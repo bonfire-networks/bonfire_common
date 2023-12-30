@@ -160,7 +160,7 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp fetch_one_scope(otp_app, opts) do
-    debug(opts, "opts")
+    # debug(opts, "opts")
     current_user = current_user(opts)
     current_account = current_account(opts)
     scope = e(opts, :scope, nil)

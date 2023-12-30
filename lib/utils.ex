@@ -267,6 +267,9 @@ defmodule Bonfire.Common.Utils do
       nil ->
         nil
 
+      %{context: :instance} ->
+        nil
+
       other ->
         warn(other, "No current_user found, will fallback to looking for a current_user_id")
         current_user_id(current_user_or_socket_or_opts, :skip)

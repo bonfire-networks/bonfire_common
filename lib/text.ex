@@ -515,7 +515,7 @@ defmodule Bonfire.Common.Text do
     if Keyword.keyword?(data) do
       maybe_render_templated(content, Map.new(data))
     else
-      warn("No pattern match on args, so can't parse/render template")
+      warn(data, "Did not get a data as a Keyword or Map, so can't parse/render template")
       content
     end
   end
