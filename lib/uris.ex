@@ -168,7 +168,7 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object, opts) when is_binary(id) do
     if Types.is_ulid?(id) do
       with {:ok, pointer} <-
-             Cache.maybe_apply_cached(&Bonfire.Common.Needle.one/2, [
+             Cache.maybe_apply_cached(&Bonfire.Common.Needles.one/2, [
                id,
                [skip_boundary_check: true, preload: :character]
              ]) do

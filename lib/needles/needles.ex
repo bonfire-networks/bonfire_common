@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Needle do
+defmodule Bonfire.Common.Needles do
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]
@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Needle do
   import_if_enabled(Bonfire.Boundaries.Queries)
   import Ecto.Query
   import EctoSparkles
-  alias Bonfire.Common.Needle.Queries
+  alias Bonfire.Common.Needles.Pointers.Queries
   use Bonfire.Common.Utils
   alias Bonfire.Common.Cache
   alias Bonfire.Common.ContextModule
@@ -183,28 +183,19 @@ defmodule Bonfire.Common.Needle do
     do: one!(id: pointer_id)
 
   def maybe_forge(thing) when is_struct(thing),
-    do: if(is_pointable?(thing), do: forge!(thing))
+    do: if(Needle.is_needle?(thing, [:pointable, :virtual]), do: forge!(thing))
 
   def maybe_forge(_), do: nil
 
   @doc "Turns a thing into a pointer if it is not already. Errors if it cannot be performed"
   def maybe_forge!(thing) do
-    case {thing, is_pointable?(thing)} do
+    case {thing, Needle.is_needle?(thing, [:pointable, :virtual])} do
       {%Pointer{}, _} -> thing
       {%{}, true} -> forge!(thing)
       # for AP objects like ActivityPub.Actor
       {%_{pointer_id: pointer_id}, false} -> one!(id: pointer_id)
     end
   end
-
-  def is_pointable?(%struct{}), do: is_pointable?(struct)
-
-  def is_pointable?(schema) when is_atom(schema) and not is_nil(schema),
-    do:
-      function_exported?(schema, :__pointers__, 1) and
-        schema.__pointers__(:role) in [:pointable, :virtual]
-
-  def is_pointable?(_), do: false
 
   @doc """
   Forge a pointer from a pointable object
@@ -216,7 +207,7 @@ defmodule Bonfire.Common.Needle do
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: schema, id: id} = pointed) do
     # debug(forge: pointed)
-    table = Bonfire.Common.Needle.Tables.table!(schema)
+    table = Bonfire.Common.Needles.Tables.table!(schema)
     %Pointer{id: id, table: table, table_id: table.id, pointed: pointed}
   end
 
@@ -228,7 +219,7 @@ defmodule Bonfire.Common.Needle do
   """
   @spec forge!(table_id :: integer | atom, id :: binary) :: %Pointer{}
   def forge!(table_id, id) do
-    table = Bonfire.Common.Needle.Tables.table!(table_id)
+    table = Bonfire.Common.Needles.Tables.table!(table_id)
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
@@ -342,7 +333,7 @@ defmodule Bonfire.Common.Needle do
     do: loader_query(schema, id_filters, opts)
 
   defp loader(table_id, id_filters, opts) do
-    Cache.maybe_apply_cached(&Bonfire.Common.Needle.Tables.schema_or_table!/1, [table_id])
+    Cache.maybe_apply_cached(&Bonfire.Common.Needles.Tables.schema_or_table!/1, [table_id])
     |> loader_query(id_filters, opts)
   end
 
@@ -359,7 +350,7 @@ defmodule Bonfire.Common.Needle do
 
     from(m in table_name, as: :main_object)
     |> select(
-      ^Cache.maybe_apply_cached(&Bonfire.Common.Needle.Tables.table_fields/1, [table_name])
+      ^Cache.maybe_apply_cached(&Bonfire.Common.Needles.Tables.table_fields/1, [table_name])
     )
     # ++ [cache: true]
     |> generic_query_all(id_binary(id_filters), opts)
@@ -547,7 +538,7 @@ defmodule Bonfire.Common.Needle do
   """
   def dataloader(context) do
     Dataloader.Ecto.new(repo(),
-      query: &Bonfire.Common.Needle.query/2,
+      query: &Bonfire.Common.Needles.query/2,
       default_params: %{context: context}
     )
   end

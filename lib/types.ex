@@ -506,7 +506,7 @@ defmodule Bonfire.Common.Types do
       "This isn't the table_id of a known Needle.Table schema, querying it to check if it's a Pointable"
     )
 
-    case Bonfire.Common.Needle.one(id, skip_boundary_check: true) do
+    case Bonfire.Common.Needles.one(id, skip_boundary_check: true) do
       {:ok, %{table_id: "601NTERTAB1EF0RA11TAB1ES00"}} ->
         info("This is the ID of an unknown Pointable")
         nil

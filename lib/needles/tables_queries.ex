@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Needle.Tables.Queries do
+defmodule Bonfire.Common.Needles.Tables.Queries do
   import Ecto.Query
   alias Needle.Table
 

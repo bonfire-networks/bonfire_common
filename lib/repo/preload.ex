@@ -17,7 +17,7 @@ defmodule Bonfire.Common.Repo.Preload do
 
   alias Needle.Pointer
   alias Needle.Tables
-  alias Bonfire.Common.Needle
+  alias Bonfire.Common.Needles
 
   def preload_all(%{} = structure, opts \\ []) do
     for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(structure), do: key)
@@ -61,7 +61,7 @@ defmodule Bonfire.Common.Repo.Preload do
       )
 
       try_repo_preload(obj, preloads, opts)
-      |> Needle.Preload.maybe_preload_pointers(preloads, opts)
+      |> Needles.Preload.maybe_preload_pointers(preloads, opts)
 
       # TODO: cache this as well (only if not needing to double check pointer boundaries)
     else
@@ -178,7 +178,7 @@ defmodule Bonfire.Common.Repo.Preload do
       )
 
       object
-      |> Needle.follow!()
+      |> Needles.follow!()
       |> try_repo_preload(preloads, opts)
 
       # TODO: make one preload per type to avoid n+1

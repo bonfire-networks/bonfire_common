@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.Common.Needle.Tables do
+defmodule Bonfire.Common.Needles.Tables do
   use Arrows
   import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]
@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Needle.Tables do
   alias Needle.Pointer
   alias Needle.Table
   alias Needle.NotFound
-  alias Bonfire.Common.Needle.Tables.Queries
+  alias Bonfire.Common.Needles.Tables.Queries
   import Untangle
 
   def one(id) when is_binary(id) do
@@ -54,10 +54,11 @@ defmodule Bonfire.Common.Needle.Tables do
   def table_fields(table) when is_binary(table) do
     with rows <-
            repo().many(
-             from "columns",
+             from("columns",
                prefix: "information_schema",
                select: [:column_name],
                where: [table_name: ^table]
+             )
            )
            |> debug() do
       for row <- rows do
@@ -72,10 +73,11 @@ defmodule Bonfire.Common.Needle.Tables do
 
   def table_fields_meta(table) when is_binary(table) do
     repo().many(
-      from "columns",
+      from("columns",
         prefix: "information_schema",
         select: [:column_name, :data_type, :column_default, :is_nullable],
         where: [table_name: ^table]
+      )
     )
   end
 

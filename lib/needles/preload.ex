@@ -1,4 +1,4 @@
-defmodule Bonfire.Common.Needle.Preload do
+defmodule Bonfire.Common.Needles.Preload do
   # import Bonfire.Common.Config, only: [repo: 0]
   # alias Bonfire.Common.Utils
   alias Bonfire.Common.Enums
@@ -99,7 +99,7 @@ defmodule Bonfire.Common.Needle.Preload do
   def maybe_preload_pointer(%Needle.Pointer{} = pointer, opts) do
     debug("maybe_preload_pointer: follow")
 
-    with {:ok, obj} <- Bonfire.Common.Needle.get(pointer, opts) do
+    with {:ok, obj} <- Bonfire.Common.Needles.get(pointer, opts) do
       obj
     else
       e ->
