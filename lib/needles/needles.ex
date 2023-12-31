@@ -87,7 +87,7 @@ defmodule Bonfire.Common.Needles do
   end
 
   def list!(ids, _opts) do
-    warn("Needle.list: expected a list of pointers or ULIDs, got #{inspect(ids)}")
+    warn("Needles.list: expected a list of pointers or ULIDs, got #{inspect(ids)}")
 
     []
   end

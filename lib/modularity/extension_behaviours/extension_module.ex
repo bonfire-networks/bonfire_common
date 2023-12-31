@@ -51,9 +51,22 @@ defmodule Bonfire.Common.ExtensionModule do
     |> Bonfire.UI.Common.NavModule.nav()
   end
 
-  def default_nav(app) do
+  def default_nav(app) when is_atom(app) do
     extension(app)[:default_nav]
-    |> Bonfire.UI.Common.NavModule.nav()
+    |> Bonfire.UI.Common.NavModule.nav() || []
+  end
+
+  def default_nav(apps) when is_list(apps) do
+    Enum.flat_map(apps, &default_nav/1)
+  end
+
+  def default_nav(_) do
+    []
+  end
+
+  def default_nav() do
+    Config.get([:ui, :default_nav_extensions], [:bonfire_ui_common, :bonfire_ui_social])
+    |> default_nav()
   end
 
   def extension_function_error(error, _args) do
