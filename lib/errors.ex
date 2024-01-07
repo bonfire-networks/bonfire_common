@@ -67,9 +67,9 @@ defmodule Bonfire.Common.Errors do
            [
              error_msg(msg),
              "",
-             exception_banner |> String.slice(0..1000),
+             to_string(exception_banner) |> String.slice(0..1000),
              "\n",
-             stacktrace |> String.slice(0..1000),
+             to_string(stacktrace) |> String.slice(0..1000),
              ""
            ],
            []
