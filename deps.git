@@ -3,5 +3,5 @@
 bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identity#main"
 # bonfire_data_social = "https://github.com/bonfire-networks/bonfire_data_social#main"
 # bonfire_mailer = "https://github.com/bonfire-networks/bonfire_mailer#main"
-ecto_sparkles = "https://github.com/bonfire-networks/ecto_sparkles#main"
 paginator = "https://github.com/bonfire-networks/paginator#main"
+ecto_shorts = "https://github.com/bonfire-networks/ecto_shorts#refactor/attempt1"

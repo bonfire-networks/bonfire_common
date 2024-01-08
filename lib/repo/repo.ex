@@ -20,6 +20,8 @@ defmodule Bonfire.Common.Repo do
       alias Bonfire.Common.Repo
 
       import Untangle
+
+      import Bonfire.Common.Repo.Filter
     end
   end
 
