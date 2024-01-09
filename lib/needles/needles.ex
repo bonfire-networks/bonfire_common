@@ -115,15 +115,12 @@ defmodule Bonfire.Common.Needles do
   end
 
   @doc "Prepare a query for generic pointer objects"
-  def pointer_query(filters, opts) do
+  def pointer_query(%Ecto.Query{} = q, opts) do
     opts =
       Utils.to_options(opts)
       |> debug("opts")
 
-    q = Queries.query(nil, filters)
-    # |> debug()
-
-    # note: cannot use boundarise macro to avoid depedency cycles
+    # note: cannot use boundarise macro to avoid dependency cycles
     Utils.maybe_apply(
       Bonfire.Boundaries.Queries,
       :object_boundarised,
@@ -133,6 +130,11 @@ defmodule Bonfire.Common.Needles do
     |> pointer_preloads(opts[:preload])
 
     # if Utils.e(opts, :log_query, nil), do: info(q), else: q
+  end
+
+  def pointer_query(filters, opts) do
+    Queries.query(nil, filters)
+    |> pointer_query(opts)
   end
 
   def pointer_preloads(query, preloads) do
