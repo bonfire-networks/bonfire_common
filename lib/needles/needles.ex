@@ -144,7 +144,13 @@ defmodule Bonfire.Common.Needles do
 
       :with_creator ->
         proload(query,
-          created: [creator: [:character, profile: :icon]]
+          creator: {"creator_", [:character, profile: :icon]}
+        )
+
+      :profile_info ->
+        proload(
+          query,
+          [:character, profile: :icon]
         )
 
       # Tags/mentions
@@ -157,12 +163,12 @@ defmodule Bonfire.Common.Needles do
         proload(query, :character)
 
       :post_content ->
-        proload(query, :post_content)
+        proload(query, [:post_content, :peered])
 
       :creator ->
         proload(query,
           created: [
-            creator: [:character, profile: :icon]
+            creator: {"creator_", [:character, profile: :icon]}
           ]
         )
 

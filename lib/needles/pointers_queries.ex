@@ -11,8 +11,10 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   @behaviour Bonfire.Common.QueryModule
   def schema_module, do: Pointer
 
+  def query_incl_deleted(), do: from(p in Pointer, as: :main_object)
+
   def query(Pointer) do
-    from(p in Pointer, as: :main_object)
+    query_incl_deleted()
     |> where([p], is_nil(p.deleted_at))
 
     # TODO: add filter to opt-in to including deleted ones
