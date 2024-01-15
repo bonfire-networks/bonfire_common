@@ -235,8 +235,7 @@ defmodule Bonfire.Common.Settings do
         do:
           warn(
             scope_id,
-            "cannot lookup Settings since an ID was provided as cope instead of an object with Settings preloaded",
-            trace_skip: 3
+            "cannot lookup Settings since an ID was provided as cope instead of an object with Settings preloaded"
           )
 
       nil
