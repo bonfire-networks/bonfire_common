@@ -385,7 +385,8 @@ defmodule Bonfire.Common.Text do
 
     content
     # special for MD links coming from milkdown
-    |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
+    |> Regex.replace(~r/<(http[^>]+)>/U, ..., " \\1 ")
+    |> Regex.replace(~r/@<([^>]+)> /U, ..., " @\\1 ")
     # handle AP actors
     |> Regex.replace(
       ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U,
@@ -414,27 +415,27 @@ defmodule Bonfire.Common.Text do
 
     content
     # special for MD links coming from milkdown
-    |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
+    # |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
     # handle AP actors
     |> Regex.replace(
-      ~r/(<a [^>]*href=\")#{local_instance}\/pub\/actors\/(.+\")/U,
+      ~r/(<a [^>]*href=")#{local_instance}\/pub\/actors\/([^"]+)/U,
       ...,
       " \\1/character/\\2"
     )
     # handle AP objects
     |> Regex.replace(
-      ~r/(<a [^>]*href=\")#{local_instance}\/pub\/objects\/(.+\")/U,
+      ~r/(<a [^>]*href=")#{local_instance}\/pub\/objects\/([^"]+)/U,
       ...,
       " \\1/discussion/\\2"
     )
     # handle local links
     |> Regex.replace(
-      ~r/(<a [^>]*href=\")#{local_instance}(.+\")/U,
+      ~r/(<a [^>]*href=")#{local_instance}([^"]+)/U,
       ...,
       " \\1\\2"
     )
     # handle external links (in new tab)
-    |> Regex.replace(~r/<a ([^>]*href=\"http.+)/U, ..., " <a target=\"_blank\" \\1")
+    |> Regex.replace(~r/<a ([^>]*href="http[^"]+)/U, ..., " <a target=\"_blank\" \\1")
 
     # |> debug(content)
   end
