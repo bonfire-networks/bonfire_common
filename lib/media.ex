@@ -184,17 +184,26 @@ defmodule Bonfire.Common.Media do
   def banner_fallback, do: "/images/bonfires.png"
 
   def maybe_dominant_color(user, avatar_url \\ nil, banner_url \\ nil, banner_fallback \\ nil) do
-    avatar_url = avatar_url || Media.avatar_url(user)
-    banner_url = banner_url || Media.banner_url(user)
+    avatar_url = avatar_url || avatar_url(user)
+    banner_url = banner_url || banner_url(user)
 
     !banner_url or
-      (banner_url == (banner_fallback || banner_fallback()) and avatar_url &&
-         avatar_url != avatar_fallback(Enums.id(user)) &&
-         Cache.maybe_apply_cached({Bonfire.Files.Image.Edit, :dominant_color}, [
-           Path.join(Config.get(:project_path), avatar_url),
-           15,
-           nil
-         ]))
+      (banner_url == (banner_fallback || banner_fallback()) and
+         case avatar_url do
+           "http" <> _ ->
+             "#AA4203"
+
+           nil ->
+             nil
+
+           _ ->
+             avatar_url != avatar_fallback(Enums.id(user)) &&
+               Cache.maybe_apply_cached({Bonfire.Files.Image.Edit, :dominant_color}, [
+                 Path.join(Config.get(:project_path), avatar_url),
+                 15,
+                 nil
+               ])
+         end)
   end
 
   @doc """
