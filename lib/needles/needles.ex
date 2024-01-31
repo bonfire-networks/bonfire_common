@@ -35,12 +35,13 @@ defmodule Bonfire.Common.Needles do
     else
       e ->
         error(pointer, "Could not follow - #{inspect(e)}")
-        {:error, :not_found}
+        # {:error, :not_found}
+        {:ok, pointer}
     end
   rescue
     NotFound ->
       error("Pointer raised NotFound")
-      {:error, :not_found}
+      {:ok, pointer}
   end
 
   # def get([%Pointer{}|_] = pointers, opts) do
@@ -118,7 +119,8 @@ defmodule Bonfire.Common.Needles do
   def pointer_query(%Ecto.Query{} = q, opts) do
     opts =
       Utils.to_options(opts)
-      |> debug("opts")
+
+    # |> debug("opts")
 
     # note: cannot use boundarise macro to avoid dependency cycles
     Utils.maybe_apply(
@@ -144,7 +146,16 @@ defmodule Bonfire.Common.Needles do
 
       :with_creator ->
         proload(query,
-          creator: {"creator_", [character: :peered, profile: :icon]}
+          created: [
+            creator:
+              {"creator_",
+               [
+                 character: [
+                   # :peered
+                 ],
+                 profile: [:icon]
+               ]}
+          ]
         )
 
       :profile_info ->
@@ -162,22 +173,8 @@ defmodule Bonfire.Common.Needles do
       :character ->
         proload(query, :character)
 
-      :post_content ->
+      :with_content ->
         proload(query, [:post_content, :peered])
-
-      :creator ->
-        proload(query,
-          created: [
-            creator: {"creator_", [character: :peered, profile: :icon]}
-          ]
-        )
-
-      :creator_of_reply_to ->
-        proload(query,
-          created: [
-            creator: {"reply_to_creator_", [:character, profile: :icon]}
-          ]
-        )
 
       _default ->
         query

@@ -61,6 +61,8 @@ defmodule Bonfire.Common.Repo.Preload do
       )
 
       try_repo_preload(obj, preloads, opts)
+      # TODO: use maybe_preload_nested_pointers instead of maybe_preload_pointers ? (but note the difference in key format)
+      # |> Needles.Preload.maybe_preload_nested_pointers(preloads, opts)
       |> Needles.Preload.maybe_preload_pointers(preloads, opts)
 
       # TODO: cache this as well (only if not needing to double check pointer boundaries)

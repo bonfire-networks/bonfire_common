@@ -6,9 +6,21 @@ defmodule Bonfire.Common.Needles.Preload do
 
   def maybe_preload_pointers(object, keys, opts \\ [])
 
+  def maybe_preload_pointers({:ok, obj}, keys, opts),
+    do: {:ok, maybe_preload_pointers(obj, keys, opts)}
+
+  def maybe_preload_pointers(%{edges: list} = page, keys, opts) when is_list(list),
+    do: Map.put(page, :edges, maybe_preload_pointers(list, keys, opts))
+
   def maybe_preload_pointers(object, keys, opts) when is_list(object) do
     debug("iterate list of objects")
+    # TODO: optimise
     Enum.map(object, &maybe_preload_pointers(&1, keys, opts))
+  end
+
+  def maybe_preload_pointers(object, key, opts) when not is_struct(object) do
+    error(object, "expected a struct")
+    object
   end
 
   def maybe_preload_pointers(object, keys, opts)
@@ -20,7 +32,7 @@ defmodule Bonfire.Common.Needles.Preload do
   end
 
   def maybe_preload_pointers(object, key, opts)
-      when is_struct(object) and is_map(object) and is_atom(key) do
+      when is_map(object) and is_atom(key) do
     debug(key, "one field")
 
     case Map.get(object, key) do
@@ -32,8 +44,7 @@ defmodule Bonfire.Common.Needles.Preload do
     end
   end
 
-  def maybe_preload_pointers(object, {key, nested_keys}, opts)
-      when is_struct(object) do
+  def maybe_preload_pointers(object, {key, nested_keys}, opts) do
     debug(nested_keys, "key #{inspect(key)} with nested keys")
 
     object
@@ -47,11 +58,18 @@ defmodule Bonfire.Common.Needles.Preload do
   end
 
   def maybe_preload_pointers(object, keys, _opts) do
-    debug(keys, "ignore #{inspect(keys)}")
+    debug(keys, "ignore (only supports 1 key at a time)")
     object
   end
 
+  @doc "Please not this expects nested keys (like `proload` as opposed to `maybe_preload`)"
   def maybe_preload_nested_pointers(object, keys, opts \\ [])
+
+  def maybe_preload_nested_pointers({:ok, obj}, keys, opts),
+    do: {:ok, maybe_preload_nested_pointers(obj, keys, opts)}
+
+  def maybe_preload_nested_pointers(%{edges: list} = page, keys, opts) when is_list(list),
+    do: Map.put(page, :edges, maybe_preload_nested_pointers(list, keys, opts))
 
   def maybe_preload_nested_pointers(object, keys, opts)
       when is_list(keys) and length(keys) > 0 and is_map(object) do
@@ -85,6 +103,7 @@ defmodule Bonfire.Common.Needles.Preload do
               (is_list(object) and not is_nil(keylist) and keylist != []) do
     debug("do_maybe_preload_nested_pointers: try with get_and_update_in for #{inspect(object)}")
 
+    # TODO: optimise by seeing how we can use Needles.follow! which supports a list of pointers to not preload these individually...
     # |> debug("object")
     with {_old, loaded} <-
            get_and_update_in(object, keylist, &{&1, maybe_preload_pointer(&1, opts)}) do
