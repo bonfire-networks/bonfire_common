@@ -13,15 +13,19 @@ defmodule Bonfire.Common.DatesTimes do
         nil
 
       date ->
-        date
-        |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
-        |> with({:ok, relative} <- ...) do
-          relative
-        else
-          other ->
-            error(date, inspect(other))
-            timex_date_from_now(date)
-        end
+        relative_date(date, opts)
+    end
+  end
+
+  def relative_date(date, opts \\ []) do
+    date
+    |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
+    |> with({:ok, relative} <- ...) do
+      relative
+    else
+      other ->
+        error(date, inspect(other))
+        timex_date_from_now(date)
     end
   end
 
