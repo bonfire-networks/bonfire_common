@@ -112,8 +112,10 @@ defmodule Bonfire.Common.Settings do
     # debug(current_account, "current_account")
 
     if (scope != :instance and not is_map(current_user) and not is_map(current_account)) or
-         (is_struct(current_user) and not Ecto.assoc_loaded?(current_user.settings)) or
-         (is_struct(current_account) and not Ecto.assoc_loaded?(current_account.settings)) do
+         (is_struct(current_user) and Map.has_key?(current_user, :settings) and
+            not Ecto.assoc_loaded?(current_user.settings)) or
+         (is_struct(current_account) and Map.has_key?(current_account, :settings) and
+            not Ecto.assoc_loaded?(current_account.settings)) do
       warn(
         otp_app,
         "You should pass a current_user and/or current_account (with settings assoc preloaded) in `opts` depending on what scope of Settings you want for OTP app"

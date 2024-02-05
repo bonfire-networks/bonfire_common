@@ -112,6 +112,10 @@ defmodule Bonfire.Common.Needles.Preload do
       # |> debug("object")
     end
   rescue
+    e in KeyError ->
+      error(e, "Could not preload nested pointers, returning the original object instead")
+      object
+
     e in RuntimeError ->
       error(e, "Could not preload nested pointers, returning the original object instead")
       object
