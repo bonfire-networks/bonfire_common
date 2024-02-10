@@ -410,15 +410,21 @@ defmodule Bonfire.Common.URIs do
       endpoint.struct_url()
       # |> debug(endpoint)
     else
-      if endpoint != Common.Config.endpoint_module(),
-        do: base_uri(nil),
-        else: error(endpoint, "endpoint module not available")
+      base_uri_fallback(
+        "endpoint module not available",
+        endpoint,
+        endpoint,
+        Common.Config.endpoint_module()
+      )
     end
   rescue
     e ->
-      if endpoint != Common.Config.endpoint_module(),
-        do: base_uri(nil),
-        else: error(e, "could not get struct_url from endpoint")
+      base_uri_fallback(
+        "could not get struct_url from endpoint",
+        e,
+        endpoint,
+        Common.Config.endpoint_module()
+      )
   end
 
   def base_uri(_) do
@@ -432,6 +438,19 @@ defmodule Bonfire.Common.URIs do
 
       _ ->
         error("requires a conn or :endpoint_module in Config")
+    end
+  end
+
+  defp base_uri_fallback(msg, e, endpoint, main_endpoint_module) do
+    if endpoint != main_endpoint_module do
+      base_uri(main_endpoint_module)
+    else
+      error(e, msg)
+
+      %URI{
+        scheme: "https",
+        host: Common.Config.get(:host) || System.get_env("HOSTNAME", "localhost")
+      }
     end
   end
 
@@ -468,7 +487,8 @@ defmodule Bonfire.Common.URIs do
     with %URI{} = uri <- base_uri(other) do
       base_url(uri)
     else
-      _error ->
+      e ->
+        error(e)
         ""
     end
   end

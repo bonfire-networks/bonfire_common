@@ -47,9 +47,7 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
 
       debug(closed_after, "Get issues closed after the ")
 
-      token =
-        Bonfire.Common.Config.get(:github_token) ||
-          System.get_env("GITHUB_TOKEN")
+      token = Bonfire.Common.Config.get(:github_token)
 
       # debug(token)
 
