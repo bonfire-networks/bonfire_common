@@ -215,7 +215,7 @@ defmodule Bonfire.Common.URIs do
 
   defp do_fallback(args, id_at \\ 0) do
     # debug(args, id_at)
-    IO.inspect(args, label: "path_fallback")
+    debug(args, "path_fallback")
 
     # TODO: configurable
     fallback_route = Needle.Pointer

@@ -24,7 +24,7 @@ defmodule Bonfire.Common.Media do
 
   def media_url(%{media_type: media_type, path: url} = _media)
       when media_type in @external and is_binary(url) do
-    if String.contains?(url, "://") do
+    if String.contains?(url || "", "://") do
       url
     else
       "http://#{url}"
@@ -32,7 +32,7 @@ defmodule Bonfire.Common.Media do
   end
 
   def media_url(%{media_type: media_type} = media) do
-    if String.starts_with?(media_type, "image") do
+    if String.starts_with?(media_type || "", "image") do
       image_url(media)
     else
       debug(media, "non-image url")
@@ -64,7 +64,7 @@ defmodule Bonfire.Common.Media do
   end
 
   def thumbnail_url(%{media_type: media_type} = media) do
-    if String.starts_with?(media_type, "image") do
+    if String.starts_with?(media_type || "", "image") do
       image_url(media)
     else
       # Utils.e(media, :metadata, :canonical_url, nil) ||
@@ -131,7 +131,7 @@ defmodule Bonfire.Common.Media do
     do: Bonfire.Files.ImageUploader.remote_url(media)
 
   def image_url(%{path: "http" <> _ = url} = _media) do
-    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if String.ends_with?(url || "", [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
   end
 
   def image_url(%{path: _} = media),

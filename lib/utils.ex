@@ -695,6 +695,16 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
+  defp do_maybe_apply_fallback(fallback_fun, error, args, _opts)
+       when is_function(fallback_fun, 1) do
+    fallback_fun.(args)
+  end
+
+  defp do_maybe_apply_fallback(fallback_fun, error, args, _opts)
+       when is_function(fallback_fun, 0) do
+    fallback_fun.()
+  end
+
   defp do_maybe_apply_fallback(fallback_return, error, args, _opts) do
     Logger.warning("maybe_apply: #{error} - with args: (#{inspect(args)})")
     fallback_return
