@@ -1,9 +1,10 @@
 defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
   use Mix.Task
-
   import Macro, only: [camelize: 1, underscore: 1]
   import Mix.Generator
   import Mix.Ecto, except: [migrations_path: 1]
+
+  # TODO: turn into an escript so it can be run without compiling the whole app
 
   @shortdoc "Generates migrations for the extension"
   @doc """

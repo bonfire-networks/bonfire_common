@@ -27,7 +27,7 @@ defmodule Bonfire.Common.TestSummary do
     # select_all = :ets.fun2ms(&(&1))
     # :ets.select(@ets_table_name, select_all)
     :ets.tab2list(@ets_table_name)
-    |> IO.inspect(label: "ETS")
+    # |> IO.inspect(label: "ETS")
     |> Enum.group_by(&elem(&1, 1), &elem(&1, 0))
     |> Enum.map(fn {tag, tests} ->
       IO.puts("#{length(tests)} tests #{tag}")
