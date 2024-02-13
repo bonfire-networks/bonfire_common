@@ -109,12 +109,15 @@ defmodule Bonfire.Common.Test.Interactive do
   def init(state) do
     Process.flag(:trap_exit, true)
 
+    ExUnit.configure(
+      formatters:
+        Bonfire.Common.RuntimeConfig.test_formatters([
+          Bonfire.Common.Test.Interactive.Observer
+        ])
+    )
+
     ExUnit.start(
       autorun: false,
-      formatters: [
-        ExUnit.CLIFormatter,
-        Bonfire.Common.Test.Interactive.Observer
-      ],
       exclude: Bonfire.Common.RuntimeConfig.skip_test_tags()
     )
 

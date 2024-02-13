@@ -36,6 +36,8 @@ defmodule Bonfire.Common.RuntimeConfig do
     # tests to skip in CI env
     skip = if System.get_env("CI"), do: [:skip_ci] ++ skip, else: skip
 
+    skip = if System.get_env("TEST_WITH_MNEME") == "no", do: [:mneme] ++ skip, else: skip
+
     # skip browser automation tests in CI
     skip =
       if System.get_env("CI") || is_nil(chromedriver_path),
@@ -43,5 +45,19 @@ defmodule Bonfire.Common.RuntimeConfig do
         else: skip
 
     debug(skip, "Skipping tests tagged with")
+  end
+
+  def test_formatters(extra) do
+    extra ++ test_formatters()
+  end
+
+  def test_formatters do
+    [
+      Bonfire.Common.TestSummary,
+      # ExUnit.CLIFormatter,
+      ExUnitNotifier
+      # ExUnitSummary.Formatter
+      # Bonfire.UI.Kanban.TestDrivenCoordination
+    ]
   end
 end
