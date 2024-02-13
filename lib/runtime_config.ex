@@ -54,7 +54,7 @@ defmodule Bonfire.Common.RuntimeConfig do
   def test_formatters do
     [
       Bonfire.Common.TestSummary,
-      # ExUnit.CLIFormatter,
+      ExUnit.CLIFormatter,
       ExUnitNotifier
       # ExUnitSummary.Formatter
       # Bonfire.UI.Kanban.TestDrivenCoordination
