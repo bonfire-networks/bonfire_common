@@ -170,31 +170,35 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_as_html_mdex(content, opts) do
-    [
-      parse: [
-        smart: false
-      ],
-      render: [
-        hardbreaks: true,
-        _unsafe: opts[:__unsafe__],
-        escape: !opts[:__unsafe__]
-      ],
-      extension: [
-        strikethrough: true,
-        tasklist: true,
-        # can't use because things @ mentions are emails
-        autolink: false,
-        table: true,
-        tagfilter: true,
-        header_ids: ""
-      ],
-      features: [
-        # TODO: auto-set appropriate theme based on user's daisy theme
-        syntax_highlight_theme: "adwaita_dark"
+    if module_enabled?(MDEx, opts) do
+      [
+        parse: [
+          smart: false
+        ],
+        render: [
+          hardbreaks: true,
+          _unsafe: opts[:__unsafe__],
+          escape: !opts[:__unsafe__]
+        ],
+        extension: [
+          strikethrough: true,
+          tasklist: true,
+          # can't use because things @ mentions are emails
+          autolink: false,
+          table: true,
+          tagfilter: true,
+          header_ids: ""
+        ],
+        features: [
+          # TODO: auto-set appropriate theme based on user's daisy theme
+          syntax_highlight_theme: "adwaita_dark"
+        ]
       ]
-    ]
-    |> Keyword.merge(opts)
-    |> MDEx.to_html(content, ...)
+      |> Keyword.merge(opts)
+      |> MDEx.to_html(content, ...)
+    else
+      content
+    end
   end
 
   def markdown_as_html_earmark(content, opts) do

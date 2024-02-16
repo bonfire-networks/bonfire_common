@@ -244,21 +244,25 @@ defmodule Bonfire.Common.Test.Interactive do
   `@tag db_sandbox: false`
   """
   def setup_test_repo(tags) do
-    wrap_test_in_transaction_and_rollback =
-      Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false
+    repo = repo()
 
-    # if wrap_test_in_transaction_and_rollback,
-    #   do: info("Wrapping tests in DB transactions to be rolled back"),
-    #   else: info("*Not* wrapping tests in DB transactions")
+    if GenServer.whereis(repo) do
+      wrap_test_in_transaction_and_rollback =
+        Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false
 
-    :ok =
-      Ecto.Adapters.SQL.Sandbox.checkout(repo(),
-        sandbox: wrap_test_in_transaction_and_rollback
-      )
+      # if wrap_test_in_transaction_and_rollback,
+      #   do: info("Wrapping tests in DB transactions to be rolled back"),
+      #   else: info("*Not* wrapping tests in DB transactions")
 
-    if not wrap_test_in_transaction_and_rollback or !tags[:async] do
-      info("Running Ecto in shared mode")
-      Ecto.Adapters.SQL.Sandbox.mode(repo(), {:shared, self()})
+      :ok =
+        Ecto.Adapters.SQL.Sandbox.checkout(repo,
+          sandbox: wrap_test_in_transaction_and_rollback
+        )
+
+      if not wrap_test_in_transaction_and_rollback or !tags[:async] do
+        info("Running Ecto in shared mode")
+        Ecto.Adapters.SQL.Sandbox.mode(repo, {:shared, self()})
+      end
     end
   end
 end

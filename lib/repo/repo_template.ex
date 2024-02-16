@@ -199,7 +199,15 @@ defmodule Bonfire.Common.RepoTemplate do
         e in DBConnection.ConnectionError ->
           error(
             e,
-            "DBConnection.ConnectionError prevented a database query, returning #{inspect(fallback)} as fallback"
+            "DBConnection.ConnectionError prevented a database query, returning a fallback"
+          )
+
+          fallback
+
+        e in RuntimeError ->
+          error(
+            e,
+            "RuntimeError when attempting a database query, returning a fallback"
           )
 
           fallback
@@ -337,6 +345,10 @@ defmodule Bonfire.Common.RepoTemplate do
       rescue
         exception in Postgrex.Error ->
           handle_postgrex_exception(exception, __STACKTRACE__, [])
+
+        e in RuntimeError ->
+          error(e, "Could not fetch list from database")
+          []
       end
 
       @doc "Execute a query to delete all matching records."
