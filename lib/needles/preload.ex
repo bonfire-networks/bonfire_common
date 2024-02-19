@@ -73,7 +73,7 @@ defmodule Bonfire.Common.Needles.Preload do
 
   def maybe_preload_nested_pointers(object, keys, opts)
       when is_list(keys) and length(keys) > 0 and is_map(object) do
-    debug("maybe_preload_nested_pointers: try object with list of keys: #{inspect(keys)}")
+    debug(keys, "maybe_preload_nested_pointers: try object with list of keys")
 
     do_maybe_preload_nested_pointers(object, nested_keys(keys), opts)
   end
@@ -81,7 +81,7 @@ defmodule Bonfire.Common.Needles.Preload do
   def maybe_preload_nested_pointers(objects, keys, opts)
       when is_list(keys) and length(keys) > 0 and is_list(objects) and
              length(objects) > 0 do
-    debug("maybe_preload_nested_pointers: try list with list of keys: #{inspect(keys)}")
+    debug(keys, "maybe_preload_nested_pointers: try list with list of keys")
 
     do_maybe_preload_nested_pointers(
       Enum.reject(objects, &(&1 == [])),
@@ -92,24 +92,17 @@ defmodule Bonfire.Common.Needles.Preload do
 
   def maybe_preload_nested_pointers(object, _, _opts), do: object
 
-  defp nested_keys(keys) do
-    # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
-    # |> debug("flatten nested keys")
-    keys |> Enums.flatter() |> Enum.map(&Access.key!(&1))
-  end
-
   defp do_maybe_preload_nested_pointers(object, keylist, opts)
        when is_struct(object) or
               (is_list(object) and not is_nil(keylist) and keylist != []) do
-    debug("do_maybe_preload_nested_pointers: try with get_and_update_in for #{inspect(object)}")
+    debug(keylist, "do_maybe_preload_nested_pointers: try with get_and_update_in")
 
     # TODO: optimise by seeing how we can use Needles.follow! which supports a list of pointers to not preload these individually...
     # |> debug("object")
     with {_old, loaded} <-
-           get_and_update_in(object, keylist, &{&1, maybe_preload_pointer(&1, opts)}) do
+           get_and_update_in(object, keylist, &preload_next_in/1) do
       loaded
-
-      # |> debug("object")
+      |> debug("object(s) with pointers loaded with get_and_update_in")
     end
   rescue
     e in KeyError ->
@@ -130,12 +123,78 @@ defmodule Bonfire.Common.Needles.Preload do
       obj
     else
       e ->
-        debug("maybe_preload_pointer: could not fetch pointer: #{inspect(e)} #{inspect(pointer)}")
+        debug(pointer, "maybe_preload_pointer: could not fetch pointer: #{inspect(e)}")
 
         pointer
     end
   end
 
   # |> debug("skip")
-  def maybe_preload_pointer(obj, _opts), do: obj
+  def maybe_preload_pointer(obj, _opts) do
+    debug(obj, "not a Pointer Needle")
+    obj
+  end
+
+  defp nested_keys(keys) do
+    # keys |> Ecto.Repo.Preloader.normalize(nil, keys) |> IO.inspect
+    # |> debug("flatten nested keys")
+    keys
+    |> Enums.flatter()
+    |> Enum.map(&access_key(&1))
+
+    # |> Enum.map(&custom_access_key_fun(&1))
+  end
+
+  def access_key(key, default_val \\ nil) do
+    fn
+      :get, data, next ->
+        debug(data, "get_original_value for #{key}")
+        next.(Map.get(data || %{}, key, default_val))
+
+      :get_and_update, data, next ->
+        # debug(data, "data")
+        debug(next, "fun for #{key}")
+
+        value =
+          Map.get(data || %{}, key, default_val)
+          |> debug("get_and_update_original_value for #{key}")
+
+        case next.(value) |> debug("nexxt") do
+          {get, update} -> {get, Map.put(data || %{}, key, update)}
+          :pop -> {value, Map.delete(data || %{}, key)}
+        end
+    end
+  end
+
+  # TODO: to load multiple nested pointers
+  def custom_access_key_fun(key, fun \\ &preload_next_in/1, default_val \\ nil) do
+    fn
+      :get, data, next ->
+        debug(data, "get_original_value for #{key}")
+        next.(Map.get(data || %{}, key, default_val))
+
+      :get_and_update, data, _next ->
+        # debug(data, "data")
+        debug(fun, "fun for #{key}")
+
+        value =
+          Map.get(data || %{}, key, default_val)
+          |> debug("get_and_update_original_value for #{key}")
+
+        case fun.(value) |> debug("nexxt") do
+          {get, update} -> {get, Map.put(data || %{}, key, update)}
+          :pop -> {value, Map.delete(data || %{}, key)}
+        end
+    end
+  end
+
+  defp preload_next_in(%Needle.Pointer{} = value) do
+    debug(value, "preload_next_in_value")
+    {value, maybe_preload_pointer(value, skip_boundary_check: true)}
+  end
+
+  defp preload_next_in(value) do
+    debug(value, "not a Pointer Needle")
+    {value, value}
+  end
 end
