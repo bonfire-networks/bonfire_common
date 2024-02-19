@@ -443,6 +443,15 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Boost
 
+  def object_type(type)
+      when type in [
+             Bonfire.Files.Media,
+             "30NF1REF11ESC0NTENT1SGREAT",
+             "Media",
+             :media
+           ],
+      do: Bonfire.Files.Media
+
   # VF
   def object_type(type)
       when type in [
@@ -562,17 +571,17 @@ defmodule Bonfire.Common.Types do
   Given a list of schema types, returns a list of their respective table types. Filters out any empty values.
 
   ## Examples
-    iex> table_types([:activity, :person])
-    ["activities", "people"]
+    iex> table_types([%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"}, %Bonfire.Data.Social.APActivity{}])
+    "30NF1REAPACTTAB1ENVMBER0NE"
 
   Given a single schema type, returns its respective table type.
 
   ## Examples
-    iex> table_types(:activity)
-    "activities"
+    iex> table_types(Bonfire.Data.Social.APActivity)
+    "30NF1REAPACTTAB1ENVMBER0NE"
   """
   def table_types(types) when is_list(types),
-    do: Enum.map(types, &table_type/1) |> Enums.filter_empty([])
+    do: Enum.map(types, &table_type/1) |> Enums.filter_empty([]) |> Enum.dedup()
 
   def table_types(type),
     do: table_types(List.wrap(type))
@@ -590,7 +599,13 @@ defmodule Bonfire.Common.Types do
     iex> table_type(Bonfire.Data.Social.APActivity)
     "30NF1REAPACTTAB1ENVMBER0NE"
   """
-  def table_type(type) when is_atom(type) and not is_nil(type), do: table_id(type)
+  def table_type(type) when is_atom(type) and not is_nil(type) do
+    table_id(type) ||
+      type
+      |> object_type()
+      |> table_id()
+  end
+
   def table_type(%{table_id: table_id}) when is_binary(table_id), do: ulid(table_id)
   def table_type(type) when is_map(type), do: object_type(type) |> table_id()
 
