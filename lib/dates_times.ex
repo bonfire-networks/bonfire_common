@@ -46,8 +46,34 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(%DateTime{} = date) do
+  def to_date(%DateTime{} = date_time) do
+    date_time
+  end
+
+  def to_date(%Date{} = date) do
     date
+    |> DateTime.new!(Time.new!(0, 0, 0))
+  end
+
+  def to_date(ts) when is_integer(ts) do
+    with {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
+      date
+    else
+      e ->
+        error(e, "not a valid timestamp")
+        nil
+    end
+  end
+
+  def to_date(string) when is_binary(string) and byte_size(string) == 10 do
+    case Date.from_iso8601(string) do
+      {:ok, date} ->
+        to_date(date)
+
+      other ->
+        error(other)
+        nil
+    end
   end
 
   def to_date(string) when is_binary(string) do
@@ -65,7 +91,26 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(object) when is_map(object),
+  def to_date(%{id: id}) when is_binary(id),
+    do: date_from_pointer(id)
+
+  def to_date(%{
+        "day" => %{"value" => day},
+        "month" => %{"value" => month},
+        "year" => %{"value" => year}
+      }),
+      do: to_date(%{"day" => day, "month" => month, "year" => year})
+
+  def to_date(%{"day" => day, "month" => month, "year" => year}),
+    do:
+      Date.new(
+        Types.maybe_to_integer(year),
+        Types.maybe_to_integer(month),
+        Types.maybe_to_integer(day)
+      )
+      ~> to_date()
+
+  def to_date(%{} = object),
     do: date_from_pointer(object)
 
   def to_date(_), do: nil
@@ -85,12 +130,29 @@ defmodule Bonfire.Common.DatesTimes do
   @doc "Takes an object (or string with an ULID) and converts the ULID ID to a `DateTime` struct."
   def date_from_pointer(object) do
     with id when is_binary(id) <- Bonfire.Common.Types.ulid(object),
-         {:ok, ts} <- Needle.ULID.timestamp(id),
-         {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
-      date
+         {:ok, ts} <- Needle.ULID.timestamp(id) do
+      to_date(ts)
     else
       e ->
         error(e)
+        nil
+    end
+  end
+
+  def maybe_generate_ulid(date_time_or_string) do
+    with %DateTime{} = date_time <-
+           to_date(date_time_or_string) |> debug("date"),
+         # only if published in the past
+         :lt <-
+           DateTime.compare(date_time, DateTime.now!("Etc/UTC")) do
+      date_time
+      # |> debug("date_time")
+      |> DateTime.to_unix(:millisecond)
+      # |> debug("to_unix")
+      |> Needle.ULID.generate()
+    else
+      other ->
+        debug(other, "skip")
         nil
     end
   end
