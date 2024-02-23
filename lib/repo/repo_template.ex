@@ -199,7 +199,7 @@ defmodule Bonfire.Common.RepoTemplate do
         e in DBConnection.ConnectionError ->
           error(
             e,
-            "DBConnection.ConnectionError prevented a database query, returning a fallback"
+            "DB Connection error prevented a database query, returning a fallback"
           )
 
           fallback
@@ -207,7 +207,15 @@ defmodule Bonfire.Common.RepoTemplate do
         e in RuntimeError ->
           error(
             e,
-            "RuntimeError when attempting a database query, returning a fallback"
+            "Runtime error when attempting a database query, returning a fallback"
+          )
+
+          fallback
+
+        e in ArgumentError ->
+          error(
+            e,
+            "Argument error when attempting a database query, returning a fallback"
           )
 
           fallback
