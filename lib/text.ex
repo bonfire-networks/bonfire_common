@@ -527,7 +527,8 @@ defmodule Bonfire.Common.Text do
   Currently only supports irregular verbs.
   """
   def verb_infinitive(verb_conjugated) do
-    with [{infinitive, _}] <-
+    with true <- module_enabled?(Irregulars),
+         [{infinitive, _}] <-
            Enum.filter(Irregulars.verb_forms(), fn {_infinitive, conjugations} ->
              verb_conjugated in conjugations
            end) do
