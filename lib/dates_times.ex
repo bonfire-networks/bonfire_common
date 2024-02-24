@@ -80,7 +80,9 @@ defmodule Bonfire.Common.DatesTimes do
     if Types.is_ulid?(string) do
       date_from_pointer(string)
     else
-      case DateTime.from_iso8601(string) do
+      case string
+           |> String.trim("/")
+           |> DateTime.from_iso8601() do
         {:ok, datetime, 0} ->
           datetime
 
