@@ -303,6 +303,10 @@ defmodule Bonfire.Common.Enums do
   """
   def deep_merge(left, right, opts \\ [])
 
+  def deep_merge(left, nil, _opts) do
+    left
+  end
+
   def deep_merge(%Ecto.Changeset{} = left, %Ecto.Changeset{} = right, _opts) do
     merge_changesets(left, right)
   end
