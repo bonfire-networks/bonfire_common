@@ -12,6 +12,7 @@ defmodule Bonfire.Common.Utils do
   require Logger
   # alias Common.Text
   # alias Common.Config
+  alias Common.Cache
   alias Common.Enums
   alias Common.Errors
   alias Common.Types
@@ -231,8 +232,14 @@ defmodule Bonfire.Common.Utils do
       {:ok, ret} = _socket ->
         current_user(ret)
 
-      %{current_user: %{id: _} = user} = _options ->
+      %{current_user: %{id: _} = user} ->
         user
+
+      # %{current_user: id} when is_binary(id) ->
+      #   Cache.get!("current_user:#{id}") || %{id: id}
+
+      # id when is_binary(id) ->
+      #   Cache.get!("current_user:#{id}") || %{id: id}
 
       %{id: _, profile: _} ->
         current_user_or_socket_or_opts

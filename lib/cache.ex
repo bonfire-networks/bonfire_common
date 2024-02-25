@@ -18,6 +18,7 @@ defmodule Bonfire.Common.Cache do
 
   def put(key, value, opts \\ []) do
     Cachex.put(cache_store(opts), key, value, opts |> Keyword.put_new(:ttl, @default_cache_ttl))
+    value
   end
 
   def get(key, opts \\ []), do: Cachex.get(cache_store(opts), key)
