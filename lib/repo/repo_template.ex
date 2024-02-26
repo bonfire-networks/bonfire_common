@@ -285,7 +285,7 @@ defmodule Bonfire.Common.RepoTemplate do
               Keyword.merge(
                 Utils.to_options(opts),
                 Keyword.new(
-                  if is_list(opts[:paginate]),
+                  if is_list(opts[:paginate]) or is_map(opts[:paginate]),
                     do: opts[:paginate],
                     else: opts[:paginated] || opts[:pagination] || []
                 )
@@ -487,6 +487,20 @@ defmodule Bonfire.Common.RepoTemplate do
             [message | do_get_trace_messages(ref)]
         after
           0 -> []
+        end
+      end
+
+      def maybe_where_ilike(query, field, user_query, system_prefix \\ "", system_suffix \\ "") do
+        case String.contains?(user_query, ["\\", "%", "_"]) do
+          true ->
+            error(user_query, "unsafe user query, skip clause")
+            query
+
+          false ->
+            name_pattern = "#{system_prefix}#{user_query}#{system_suffix}"
+
+            query
+            |> where(ilike(^field, ^name_pattern))
         end
       end
 
