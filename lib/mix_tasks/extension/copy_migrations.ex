@@ -32,6 +32,8 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
   def run(args) do
     IO.inspect(args)
 
+    IO.puts(Mix.Project.get.project[:app])
+
     repo =
       List.first(parse_repo(args))
       |> IO.inspect()
@@ -62,7 +64,7 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
       |> IO.inspect()
 
     (extensions ||
-       Bonfire.Mixer.deps_names_for(:bonfire)
+       Bonfire.Mixer.deps_names_for(Mix.Project.get.project[:app])
        |> Enum.reject(fn
          "bonfire_" <> _ -> false
          _ -> true
