@@ -30,13 +30,7 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
   @default_path "priv/" <> @default_repo_path
 
   def run(args) do
-    IO.inspect(args)
-
-    IO.puts(Mix.Project.get.project[:app])
-
-    repo =
-      List.first(parse_repo(args))
-      |> IO.inspect()
+    IO.inspect(args, label: "Args")
 
     case OptionParser.parse(args, switches: @switches) do
       {opts, [], _} ->
@@ -48,6 +42,10 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
         |> maybe_copy(opts)
     end
 
+    # repo =
+    #   List.first(parse_repo(args))
+    #   |> IO.inspect(label: "repo")
+
     # if Mix.shell().yes?("Do you want to run these migrations on #{repo}?") do
     #   Mix.Task.run("ecto.migrate", [repo])
     # end
@@ -55,20 +53,23 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
 
   def maybe_copy(extensions \\ nil, opts) do
     opts
-    |> IO.inspect()
+    # |> IO.inspect()
 
     path = opts[:to] || Path.expand(@default_repo_path, Bonfire.Mixer.flavour_path())
 
     dest_path =
       Path.expand(path, File.cwd!())
-      |> IO.inspect()
+      |> IO.inspect(label: "to path")
 
     (extensions ||
-       Bonfire.Mixer.deps_names_for(Mix.Project.get.project[:app])
-       |> Enum.reject(fn
-         "bonfire_" <> _ -> false
-         _ -> true
+       Bonfire.Mixer.deps_tree_flat()
+       |> IO.inspect(label: "all deps")
+       |> Enum.map(&to_string/1)
+       |> Enum.filter(fn
+         "bonfire_" <> _ -> true
+         _ -> false
        end))
+    |> IO.inspect(label: "deps to include")
     |> Bonfire.Mixer.dep_paths(opts[:from] || @default_path)
     |> copy(dest_path, opts)
   end
