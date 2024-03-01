@@ -1,6 +1,6 @@
 import Config
 
-config :needle, :search_path, [:bonfire_me]
+config :needle, :search_path, [:bonfire_common]
 
 import_config "bonfire_common.exs"
 
