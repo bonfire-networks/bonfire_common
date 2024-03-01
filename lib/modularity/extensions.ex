@@ -74,17 +74,28 @@ defmodule Bonfire.Common.Extensions do
   end
 
   def loaded_deps(opts) do
+    prepare_loaded_deps(opts)
+    |> Enum.uniq_by(&dep_name(&1))
+  end
+
+  def loaded_deps_names(opts \\ []) do
+    prepare_loaded_deps(opts)
+    |> Enum.map(&dep_name(&1))
+    |> Enum.uniq()
+  end
+
+  defp prepare_loaded_deps(opts \\ []) do
     # note that you should call the compile-time cached list in Bonfire.Application
     (opts[:deps_loaded] || loaded_deps(:nested))
-    |> prepare_list(opts)
+    |> prepare_list()
     |> List.flatten()
     |> Enum.uniq_by(&dep_name(&1))
   end
 
-  defp prepare_list(deps, opts) when is_list(deps) do
+  defp prepare_list(deps) when is_list(deps) do
     Enum.flat_map(deps, fn
       %Mix.Dep{deps: nested_deps} = dep ->
-        [dep] ++ prepare_list(nested_deps, opts)
+        [dep] ++ prepare_list(nested_deps)
 
       dep ->
         [dep]
