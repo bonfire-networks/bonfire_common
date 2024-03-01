@@ -100,15 +100,15 @@ defmodule Bonfire.Common.Extend do
 
     cond do
       disabled_value?(modularity) ->
-        # module is disabled
+        debug(module, "module is disabled")
         nil
 
-      (is_nil(modularity) or modularity == module) and do_extension_enabled?(module, opts) ->
-        # module is not disabled or swapped, and extension is not disabled
+      (is_nil(modularity) or modularity == module) and module_enabled?(module, opts) ->
+        debug(module, "module is not disabled or swapped, and extension is not disabled")
         module
 
       is_atom(modularity) and module_enabled?(modularity, opts) ->
-        # module is swapped, and the replacement module and extension are not disabled
+        debug(modularity, "module #{module} is swapped, and the replacement module and extension are not disabled")
         modularity
 
       not is_nil(modularity) ->
@@ -120,7 +120,7 @@ defmodule Bonfire.Common.Extend do
         nil
 
       true ->
-        warn(module, "Seems like the module/extension was disabled")
+        warn(module, "Seems like the module/extension was not available or disabled")
         nil
     end
   end
@@ -137,7 +137,7 @@ defmodule Bonfire.Common.Extend do
   """
   def module_enabled?(module, opts \\ []) do
     module_exists?(module) and
-      do_extension_enabled?(module, opts) and
+      is_module_extension_enabled?(module, opts) and
       is_disabled?(module, opts) != true
   end
 
@@ -149,12 +149,17 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
-    do_extension_enabled?(module_or_otp_app, opts)
+    extension = maybe_extension_loaded(module_or_otp_app)
+    extension_loaded?(extension) and do_is_extension_enabled?(module_or_otp_app, opts)
   end
 
-  defp do_extension_enabled?(module_or_otp_app, opts) when is_atom(module_or_otp_app) do
+  defp is_module_extension_enabled?(module_or_otp_app, opts) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    extension_loaded?(extension) and is_disabled?(extension, opts) != true
+    do_is_extension_enabled?(extension, opts)
+  end
+
+  defp do_is_extension_enabled?(extension, opts) when is_atom(extension) do
+    is_disabled?(extension, opts) != true
   end
 
   defp get_modularity(module_or_extension, opts) do
@@ -194,9 +199,11 @@ defmodule Bonfire.Common.Extend do
     module_exists?(extension) or application_loaded?(extension)
   end
 
-  def application_loaded?(extension) do
+def application_loaded?(extension) do
+    loaded_apps = Application.loaded_applications()
+    app_names = Enum.map(loaded_apps, &elem(&1, 0))
     Enum.member?(
-      Enum.map(Application.loaded_applications(), &elem(&1, 0)),
+      app_names,
       extension
     )
   end
