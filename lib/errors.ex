@@ -14,7 +14,6 @@ defmodule Bonfire.Common.Errors do
   def error_msg(%Ecto.Changeset{} = cs),
     do: EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
 
-  
   def error_msg(exception) when is_exception(exception), do: Exception.message(exception)
 
   def error_msg(%{message: message}), do: error_msg(message)

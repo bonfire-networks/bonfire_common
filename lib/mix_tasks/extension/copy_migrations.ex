@@ -62,7 +62,8 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
       |> IO.inspect(label: "to path")
 
     (extensions ||
-       Bonfire.Mixer.deps_tree_flat()
+       (Bonfire.Mixer.deps_tree_flat() ||
+       Bonfire.Common.Extensions.loaded_deps_names())
        |> IO.inspect(label: "all deps")
        |> Enum.map(&to_string/1)
        |> Enum.filter(fn
