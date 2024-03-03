@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Benchmark do
-  @moduledoc "Simple way to measure the execution time of functions. It is preferred to use `@decorator` from `Untangle` instead."
+  @moduledoc "Simple way to measure the execution time of functions. It is preferred to use `@decorate` from `Untangle` instead."
   import Logger
 
   def apply_timed(function) do

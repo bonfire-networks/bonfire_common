@@ -108,7 +108,11 @@ defmodule Bonfire.Common.Extend do
         module
 
       is_atom(modularity) and module_enabled?(modularity, opts) ->
-        debug(modularity, "module #{module} is swapped, and the replacement module and extension are not disabled")
+        debug(
+          modularity,
+          "module #{module} is swapped, and the replacement module and extension are not disabled"
+        )
+
         modularity
 
       not is_nil(modularity) ->
@@ -199,9 +203,10 @@ defmodule Bonfire.Common.Extend do
     module_exists?(extension) or application_loaded?(extension)
   end
 
-def application_loaded?(extension) do
+  def application_loaded?(extension) do
     loaded_apps = Application.loaded_applications()
     app_names = Enum.map(loaded_apps, &elem(&1, 0))
+
     Enum.member?(
       app_names,
       extension
