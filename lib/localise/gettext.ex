@@ -245,7 +245,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
             )
   end
 
-  @decorate time()
+  # @decorate time()
   def localise_dynamic(msgid, caller_module \\ nil) do
     otp_app = caller_app(caller_module) || :bonfire
 

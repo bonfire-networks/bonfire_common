@@ -177,8 +177,10 @@ defmodule Bonfire.Common.Utils do
   """
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do
-      %{assigns: assigns} = _socket ->
-        Enums.maybe_to_keyword_list(assigns)
+      %{assigns: %{} = assigns} = _socket ->
+        assigns
+        |> Map.drop([:__changed__, :streams])
+        |> Enums.maybe_to_keyword_list()
 
       %{__struct__: schema} when schema == Bonfire.Data.Identity.User ->
         [current_user: user_or_socket_or_opts]

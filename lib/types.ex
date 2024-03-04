@@ -529,7 +529,7 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  @decorate time()
+  # @decorate time()
   def object_type_display(object_type)
       when is_atom(object_type) and not is_nil(object_type) do
     module_to_human_readable(object_type)
