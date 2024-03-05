@@ -280,9 +280,15 @@ defmodule Bonfire.Common.Utils do
       %{context: :instance} ->
         nil
 
-      other ->
-        warn(other, "No current_user found, will fallback to looking for a current_user_id")
-        current_user_id(current_user_or_socket_or_opts, :skip)
+      _ ->
+        if !empty?(current_user_or_socket_or_opts) do
+          warn(
+            current_user_or_socket_or_opts,
+            "No current_user found, will fallback to looking for a current_user_id"
+          )
+
+          current_user_id(current_user_or_socket_or_opts, :skip)
+        end
     end ||
       (
         if recursing != true,
@@ -534,12 +540,12 @@ defmodule Bonfire.Common.Utils do
   end
 
   def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
-    maybe_apply(Phoenix.LiveView, :connected?, socket, fallback_return: nil)
+    maybe_apply(Phoenix.LiveView, :connected?, socket, fallback_return: false)
   end
 
   def socket_connected?(assigns) do
     warn(Types.typeof(assigns), "Unable to find Socket or :socket_connected? info in")
-    nil
+    false
   end
 
   @doc "Helpers for calling hypothetical functions in other modules. Returns the result of calling a function with the given arguments, or the result of fallback function if the primary function is not defined (by default just logging an error message)."
