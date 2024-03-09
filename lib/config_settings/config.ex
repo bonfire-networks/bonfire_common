@@ -67,7 +67,8 @@ defmodule Bonfire.Common.Config do
 
   # if no extension is specified, use the top-level Bonfire app
   def get(keys_tree, default, nil) do
-    {[otp_app], keys_tree} = keys_tree(keys_tree) |> Enum.split(1)
+    {otp_app, keys_tree} = keys_tree(keys_tree) |> List.pop_at(0)
+
     # debug(keys_tree, "Get config for app #{otp_app}")
 
     get(keys_tree, default, otp_app)
@@ -125,7 +126,7 @@ defmodule Bonfire.Common.Config do
   def put(key, value, otp_app \\ nil)
 
   def put(keys, value, nil) do
-    {[otp_app], keys_tree} = keys_tree(keys) |> Enum.split(1)
+    {otp_app, keys_tree} = keys_tree(keys) |> List.pop_at(0)
     # |> debug("otp_app and keys_tree")
 
     put(keys_tree, value, otp_app)

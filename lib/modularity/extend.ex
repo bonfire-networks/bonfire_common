@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Extend do
   use Arrows
   require Logger
-  import Untangle
+  use Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Settings
@@ -96,6 +96,12 @@ defmodule Bonfire.Common.Extend do
   Important note: you should make sure to use the returned module, rather than the one provided as argument, as it can be different, this allows for swapping out modules in config or user settings (eg. by having in config something like `config Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
   """
   def maybe_module(module, opts \\ []) do
+    opts =
+      Utils.to_options(opts)
+      |> Keyword.put_new_lazy(:otp_app, fn ->
+        maybe_extension_loaded!(module) || Config.top_level_otp_app()
+      end)
+
     modularity = get_modularity(module, opts)
 
     cond do
@@ -145,6 +151,7 @@ defmodule Bonfire.Common.Extend do
       is_disabled?(module, opts) != true
   end
 
+  @decorate time()
   def module_exists?(module) when is_atom(module) do
     function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
@@ -170,7 +177,7 @@ defmodule Bonfire.Common.Extend do
     if opts != [] do
       Settings.get([module_or_extension, :modularity], nil, opts)
     else
-      Config.get([module_or_extension, :modularity])
+      Config.get([module_or_extension, :modularity], nil, opts[:otp_app])
     end
   end
 
@@ -203,20 +210,10 @@ defmodule Bonfire.Common.Extend do
     module_exists?(extension) or application_loaded?(extension)
   end
 
-  def application_loaded?(extension) do
-    loaded_apps = Application.loaded_applications()
-    app_names = Enum.map(loaded_apps, &elem(&1, 0))
-
-    Enum.member?(
-      app_names,
-      extension
-    )
-  end
-
   def maybe_extension_loaded(module_or_otp_app)
       when is_atom(module_or_otp_app) do
     case maybe_module_loaded(module_or_otp_app)
-         |> Application.get_application() do
+         |> application_for_module() do
       nil ->
         module_or_otp_app
 
@@ -229,18 +226,33 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @decorate time()
   def maybe_extension_loaded!(module_or_otp_app)
       when is_atom(module_or_otp_app) do
     case maybe_extension_loaded(module_or_otp_app) do
       otp_app when otp_app == module_or_otp_app ->
-        application_loaded = application_loaded?(module_or_otp_app)
-        # |> debug("is it a loaded application?")
-
-        if application_loaded, do: module_or_otp_app, else: nil
+        # debug("is it actually a loaded application?")
+        if application_loaded?(module_or_otp_app), do: module_or_otp_app, else: nil
 
       otp_app ->
         otp_app
     end
+  end
+
+  @decorate time()
+  defp application_loaded?(extension) do
+    loaded_apps = Application.loaded_applications()
+    app_names = Enum.map(loaded_apps, &elem(&1, 0))
+
+    Enum.member?(
+      app_names,
+      extension
+    )
+  end
+
+  @decorate time()
+  defp application_for_module(module) do
+    Application.get_application(module)
   end
 
   @doc """

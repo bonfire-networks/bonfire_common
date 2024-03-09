@@ -19,13 +19,21 @@ defmodule Bonfire.Common.Settings do
   def get(key, default \\ nil, opts \\ [])
 
   def get(keys, default, opts) when is_list(keys) do
-    {[otp_app], keys_tree} =
-      Config.keys_tree(keys)
-      |> Enum.split(1)
+    opts = Utils.to_options(opts)
+
+    {otp_app, keys_tree} =
+      case opts[:otp_app] do
+        nil ->
+          Config.keys_tree(keys)
+          |> List.pop_at(0)
+
+        otp_app ->
+          {otp_app, keys}
+      end
 
     debug(keys_tree, "Get settings in #{inspect(otp_app)} for")
 
-    case get_for_ext(otp_app, to_options(opts)) do
+    case get_for_ext(otp_app, opts) do
       [] ->
         default
 
