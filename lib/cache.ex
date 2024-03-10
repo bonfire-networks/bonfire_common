@@ -182,35 +182,16 @@ defmodule Bonfire.Common.Cache do
   end
 
   defp maybe_apply_or_fun(module, fun, args)
-       when not is_nil(module) and is_atom(fun) do
+       when not is_nil(module) and is_atom(fun) and is_list(args) do
     maybe_apply(module, fun, args)
   end
 
-  defp maybe_apply_or_fun(_module, fun, args) when is_function(fun) do
-    maybe_fun(fun, args)
+  defp maybe_apply_or_fun(_module, fun, no_args)
+       when (is_function(fun) and is_nil(no_args)) or no_args == [] do
+    apply(fun, [])
   end
 
-  defp maybe_fun(fun, [arg]) when is_function(fun) do
-    fun.(arg)
-  end
-
-  defp maybe_fun(fun, [arg1, arg2]) when is_function(fun) do
-    fun.(arg1, arg2)
-  end
-
-  defp maybe_fun(fun, [arg1, arg2, arg3]) when is_function(fun) do
-    fun.(arg1, arg2, arg3)
-  end
-
-  defp maybe_fun(fun, [arg1, arg2, arg3, arg4]) when is_function(fun) do
-    fun.(arg1, arg2, arg3, arg4)
-  end
-
-  defp maybe_fun(fun, [arg1, arg2, arg3, arg4, arg5]) when is_function(fun) do
-    fun.(arg1, arg2, arg3, arg4, arg5)
-  end
-
-  defp maybe_fun(fun, arg) when is_function(fun) do
-    fun.(arg)
+  defp maybe_apply_or_fun(_module, fun, args) when is_function(fun) and is_list(args) do
+    apply(fun, args)
   end
 end
