@@ -171,7 +171,7 @@ defmodule Bonfire.Common.Config do
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_map(tree) do
-    case Enums.maybe_to_keyword_list(tree) do
+    case Enums.maybe_to_keyword_list(tree, false, false) do
       tree when is_list(tree) -> put_tree(parent_keys, tree, otp_app)
       tree -> put(parent_keys, tree, otp_app)
     end

@@ -22,6 +22,11 @@ defmodule Bonfire.Common.Media do
     end
   end
 
+  def media_url(%{metadata: %{module: module}} = media) when is_atom(module) do
+    # || Map.drop(media, [:metadata]) |> media_url()
+    Utils.maybe_apply(module, :remote_url, media)
+  end
+
   def media_url(%{media_type: media_type, path: url} = _media)
       when media_type in @external and is_binary(url) do
     if String.contains?(url || "", "://") do
@@ -44,6 +49,10 @@ defmodule Bonfire.Common.Media do
 
   def media_url(%{media: media}) do
     media_url(media)
+  end
+
+  def media_url(%{changes: changeset_attrs}) do
+    media_url(changeset_attrs)
   end
 
   def media_url(_) do

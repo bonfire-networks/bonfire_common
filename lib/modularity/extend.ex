@@ -98,6 +98,7 @@ defmodule Bonfire.Common.Extend do
   def maybe_module(module, opts \\ []) do
     opts =
       Utils.to_options(opts)
+      # |> debug()
       |> Keyword.put_new_lazy(:otp_app, fn ->
         maybe_extension_loaded!(module) || Config.top_level_otp_app()
       end)

@@ -177,6 +177,7 @@ defmodule Bonfire.Common.Text do
         ],
         render: [
           hardbreaks: true,
+          # unsafe_: opts[:__unsafe__],
           _unsafe: opts[:__unsafe__],
           escape: !opts[:__unsafe__]
         ],
@@ -190,11 +191,12 @@ defmodule Bonfire.Common.Text do
           header_ids: ""
         ],
         features: [
+          # sanitize: opts[:__unsafe__], # sanitizes the HTML (but strips things like class and attributes)
           # TODO: auto-set appropriate theme based on user's daisy theme
           syntax_highlight_theme: "adwaita_dark"
         ]
       ]
-      |> Keyword.merge(opts)
+      # |> Keyword.merge(opts)
       |> MDEx.to_html(content, ...)
     else
       content
@@ -355,11 +357,47 @@ defmodule Bonfire.Common.Text do
     # |> debug(html_string)
   end
 
-  def maybe_emote(content, custom_emoji \\ []) do
+  def maybe_emote(content, user \\ nil, custom_emoji \\ []) do
     if module_enabled?(Emote) do
-      Emote.convert_text(content, custom_emoji || [])
+      debug(custom_emoji)
+
+      Emote.convert_text(content,
+        custom_fn: fn text -> maybe_other_custom_emoji(text, user) end,
+        custom_emoji: custom_emoji
+      )
+      |> debug()
     else
       content
+    end
+  end
+
+  def maybe_other_custom_emoji(text, user) do
+    # debug(user)
+    case text
+         # |> String.trim()
+         # TEMP workaround for messed up markdown coming from composer 
+         |> String.replace("\\_", "_")
+         |> String.split(":")
+         |> debug() do
+      ["", _icon, ""] ->
+        case Bonfire.Common.Settings.get([:custom_emoji, text], nil, user) do
+          nil ->
+            text
+
+          emoji ->
+            label = e(emoji, :label, nil) || text
+
+            " <img alt='#{label}' title='#{label}' class='emoji' data-emoji='#{text}' src='#{e(emoji, :url, nil) || emoji}' /> "
+        end
+
+      ["", family, icon, ""] ->
+        " <img alt='#{text}' title='#{text}' class='emoji' src='https://api.iconify.design/#{family}/#{icon}.svg' /> "
+
+      #     "<span iconify='#{family}:#{icon}' class='iconify' aria-hidden='true'>
+      #   <img class='hidden' alt='#{text}' title='#{text}' src='https://api.iconify.design/#{family}/#{icon}.svg' onerror=\"this.src='https://api.iconify.design/ooui/article-not-found-ltr.svg'\" />
+      # </span>"
+      _ ->
+        text
     end
   end
 

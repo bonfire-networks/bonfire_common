@@ -524,33 +524,33 @@ defmodule Bonfire.Common.Enums do
   Returns a keyword list representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to keyword lists as well.
   Note: make sure that all keys are atoms, i.e. using `input_to_atoms` first, otherwise the enumerable(s) containing a string key won't be converted.
   """
-  def maybe_to_keyword_list(obj, recursive \\ false)
+  def maybe_to_keyword_list(obj, recursive \\ false, force_top_level \\ true)
 
-  def maybe_to_keyword_list(obj, true = _recursive)
+  def maybe_to_keyword_list(object, false = _not_recursive, force_top_level) do
+    maybe_keyword_new(object, force_top_level)
+  end
+
+  def maybe_to_keyword_list(obj, recursive, force_top_level)
       when is_map(obj) or is_list(obj) do
-    obj
-    |> maybe_to_keyword_list_recurse()
+    maybe_to_keyword_list_recurse(obj, recursive, force_top_level)
   end
 
-  def maybe_to_keyword_list(object, false = _recursive)
-      when is_map(object) or is_list(object) do
-    maybe_keyword_new(object)
-  end
+  def maybe_to_keyword_list(obj, _, _), do: obj
 
-  def maybe_to_keyword_list(obj, _), do: obj
+  defp maybe_to_keyword_list_recurse(object, recursive, force_top_level) do
+    force_recursive_levels = recursive == :force
 
-  defp maybe_to_keyword_list_recurse(object) do
-    case maybe_keyword_new(object) do
+    case maybe_keyword_new(object, force_top_level) do
       object when is_map(object) ->
         Map.filter(object, fn
-          {k, v} -> {k, maybe_to_keyword_list(v, true)}
-          v -> maybe_to_keyword_list(v, true)
+          {k, v} -> {k, maybe_to_keyword_list(v, true, force_recursive_levels)}
+          v -> maybe_to_keyword_list(v, true, force_recursive_levels)
         end)
 
       object when is_list(object) ->
         Enum.filter(object, fn
-          {k, v} -> {k, maybe_to_keyword_list(v, true)}
-          v -> maybe_to_keyword_list(v, true)
+          {k, v} -> {k, maybe_to_keyword_list(v, true, force_recursive_levels)}
+          v -> maybe_to_keyword_list(v, true, force_recursive_levels)
         end)
 
       object ->
@@ -558,7 +558,7 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  defp maybe_keyword_new(object) do
+  defp maybe_keyword_new(object, force) do
     if Enumerable.impl_for(object),
       do:
         Keyword.new(object, fn
@@ -568,18 +568,27 @@ defmodule Bonfire.Common.Enums do
           {key, val} when is_binary(key) ->
             case Types.maybe_to_atom!(key) do
               nil ->
-                warn(key, "Discarding item with non-atom key")
-                {:__item_discarded__, true}
+                warn(key, "item with non-atom key")
+                if force, do: {:__item_discarded__, true}, else: throw(:__item_discarded__)
+
+              # {:__item_discarded__, true}
 
               key ->
                 {key, val}
             end
 
           other ->
-            warn(other, "Discarding item that isn't a key/value pair")
-            {:__item_discarded__, true}
+            warn(other, "item that isn't a key/value pair")
+            if force, do: {:__not_kv__, true}, else: throw(:__not_kv__)
+            # {:__not_kv__, true}
         end),
       else: object
+  catch
+    :__item_discarded__ ->
+      Map.new(object)
+
+    :__not_kv__ ->
+      object
   rescue
     e ->
       warn(e)

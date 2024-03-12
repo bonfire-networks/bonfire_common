@@ -180,7 +180,7 @@ defmodule Bonfire.Common.Utils do
       %{assigns: %{} = assigns} = _socket ->
         assigns
         |> Map.drop([:__changed__, :streams])
-        |> Enums.maybe_to_keyword_list()
+        |> Enums.maybe_to_keyword_list(false, true)
 
       %{__struct__: schema} when schema == Bonfire.Data.Identity.User ->
         [current_user: user_or_socket_or_opts]
@@ -193,7 +193,7 @@ defmodule Bonfire.Common.Utils do
 
       _
       when is_map(user_or_socket_or_opts) ->
-        Enums.maybe_to_keyword_list(user_or_socket_or_opts)
+        Enums.maybe_to_keyword_list(user_or_socket_or_opts, false, true)
 
       _
       when is_list(user_or_socket_or_opts) ->
