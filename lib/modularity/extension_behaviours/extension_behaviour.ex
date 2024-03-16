@@ -30,22 +30,43 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   def find_adopters_of_behaviours(behaviours \\ find_extension_behaviours()) do
-    apps_to_scan()
+    app_modules_to_scan()
     |> apps_with_behaviour(behaviours)
   end
 
-  def apps_to_scan() do
-    pattern = Config.get([:extensions_pattern], "bonfire")
+  def apps_to_scan do
+    pattern = ["bonfire"] ++ Config.get([:extensions_pattern], [])
 
     Application.loaded_applications()
     |> Enum.map(fn
       {app, description, _} ->
-        case (String.contains?(to_string(app), pattern) or
-                String.contains?(to_string(description), pattern)) and
-               Application.spec(app, :modules) do
-          modules when is_list(modules) and modules != [] -> {app, modules}
-          _ -> nil
+        if String.contains?(to_string(app), pattern) or
+             String.contains?(to_string(description), pattern) do
+          # TODO: exclude any disabled extensions?
+          app
+        else
+          nil
         end
+    end)
+    |> Enum.reject(&is_nil/1)
+
+    # |> debug()
+  end
+
+  def app_modules_to_scan do
+    apps_to_scan()
+    |> Enum.map(fn app ->
+      case Application.spec(app, :modules) do
+        [] ->
+          nil
+
+        modules when is_list(modules) ->
+          # TODO: exclude any disabled modules?
+          {app, modules}
+
+        _ ->
+          nil
+      end
     end)
     |> Enum.reject(&is_nil/1)
 
@@ -56,8 +77,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   Given a behaviour module, filters app modules to only those that implement that behaviour
   """
   def adopters_of_behaviour(behaviour \\ __MODULE__) when is_atom(behaviour) do
-    # Config.get([:extensions_grouped, behaviour], [:bonfire, :bonfire_common])
-    apps_to_scan()
+    # [:bonfire, :bonfire_common]
+    app_modules_to_scan()
     # |> debug()
     |> apps_with_behaviour(behaviour)
   end
