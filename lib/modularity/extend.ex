@@ -175,10 +175,10 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp get_modularity(module_or_extension, opts) do
-    if opts != [] do
-      Settings.get([module_or_extension, :modularity], nil, opts)
-    else
-      Config.get([module_or_extension, :modularity], nil, opts[:otp_app])
+    case opts do
+      [] -> Config.get([module_or_extension, :modularity], nil)
+      [otp_app: otp_app] -> Config.get([module_or_extension, :modularity], nil, otp_app)
+      _ -> Settings.get([module_or_extension, :modularity], nil, opts)
     end
   end
 

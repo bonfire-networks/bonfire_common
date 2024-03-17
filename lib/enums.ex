@@ -17,10 +17,10 @@ defmodule Bonfire.Common.Enums do
   Extracts a binary ID from various data structures, such as a map containing the key :id or "id", a changeset, or a tuple containing the atom :id.
   """
   def id(id) when is_binary(id), do: id
-  def id(%{id: id}) when is_binary(id), do: id
+  def id(%{id: id}), do: id
   def id(%Changeset{} = cs), do: id(Changeset.get_field(cs, :id))
-  def id({:id, id}) when is_binary(id), do: id
-  def id(%{"id" => id}) when is_binary(id), do: id
+  def id({:id, id}), do: id
+  def id(%{"id" => id}), do: id
   def id(%{value: value}), do: id(value)
   def id(%{"value" => value}), do: id(value)
   def id(%{pointer: %{id: id}}), do: id

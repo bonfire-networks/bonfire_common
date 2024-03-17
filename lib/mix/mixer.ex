@@ -136,6 +136,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def mess_sources(config_or_flavour) do
       mess_source_files(System.get_env("WITH_FORKS", "1"), System.get_env("WITH_GIT_DEPS", "1"))
       |> enum_mess_sources(config_or_flavour)
+      |> IO.inspect(label: "messy")
     end
 
     defp enum_mess_sources({k, v}, config_or_flavour) do
@@ -147,19 +148,19 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
       |> Enum.map(&enum_mess_sources(&1, config_or_flavour))
     end
 
-    defp mess_source_files("0", "0"),
+    defp mess_source_files("0" = _not_WITH_FORKS, "0" = _not_WITH_GIT_DEPS),
       do: [[hex: "deps.flavour.hex"], [hex: "deps.hex"]]
 
-    defp mess_source_files("0", "1"),
+    defp mess_source_files("0" = _not_WITH_FORKS, "1" = _WITH_GIT_DEPS),
       do: [[git: "deps.flavour.git", hex: "deps.flavour.hex"], [git: "deps.git", hex: "deps.hex"]]
 
-    defp mess_source_files("1", "0"),
+    defp mess_source_files("1" = _WITH_FORKS, "0" = _not_WITH_GIT_DEPS),
       do: [
         [path: "deps.flavour.path", hex: "deps.flavour.hex"],
         [path: "deps.path", hex: "deps.hex"]
       ]
 
-    defp mess_source_files("1", "1"),
+    defp mess_source_files("1" = _WITH_FORKS, "1" = _WITH_GIT_DEPS),
       do: [
         [path: "deps.flavour.path", git: "deps.flavour.git", hex: "deps.flavour.hex"],
         [path: "deps.path", git: "deps.git", hex: "deps.hex"]
@@ -402,6 +403,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     end
 
     def deps_tree do
+      # FIXME on older elixir versions (pre 1.15.0)
       if function_exported?(Mix.Project, :deps_tree, 0) do
         Mix.Project.deps_tree()
       end

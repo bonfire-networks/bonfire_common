@@ -34,7 +34,7 @@ defmodule Bonfire.Common.Extensions do
 
   def data() do
     # use compiled-time cached list
-    deps = Bonfire.Application.deps(:flat)
+    deps = loaded_deps(:flat)
 
     # TODO: refactor using `Enum.split_with/2`
 
@@ -61,15 +61,32 @@ defmodule Bonfire.Common.Extensions do
 
   def loaded_deps(opts \\ [])
 
+  def loaded_deps(:flat) do
+    loaded_deps(
+      deps_loaded: loaded_deps(:nested)
+      # deps_tree_flat: loaded_deps(:tree_flat)
+    )
+  end
+
+  def loaded_deps(:tree_flat) do
+    # note that you should call the compile-time cached list in Bonfire.Application
+    if Code.ensure_loaded?(Bonfire.Mixer) do
+      Bonfire.Mixer.deps_tree_flat()
+    else
+      # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
+      Bonfire.Application.deps(:tree_flat)
+    end
+  end
+
   def loaded_deps(:nested) do
     # note that you should call the compile-time cached list in Bonfire.Application
-    if Extend.module_enabled?(Mix.Dep) do
+    if Code.ensure_loaded?(Mix.Dep) do
       {func, args} = loaded_deps_func_name()
       apply(Mix.Dep, func, args)
       # |> IO.inspect
     else
       # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
-      []
+      Bonfire.Application.deps(:nested)
     end
   end
 
@@ -86,10 +103,14 @@ defmodule Bonfire.Common.Extensions do
 
   defp prepare_loaded_deps(opts \\ []) do
     # note that you should call the compile-time cached list in Bonfire.Application
-    (opts[:deps_loaded] || loaded_deps(:nested))
+    ((opts[:deps_loaded] || loaded_deps(:nested)) ++
+       (opts[:deps_tree_flat] || []))
+    # |> IO.inspect(limit: :infinity, label: "to prepare")
     |> prepare_list()
     |> List.flatten()
     |> Enum.uniq_by(&dep_name(&1))
+
+    # |> IO.inspect(label: "prepared")
   end
 
   defp prepare_list(deps) when is_list(deps) do
