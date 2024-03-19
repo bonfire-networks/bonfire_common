@@ -524,4 +524,8 @@ defmodule Bonfire.Common.URIs do
       base_domain(uri)
     end
   end
+
+  def display_url("https://" <> url), do: url
+  def display_url("http://" <> url), do: url
+  def display_url(url), do: url
 end
