@@ -342,6 +342,10 @@ defmodule Bonfire.Common.URIs do
     maybe_generate_canonical_url(object)
   end
 
+  def canonical_url(%{path: "http" <> _ = path} = object) do
+    path
+  end
+
   def canonical_url(object) do
     query_or_generate_canonical_url(object)
   end

@@ -260,7 +260,10 @@ defmodule Bonfire.Common.Needles do
         Enums.maybe_merge_to_struct(followed_pointer, pointer_or_pointers)
 
       followed_pointers when is_list(followed_pointers) ->
-        Enum.map(followed_pointers, & &1.pointed)
+        Enum.map(followed_pointers, fn
+          %{pointed: pointed} -> pointed
+          other -> other
+        end)
     end
   end
 
@@ -296,6 +299,8 @@ defmodule Bonfire.Common.Needles do
   # def preload!(pointers, opts, opts) when is_list(pointers) and length(pointers)==1, do: preload!(hd(pointers), opts, opts)
 
   def preload!(pointers, opts) when is_list(pointers) do
+    # %{true: pointers, false: others} = Enum.group_by(pointers, & is_struct(&1, Pointer))
+
     pointers
     |> preload_load(opts)
     |> preload_collate(pointers)
@@ -307,7 +312,8 @@ defmodule Bonfire.Common.Needles do
     do: Enum.map(pointers, &collate(loaded, &1))
 
   defp collate(_, nil), do: nil
-  defp collate(loaded, %{} = p), do: %{p | pointed: Map.get(loaded, p.id, %{})}
+  defp collate(%{} = loaded, %Pointer{} = p), do: %{p | pointed: Map.get(loaded, p.id, %{})}
+  defp collate(_, p), do: p
 
   defp preload_load(pointers, opts) when is_list(pointers) do
     force = Keyword.get(opts, :force, false)
@@ -327,6 +333,10 @@ defmodule Bonfire.Common.Needles do
     ids = [id | Map.get(acc, table_id, [])]
     Map.put(acc, table_id, ids)
   end
+
+  defp preload_search(false, object, acc)
+       when is_struct(object) or is_nil(object),
+       do: acc
 
   defp preload_per_table({table_id, ids}, acc, opts) do
     with items when is_list(items) <- loader(table_id, [id: ids], opts) do

@@ -12,10 +12,10 @@ defmodule Bonfire.Common.Needles.Preload do
   def maybe_preload_pointers(%{edges: list} = page, keys, opts) when is_list(list),
     do: Map.put(page, :edges, maybe_preload_pointers(list, keys, opts))
 
-  def maybe_preload_pointers(object, keys, opts) when is_list(object) do
+  def maybe_preload_pointers(list, keys, opts) when is_list(list) do
     debug("iterate list of objects")
     # TODO: optimise
-    Enum.map(object, &maybe_preload_pointers(&1, keys, opts))
+    Enum.map(list, &maybe_preload_pointers(&1, keys, opts))
   end
 
   def maybe_preload_pointers(object, key, opts) when not is_struct(object) do
@@ -147,9 +147,29 @@ defmodule Bonfire.Common.Needles.Preload do
 
   def access_key(key, default_val \\ nil) do
     fn
+      # :get, data, next when is_list(data) ->
+      #   debug(data, "get_original_valueS for #{key}")
+      #   next.(Enum.map(data, fn subdata ->
+      #     Map.get(subdata || %{}, key, default_val)
+      #   end))
+
       :get, data, next ->
         debug(data, "get_original_value for #{key}")
         next.(Map.get(data || %{}, key, default_val))
+
+      # :get_and_update, data, next when is_list(data) ->
+      #   debug(next, "funS for #{key}")
+
+      #     value =
+      #       Enum.map(data, fn subdata ->
+      #         Map.get(subdata || %{}, key, default_val)
+      #         |> debug("get_and_update_original_value for #{key}")
+      #       end)
+
+      #     case next.(value) |> debug("nexxt") do
+      #       {get, update} -> {get, Map.put(data || %{}, key, update)}
+      #       :pop -> {value, Map.delete(data || %{}, key)}
+      #     end
 
       :get_and_update, data, next ->
         # debug(data, "data")
