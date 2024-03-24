@@ -42,14 +42,8 @@ defmodule Bonfire.Common.Settings do
 
       result ->
         if keys_tree != [] do
-          if Keyword.keyword?(result) or is_map(result) do
-            get_in(result, keys_tree)
-            |> debug(inspect(keys_tree))
-            |> maybe_fallback(default)
-          else
-            error(result, "Settings are in an invalid structure and can't be used")
-            default
-          end
+          do_get_in(result, keys_tree)
+          |> maybe_fallback(default)
         else
           maybe_fallback(result, default)
         end
@@ -68,6 +62,20 @@ defmodule Bonfire.Common.Settings do
       value ->
         value
     end
+  end
+
+  def do_get_in(result, keys_tree) do
+    if Keyword.keyword?(result) or is_map(result) do
+      get_in(result, keys_tree)
+      |> debug(inspect(keys_tree))
+    else
+      error(result, "Settings are in an invalid structure and can't be used")
+      nil
+    end
+  rescue
+    error in FunctionClauseError ->
+      error(error, "get_in failed, try with `e`")
+      apply(Bonfire.Common.Utils, :e, debug([result] ++ keys_tree ++ [nil]))
   end
 
   defp maybe_fallback(nil, fallback), do: fallback

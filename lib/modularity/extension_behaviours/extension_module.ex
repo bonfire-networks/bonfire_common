@@ -17,6 +17,7 @@ defmodule Bonfire.Common.ExtensionModule do
   end
 
   def extension({app, module}), do: declared_extension({app, module})
+  def extension(app) when is_binary(app), do: Types.maybe_to_atom!(app) |> extension()
   def extension(_), do: nil
 
   def declared_extension({app, module}), do: {app, declared_extension(module)}

@@ -110,7 +110,8 @@ defmodule Bonfire.Common.Extend do
         debug(module, "module is disabled")
         nil
 
-      (is_nil(modularity) or modularity == module) and module_enabled?(module, opts) ->
+      (is_nil(modularity) or modularity == true or modularity == module) and
+          do_is_extension_enabled?(opts[:otp_app], opts) ->
         debug(module, "module is not disabled or swapped, and extension is not disabled")
         module
 
@@ -147,6 +148,8 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not disabled (eg. by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def module_enabled?(module, opts \\ []) do
+    opts = Utils.to_options(opts)
+
     module_exists?(module) and
       is_module_extension_enabled?(module, opts) and
       is_disabled?(module, opts) != true
@@ -161,6 +164,8 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
+    opts = Utils.to_options(opts)
+
     extension = maybe_extension_loaded(module_or_otp_app)
     extension_loaded?(extension) and do_is_extension_enabled?(module_or_otp_app, opts)
   end
@@ -175,10 +180,23 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp get_modularity(module_or_extension, opts) do
-    case opts do
-      [] -> Config.get([module_or_extension, :modularity], nil)
-      [otp_app: otp_app] -> Config.get([module_or_extension, :modularity], nil, otp_app)
-      _ -> Settings.get([module_or_extension, :modularity], nil, opts)
+    case Keyword.pop(opts, :otp_app) do
+      {nil, []} ->
+        Config.get([module_or_extension, :modularity], nil)
+
+      {otp_app, []} ->
+        if otp_app == module_or_extension do
+          Config.get(:modularity, nil, otp_app)
+        else
+          Config.get([module_or_extension, :modularity], nil, otp_app)
+        end
+
+      {otp_app, _opts_with_scope} ->
+        if otp_app == module_or_extension do
+          Settings.get(:modularity, nil, opts)
+        else
+          Settings.get([module_or_extension, :modularity], nil, opts)
+        end
     end
   end
 
