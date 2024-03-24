@@ -38,17 +38,23 @@ defmodule Bonfire.Common.Extensions do
 
     # TODO: refactor using `Enum.split_with/2`
 
-    feature_extensions = filter_bonfire(deps, true, @prefix)
-    other_deps = filter_bonfire(deps, false, @prefix)
+    {feature_extensions, other_deps} =
+      Enum.split_with(deps, fn dep -> is_bonfire_ext?(dep, @prefix) end)
 
-    ecosystem_libs = filter_bonfire(other_deps, true, :git)
-    other_deps = filter_bonfire(other_deps, false, :git)
+    feature_extensions =
+      Enum.map(
+        feature_extensions,
+        &Map.put(&1, :extra, Bonfire.Common.ExtensionModule.extension(&1.app))
+      )
 
-    ui = filter_bonfire(feature_extensions, true, @prefix_ui)
-    feature_extensions = filter_bonfire(feature_extensions, false, @prefix_ui)
+    {schemas, feature_extensions} =
+      Enum.split_with(feature_extensions, fn dep -> is_bonfire_ext?(dep, @prefix_data) end)
 
-    schemas = filter_bonfire(feature_extensions, true, @prefix_data)
-    feature_extensions = filter_bonfire(feature_extensions, false, @prefix_data)
+    {ui, feature_extensions} =
+      Enum.split_with(feature_extensions, fn dep -> is_bonfire_ext?(dep, @prefix_ui) end)
+
+    {ecosystem_libs, other_deps} =
+      Enum.split_with(other_deps, fn dep -> is_bonfire_ext?(dep, :git) end)
 
     [
       feature_extensions: feature_extensions,
@@ -116,7 +122,7 @@ defmodule Bonfire.Common.Extensions do
   defp prepare_list(deps) when is_list(deps) do
     Enum.flat_map(deps, fn
       %Mix.Dep{deps: nested_deps} = dep ->
-        [dep] ++ prepare_list(nested_deps)
+        [Map.put(dep, :deps, nil)] ++ prepare_list(nested_deps)
 
       dep ->
         [dep]
@@ -131,8 +137,17 @@ defmodule Bonfire.Common.Extensions do
     end
   end
 
-  defp filter_bonfire(deps, only, prefix) when is_binary(prefix) do
+  defp filter_bonfire(deps, only, prefix) do
     Enum.filter(deps, fn
+      dep ->
+        is_bonfire_ext?(dep, prefix, only)
+    end)
+  end
+
+  defp is_bonfire_ext?(dep, prefix, only \\ true)
+
+  defp is_bonfire_ext?(dep, prefix, only) when is_binary(prefix) do
+    case dep do
       %{app: name} ->
         case Atom.to_string(name) |> String.split(prefix) do
           [_, _] -> only
@@ -141,12 +156,12 @@ defmodule Bonfire.Common.Extensions do
 
       _ ->
         !only
-    end)
+    end
   end
 
-  defp filter_bonfire(deps, only, :git) do
-    Enum.filter(deps, fn
-      %{} = dep ->
+  defp is_bonfire_ext?(dep, :git, only) do
+    case dep do
+      %{} ->
         # debug(dep)
         repo =
           Utils.e(dep, :opts, :git, nil) ||
@@ -159,13 +174,13 @@ defmodule Bonfire.Common.Extensions do
 
       _ ->
         !only
-    end)
+    end
   end
 
   def get_version(%{scm: Mix.SCM.Path} = dep),
     do:
-      " (local fork based on " <>
-        get_branch(dep) <> " " <> do_get_version(dep) <> ")"
+      "forked from " <>
+        get_branch(dep) <> " " <> do_get_version(dep)
 
   def get_version(dep), do: do_get_version(dep)
 
