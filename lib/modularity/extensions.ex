@@ -209,7 +209,8 @@ defmodule Bonfire.Common.Extensions do
 
   def get_link(dep) do
     warn(dep, "dunno how")
-    "#"
+    nil
+    # "#"
   end
 
   def get_code_link(%{app: app}),
