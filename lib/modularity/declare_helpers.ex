@@ -4,9 +4,15 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
   defmacro declare_extension(name, opts \\ []) do
     quote do
       @behaviour Bonfire.Common.ExtensionModule
+      @readme_contents File.read(unquote(opts)[:readme] || "README.md")
 
       def declared_extension do
-        generate_link(unquote(name), __MODULE__, unquote(opts))
+        generate_link(
+          unquote(name),
+          __MODULE__,
+          unquote(opts) ++ [readme_contents: Bonfire.Common.Utils.ok_unwrap(@readme_contents)]
+        )
+
         # Enum.into(unquote(opts), %{
         #   name: unquote(name),
         #   module: __MODULE__,
