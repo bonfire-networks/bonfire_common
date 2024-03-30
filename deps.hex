@@ -10,6 +10,7 @@ ex_cldr_plugs = "~> 1.2"
 ex_cldr_dates_times = "~> 2.0"
 ex_cldr_units = "~> 3.0"
 ex_cldr_numbers = "~> 2.32"
+ex_cldr_locale_display = "~> 1.1"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.7.0" # string recasing
 
