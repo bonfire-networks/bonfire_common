@@ -410,10 +410,16 @@ defmodule Bonfire.Common.Extend do
     nil
   end
 
-  def module_file_code(module) do
+  def module_file_code(module, opts \\ []) do
+    prod? = Config.env() == :prod
+
+    opts = opts |> Keyword.put_new(:docs, prod?)
+
     case module_file(module) do
       nil ->
-        nil
+        with {:ok, code} <- module_beam_code(module, opts) do
+          {:ok, nil, code}
+        end
 
       code_file_path ->
         rel_code_file =
@@ -422,7 +428,12 @@ defmodule Bonfire.Common.Extend do
 
         # |> debug()
 
-        if Config.env() == :prod do
+        cond do
+          opts[:from_beam]==true ->
+            # re-create a module's code from compiled Beam artifacts
+            module_beam_code(module, opts)
+
+          prod?==true ->
           # supports doing this in release by using the code in the gzipped code 
           tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
           # |> debug()
@@ -435,35 +446,48 @@ defmodule Bonfire.Common.Extend do
                  |> String.replace("forks/", "deps/")
                  # |> debug()
                  |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
-            # supports doing this in release by using the code in the gzipped code 
-            BeamFile.elixir_code(module, docs: true)
+            # fallback if code file not in archive
+            module_beam_code(module, opts)
           else
             {:ok, code} ->
+              # returns code from file in the gzipped packaged in docker image
               {:ok, code}
 
             false ->
-              BeamFile.elixir_code(module, docs: true)
+               # fallback if no archive
+              module_beam_code(module, opts)
           end
-        else
+        true ->
           # dev or test env
           code_file_path
           |> File.read()
+
         end
         ~> {:ok, rel_code_file, ...}
-
         # |> debug()
     end
   end
 
-  def module_code(module) do
-    with {:ok, _rel_code_file, code} <- module_file_code(module) do
+  def module_code(module, opts \\ []) do
+    with {:ok, _rel_code_file, code} <- module_file_code(module, opts) do
       {:ok, code}
     end
   end
 
-  def function_code(module, fun) do
-    with {:ok, code} <- module_code(module),
-         {first_line, last_line} <- function_line_numbers(module, fun) do
+  @doc "re-create a module's code from compiled Beam artifacts"
+  def module_beam_code(module, opts \\ []) do
+    BeamFile.elixir_code(module, opts)
+     rescue
+      e in ArgumentError -> 
+        error(e)
+        error(__STACKTRACE__)
+        nil
+  end
+
+
+  def function_code(module, fun, opts \\ []) do
+    with {:ok, code} <- module_code(module, opts),
+         {first_line, last_line} <- function_line_numbers(module, fun, opts) do
       code
       |> split_lines()
       |> Enum.slice((first_line - 1)..(last_line - 1))
@@ -472,18 +496,19 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc "Return the numbers (as a tuple) of the first and last lines of a function's definition in a module"
-  def function_line_numbers(module, fun) when is_atom(module) do
-    module_code(module)
-    ~> function_line_numbers(fun)
+  def function_line_numbers(module, fun, opts \\ []) 
+  def function_line_numbers(module, fun, opts) when is_atom(module) do
+    module_code(module, opts)
+    ~> function_line_numbers(fun, opts)
   end
 
-  def function_line_numbers(module_code, fun) when is_binary(module_code) do
+  def function_line_numbers(module_code, fun, opts) when is_binary(module_code) do
     module_code
     |> Code.string_to_quoted!()
-    |> function_line_numbers(fun)
+    |> function_line_numbers(fun, opts)
   end
 
-  def function_line_numbers(module_ast, fun) do
+  def function_line_numbers(module_ast, fun, _opts) do
     module_ast
     # |> debug()
     |> Macro.prewalk(nil, fn
@@ -515,18 +540,19 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc "Return the number of the first line where a function is defined in a module"
-  def function_line_number(module, fun) when is_atom(module) do
-    module_code(module)
-    ~> function_line_number(fun)
+  def function_line_number(module, fun, opts \\ []) 
+  def function_line_number(module, fun, opts) when is_atom(module) do
+    module_code(module, opts)
+    ~> function_line_number(fun, opts)
   end
 
-  def function_line_number(module_code, fun) when is_binary(module_code) do
+  def function_line_number(module_code, fun, opts) when is_binary(module_code) do
     module_code
     |> Code.string_to_quoted!()
-    |> function_line_number(fun)
+    |> function_line_number(fun, opts)
   end
 
-  def function_line_number(module_ast, fun) do
+  def function_line_number(module_ast, fun, _opts) do
     module_ast
     # |> debug()
     |> Macro.prewalk(fn
@@ -541,13 +567,14 @@ defmodule Bonfire.Common.Extend do
       number
   end
 
-  def function_ast(module, fun) when is_atom(module) do
-    with {:ok, code} <- module_code(module) do
-      function_ast(code, fun)
+  def function_ast(module, fun, opts \\ [])
+  def function_ast(module, fun, opts) when is_atom(module) do
+    with {:ok, code} <- module_code(module, opts) do
+      function_ast(code, fun, opts)
     end
   end
 
-  def function_ast(module_code, fun) when is_binary(module_code) do
+  def function_ast(module_code, fun, _opts) when is_binary(module_code) do
     module_code
     |> Code.string_to_quoted!()
     # |> debug()
