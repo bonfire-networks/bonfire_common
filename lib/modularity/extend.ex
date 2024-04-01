@@ -401,8 +401,20 @@ defmodule Bonfire.Common.Extend do
   end
 
   def module_file(module) when is_atom(module) and not is_nil(module) do
-    module.__info__(:compile)[:source]
-    |> to_string()
+    if Code.ensure_loaded?(module) do
+      path =
+        module.__info__(:compile)[:source]
+        |> to_string()
+
+      if String.ends_with?(path, "/iex") do
+        module_file_from_object_code(module)
+      else
+        path
+      end
+    else
+      module_file_from_object_code(module)
+    end
+    |> debug()
   end
 
   def module_file(module) do
@@ -429,41 +441,42 @@ defmodule Bonfire.Common.Extend do
         # |> debug()
 
         cond do
-          opts[:from_beam]==true ->
+          opts[:from_beam] == true ->
             # re-create a module's code from compiled Beam artifacts
             module_beam_code(module, opts)
 
-          prod?==true ->
-          # supports doing this in release by using the code in the gzipped code 
-          tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
-          # |> debug()
+          prod? == true ->
+            # supports doing this in release by using the code in the gzipped code 
+            tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
+            # |> debug()
 
-          with true <- File.exists?(tar_file),
-               {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file),
-               {:error, _} <-
-                 code_file_path
-                 |> String.replace("extensions/", "deps/")
-                 |> String.replace("forks/", "deps/")
-                 # |> debug()
-                 |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
-            # fallback if code file not in archive
-            module_beam_code(module, opts)
-          else
-            {:ok, code} ->
-              # returns code from file in the gzipped packaged in docker image
-              {:ok, code}
-
-            false ->
-               # fallback if no archive
+            with true <- File.exists?(tar_file),
+                 {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file),
+                 {:error, _} <-
+                   code_file_path
+                   |> String.replace("extensions/", "deps/")
+                   |> String.replace("forks/", "deps/")
+                   # |> debug()
+                   |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
+              # fallback if code file not in archive
               module_beam_code(module, opts)
-          end
-        true ->
-          # dev or test env
-          code_file_path
-          |> File.read()
+            else
+              {:ok, code} ->
+                # returns code from file in the gzipped packaged in docker image
+                {:ok, code}
 
+              false ->
+                # fallback if no archive
+                module_beam_code(module, opts)
+            end
+
+          true ->
+            # dev or test env
+            code_file_path
+            |> File.read()
         end
         ~> {:ok, rel_code_file, ...}
+
         # |> debug()
     end
   end
@@ -476,14 +489,80 @@ defmodule Bonfire.Common.Extend do
 
   @doc "re-create a module's code from compiled Beam artifacts"
   def module_beam_code(module, opts \\ []) do
-    BeamFile.elixir_code(module, opts)
-     rescue
-      e in ArgumentError -> 
-        error(e)
-        error(__STACKTRACE__)
-        nil
+    with {:ok, code} <- BeamFile.elixir_code(module, opts) do
+      {:ok, code}
+    else
+      e ->
+        warn(e)
+    end
+  rescue
+    e in ArgumentError ->
+      error(e)
+      error(__STACKTRACE__)
+      nil
   end
 
+  def module_code_from_object_code(module) do
+    with {:ok, byte_code} <- module_object_byte_code(module) do
+      ast =
+        byte_code
+        |> debug()
+        |> Tuple.to_list()
+        |> List.last()
+        |> debug("ast?")
+
+      module_code_from_ast(module, ast)
+    else
+      e ->
+        error(e, "Could not read the compiled hot-swapped code")
+    end
+  end
+
+  def module_code_from_ast(module, ast, target \\ :ast) do
+    module_ast_normalize(module, ast, target)
+    |> Macro.to_string()
+  end
+
+  def module_ast_normalize(module, ast, target \\ :ast) do
+    BeamFile.Normalizer.normalize(
+      {:defmodule, [context: Elixir, import: Kernel],
+       [
+         {:__aliases__, [alias: false], [module]},
+         [do: {:__block__, [], ast}]
+       ]},
+      target
+    )
+  end
+
+  def module_file_from_object_code(module) do
+    with {:ok, byte_code} <- module_object_byte_code(module) do
+      case byte_code |> Enum.find_value(& &1[:source]) do
+        nil -> error("Could not find a code file for this module")
+        path -> path |> to_string()
+      end
+    end
+  end
+
+  def beam_file_from_object_code(module) do
+    with {_, _code, beam_path} <- module_object_code_tuple(module) do
+      beam_path
+      |> to_string()
+    end
+  end
+
+  def module_object_byte_code(module) do
+    with {mod, binary, _path} when mod == module <- module_object_code_tuple(module),
+         {:ok, byte_code} when mod == module <- BeamFile.byte_code(binary) do
+      {:ok, byte_code}
+    else
+      e ->
+        error(e, "Could not read the compiled hot-swapped code")
+    end
+  end
+
+  def module_object_code_tuple(module) do
+    :code.get_object_code(module)
+  end
 
   def function_code(module, fun, opts \\ []) do
     with {:ok, code} <- module_code(module, opts),
@@ -496,7 +575,8 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc "Return the numbers (as a tuple) of the first and last lines of a function's definition in a module"
-  def function_line_numbers(module, fun, opts \\ []) 
+  def function_line_numbers(module, fun, opts \\ [])
+
   def function_line_numbers(module, fun, opts) when is_atom(module) do
     module_code(module, opts)
     ~> function_line_numbers(fun, opts)
@@ -540,7 +620,8 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc "Return the number of the first line where a function is defined in a module"
-  def function_line_number(module, fun, opts \\ []) 
+  def function_line_number(module, fun, opts \\ [])
+
   def function_line_number(module, fun, opts) when is_atom(module) do
     module_code(module, opts)
     ~> function_line_number(fun, opts)
@@ -568,6 +649,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   def function_ast(module, fun, opts \\ [])
+
   def function_ast(module, fun, opts) when is_atom(module) do
     with {:ok, code} <- module_code(module, opts) do
       function_ast(code, fun, opts)
