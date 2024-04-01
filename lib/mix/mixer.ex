@@ -140,8 +140,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def mess_sources(flavour) do
       mess_source_files(System.get_env("WITH_FORKS", "1"), System.get_env("WITH_GIT_DEPS", "1"))
       |> maybe_all_flavour_sources(flavour, System.get_env("WITH_ALL_FLAVOUR_DEPS", "1"))
-
-      # |> IO.inspect(label: "messy")
+      # |> IO.inspect(label: "deps sources")
     end
 
     def mess_other_flavour_deps(current_flavour \\ System.get_env("FLAVOUR", "classic")) do
