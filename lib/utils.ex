@@ -16,6 +16,9 @@ defmodule Bonfire.Common.Utils do
   alias Common.Enums
   alias Common.Errors
   alias Common.Types
+  import Bonfire.Common.Modularity.DeclareHelpers
+  require Bonfire.Common.Localise.Gettext
+  import Bonfire.Common.Localise.Gettext.Helpers
 
   defmacro __using__(opts) do
     quote do
@@ -44,6 +47,7 @@ defmodule Bonfire.Common.Utils do
       import Extend
       import Types
       import URIs
+      import Bonfire.Common.Modularity.DeclareHelpers
 
       import Untangle
       use Arrows
@@ -53,6 +57,12 @@ defmodule Bonfire.Common.Utils do
       import Bonfire.Common.Localise.Gettext.Helpers
     end
   end
+
+  declare_extension("Common",
+    icon: "carbon:software-resource",
+    emoji: "🔶",
+    description: l("Common utilities and functionality used by most other extensions.")
+  )
 
   # WIP: move functions out of here into other modules (eg. Text, Enums, URIs, DatesTimes, etc) and update function calls in codebase (incl. extensions) without importing them all in the use macro above
 
