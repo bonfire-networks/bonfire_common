@@ -8,14 +8,14 @@ defmodule Bonfire.Common.Errors do
   def error_msg(errors) when is_list(errors) do
     errors
     |> Enum.map(&error_msg/1)
-    |> Enum.join("\n")
+
+    # |> Enum.join("\n")
   end
 
   def error_msg(%Ecto.Changeset{} = cs),
     do: EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
 
   def error_msg(exception) when is_exception(exception), do: Exception.message(exception)
-
   def error_msg(%{message: message}), do: error_msg(message)
   def error_msg({:error, :not_found}), do: "Not found"
   def error_msg({:error, error}), do: error_msg(error)
@@ -45,17 +45,15 @@ defmodule Bonfire.Common.Errors do
 
   def debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, opts \\ [])
 
-  def debug_exception(%Ecto.Changeset{} = cs, exception, stacktrace, kind, _opts) do
-    debug_exception(
-      EctoSparkles.Changesets.Errors.changeset_errors_string(cs),
-      exception,
-      stacktrace,
-      kind
-    )
-  end
-
   def debug_exception(msg, exception, stacktrace, kind, opts) do
-    debug_log(msg, exception, stacktrace, kind)
+    {error_msg, exception} =
+      if not is_exception(exception) do
+        {[error_msg(msg), error_msg(exception)], nil}
+      else
+        {error_msg(msg), exception}
+      end
+
+    debug_log(msg, exception, stacktrace, kind, error_msg)
 
     if Config.env() == :dev and
          Config.get(:show_debug_errors_in_dev) != false do
@@ -67,7 +65,7 @@ defmodule Bonfire.Common.Errors do
        Enum.join(
          Bonfire.Common.Enums.filter_empty(
            [
-             error_msg(msg),
+             error_msg,
              "",
              to_string(exception_banner) |> String.slice(0..1000),
              "\n",
@@ -80,7 +78,7 @@ defmodule Bonfire.Common.Errors do
        )
        |> String.slice(0..3000)}
     else
-      {:error, error_msg(msg)}
+      {:error, error_msg}
     end
   end
 
@@ -90,10 +88,10 @@ defmodule Bonfire.Common.Errors do
 
   # defp maybe_stacktrace(_), do: nil
 
-  def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error)
+  def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, msg_text \\ nil)
 
-  def debug_log(msg, exception, stacktrace, kind) do
-    msg_text = error_msg(msg)
+  def debug_log(msg, exception, stacktrace, kind, msg_text) do
+    msg_text = msg_text || error_msg(msg)
 
     if exception && stacktrace do
       {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
