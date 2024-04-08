@@ -131,6 +131,9 @@ defmodule Bonfire.Common.Types do
   def maybe_to_float(val, fallback \\ 0)
   def maybe_to_float(num, _fallback) when is_integer(num) or is_float(num), do: num
 
+  def maybe_to_float(atom, fallback) when is_atom(atom),
+    do: Atom.to_string(atom) |> maybe_to_float(fallback)
+
   def maybe_to_float(str, fallback) do
     case Float.parse(str) do
       {num, ""} ->

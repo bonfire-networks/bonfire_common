@@ -81,9 +81,7 @@ defmodule Bonfire.Common.Repo.Preload do
   end
 
   def maybe_preload(obj, _, opts) do
-    debug(
-      "maybe_preload #{Utils.e(opts, :label, nil)}: can only preload from struct or list of structs"
-    )
+    debug("#{Utils.e(opts, :label, nil)}: can only preload from struct or list of structs")
 
     obj
   end
@@ -111,7 +109,7 @@ defmodule Bonfire.Common.Repo.Preload do
     e in ArgumentError ->
       warn(
         preloads,
-        "maybe_preload skipped due to wrong argument: #{inspect(e)}"
+        "skipped due to wrong argument: #{inspect(e)}"
       )
 
       # TODO: we should still preload the assocs that do exist when one in the list was invalid
@@ -119,14 +117,14 @@ defmodule Bonfire.Common.Repo.Preload do
       obj
 
     e ->
-      warn(preloads, "maybe_preload skipped with rescue: #{inspect(e)} // attempted preloads")
+      warn(preloads, "skipped with rescue: #{inspect(e)} // attempted preloads")
       obj
   catch
     :exit, e ->
-      error("maybe_preload skipped with exit: #{inspect(e)}")
+      error("skipped with exit: #{inspect(e)}")
 
     e ->
-      error("maybe_preload skipped with catch: #{inspect(e)}")
+      error("skipped with catch: #{inspect(e)}")
   end
 
   defp try_repo_preload(obj, _, _), do: obj
@@ -134,8 +132,8 @@ defmodule Bonfire.Common.Repo.Preload do
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts)
-      when is_list(objects) and is_list(path) and is_list(preloads) do
-    debug("maybe_preloads_per_nested_schema iterate list of preloads")
+      when is_list(path) and is_list(preloads) do
+    debug("iterate list of preloads")
 
     Enum.reduce(
       preloads,
@@ -147,13 +145,30 @@ defmodule Bonfire.Common.Repo.Preload do
   def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts)
       when is_list(objects) do
     debug(
-      "maybe_preloads_per_nested_schema try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
+      "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
     )
 
     with {_old, loaded} <-
            get_and_update_in(
              objects,
              [Access.all()] ++ Enum.map(path, &Access.key!(&1)),
+             &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)}
+           ) do
+      loaded
+
+      # |> debug("preloaded")
+    end
+  end
+
+  def maybe_preloads_per_nested_schema(%{} = object, path, {schema, preloads}, opts) do
+    debug(
+      "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
+    )
+
+    with {_old, loaded} <-
+           get_and_update_in(
+             object,
+             Enum.map(path, &Access.key!(&1)),
              &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)}
            ) do
       loaded
@@ -176,7 +191,7 @@ defmodule Bonfire.Common.Repo.Preload do
     if object_schema == preload_schema do
       debug(
         preload_schema,
-        "maybe_preloads_per_schema preloading schema for Pointer: #{inspect(table_id)}"
+        "preloading schema for Pointer: #{inspect(table_id)}"
       )
 
       object
@@ -195,12 +210,26 @@ defmodule Bonfire.Common.Repo.Preload do
         opts
       )
       when object_schema == preload_schema do
-    debug("maybe_preloads_per_schema preloading schema: #{inspect(preload_schema)}")
+    debug("preloading schema: #{inspect(preload_schema)}")
 
     try_repo_preload(object, preloads, opts)
 
     # TODO: make one preload per type to avoid n+1
   end
 
-  def maybe_preloads_per_schema(object, _, _opts), do: object
+  def maybe_preloads_per_schema(object, schema_preloads, opts)
+      when is_list(schema_preloads) do
+    debug("iterate list of preloads")
+
+    Enum.reduce(
+      schema_preloads,
+      object,
+      &maybe_preloads_per_schema(&2, &1, opts)
+    )
+  end
+
+  def maybe_preloads_per_schema(object, other, _opts) do
+    debug(other, "skip")
+    object
+  end
 end
