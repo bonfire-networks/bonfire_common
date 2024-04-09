@@ -1052,6 +1052,37 @@ defmodule Bonfire.Common.Enums do
     end)
   end
 
+  def only_ok(enum) when is_list(enum) or is_map(enum) do
+    case enum
+         |> Enum.group_by(&elem(&1, 0), &elem(&1, 1)) do
+      %{error: errors} -> {:error, errors}
+      %{ok: results} -> {:ok, results}
+    end
+  end
+
+  def only_ok({:ok, val}), do: {:ok, val}
+  def only_ok({:error, val}), do: {:error, val}
+  def only_ok(val), do: {:error, val}
+
+  def has_ok?(enum) do
+    has_tuple_key?(enum, :ok)
+  end
+
+  def all_ok?(enum) do
+    !has_error?(enum)
+  end
+
+  def has_error?(enum) do
+    has_tuple_key?(enum, :error)
+  end
+
+  def has_tuple_key?(enum, key) do
+    Enum.any?(enum, fn
+      {i_key, _} -> i_key == key
+      _ -> false
+    end)
+  end
+
   @doc """
   Like `Enum.group_by/3`, except children are required to be unique (will throw
   otherwise!) and the resulting map does not wrap each item in a list
