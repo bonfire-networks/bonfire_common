@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Benchmark do
   def apply_timed(function) do
     {time, result} = :timer.tc(function)
 
-    IO.inspect("Time to run anonymous function #{inspect(function)}: #{time / 1_000} ms")
+    Logger.info("#{time / 1_000} ms to run anonymous function #{inspect(function)}")
 
     result
   end
@@ -13,7 +13,7 @@ defmodule Bonfire.Common.Benchmark do
   def apply_timed(function, args) do
     {time, result} = :timer.tc(function, args)
 
-    IO.inspect("Time to run #{inspect(function)}/#{length(args)}: #{time / 1_000} ms")
+    Logger.info("#{time / 1_000} ms to run #{inspect(function)}/#{length(args)}")
 
     result
   end
@@ -21,7 +21,7 @@ defmodule Bonfire.Common.Benchmark do
   def apply_timed(module, function, args) do
     {time, result} = :timer.tc(module, function, args)
 
-    IO.inspect("Time to run #{module}.#{function}/#{length(args)}: #{time / 1_000} ms")
+    Logger.info("#{time / 1_000} ms to run #{module}.#{function}/#{length(args)}")
 
     result
   end
