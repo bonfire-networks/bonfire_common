@@ -25,7 +25,7 @@ defmodule Bonfire.Common.ExtensionModule do
   def declared_extension([module]), do: declared_extension(module)
 
   def declared_extension(module) when is_atom(module) do
-    if Code.ensure_loaded?(module) and function_exported?(module, :declared_extension, 0),
+    if Extend.module_exists?(module) and function_exported?(module, :declared_extension, 0),
       do:
         apply(
           module,

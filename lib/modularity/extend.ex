@@ -95,7 +95,11 @@ defmodule Bonfire.Common.Extend do
 
   Important note: you should make sure to use the returned module, rather than the one provided as argument, as it can be different, this allows for swapping out modules in config or user settings (eg. by having in config something like `config Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
   """
-  def maybe_module(module, opts \\ []) do
+  def maybe_module(module, opts \\ [])
+  def maybe_module(nil, _), do: nil
+  def maybe_module(false, _), do: nil
+
+  def maybe_module(module, opts) do
     opts =
       Utils.to_options(opts)
       # |> debug()
@@ -289,15 +293,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   def maybe_schema_or_pointer(schema_module) do
-    module_exists_or(schema_module, Needle.Pointer)
-  end
-
-  def module_exists_or(module, fallback) do
-    if module_exists?(module) do
-      module
-    else
-      fallback
-    end
+    maybe_module(schema_module) || Needle.Pointer
   end
 
   defmacro use_if_enabled(module, fallback_module \\ nil),
@@ -306,10 +302,7 @@ defmodule Bonfire.Common.Extend do
   def quoted_use_if_enabled(module, fallback_module \\ nil, caller \\ nil)
 
   def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
-    do:
-      module_name_ast
-      |> Macro.expand(caller)
-      |> quoted_use_if_enabled(fallback_module)
+    do: quoted_use_if_enabled(Macro.expand(module_name_ast, caller), fallback_module)
 
   # def quoted_use_if_enabled(modules, _fallback_module, _) when is_list(modules) do
   #   debug(modules, "List of modules to use")
@@ -320,6 +313,7 @@ defmodule Bonfire.Common.Extend do
   # end
 
   def quoted_use_if_enabled(module, fallback_module, _) do
+    # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug("Found module to use: #{module}")
       quote do
@@ -328,8 +322,7 @@ defmodule Bonfire.Common.Extend do
     else
       Logger.debug("Did not find module to use: #{module}")
 
-      if is_atom(fallback_module) and not is_nil(fallback_module) and
-           module_enabled?(fallback_module) do
+      if fallback_module do
         quote do
           use unquote(fallback_module)
         end
@@ -350,6 +343,7 @@ defmodule Bonfire.Common.Extend do
       )
 
   def quoted_import_if_enabled(module, fallback_module, _caller) do
+    # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug(module, "Found module to import")
       quote do
@@ -358,7 +352,7 @@ defmodule Bonfire.Common.Extend do
     else
       # Logger.debug(module, "Did not find module to import")
 
-      if is_atom(fallback_module) and module_enabled?(fallback_module) do
+      if fallback_module do
         quote do
           import unquote(fallback_module)
         end
@@ -379,6 +373,7 @@ defmodule Bonfire.Common.Extend do
       )
 
   def quoted_require_if_enabled(module, fallback_module, _caller) do
+    # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug("Found module to require: #{module}")
       quote do
@@ -386,7 +381,7 @@ defmodule Bonfire.Common.Extend do
       end
     else
       # Logger.debug("Did not find module to require: #{module}")
-      if is_atom(fallback_module) and module_enabled?(fallback_module) do
+      if fallback_module do
         quote do
           require unquote(fallback_module)
         end
@@ -401,7 +396,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   def module_file(module) when is_atom(module) and not is_nil(module) do
-    if Code.ensure_loaded?(module) do
+    if module_exists?(module) do
       path =
         module.__info__(:compile)[:source]
         |> to_string()

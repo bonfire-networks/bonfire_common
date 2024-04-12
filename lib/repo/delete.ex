@@ -122,8 +122,8 @@ defmodule Bonfire.Common.Repo.Delete do
   defp maybe_creator_allow_delete?(_, _), do: false
 
   def deletion_result({:error, e}) do
-    if module_enabled?(Bonfire.Fail) do
-      {:error, Bonfire.Fail.fail(:deletion_error, e)}
+    if module = maybe_module(Bonfire.Fail) do
+      {:error, module.fail(:deletion_error, e)}
     else
       {:error, :deletion_error}
     end

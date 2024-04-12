@@ -688,7 +688,7 @@ defmodule Bonfire.Common.Utils do
           opts
         )
 
-  defp maybe_apply_fallback(error, args, opts) do
+  def maybe_apply_fallback(error, args, opts) do
     do_maybe_apply_fallback(
       Keyword.get(
         opts,

@@ -356,9 +356,9 @@ defmodule Bonfire.Common.URIs do
   end
 
   def remote_canonical_url(object) do
-    if module_enabled?(Bonfire.Federate.ActivityPub.Peered) do
+    if module = maybe_module(Bonfire.Federate.ActivityPub.Peered) do
       # debug(object, "attempt to query Peered")
-      Bonfire.Federate.ActivityPub.Peered.get_canonical_uri(object)
+      module.get_canonical_uri(object)
       # |> debug("peered url")
     end
   end

@@ -23,26 +23,38 @@ defmodule Bonfire.Common.ContextModule do
         object_schema_or_context,
         fun,
         args \\ [],
-        fallback_fun \\ &apply_error/2
+        opts \\ [fallback_fun: &apply_error/2]
       )
 
-  def maybe_apply(schema_or_context, fun, args, fallback_fun)
+  def maybe_apply(
+        module,
+        funs,
+        args,
+        fallback_fun
+      )
+      when is_function(fallback_fun),
+      do:
+        maybe_apply(
+          module,
+          funs,
+          args,
+          fallback_fun: fallback_fun
+        )
+
+  def maybe_apply(schema_or_context, fun, args, opts)
       when is_atom(schema_or_context) and (is_atom(fun) or is_list(fun)) and is_list(args) and
-             is_function(fallback_fun) do
-    if module_enabled?(schema_or_context) do
+             is_list(opts) do
+    if module_enabled?(schema_or_context, opts) do
       object_context_module = maybe_context_module(schema_or_context)
 
       Utils.maybe_apply(
         object_context_module,
         fun,
         args,
-        fallback_fun
+        opts
       )
     else
-      fallback_fun.(
-        "ContextModule: Module could be found: #{schema_or_context}",
-        args
-      )
+      Utils.maybe_apply_fallback("Module could be found: #{schema_or_context}", args, opts)
     end
   end
 
@@ -70,9 +82,7 @@ defmodule Bonfire.Common.ContextModule do
   end
 
   def apply_error(error, args) do
-    error(
-      "Bonfire.Common.ContextModule: Error running function: #{error} with args: (#{inspect(args)})"
-    )
+    error("Error running function: #{error} with args: (#{inspect(args)})")
 
     {:error, error}
   end

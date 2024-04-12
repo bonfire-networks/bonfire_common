@@ -18,6 +18,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   alias Bonfire.Common.Config
   alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
+  alias Bonfire.Common.Extend
 
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
@@ -147,7 +148,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   def module_behaviours(module \\ __MODULE__) do
-    Code.ensure_loaded?(module) and
+    Extend.module_exists?(module) and
       module.module_info(:attributes)
       |> Keyword.get_values(:behaviour)
       |> List.flatten()
