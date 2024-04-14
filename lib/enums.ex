@@ -509,15 +509,27 @@ defmodule Bonfire.Common.Enums do
   end
 
   def maybe_to_map(struct = %{__struct__: _}, true),
-    do: maybe_to_map(struct_to_map(struct), true)
+    do: struct_to_map(struct) |> maybe_to_map(true)
 
   def maybe_to_map({a, b}, true), do: %{a => maybe_to_map(b, true)}
-  def maybe_to_map(data, true) when not is_list(data), do: data
 
   def maybe_to_map(data, true) do
-    data
-    |> Enum.map(&maybe_to_map(&1, true))
-    |> Enum.into(%{})
+    if Enumerable.impl_for(data) do
+      data
+      |> Enum.map(fn
+        {a, b} -> {a, maybe_to_map(b, true)}
+        other -> throw(:not_tuples)
+      end)
+      |> Map.new()
+    else
+      data
+    end
+  catch
+    :not_tuples ->
+      data
+      |> Enum.map(fn
+        other -> maybe_to_map(other, true)
+      end)
   end
 
   @doc """
