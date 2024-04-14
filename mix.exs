@@ -29,7 +29,7 @@ defmodule Bonfire.Common.MixProject do
             {:dataloader, "~> 2.0", optional: true},
             {:floki, "~> 0.36", optional: true},
             {:emote,
-             git: "https://github.com/bonfire-networks/emote", branch: "master", optional: true},
+             git: "https://github.com/bonfire-networks/emote", optional: true},
             {:text, "~> 0.2.0", optional: true},
             {:text_corpus_udhr, "~> 0.1.0", optional: true},
             # needed for graphql client, eg github for changelog
