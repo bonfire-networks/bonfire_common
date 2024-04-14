@@ -4,8 +4,9 @@ defmodule Bonfire.Common.Enums do
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]
-  import Bonfire.Common.Extend
+  alias Bonfire.Common.Extend
   alias Ecto.Changeset
+  alias Bonfire.Common
   alias Bonfire.Common.Config
   alias Bonfire.Common.Text
   alias Bonfire.Common.Types
@@ -1025,10 +1026,10 @@ defmodule Bonfire.Common.Enums do
   end
 
   def maybe_to_struct(obj, type) when is_atom(type) do
-    # if module_enabled?(module) and module_enabled?(Mappable) do
+    # if Extend.module_exists?(module) and Extend.module_exists?(Mappable) do
     #   Mappable.to_struct(obj, module)
     # else
-    if module_enabled?(type),
+    if Extend.module_exists?(type),
       do: struct(type, obj),
       else: obj
 

@@ -66,175 +66,23 @@ defmodule Bonfire.Common.Utils do
 
   # WIP: move functions out of here into other modules (eg. Text, Enums, URIs, DatesTimes, etc) and update function calls in codebase (incl. extensions) without importing them all in the use macro above
 
-  @doc "Returns a value, or a fallback if nil/false"
-  def e(val, fallback) do
-    Enums.filter_empty(val, fallback)
-  end
-
-  @doc "Extracts a value from a map (and various other data structures), or returns a fallback if not present or empty. If more arguments are provided it looks for nested data (with the last argument always being the fallback)."
-  def e({:ok, object}, key, fallback), do: e(object, key, fallback)
-
-  # def e(object, :current_user = key, fallback) do #temporary
-  #       debug(key: key)
-  #       debug(e_object: object)
-
-  #       case object do
-  #     %{__context__: context} ->
-  #       debug(key: key)
-  #       debug(e_context: context)
-  #       # try searching in Surface's context (when object is assigns), if present
-  #       enum_get(object, key, nil) || enum_get(context, key, nil) || fallback
-
-  #     map when is_map(map) ->
-  #       # attempt using key as atom or string, fallback if doesn't exist or is nil
-  #       enum_get(map, key, nil) || fallback
-
-  #     list when is_list(list) and length(list)==1 ->
-  #       # if object is a list with 1 element, try with that
-  #       e(List.first(list), key, nil) || fallback
-
-  #     _ -> fallback
-  #   end
-  # end
-
-  # @decorate time()
-  def e(%{__context__: context} = object, key, fallback) do
-    # try searching in Surface's context (when object is assigns), if present
-    case Enums.enum_get(object, key, nil) do
-      result when is_nil(result) or result == fallback ->
-        Enums.enum_get(context, key, nil)
-        |> maybe_fallback(fallback)
-
-      result ->
-        result
-    end
-  end
-
-  def e(map, key, fallback) when is_map(map) do
-    # attempt using key as atom or string, fallback if doesn't exist or is nil
-    Enums.enum_get(map, key, nil)
-    |> maybe_fallback(fallback)
-  end
-
-  def e({key, v}, key, fallback) do
-    maybe_fallback(v, fallback)
-  end
-
-  def e([{key, v}], key, fallback) do
-    maybe_fallback(v, fallback)
-  end
-
-  def e({_, _}, _key, fallback) do
-    fallback
-  end
-
-  def e([{_, _}], _key, fallback) do
-    fallback
-  end
-
-  def e(list, key, fallback) when is_list(list) do
-    # and length(list) == 1
-    if Keyword.keyword?(list) do
-      list |> Map.new() |> e(key, fallback)
-    else
-      debug(list, "trying to find #{key} in a list")
-
-      Enum.find_value(list, &e(&1, key, nil))
-      |> maybe_fallback(fallback)
-    end
-  end
-
-  # def e(list, key, fallback) when is_list(list) do
-  #   if not Keyword.keyword?(list) do
-  #     list |> Enum.reject(&is_nil/1) |> Enum.map(&e(&1, key, fallback))
-  #   else
-  #     list |> Map.new() |> e(key, fallback)
-  #   end
-  # end
-  def e(object, key, fallback) do
-    debug(object, "did not know how to find #{key} in")
-    fallback
-  end
-
-  @doc "Returns a value from a nested map, or a fallback if not present"
-  def e(object, key1, key2, fallback) do
-    e(object, key1, %{})
-    |> e(key2, fallback)
-  end
-
-  def e(object, key1, key2, key3, fallback) do
-    e(object, key1, key2, %{})
-    |> e(key3, fallback)
-  end
-
-  def e(object, key1, key2, key3, key4, fallback) do
-    e(object, key1, key2, key3, %{})
-    |> e(key4, fallback)
-  end
-
-  def e(object, key1, key2, key3, key4, key5, fallback) do
-    e(object, key1, key2, key3, key4, %{})
-    |> e(key5, fallback)
-  end
-
-  def e(object, key1, key2, key3, key4, key5, key6, fallback) do
-    e(object, key1, key2, key3, key4, key5, %{})
-    |> e(key6, fallback)
-  end
+  defdelegate e(object, fallback \\ nil), to: Bonfire.Common.E
+  defdelegate e(object, key1, fallback), to: Bonfire.Common.E
+  defdelegate e(object, key1, key2, fallback), to: Bonfire.Common.E
+  defdelegate e(object, key1, key2, key3, fallback), to: Bonfire.Common.E
+  defdelegate e(object, key1, key2, key3, key4, fallback), to: Bonfire.Common.E
+  defdelegate e(object, key1, key2, key3, key4, key5, fallback), to: Bonfire.Common.E
+  defdelegate e(object, key1, key2, key3, key4, key5, key6, fallback), to: Bonfire.Common.E
 
   @doc """
   Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
   """
-  def to_options(user_or_socket_or_opts) do
-    case user_or_socket_or_opts do
-      %{assigns: %{} = assigns} = _socket ->
-        assigns
-        |> Map.drop([:__changed__, :streams])
-        |> Enums.maybe_to_keyword_list(false, true)
-
-      %{__struct__: schema} when schema == Bonfire.Data.Identity.User ->
-        [current_user: user_or_socket_or_opts]
-
-      _ when is_struct(user_or_socket_or_opts) ->
-        [context: user_or_socket_or_opts]
-
-      {k, v} when is_atom(k) ->
-        Keyword.new([{k, v}])
-
-      _
-      when is_map(user_or_socket_or_opts) ->
-        Enums.maybe_to_keyword_list(user_or_socket_or_opts, false, true)
-
-      _
-      when is_list(user_or_socket_or_opts) ->
-        if Keyword.keyword?(user_or_socket_or_opts),
-          do: user_or_socket_or_opts,
-          else: [context: user_or_socket_or_opts]
-
-      _ ->
-        debug(Types.typeof(user_or_socket_or_opts), "No opts found in")
-        [context: user_or_socket_or_opts]
-    end
-  end
+  defdelegate to_options(user_or_socket_or_opts), to: Bonfire.Common.Opts
 
   @doc """
   Returns the value of a key from options keyword list or map, or a fallback if not present or empty.
   """
-  def maybe_from_opts(opts, key, fallback \\ nil)
-
-  def maybe_from_opts(opts, key, fallback)
-      when is_list(opts) or is_map(opts),
-      do: e(opts, key, nil) |> maybe_fallback(fn -> force_from_opts(opts, key, fallback) end)
-
-  def maybe_from_opts(opts, key, fallback), do: force_from_opts(opts, key, fallback)
-
-  defp force_from_opts(opts, key, fallback),
-    do: to_options(opts) |> e(key, nil) |> maybe_fallback(fallback)
-
-  defp maybe_fallback(nil, nil), do: nil
-  defp maybe_fallback(nil, fun) when is_function(fun), do: fun.()
-  defp maybe_fallback(nil, fallback), do: fallback
-  defp maybe_fallback(val, _), do: val
+  defdelegate maybe_from_opts(opts, key, fallback \\ nil), to: Bonfire.Common.Opts
 
   @doc """
   Returns the current user from socket, assigns, or options.
@@ -817,6 +665,9 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  def round_nearest(num, target) when is_number(num) and is_number(target),
+    do: round(num / target) * target
+
   defp do_round_nearest(num, digit_count)
   defp do_round_nearest(num, 1), do: num
   defp do_round_nearest(num, 2), do: round_nearest(num, 10)
@@ -825,7 +676,4 @@ defmodule Bonfire.Common.Utils do
   defp do_round_nearest(num, 5), do: round_nearest(num, 10000)
   defp do_round_nearest(num, 6), do: round_nearest(num, 100_000)
   defp do_round_nearest(num, _), do: round_nearest(num, 1_000_000)
-
-  def round_nearest(num, target) when is_number(num) and is_number(target),
-    do: round(num / target) * target
 end

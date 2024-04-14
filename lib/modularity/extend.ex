@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Extend do
   require Logger
   use Untangle
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Opts
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Settings
 
@@ -100,44 +101,46 @@ defmodule Bonfire.Common.Extend do
   def maybe_module(false, _), do: nil
 
   def maybe_module(module, opts) do
-    opts =
-      Utils.to_options(opts)
-      # |> debug()
-      |> Keyword.put_new_lazy(:otp_app, fn ->
-        maybe_extension_loaded!(module) || Config.top_level_otp_app()
-      end)
+    if module_exists?(module) do
+      opts =
+        Opts.to_options(opts)
+        # |> debug()
+        |> Keyword.put_new_lazy(:otp_app, fn ->
+          maybe_extension_loaded!(module) || Config.top_level_otp_app()
+        end)
 
-    modularity = get_modularity(module, opts)
+      modularity = get_modularity(module, opts)
 
-    cond do
-      disabled_value?(modularity) ->
-        debug(module, "module is disabled")
-        nil
+      cond do
+        disabled_value?(modularity) ->
+          debug(module, "module is disabled")
+          nil
 
-      (is_nil(modularity) or modularity == true or modularity == module) and
-          do_is_extension_enabled?(opts[:otp_app], opts) ->
-        debug(module, "module is not disabled or swapped, and extension is not disabled")
-        module
+        (is_nil(modularity) or modularity == true or modularity == module) and
+            do_is_extension_enabled?(opts[:otp_app], opts) ->
+          debug(module, "module is not disabled or swapped, and extension is not disabled")
+          module
 
-      is_atom(modularity) and module_enabled?(modularity, opts) ->
-        debug(
-          modularity,
-          "module #{module} is swapped, and the replacement module and extension are not disabled"
-        )
+        is_atom(modularity) and module_enabled?(modularity, opts) ->
+          debug(
+            modularity,
+            "module #{module} is swapped, and the replacement module and extension are not disabled"
+          )
 
-        modularity
+          modularity
 
-      not is_nil(modularity) ->
-        warn(
-          modularity,
-          "Seems like the replacement module/extension configured for #{module} was itself disabled"
-        )
+        not is_nil(modularity) ->
+          warn(
+            modularity,
+            "Seems like the replacement module/extension configured for #{module} was itself disabled"
+          )
 
-        nil
+          nil
 
-      true ->
-        warn(module, "Seems like the module/extension was not available or disabled")
-        nil
+        true ->
+          warn(module, "Seems like the module/extension was not available or disabled")
+          nil
+      end
     end
   end
 
@@ -152,7 +155,7 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not disabled (eg. by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def module_enabled?(module, opts \\ []) do
-    opts = Utils.to_options(opts)
+    opts = Opts.to_options(opts)
 
     module_exists?(module) and
       is_module_extension_enabled?(module, opts) and
@@ -168,7 +171,7 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, modularity: :disabled`)
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
-    opts = Utils.to_options(opts)
+    opts = Opts.to_options(opts)
 
     extension = maybe_extension_loaded(module_or_otp_app)
     extension_loaded?(extension) and do_is_extension_enabled?(module_or_otp_app, opts)
