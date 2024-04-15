@@ -1152,4 +1152,12 @@ defmodule Bonfire.Common.Enums do
       do: Utils.maybe_apply(module, fun, args),
       else: Utils.maybe_apply(Enum, fun, args)
   end
+
+  def unwrap_tuples(responses, key) do
+    # TODO: optimise
+    Enum.filter(responses, fn resp -> elem(resp, 0) == key end)
+    |> Enum.map(fn v -> elem(v, 1) end)
+    |> Enum.uniq()
+    |> filter_empty(nil)
+  end
 end
