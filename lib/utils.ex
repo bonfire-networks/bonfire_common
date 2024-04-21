@@ -624,10 +624,19 @@ defmodule Bonfire.Common.Utils do
     apply_task(function, fun, opts ++ [module: Task.Supervisor])
   end
 
-  @doc "Returns true if the given value is nil, an empty map, an empty list, or an empty string."
+  @doc "Returns true if the given value is nil, an empty enumerable, or an empty string."
   def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
   def empty?(v) when is_binary(v), do: String.trim(v) == ""
-  def empty?(_), do: false
+
+  def empty?(v) do
+    if Enumerable.impl_for(v),
+      do: Enum.empty?(v),
+      else: false
+  end
+
+  @doc "Returns true if the given value is 0, false, nil, or empty (see `empty?/1`)"
+  def nothing?(v) when is_nil(v) or v == false or v == 0 or v == "0", do: true
+  def nothing?(v), do: empty?(v)
 
   @doc "Applies change_fn if the first parameter is not nil."
   def maybe(nil, _change_fn), do: nil
