@@ -173,13 +173,14 @@ defmodule Bonfire.Common.Needles.Preload do
 
       :get_and_update, data, next ->
         # debug(data, "data")
-        debug(next, "fun for #{key}")
+        # debug(next, "fun for #{key}")
 
         value =
           Map.get(data || %{}, key, default_val)
-          |> debug("get_and_update_original_value for #{key}")
 
-        case next.(value) |> debug("nexxt") do
+        # |> debug("get_and_update_original_value for #{key}")
+
+        case next.(value) do
           {get, update} -> {get, Map.put(data || %{}, key, update)}
           :pop -> {value, Map.delete(data || %{}, key)}
         end
@@ -195,13 +196,14 @@ defmodule Bonfire.Common.Needles.Preload do
 
       :get_and_update, data, _next ->
         # debug(data, "data")
-        debug(fun, "fun for #{key}")
+        # debug(fun, "fun for #{key}")
 
         value =
           Map.get(data || %{}, key, default_val)
-          |> debug("get_and_update_original_value for #{key}")
 
-        case fun.(value) |> debug("nexxt") do
+        # |> debug("get_and_update_original_value for #{key}")
+
+        case fun.(value) do
           {get, update} -> {get, Map.put(data || %{}, key, update)}
           :pop -> {value, Map.delete(data || %{}, key)}
         end
