@@ -466,18 +466,48 @@ defmodule Bonfire.Common.Enums do
 
   @doc "Flattens the list if provided a list, otherwise just return the input"
   def maybe_flatten(list) when is_list(list), do: List.flatten(list)
+  def maybe_flatten(map) when is_map(map), do: flatten_map(map)
   def maybe_flatten(other), do: other
 
   @doc """
   Takes a list and recursively flattens it by recursively flattening the head and tail of the list
   """
-  def flatter(list), do: list |> do_flatter() |> maybe_flatten()
+  def flatter(list) when is_list(list), do: list |> do_flatter() |> maybe_flatten()
+  def flatter(map) when is_map(map), do: flatten_map(map, true)
 
   defp do_flatter([element | nil]), do: do_flatter(element)
   defp do_flatter([head | tail]), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter([]), do: []
   defp do_flatter({head, tail}), do: [do_flatter(head), do_flatter(tail)]
   defp do_flatter(element), do: element
+
+  defp flatten_map(map, recursive \\ false) when is_map(map) do
+    map
+    |> Map.to_list()
+    |> do_flatten([], recursive)
+    |> Map.new()
+  end
+
+  defp do_flatten([], acc, _), do: acc
+
+  defp do_flatten([{_k, v} = kv | rest], acc, recursive) when is_struct(v) do
+    do_flatten(rest, [kv | acc], recursive)
+  end
+
+  defp do_flatten([{_k, v} | rest], acc, true) when is_map(v) do
+    v = Map.to_list(v)
+    flattened_subtree = do_flatten(v, acc, true)
+    do_flatten(flattened_subtree ++ rest, acc, true)
+  end
+
+  defp do_flatten([{_k, v} | rest], acc, _) when is_map(v) do
+    v = Map.to_list(v)
+    do_flatten(v ++ rest, acc, false)
+  end
+
+  defp do_flatten([kv | rest], acc, recursive) do
+    do_flatten(rest, [kv | acc], recursive)
+  end
 
   @doc "If given a struct, returns a map representation of it"
   def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
