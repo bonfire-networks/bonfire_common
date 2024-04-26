@@ -509,6 +509,9 @@ defmodule Bonfire.Common.Enums do
     |> Enum.into(%{}, fn [a, b] -> {a, b} end)
   end
 
+  def maybe_to_map(date = %struct{}, true) when struct in [Date, DateTime],
+    do: to_string(date)
+
   def maybe_to_map(struct = %{__struct__: _}, true),
     do: struct_to_map(struct) |> maybe_to_map(true)
 
