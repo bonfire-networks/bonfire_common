@@ -236,7 +236,7 @@ defmodule Bonfire.Common.Needles do
       # info(table_id, "virtual - skip following ")
       if function_exported?(schema, :__struct__, 0) do
         # debug("schema is available in the compiled app")
-        struct(schema, Enums.maybe_from_struct(pointer))
+        struct(schema, Enums.struct_to_map(pointer))
       else
         debug("schema is not available in the compiled app")
         pointer

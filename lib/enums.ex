@@ -278,6 +278,13 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  def map_put_default(map, key, default) do
+    Map.update(map, key, default, fn
+      nil -> default
+      existing_value -> existing_value
+    end)
+  end
+
   @doc """
   Gets the value of a key in a map and returns the ID of that value (i.e. either the :id field of that association, or the value itself).
   """
@@ -510,18 +517,40 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc "If given a struct, returns a map representation of it"
-  def maybe_from_struct(obj) when is_struct(obj), do: struct_to_map(obj)
-  def maybe_from_struct(obj), do: obj
+  def struct_to_map(other, recursive \\ false)
 
-  def struct_to_map(struct = %{__struct__: type}) do
+  def struct_to_map(struct = %{__struct__: type}, false) do
     Map.from_struct(struct)
     |> Map.drop([:__meta__])
     |> Map.put_new(:__typename, type)
-    # |> debug("clean")
     |> map_filter_empty()
   end
 
-  def struct_to_map(other), do: other
+  def struct_to_map(struct = %{__struct__: _type}, _true) do
+    struct_to_map(struct, false)
+    |> Enum.map(&struct_to_map(&1, true))
+    |> Map.new()
+  end
+
+  def struct_to_map(data, true) when is_map(data) do
+    struct_to_map(data, false)
+    |> Enum.map(&struct_to_map(&1, true))
+    |> Map.new()
+  end
+
+  def struct_to_map(data, true) do
+    if Enumerable.impl_for(data) do
+      struct_to_map(data, false)
+      |> Enum.map(fn
+        {k, v} -> {k, struct_to_map(v, true)}
+        v -> struct_to_map(v, true)
+      end)
+    else
+      data
+    end
+  end
+
+  def struct_to_map(other, _false), do: other
 
   @doc "Returns a map representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to maps as well."
   def maybe_to_map(obj, recursive \\ false)
@@ -659,7 +688,7 @@ defmodule Bonfire.Common.Enums do
   def nested_structs_to_maps(v), do: v
 
   def maybe_merge_to_struct(first, precedence) when is_struct(first),
-    do: struct(first, maybe_from_struct(precedence))
+    do: struct(first, struct_to_map(precedence))
 
   def maybe_merge_to_struct(%{} = first, precedence) do
     merged = merge_structs_as_map(first, precedence)
@@ -696,8 +725,8 @@ defmodule Bonfire.Common.Enums do
       when is_struct(target) or is_struct(merge),
       do:
         merge_structs_as_map(
-          maybe_from_struct(target),
-          maybe_from_struct(merge)
+          struct_to_map(target),
+          struct_to_map(merge)
         )
 
   def merge_structs_as_map(target, merge) when is_map(target) and is_map(merge),
@@ -1048,7 +1077,7 @@ defmodule Bonfire.Common.Enums do
       do: obj
 
   def maybe_to_struct(obj, type) when is_struct(obj) do
-    maybe_from_struct(obj) |> maybe_to_struct(type)
+    struct_to_map(obj) |> maybe_to_struct(type)
   end
 
   def maybe_to_struct(obj, type) when is_binary(type) do

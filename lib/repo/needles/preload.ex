@@ -154,7 +154,7 @@ defmodule Bonfire.Common.Needles.Preload do
       #   end))
 
       :get, data, next ->
-        debug(data, "get_original_value for #{key}")
+        # debug(data, "get_original_value for #{key}")
         next.(Map.get(data || %{}, key, default_val))
 
       # :get_and_update, data, next when is_list(data) ->
@@ -191,7 +191,7 @@ defmodule Bonfire.Common.Needles.Preload do
   def custom_access_key_fun(key, fun \\ &preload_next_in/1, default_val \\ nil) do
     fn
       :get, data, next ->
-        debug(data, "get_original_value for #{key}")
+        # debug(data, "get_original_value for #{key}")
         next.(Map.get(data || %{}, key, default_val))
 
       :get_and_update, data, _next ->
@@ -211,7 +211,7 @@ defmodule Bonfire.Common.Needles.Preload do
   end
 
   defp preload_next_in(%Needle.Pointer{} = value) do
-    debug(value, "preload_next_in_value")
+    # debug(value, "preload_next_in_value")
     {value, maybe_preload_pointer(value, skip_boundary_check: true)}
   end
 
