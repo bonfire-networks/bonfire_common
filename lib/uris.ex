@@ -525,6 +525,11 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  def based_url(url, conn \\ nil)
+  def based_url("http" <> _ = url, conn), do: url
+  def based_url("/" <> url, conn), do: "#{base_url(conn)}/#{url}"
+  def based_url(url, _), do: url
+
   def display_url("https://" <> url), do: url
   def display_url("http://" <> url), do: url
   def display_url(url), do: url
