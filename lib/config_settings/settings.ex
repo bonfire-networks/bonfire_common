@@ -156,11 +156,7 @@ defmodule Bonfire.Common.Settings do
            do:
              maybe_fetch(current_user, opts)
              |> settings_data_for_app(otp_app)
-           #  #  |> debug()
-           #  #  |> e(:data, otp_app, nil)
-           #  |> e(:data, nil)
-           #  #  |> debug()
-           #  |> e(otp_app, nil)
+           #  |> debug()
          )
          #  |> debug()
        ] ++
@@ -208,12 +204,8 @@ defmodule Bonfire.Common.Settings do
     # |> debug("config/settings for #{inspect(otp_app)}")
   end
 
-  defp settings_data(%{json: %{} = data} = settings) when data != %{} do
-    prepare_from_json(data)
-  end
-
-  defp settings_data(%{data: data}) do
-    data
+  defp settings_data(%{json: %{} = json_data} = _settings) when json_data != %{} do
+    prepare_from_json(json_data)
   end
 
   defp settings_data(_) do
@@ -223,12 +215,6 @@ defmodule Bonfire.Common.Settings do
   defp settings_data_for_app(settings, otp_app) do
     settings_data(settings)
     |> e(otp_app, nil)
-
-    # IS THIS NEEDED? workaround for case `|> e(:data, otp_app, nil)` messes this up...
-    # (settings || %{})
-    # |> Map.get(:data, %{})
-    # |> Enums.fun(:get, [otp_app, %{}])
-    # |> debug("for app #{otp_app}")
   end
 
   # not including this line in fetch_all_scopes because load_instance_settings preloads it into Config
@@ -515,12 +501,12 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp set_for({:instance, scoped} = _scope_tuple, settings, opts) do
-    with {:ok, %{data: data} = set} <-
+    with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
            # |> debug
            |> upsert(settings, ulid(scoped)) do
       # also put_env to cache it in Elixir's Config
-      Config.put(data)
+      Config.put(new_data)
       |> debug("put in config")
 
       {:ok, set}
@@ -548,41 +534,44 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp upsert(
-         %schema{data: existing_data} = settings,
-         data,
+         %schema{json: existing_data} = settings,
+         new_data,
          _
        )
        when (schema == Bonfire.Data.Identity.Settings and is_list(existing_data)) or
               is_map(existing_data) do
-    data
-    |> debug("new settings")
+    # new_data
+    # |> debug("new settings")
 
     existing_data
-    # |> debug("existing_data")
-    |> deep_merge(data, replace_lists: true)
-    |> debug("merged settings to set")
-    |> do_update(settings, ...)
+    |> prepare_from_json()
+    |> debug("existing_data")
+    |> do_upsert(
+      settings,
+      ...,
+      new_data
+    )
   end
 
   defp upsert(
          %schema{id: id} = settings,
-         data,
+         new_data,
          _
        )
        when schema == Bonfire.Data.Identity.Settings and is_binary(id) do
-    do_update(settings, data)
+    do_update(settings, new_data)
   end
 
-  defp upsert(%{settings: _} = parent, data, _) do
+  defp upsert(%{settings: _} = parent, new_data, _) do
     parent
     |> repo().maybe_preload(:settings)
     |> e(:settings, struct(Bonfire.Data.Identity.Settings))
-    |> upsert(data, ulid(parent))
+    |> upsert(new_data, ulid(parent))
   end
 
-  defp upsert(%schema{} = settings, data, scope_id)
+  defp upsert(%schema{} = settings, new_data, scope_id)
        when schema == Bonfire.Data.Identity.Settings do
-    %{id: ulid!(scope_id), data: data, json: prepare_for_json(data)}
+    %{id: ulid!(scope_id), json: prepare_for_json(new_data)}
     # |> debug()
     |> Bonfire.Data.Identity.Settings.changeset(settings, ...)
     |> info()
@@ -593,35 +582,45 @@ defmodule Bonfire.Common.Settings do
 
       do_fetch(ulid!(scope_id))
       |> info("fetched")
-      |> do_update(data)
+      |> do_update(new_data)
+  end
+
+  defp do_upsert(
+         settings,
+         existing_data,
+         new_data
+       ) do
+    existing_data
+    # |> debug("existing_data")
+    |> deep_merge(new_data, replace_lists: true)
+    |> debug("merged settings to set")
+    |> do_update(settings, ...)
   end
 
   defp do_update(
          %schema{} = settings,
-         data
+         new_data
        )
        when schema == Bonfire.Data.Identity.Settings do
-    Bonfire.Data.Identity.Settings.changeset(settings, %{data: data, json: prepare_for_json(data)})
+    Bonfire.Data.Identity.Settings.changeset(settings, %{
+      new_data: new_data,
+      json: prepare_for_json(new_data)
+    })
     |> repo().update()
   end
 
   defp prepare_for_json(settings) do
-    # WIP: https://github.com/bonfire-networks/bonfire-app/issues/790
-    # |> info("attempt with JsonSerde")
     with {:ok, for_json} <-
            settings
-           |> Map.new()
-           |> JsonSerde.Serializer.serialize() do
-      # prepare_from_json(for_json)
+           |> Map.new() do
+      #  |> JsonSerde.Serializer.serialize() do
       for_json
     end
   end
 
   defp prepare_from_json(settings) do
-    # WIP: https://github.com/bonfire-networks/bonfire-app/issues/790
-
     settings
-    |> JsonSerde.Deserializer.deserialize(..., ...)
+    # |> JsonSerde.Deserializer.deserialize(..., ...)
     # ~> info("deserialized")
     # TODO: add support for atom keys in Map to JsonSerde (see open PR there) so we can avoid needing input_to_atoms here?
     ~> input_to_atoms(
