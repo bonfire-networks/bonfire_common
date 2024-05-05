@@ -1,6 +1,8 @@
 # Bonfire.Common
 
-`Bonfire.Common` is an extension for [Bonfire](https://bonfire.cafe/) that contains:
+A library of common utils and helpers used across Bonfire extensions.
+
+An extension for [Bonfire](https://bonfire.cafe/) that contains:
 
 - Many common functions in `Bonfire.Common.Utils`
 - Path and URL generators in `Bonfire.Common.URIs`

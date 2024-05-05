@@ -1,9 +1,5 @@
 defmodule Bonfire.Common do
-  @moduledoc """
-  A library of common utils and helpers used across Bonfire extensions
-
-  Refer to the [README](https://doc.bonfirenetworks.org/bonfire_common.html)
-  """
+  @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
 
   def maybe_fallback(nil, nil), do: nil
   def maybe_fallback(nil, fun) when is_function(fun), do: fun.()
