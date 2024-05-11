@@ -211,7 +211,7 @@ defmodule Bonfire.Common.Media do
 
            _ ->
              avatar_url != avatar_fallback(Enums.id(user)) &&
-               Cache.maybe_apply_cached({Bonfire.Files.Image.Edit, :dominant_color}, [
+               Cache.maybe_apply_cached({Bonfire.Files.MediaEdit, :dominant_color}, [
                  Path.join(Config.get(:project_path), avatar_url),
                  15,
                  nil
