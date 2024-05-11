@@ -2,7 +2,7 @@ arrows = "~> 0.1"
 untangle = "~> 0.3" # log/inspect with code location
 
 needle_ulid = "~> 0.3"
-ecto_sparkles = "~> 0.1"
+ecto_sparkles = "~> 0.2"
 ecto_sql = "~> 3.8"
 
 gettext = "~> 0.24" # localisation 

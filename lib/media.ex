@@ -64,20 +64,24 @@ defmodule Bonfire.Common.Media do
       nil ->
         Map.drop(media, [:metadata]) |> media_url()
 
-      Elixir.Bonfire.Files.DocumentUploader ->
-        Bonfire.Files.DocumentUploader.remote_url(media, :thumbnail)
+      module when is_atom(module) or is_binary(module) ->
+        Utils.maybe_apply(module, :remote_url, [media, :thumbnail], fallback_return: nil)
 
-      module ->
-        Utils.maybe_apply(module, :remote_url, [media, :thumbnail])
+      _ ->
+        nil
     end
   end
 
   def thumbnail_url(%{media_type: media_type} = media) do
-    if String.starts_with?(media_type || "", "image") do
-      image_url(media)
-    else
-      # Utils.e(media, :metadata, :canonical_url, nil) ||
-      Bonfire.Files.DocumentUploader.remote_url(media, :thumbnail)
+    cond do
+      String.starts_with?(media_type || "", "image") ->
+        image_url(media)
+
+      String.starts_with?(media_type || "", "video") ->
+        Bonfire.Files.VideoUploader.remote_url(media, :thumbnail)
+
+      true ->
+        Bonfire.Files.DocumentUploader.remote_url(media, :thumbnail)
     end
   end
 
