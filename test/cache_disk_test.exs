@@ -3,7 +3,8 @@ defmodule NebulexDiskAdapterTest do
 
   if Bonfire.Common.Extend.module_exists?(Nebulex.Cache.EntryTest) and
        Bonfire.Common.Extend.module_exists?(Bonfire.Common.NebulexCacheTest) do
-    use Bonfire.Common.NebulexCacheTest
+    require Bonfire.Common.NebulexCacheTest
+    Bonfire.Common.NebulexCacheTest.__using__([])
 
     alias Bonfire.Common.Cache.DiskCache, as: Cache
 

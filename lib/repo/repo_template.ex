@@ -38,31 +38,36 @@ defmodule Bonfire.Common.RepoTemplate do
       """
       @spec transact_with(fun :: (-> {:ok, any} | {:error, any})) ::
               {:ok, any} | {:error, any}
-      def transact_with(fun) do
-        transaction(fn ->
-          ret = fun.()
+      def transact_with(fun, opts \\ [])
 
-          case ret do
-            :ok -> :ok
-            {:ok, v} -> v
-            {:error, reason} -> rollback_error(reason)
-            {:error, reason, extra} -> rollback_error(reason, extra)
-            _ -> rollback_unexpected(ret)
-          end
-        end)
+      def transact_with(fun, opts) do
+        transaction(
+          fn ->
+            ret = fun.()
+
+            case ret do
+              :ok -> :ok
+              {:ok, v} -> v
+              {:error, reason} -> rollback_error(reason)
+              {:error, reason, extra} -> rollback_error(reason, extra)
+              _ -> rollback_unexpected(ret)
+            end
+          end,
+          opts
+        )
       rescue
         exception in Postgrex.Error ->
           handle_postgrex_exception(exception, __STACKTRACE__)
       end
 
-      # def transact_with(fun) do
-      #   transaction fn ->
+      # def transact_with(fun, opts) do
+      #   transaction(fn ->
       #     case fun.() do
       #       {:ok, val} -> val
       #       {:error, val} -> rollback(val)
       #       val -> val # naughty
       #     end
-      #   end
+      #   end, opts)
       # end
 
       @doc """
