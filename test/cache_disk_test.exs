@@ -1,9 +1,9 @@
 defmodule NebulexDiskAdapterTest do
   use ExUnit.Case, async: true
 
-  if Bonfire.Common.Extend.module_exists?(Nebulex.Cache.EntryTest) do
-    require Bonfire.Common.NebulexCacheTest
-    Bonfire.Common.NebulexCacheTest.__using__([])
+  if Bonfire.Common.Extend.module_exists?(Nebulex.Cache.EntryTest) and
+       Bonfire.Common.Extend.module_exists?(Bonfire.Common.NebulexCacheTest) do
+    use Bonfire.Common.NebulexCacheTest
 
     alias Bonfire.Common.Cache.DiskCache, as: Cache
 
