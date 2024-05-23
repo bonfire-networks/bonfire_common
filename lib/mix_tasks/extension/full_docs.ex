@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Bonfire.FullDocs do
   @root Bonfire.Common.Config.get(:root_path)
 
   @moduledoc """
-  `mix docs.deps`
+  Generates docs for your app and *all* of its deps
 
   ## Command line options
     * `--only` - the environment to include dependencies for

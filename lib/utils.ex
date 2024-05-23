@@ -1,7 +1,34 @@
 defmodule Bonfire.Common.Utils do
   @moduledoc """
   Various very commonly used utility functions for the Bonfire application.
+
+  This module should contain only a few generic and/or heavily-used functions, and any other functions should be in more specific modules or even other extensions, for e.g.: 
+  - `Bonfire.Common.Enums` for functions around maps, structs, keyword lists, and the like
+  - `Bonfire.Common.Types` for object types
+  - `Bonfire.Common.URIs` and `Linkify` for URI handling
+  - `Bonfire.Common.DatesTimes` for date/time helpers
+  - `Bonfire.Common.E` to extract nested data from an object
+  - `Bonfire.Common.Errors` and `Bonfire.Fail` for error handling
+  - `Bonfire.Common.Extend` for functions around modularity
+  - `Bonfire.Common.Opts` for handling function options
+  - `Bonfire.Common.Config` for handling app-wide config
+  - `Bonfire.Common.Settings` for handling account/user/instance level settings
+  - `Bonfire.Common.HTTP` for HTTP requests
+  - `Bonfire.Common.Cache` for caching
+  - `Bonfire.Common.Text` for plain or rich text
+  - `Bonfire.Common.Localise` for app localisation
+  - `Bonfire.Common.Media` and `Bonfire.Files` for avatars/images/videos/etc
+  - `Bonfire.Common.Repo` and `Needle` for database access
+  - `Bonfire.Common.PubSub` for pub/sub
+
+  We may also want to consider reusing functions from existing utils libraries when possible and contributing missing ones there, for example:
+  - https://hexdocs.pm/moar/readme.html
+  - https://hexdocs.pm/bunch/api-reference.html
+  - https://hexdocs.pm/swiss/api-reference.html
+  - https://hexdocs.pm/wuunder_utils/api-reference.html
+  - https://github.com/cozy-elixir
   """
+
   use Arrows
   alias Bonfire.Common
   import Common.Extend
@@ -63,8 +90,6 @@ defmodule Bonfire.Common.Utils do
     emoji: "🔶",
     description: l("Common utilities and functionality used by most other extensions.")
   )
-
-  # WIP: move functions out of here into other modules (eg. Text, Enums, URIs, DatesTimes, etc) and update function calls in codebase (incl. extensions) without importing them all in the use macro above
 
   defdelegate e(object, fallback \\ nil), to: Bonfire.Common.E
   defdelegate e(object, key1, fallback), to: Bonfire.Common.E

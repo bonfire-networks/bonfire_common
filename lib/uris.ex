@@ -533,4 +533,8 @@ defmodule Bonfire.Common.URIs do
   def display_url("https://" <> url), do: url
   def display_url("http://" <> url), do: url
   def display_url(url), do: url
+
+  def static_path(path, endpoint_module \\ Bonfire.Common.Config.endpoint_module()) do
+    endpoint_module.static_path(path)
+  end
 end
