@@ -23,16 +23,3 @@ if File.exists?("#{nbx_dep_path}/test/") do
 else
   IO.warn("You need to clone the nebulex dep to run its tests")
 end
-
-defmodule Bonfire.Common.NebulexCacheTest do
-  @moduledoc """
-  Shared Tests
-  """
-
-  defmacro __using__(_opts) do
-    quote do
-      use Nebulex.Cache.EntryTest
-      use Nebulex.Cache.QueryableTest
-    end
-  end
-end
