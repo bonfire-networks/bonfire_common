@@ -1,4 +1,4 @@
-arrows = "~> 0.1"
+arrows = "~> 0.2"
 untangle = "~> 0.3" # log/inspect with code location
 
 needle_ulid = "~> 0.3"
