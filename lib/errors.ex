@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Errors do
-  import Untangle
+  import Untangle, except: [format_stacktrace_entry: 1, format_location: 2, format_location: 1]
   require Logger
   import Bonfire.Common.Extend
   alias Bonfire.Common.Config

@@ -120,6 +120,9 @@ defmodule Bonfire.Common.Utils do
       %{current_user: %{id: _} = user} ->
         user
 
+      %{current_user: nil} ->
+        nil
+
       # %{current_user: id} when is_binary(id) ->
       #   Cache.get!("current_user:#{id}") || %{id: id}
 
@@ -157,6 +160,9 @@ defmodule Bonfire.Common.Utils do
       {:current_user, user} ->
         current_user(user, true)
 
+      {:current_user, nil} ->
+        nil
+
       nil ->
         nil
 
@@ -165,17 +171,21 @@ defmodule Bonfire.Common.Utils do
 
       _ ->
         if !empty?(current_user_or_socket_or_opts) do
-          warn(
+          debug(
             current_user_or_socket_or_opts,
-            "No current_user found, will fallback to looking for a current_user_id"
+            "No current_user found, will fallback to looking for a current_user_id",
+            trace_skip: if(recursing, do: 2, else: 1)
           )
 
           current_user_id(current_user_or_socket_or_opts, :skip)
         end
     end ||
       (
-        if recursing != true,
-          do: debug(Types.typeof(current_user_or_socket_or_opts), "No current_user found in")
+        if !recursing,
+          do:
+            debug(Types.typeof(current_user_or_socket_or_opts), "No current_user found in",
+              trace_skip: 1
+            )
 
         nil
       )
@@ -186,10 +196,13 @@ defmodule Bonfire.Common.Utils do
   """
   def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
-      %{current_user_id: id} = _options ->
+      %{current_user_id: id} ->
         Types.ulid(id)
 
-      # %{user_id: id} = _options ->
+      %{current_user_id: nil} ->
+        nil
+
+      # %{user_id: id} ->
       #   Types.ulid(id)
 
       %{assigns: %{} = assigns} = _socket ->
@@ -226,7 +239,7 @@ defmodule Bonfire.Common.Utils do
             |> Types.ulid()
     end ||
       (
-        if recursing != true,
+        if !recursing,
           do:
             debug(
               Types.typeof(current_user_or_socket_or_opts),
@@ -323,23 +336,29 @@ defmodule Bonfire.Common.Utils do
                 account_id
 
               _ ->
-                debug(Enums.id(user), "no account in current_user")
+                debug(Enums.id(user), "no account in current_user",
+                  trace_skip: if(recursing, do: 2, else: 1)
+                )
+
                 nil
             end
         end ||
           (
             debug(
-              # other,
-              "No current_account found, will fallback to looking for a current account_id"
+              other,
+              "No current_account found, will fallback to looking for a current account_id",
+              trace_skip: if(recursing, do: 2, else: 1)
             )
 
             current_account_id(other, :skip)
           )
     end ||
       (
-        if recursing != true,
+        if !recursing,
           do:
-            debug(Types.typeof(current_account_or_socket_or_opts), "No current_account found in")
+            debug(Types.typeof(current_account_or_socket_or_opts), "No current_account found in",
+              trace_skip: 1
+            )
 
         nil
       )
@@ -368,8 +387,14 @@ defmodule Bonfire.Common.Utils do
       %{current_account_id: account_id} when is_binary(account_id) ->
         current_account_id(account_id, true)
 
+      %{current_account_id: nil} ->
+        nil
+
       {:current_account_id, account_id} ->
         current_account_id(account_id, true)
+
+      {:current_account_id, nil} ->
+        nil
 
       %{current_user: %{account: %{id: account_id}}} ->
         account_id
@@ -390,11 +415,12 @@ defmodule Bonfire.Common.Utils do
             |> Types.ulid()
     end ||
       (
-        if recursing != true,
+        if !recursing,
           do:
             debug(
               Types.typeof(current_account_or_socket_or_opts),
-              "No current_account_id or current_account found in"
+              "No current_account_id or current_account found in",
+              trace_skip: 1
             )
 
         nil

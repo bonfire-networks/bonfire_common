@@ -31,7 +31,7 @@ defmodule Bonfire.Common.Settings do
           {otp_app, keys}
       end
 
-    debug(keys_tree, "Get settings in #{inspect(otp_app)} for")
+    debug(keys_tree, "Get settings in #{inspect(otp_app)} for", trace_skip: 1)
 
     case get_for_ext(otp_app, opts) do
       [] ->
@@ -67,14 +67,14 @@ defmodule Bonfire.Common.Settings do
   def do_get_in(result, keys_tree) do
     if Keyword.keyword?(result) or is_map(result) do
       get_in(result, keys_tree)
-      |> debug(inspect(keys_tree))
+      |> debug(inspect(keys_tree), trace_skip: 2)
     else
-      error(result, "Settings are in an invalid structure and can't be used")
+      error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
       nil
     end
   rescue
     error in FunctionClauseError ->
-      error(error, "get_in failed, try with `e`")
+      error(error, "get_in failed, try with `e`", trace_skip: 2)
       apply(Bonfire.Common.Utils, :e, debug([result] ++ keys_tree ++ [nil]))
   end
 

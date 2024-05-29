@@ -26,6 +26,7 @@ defmodule Bonfire.Common.Enums do
   def id(%{"value" => value}), do: id(value)
   def id(%{pointer: %{id: id}}), do: id
 
+  # TODO: avoid logging each when recursing
   def id(ids) when is_list(ids),
     do: ids |> maybe_flatten() |> Enum.map(&id/1) |> filter_empty(nil)
 
@@ -34,7 +35,7 @@ defmodule Bonfire.Common.Enums do
   def id(id) do
     e = "Expected an ID (or an object with one)"
     # throw {:error, e}
-    debug(id, e)
+    debug(id, e, trace_skip: 1)
     nil
   end
 
