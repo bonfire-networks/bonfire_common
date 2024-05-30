@@ -6,6 +6,7 @@ defmodule Bonfire.Common.RepoTemplate do
       alias Bonfire.Common.Config
       import Config, only: [repo: 0]
       alias Bonfire.Common.Utils
+      alias Bonfire.Common.Types
       alias Bonfire.Common.Errors
 
       use Ecto.Repo,
@@ -298,6 +299,8 @@ defmodule Bonfire.Common.RepoTemplate do
             )
           )
           |> Keyword.update(:limit, 10, fn existing_value ->
+            existing_value = Types.maybe_to_integer(existing_value)
+
             if is_number(opts[:multiply_limit]),
               do: ceil(existing_value * opts[:multiply_limit]),
               else: existing_value

@@ -345,7 +345,7 @@ defmodule Bonfire.Common.Utils do
         end ||
           (
             debug(
-              other,
+              Types.typeof(current_account_or_socket_or_opts),
               "No current_account found, will fallback to looking for a current account_id",
               trace_skip: if(recursing, do: 2, else: 1)
             )
