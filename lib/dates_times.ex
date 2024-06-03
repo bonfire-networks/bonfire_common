@@ -3,34 +3,35 @@ defmodule Bonfire.Common.DatesTimes do
   Date/time helpers
   """
   use Arrows
+  use Bonfire.Common.Localise
   import Untangle
   alias Bonfire.Common.Types
 
   @doc "Takes a ULID ID (or an object with one) or a `DateTime` struct, and turns the date into a relative phrase, e.g. `2 days ago`, using the `Cldr.DateTime` or `Timex` library."
-  def date_from_now(date, opts \\ []) do
-    case to_date(date) do
+  def date_from_now(ulid_or_date, opts \\ []) do
+    case to_date_time(ulid_or_date) do
       nil ->
         nil
 
-      date ->
-        relative_date(date, opts)
+      date_time ->
+        relative_date(date_time, opts)
     end
   end
 
-  def relative_date(date, opts \\ []) do
-    date
+  def relative_date(date_time, opts \\ []) do
+    date_time
     |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
     |> with({:ok, relative} <- ...) do
       relative
     else
       other ->
-        error(date, inspect(other))
-        timex_date_from_now(date)
+        error(date_time, inspect(other))
+        timex_date_from_now(date_time)
     end
   end
 
   def format(date, opts \\ []) do
-    case to_date(date) do
+    case to_date_time(date) do
       nil ->
         nil
 
@@ -46,16 +47,42 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(%DateTime{} = date_time) do
+  def available_format_keys(locale \\ Cldr.get_locale()) do
+    available_formats(locale)
+    |> Keyword.keys()
+  end
+
+  def available_formats(locale \\ Cldr.get_locale()) do
+    Keyword.merge(
+      [short: l("Short"), medium: l("Medium"), long: l("Long"), full: l("Full")],
+      with {:ok, formats} <- Cldr.DateTime.Format.date_time_available_formats(locale) do
+        formats
+        |> Enum.map(fn
+          {key, %{one: str}} -> {key, str}
+          {key, %{unicode: str}} -> {key, str}
+          {key, %{ascii: str}} -> {key, str}
+          #  just in case
+          {key, %{} = map} -> {key, Enum.at(map, 0) |> elem(1)}
+          {key, str} -> {key, str}
+        end)
+      else
+        e ->
+          error(e)
+          %{}
+      end
+    )
+  end
+
+  def to_date_time(%DateTime{} = date_time) do
     date_time
   end
 
-  def to_date(%Date{} = date) do
+  def to_date_time(%Date{} = date) do
     date
     |> DateTime.new!(Time.new!(0, 0, 0))
   end
 
-  def to_date(ts) when is_integer(ts) do
+  def to_date_time(ts) when is_integer(ts) do
     with {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
       date
     else
@@ -65,10 +92,10 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(string) when is_binary(string) and byte_size(string) == 10 do
+  def to_date_time(string) when is_binary(string) and byte_size(string) == 10 do
     case Date.from_iso8601(string) do
       {:ok, date} ->
-        to_date(date)
+        to_date_time(date)
 
       other ->
         error(other)
@@ -76,7 +103,7 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(string) when is_binary(string) do
+  def to_date_time(string) when is_binary(string) do
     if Types.is_ulid?(string) do
       date_from_pointer(string)
     else
@@ -93,29 +120,29 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def to_date(%{id: id}) when is_binary(id),
+  def to_date_time(%{id: id}) when is_binary(id),
     do: date_from_pointer(id)
 
-  def to_date(%{
+  def to_date_time(%{
         "day" => %{"value" => day},
         "month" => %{"value" => month},
         "year" => %{"value" => year}
       }),
-      do: to_date(%{"day" => day, "month" => month, "year" => year})
+      do: to_date_time(%{"day" => day, "month" => month, "year" => year})
 
-  def to_date(%{"day" => day, "month" => month, "year" => year}),
+  def to_date_time(%{"day" => day, "month" => month, "year" => year}),
     do:
       Date.new(
         Types.maybe_to_integer(year),
         Types.maybe_to_integer(month),
         Types.maybe_to_integer(day)
       )
-      ~> to_date()
+      ~> to_date_time()
 
-  def to_date(%{} = object),
+  def to_date_time(%{} = object),
     do: date_from_pointer(object)
 
-  def to_date(_), do: nil
+  def to_date_time(_), do: nil
 
   defp timex_date_from_now(%DateTime{} = date) do
     date
@@ -133,7 +160,7 @@ defmodule Bonfire.Common.DatesTimes do
   def date_from_pointer(object) do
     with id when is_binary(id) <- Bonfire.Common.Types.ulid(object),
          {:ok, ts} <- Needle.ULID.timestamp(id) do
-      to_date(ts)
+      to_date_time(ts)
     else
       e ->
         error(e)
@@ -143,7 +170,7 @@ defmodule Bonfire.Common.DatesTimes do
 
   def maybe_generate_ulid(date_time_or_string) do
     with %DateTime{} = date_time <-
-           to_date(date_time_or_string) |> debug("date"),
+           to_date_time(date_time_or_string) |> debug("date"),
          # only if published in the past
          :lt <-
            DateTime.compare(date_time, DateTime.now!("Etc/UTC")) do
