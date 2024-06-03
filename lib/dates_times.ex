@@ -68,7 +68,7 @@ defmodule Bonfire.Common.DatesTimes do
       else
         e ->
           error(e)
-          %{}
+          []
       end
     )
   end
