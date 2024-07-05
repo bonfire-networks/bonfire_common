@@ -153,19 +153,17 @@ defmodule Bonfire.Common.Enums do
          key,
          fallback
        )
-       when is_map(map) and is_atom(key) do
+       when is_atom(key) do
     if Config.env() == :dev && Config.get(:e_auto_preload, false) do
       warn(
-        "The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the orginal query..."
+        "The `e` function is attempting some handy but dangerous magic by preloading data for you. Performance will suffer if you ignore this warning, as it generates extra DB queries. Please preload all assocs (in this case #{key} of #{schema}) that you need in the original query or somewhere where it won't trigger n+1 performance issues..."
       )
 
       repo().maybe_preload(map, key)
       |> Map.get(key, fallback)
       |> filter_empty(fallback)
     else
-      debug(
-        "Utils.e() requested #{key} of #{schema} but that was not preloaded in the original query."
-      )
+      debug("Utils.e() requested #{inspect(key)} on #{schema} but that assoc was not preloaded")
 
       fallback
     end

@@ -58,6 +58,7 @@ defmodule Bonfire.Common.RepoTemplate do
         )
       rescue
         exception in Postgrex.Error ->
+          rollback("transact_with_unexpected_case")
           handle_postgrex_exception(exception, __STACKTRACE__)
       end
 
@@ -409,14 +410,15 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       defp rollback_error(reason, extra \\ nil) do
-        error(reason, "transact_with_error")
-        if extra, do: debug(extra, "transact_with_error_extra")
+        error(reason, "Rolling back the DB transaction, error reason")
+        if extra, do: info(extra, "Rolling back the DB transaction, error extra details")
         rollback(reason)
       end
 
       defp rollback_unexpected(ret) do
         error(
-          "Repo transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got: #{inspect(ret)}. Rolling back the DB transaction..."
+          ret,
+          "Rolling back the DB transaction, because transaction expected one of `:ok` `{:ok, value}` `{:error, reason}` `{:error, reason, extra}` but got"
         )
 
         rollback("transact_with_unexpected_case")
