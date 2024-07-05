@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Extensions do
-  @prefix "bonfire_"
+  @prefix "bonfire"
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"
 
@@ -47,11 +47,11 @@ defmodule Bonfire.Common.Extensions do
     {feature_extensions, other_deps} =
       Enum.split_with(other_deps, fn dep -> is_bonfire_ext?(dep, @prefix) end)
 
-    feature_extensions =
-      Enum.map(
-        feature_extensions,
-        &Map.put(&1, :extra, Bonfire.Common.ExtensionModule.extension(&1.app))
-      )
+    # feature_extensions =
+    #   Enum.map(
+    #     feature_extensions,
+    #     &Map.put(&1, :extra, Bonfire.Common.ExtensionModule.extension(&1.app))
+    #   )
 
     {schemas, feature_extensions} =
       Enum.split_with(feature_extensions, fn dep -> is_bonfire_ext?(dep, @prefix_data) end)
