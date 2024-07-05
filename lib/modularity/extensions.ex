@@ -32,14 +32,20 @@ defmodule Bonfire.Common.Extensions do
     put
   end
 
+  def all_deps, do: loaded_deps(:flat)
+
   def data() do
-    # use compiled-time cached list
-    deps = loaded_deps(:flat)
+    deps = all_deps()
+
+    required_deps = Bonfire.Application.required_deps()
 
     # TODO: refactor using `Enum.split_with/2`
 
+    {required, other_deps} =
+      Enum.split_with(deps, fn dep -> to_string(dep.app) in required_deps end)
+
     {feature_extensions, other_deps} =
-      Enum.split_with(deps, fn dep -> is_bonfire_ext?(dep, @prefix) end)
+      Enum.split_with(other_deps, fn dep -> is_bonfire_ext?(dep, @prefix) end)
 
     feature_extensions =
       Enum.map(
@@ -57,6 +63,7 @@ defmodule Bonfire.Common.Extensions do
       Enum.split_with(other_deps, fn dep -> is_bonfire_ext?(dep, :git) end)
 
     [
+      required: required,
       feature_extensions: feature_extensions,
       ui: ui,
       schemas: schemas,
