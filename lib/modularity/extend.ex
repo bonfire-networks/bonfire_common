@@ -449,7 +449,7 @@ defmodule Bonfire.Common.Extend do
             case tar_file_code(rel_code_file) do
               {:ok, code} ->
                 # returns code from file in the gzipped packaged in docker image
-                {:ok, code}
+                {:ok, return_file(code)}
 
               _ ->
                 # fallback if no archive
@@ -465,6 +465,14 @@ defmodule Bonfire.Common.Extend do
 
         # |> debug()
     end
+  end
+
+  def return_file(raw) do
+    String.trim(to_string(raw))
+  rescue
+    e in UnicodeConversionError ->
+      warn(e)
+      if is_list(raw), do: List.first(raw), else: raw
   end
 
   def file_code(code_file) do

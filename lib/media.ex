@@ -238,10 +238,15 @@ defmodule Bonfire.Common.Media do
     # |> extract_tar(archive, ...)
     # the above doesn't seem to work so resort to tar command instead
 
-    with {contents, 0} <- System.cmd("tar", ["-xvf", archive, "-O"] ++ List.wrap(file_or_files)) do
-      # FIXME: seems the filename is being included as line 1 of contents
-      {:ok, contents}
-    else
+    case System.cmd("tar", ["-xvf", archive, "-O"] ++ List.wrap(file_or_files)) do
+      {contents, 0} when is_binary(contents) ->
+        # FIXME: seems the filename is being included as line 1 of contents
+        {:ok, String.split(contents, file_or_files)}
+
+      {contents, 0} ->
+        # FIXME: seems the filename is being included as line 1 of contents
+        {:ok, contents}
+
       _ ->
         error("File not found")
     end
