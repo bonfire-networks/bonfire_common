@@ -445,25 +445,13 @@ defmodule Bonfire.Common.Extend do
 
           prod? == true ->
             # supports doing this in release by using the code in the gzipped code 
-            tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz")
-            # |> debug()
 
-            with true <- File.exists?(tar_file),
-                 {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, rel_code_file),
-                 {:error, _} <-
-                   code_file_path
-                   |> String.replace("extensions/", "deps/")
-                   |> String.replace("forks/", "deps/")
-                   # |> debug()
-                   |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
-              # fallback if code file not in archive
-              module_beam_code(module, opts)
-            else
+            case tar_file_code(rel_code_file) do
               {:ok, code} ->
                 # returns code from file in the gzipped packaged in docker image
                 {:ok, code}
 
-              false ->
+              _ ->
                 # fallback if no archive
                 module_beam_code(module, opts)
             end
@@ -476,6 +464,33 @@ defmodule Bonfire.Common.Extend do
         ~> {:ok, rel_code_file, ...}
 
         # |> debug()
+    end
+  end
+
+  def file_code(code_file) do
+    case tar_file_code(code_file) do
+      {:ok, code} ->
+        # returns code from file in the gzipped packaged in docker image
+        {:ok, code}
+
+      _ ->
+        # fallback if no archive
+        code_file
+        |> File.read()
+    end
+  end
+
+  def tar_file_code(code_file) do
+    with tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz"),
+         true <- File.exists?(tar_file) || error(tar_file, "Tar file does not exits"),
+         {:error, _} <- Bonfire.Common.Media.read_tar_files(tar_file, code_file),
+         {:error, _} <-
+           code_file
+           |> String.replace("extensions/", "deps/")
+           |> String.replace("forks/", "deps/")
+           # |> debug()
+           |> Bonfire.Common.Media.read_tar_files(tar_file, ...) do
+      error(code_file, "could not find file in code archive")
     end
   end
 
