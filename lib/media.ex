@@ -240,7 +240,6 @@ defmodule Bonfire.Common.Media do
 
     case System.cmd("tar", ["-xvf", archive, "-O"] ++ List.wrap(file_or_files)) do
       {contents, 0} when is_binary(contents) ->
-        # FIXME: seems the filename is being included as line 1 of contents
         {:ok, String.split(contents, file_or_files)}
 
       {contents, 0} ->
