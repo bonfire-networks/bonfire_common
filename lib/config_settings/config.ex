@@ -74,12 +74,23 @@ defmodule Bonfire.Common.Config do
     get(keys_tree, default, otp_app)
   end
 
-  def get([key], default, otp_app), do: get(key, default, otp_app)
+  if Application.compile_env!(:bonfire, :env) == :test do
+    # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
+    def get(keys, default, otp_app) when is_list(keys),
+      do: ProcessTree.get([otp_app] ++ keys) || get_config(keys, default, otp_app)
 
-  def get([parent_key | keys], default, otp_app) do
+    def get(key, default, otp_app),
+      do: ProcessTree.get([otp_app, key]) || get_config(key, default, otp_app)
+  else
+    def get(keys, default, otp_app), do: get_config(keys, default, otp_app)
+  end
+
+  defp get_config([key], default, otp_app), do: get_config(key, default, otp_app)
+
+  defp get_config([parent_key | keys], default, otp_app) do
     # debug("get [#{inspect parent_key}, #{inspect keys}] from #{otp_app} or default to #{inspect default}")
     case otp_app
-         |> Application.get_env(parent_key)
+         |> app_get_env(parent_key)
          |> get_in(keys) do
       nil ->
         default
@@ -89,7 +100,11 @@ defmodule Bonfire.Common.Config do
     end
   end
 
-  def get(key, default, otp_app) do
+  defp get_config(key, default, otp_app) do
+    app_get_env(otp_app, key, default)
+  end
+
+  defp app_get_env(otp_app, key, default \\ nil) do
     Application.get_env(otp_app, key, default)
   end
 
