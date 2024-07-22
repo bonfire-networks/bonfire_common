@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.Media do
-  @moduledoc "Helpers for handling images and media URLs"
+  @moduledoc "Helpers for handling images and other media"
+
   use Arrows
   import Untangle
   alias Bonfire.Common

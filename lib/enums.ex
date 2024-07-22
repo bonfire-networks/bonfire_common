@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Enums do
   @moduledoc "Extra functions to manipulate enumerables, basically an extension of `Enum`"
+
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]

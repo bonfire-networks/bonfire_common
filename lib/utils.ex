@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Utils do
   @moduledoc """
   Various very commonly used utility functions for the Bonfire application.
 
-  This module should contain only a few generic and/or heavily-used functions, and any other functions should be in more specific modules or even other extensions, for e.g.: 
+  This module should contain only a few generic and/or heavily-used functions, and any other functions should be in more specific modules (or in other extensions altogether) for e.g.: 
   - `Bonfire.Common.Enums` for functions around maps, structs, keyword lists, and the like
   - `Bonfire.Common.Types` for object types
   - `Bonfire.Common.URIs` and `Linkify` for URI handling

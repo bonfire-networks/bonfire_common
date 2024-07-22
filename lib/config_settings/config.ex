@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Config do
+  @moduledoc "Helpers to get app/extension OTP config, or to override a config key. Basically a wrapper of `Application.get_env/3` and `Application.put_env/3`."
+
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
   alias Bonfire.Common.Enums

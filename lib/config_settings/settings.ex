@@ -1,4 +1,18 @@
 defmodule Bonfire.Common.Settings do
+  @moduledoc """
+  Helpers to get app/extension settings, or to override a config key. 
+
+  Fetching a setting follows a bottom-up system of overrides: 
+
+  1. if `opts` contains a `current_user`, check user settings
+  2. if no settings found, and if `opts` contains a `current_account`, check account settings
+  3. if no settings found, check instance settings *
+  4. if no settings found, act as a wrapper of `Bonfire.Common.Config` (i.e. check OTP config / application env)
+  5. if no settings found, use `default` param
+
+  > * Note: any instance settings changed using the UI are stored both in the database and OTP app config / application env, and on app startup all settings are queried and copied into OTP app config / application env (see `Bonfire.Common.Settings.LoadInstanceConfig`), so step 3 is actually rolled into step 4
+  """
+
   use Bonfire.Common.Utils
   use Bonfire.Common.Repo
   # import Bonfire.Me.Integration
@@ -6,7 +20,7 @@ defmodule Bonfire.Common.Settings do
   alias Bonfire.Common.Config
 
   @doc """
-  Get config value for a config key (optionally from a specific OTP app or Bonfire extension)
+  Get settings value for a config key (optionally from a specific OTP app or Bonfire extension)
 
   These two calls have the same result (i.e. specifying a module as the first key will add the OTP app of that module as the first key):
   `get([:bonfire_me, Bonfire.Me.Users])`

@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Repo.Delete do
+  @moduledoc "Helpers for deleting Ecto data"
+
   import Untangle
 
   import Bonfire.Common.Config, only: [repo: 0]

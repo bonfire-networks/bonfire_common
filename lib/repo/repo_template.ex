@@ -1,4 +1,8 @@
 defmodule Bonfire.Common.RepoTemplate do
+  @moduledoc """
+  Common functions useful in Ecto Repos
+  """
+
   use Arrows
 
   defmacro __using__(_) do

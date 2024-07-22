@@ -1,15 +1,13 @@
 defmodule Bonfire.Common.Repo.Preload do
   @moduledoc """
-  Preload helpers for Ecto Repo
+  Helpers for preloading Ecto struct associations
   """
 
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Cache
 
-  use Ecto.Repo,
-    otp_app: Bonfire.Common.Config.get!(:otp_app),
-    adapter: Ecto.Adapters.Postgres
+  use Bonfire.Common.Repo
 
   # import Ecto.Query
   import Untangle

@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.RuntimeConfig do
+  @moduledoc "Config and helpers for this library"
+
   import Untangle
 
   @behaviour Bonfire.Common.ConfigModule

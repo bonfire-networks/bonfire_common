@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Settings.LoadInstanceConfig do
   @moduledoc """
-  Loads instance Settings from DB into Elixir's Config
+  Loads instance Settings (see `Bonfire.Common.Settings`) from DB into OTP config / application env (see `Bonfire.Common.Config`)
 
   While this module is a GenServer, it is only responsible for querying the settings, putting them in Config, and then exits with :ignore having done so.
   """

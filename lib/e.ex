@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.E do
-  @moduledoc "Helper to extract nested data from an object"
-  import Untangle
+  @moduledoc "Helper to extract data nested in an object"
 
+  import Untangle
   alias Bonfire.Common
   alias Bonfire.Common.Enums
 

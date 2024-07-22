@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Modularity.DeclareHelpers do
+  @moduledoc "Helpers for declaring the existence for an extension (i.e. so it gets included in extension settings and nav)"
+
   # alias Bonfire.Common.Extend
 
   defmacro declare_extension(name, opts \\ []) do

@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Needles.Preload do
+  @moduledoc "Helpers for preloading `Needle` Pointer associations. See also `Bonfire.Common.Repo.Preload`"
+
   # import Bonfire.Common.Config, only: [repo: 0]
   # alias Bonfire.Common.Utils
   alias Bonfire.Common.Enums

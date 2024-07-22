@@ -1,4 +1,5 @@
 defmodule Bonfire.Common.Types do
+  @moduledoc "Helpers for handling the type of objects (structs and more)"
   use Untangle
   import Bonfire.Common.Extend
   require Bonfire.Common.Localise.Gettext

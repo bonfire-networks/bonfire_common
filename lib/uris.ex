@@ -1,4 +1,5 @@
 defmodule Bonfire.Common.URIs do
+  @moduledoc "URI/URL/path helpers"
   import Untangle
   use Arrows
   import Bonfire.Common.Extend

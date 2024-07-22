@@ -1,4 +1,10 @@
 defmodule Bonfire.Common.TestInstanceRepo do
+  @moduledoc """
+  Special Ecto Repo used for federation testing.
+
+  Note: more generic functions are defined in `Bonfire.Common.RepoTemplate`
+  """
+
   use Bonfire.Common.RepoTemplate
   require Logger
   alias Bonfire.Common.Config

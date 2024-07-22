@@ -1,6 +1,8 @@
 defmodule Bonfire.Common.Repo do
   @moduledoc """
-  Ecto Repo and related common functions
+  Main Ecto Repo.
+
+  Note: functions are defined in `Bonfire.Common.RepoTemplate`
   """
   use Bonfire.Common.RepoTemplate
 

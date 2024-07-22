@@ -1,5 +1,5 @@
-# WIP: Nebulex disk adapter based on https://hexdocs.pm/nebulex/creating-new-adapter.html and https://hexdocs.pm/cachex/Cachex.Disk.html 
 defmodule Nebulex.DiskAdapter.DiskCacheHelper do
+  @moduledoc "WIP: Nebulex disk adapter based on https://hexdocs.pm/nebulex/creating-new-adapter.html and https://hexdocs.pm/cachex/Cachex.Disk.html"
   use GenServer
   import Logger
 

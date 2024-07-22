@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Extensions.Diff do
+  @moduledoc "Generate diffs of code in git repos"
+
   import Untangle
   use Bonfire.Common.Localise
 

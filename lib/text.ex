@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Text do
+  @moduledoc "Helpers for handling plain or rich text (markdown, HTML, etc)"
+
   use Bonfire.Common.Utils
   # import Untangle
 

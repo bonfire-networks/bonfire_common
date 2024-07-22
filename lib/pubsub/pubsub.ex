@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.PubSub do
+  @moduledoc "Pub/sub helpers for subscribing and broadcasting to topics"
+
   import Untangle
   use Bonfire.Common.Utils
   alias Bonfire.Common.Config

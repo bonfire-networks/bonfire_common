@@ -1,5 +1,6 @@
-# WIP: Nebulex disk adapter based on https://hexdocs.pm/nebulex/creating-new-adapter.html and https://hexdocs.pm/cachex/Cachex.Disk.html 
 defmodule Nebulex.DiskAdapter do
+  @moduledoc "WIP: Nebulex disk adapter based on https://hexdocs.pm/nebulex/creating-new-adapter.html and https://hexdocs.pm/cachex/Cachex.Disk.html"
+
   @behaviour Nebulex.Adapter
   @behaviour Nebulex.Adapter.Entry
   @behaviour Nebulex.Adapter.Queryable

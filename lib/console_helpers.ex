@@ -1,4 +1,5 @@
 defmodule ConsoleHelpers do
+  @moduledoc "Handy aliases and imports to add to your iex CLI session"
   defmacro __using__(_) do
     quote do
       alias Bonfire.Data

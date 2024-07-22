@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Needles.Tables do
+  @moduledoc "Helpers for querying `Needle` types/tables"
+
   use Arrows
   import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]

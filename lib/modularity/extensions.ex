@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Extensions do
+  @moduledoc "Helpers for managing Bonfire extensions, eg. enabling/disabling a module or extension, or listing available extensions and their metadata."
+
   @prefix "bonfire"
   @prefix_ui "bonfire_ui_"
   @prefix_data "bonfire_data_"

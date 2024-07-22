@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Simulation do
+  @moduledoc "Fake data generators"
+
   use Bonfire.Common.Localise
 
   @integer_min -32768

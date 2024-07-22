@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.Needles do
+  @moduledoc "Helpers for handling `Needle` Pointers"
+
   use Arrows
   import Untangle
   import Bonfire.Common.Config, only: [repo: 0]

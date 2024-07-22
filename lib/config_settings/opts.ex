@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Opts do
+  @moduledoc "Helpers to handle functions' `opts` parameter (usually a `Keyword` list)"
+
   import Untangle
   alias Bonfire.Common
   alias Bonfire.Common.E

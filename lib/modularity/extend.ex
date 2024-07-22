@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Extend do
+  @moduledoc "Helpers for using and managing the extensibility of Bonfire, eg. checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`"
+
   use Arrows
   require Logger
   use Untangle
