@@ -8,8 +8,40 @@ defmodule Bonfire.Common.Opts do
   alias Bonfire.Common.Types
 
   @doc """
-  Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
+  Converts various types of input (e.g. map, user, socket, tuple) into a standardized keyword list for use as function options.
+
+  This function handles different types of inputs and converts them to keyword lists. The conversion logic includes:
+
+  - Extracting assigns from Phoenix socket maps, dropping specific keys.
+  - Wrapping user structs into a keyword list with the key `:current_user`.
+  - Wrapping other structs into a keyword list with the key `:context`.
+  - Converting tuples, maps, and lists into keyword lists or wrapping them as context.
+
+  ## Examples
+
+      iex> to_options(%{assigns: %{user: "user_data"}})
+      [user: "user_data"]
+
+      iex> to_options(%Bonfire.Data.Identity.User{})
+      [current_user: %Bonfire.Data.Identity.User{}]
+
+      iex> to_options(%{key: "value"})
+      [key: "value"]
+
+      iex> to_options({:key, "value"})
+      [key: "value"]
+
+      iex> to_options([{:key, "value"}])
+      [{:key, "value"}]
+
+      iex> to_options(%{other: "data"})
+      [other: "data"]
+      
+      iex> to_options(%{"non_existing_other"=> "data"})
+      [__item_discarded__: true]
+
   """
+
   def to_options(user_or_socket_or_opts) do
     case user_or_socket_or_opts do
       %{assigns: %{} = assigns} = _socket ->
@@ -43,8 +75,32 @@ defmodule Bonfire.Common.Opts do
   end
 
   @doc """
-  Returns the value of a key from options keyword list or map, or a fallback if not present or empty.
+  Retrieves the value associated with a key from options (list or map), or returns a fallback if the key is not present or if the value is empty.
+
+  This function looks for the key in the options and returns its value if present. If the key is not found or the value is empty, it returns the provided fallback value.
+
+  ## Examples
+
+      iex> maybe_from_opts([key: "value"], :key, "default")
+      "value"
+
+      iex> maybe_from_opts([key: nil], :key, "default")
+      "default"
+
+      iex> maybe_from_opts(%{key: "value"}, :key, "default")
+      "value"
+
+      iex> maybe_from_opts(%{missing_key: "value"}, :key, "default")
+      "default"
+
+      iex> maybe_from_opts([context: %{key: "value"}], :key, "default")
+      "default"
+
+      iex> maybe_from_opts([context: %{key: "value"}], :key, "default")
+      "default"
+
   """
+
   def maybe_from_opts(opts, key, fallback \\ nil)
 
   def maybe_from_opts(opts, key, fallback)

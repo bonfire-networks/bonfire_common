@@ -1,9 +1,25 @@
 defmodule Bonfire.Common.Extensions.Diff do
-  @moduledoc "Generate diffs of code in git repos"
-
+  @moduledoc """
+  Provides functionality to generate and parse diffs from git repositories.
+  """
   import Untangle
   use Bonfire.Common.Localise
 
+  @doc """
+  Generates a diff between the specified reference or branch and the latest commit in the repository.
+
+  ## Parameters
+    - `ref_or_branch`: The reference or branch to compare against.
+    - `repo_path`: The path to the repository.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.Diff.generate_diff("main", "./")
+      {:ok, "Diff generated successfully", "...diff content..."}
+
+      > Bonfire.Common.Extensions.Diff.generate_diff("test_fake_branch", "./")
+      {:error, "Could not generate latest diff."}
+  """
   def generate_diff(ref_or_branch, repo_path) when is_binary(repo_path) do
     case repo_latest_diff(ref_or_branch, repo_path) do
       {:ok, msg, diff} ->
@@ -23,6 +39,22 @@ defmodule Bonfire.Common.Extensions.Diff do
       {:error, l("Invalid diff.")}
   end
 
+  @doc """
+  Fetches the latest diff from the specified reference or branch in the repository.
+
+  ## Parameters
+    - `ref_or_branch`: The reference or branch to compare against.
+    - `repo_path`: The path to the repository.
+    - `msg`: Optional message to include with the diff.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.Diff.repo_latest_diff("main", "./")
+      {:ok, "Diff message", "...diff content..."}
+
+      > Bonfire.Common.Extensions.Diff.repo_latest_diff("test_fake_branch", "./")
+      {:error, :no_diff}
+  """
   def repo_latest_diff(ref_or_branch, repo_path, msg \\ nil) when is_binary(repo_path) do
     path_diff = tmp_path(Regex.replace(~r/[^a-z0-9_]+/i, repo_path, "_"))
 
@@ -54,6 +86,20 @@ defmodule Bonfire.Common.Extensions.Diff do
     end
   end
 
+  @doc """
+  Parses the latest diff from the specified path. See `GitDiff.parse_patch/1` for details about what it outputs.
+
+  ## Parameters
+    - `path_diff`: The path to the file containing the diff.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.Diff.parse_repo_latest_diff("./path/to/diff.patch")
+      {:ok, ...}
+
+      > Bonfire.Common.Extensions.Diff.parse_repo_latest_diff("./path/to/empty.patch")
+      {:error, :no_diff}
+  """
   def parse_repo_latest_diff(path_diff) when is_binary(path_diff) do
     with diff when is_binary(diff) and diff != "" <- File.read!(path_diff) do
       # |> debug("path_diff")
@@ -67,6 +113,18 @@ defmodule Bonfire.Common.Extensions.Diff do
     end
   end
 
+  @doc """
+  Analyzes the diff stream from the specified path.
+
+  This function streams the diff data and processes it as it becomes available. See `GitDiff.stream_patch/1` for details on the expected output.
+
+  ## Parameters
+    - `path_diff`: The path to the file containing the diff.
+
+  ## Examples
+
+      > {:ok, stream} = Bonfire.Common.Extensions.Diff.analyse_repo_latest_diff_stream("./path/to/diff.patch")
+  """
   def analyse_repo_latest_diff_stream(path_diff) do
     # TODO: figure out how to stream the data to LiveView as it becomes available, in which case use this function instead of `parse_repo_latest_diff`
     stream =
@@ -97,6 +155,19 @@ defmodule Bonfire.Common.Extensions.Diff do
     git!(["add", "."], repo_path)
   end
 
+  @doc """
+  Generates a diff and saves it to the specified output path.
+
+  ## Parameters
+    - `ref_or_branch`: The reference or branch to compare against.
+    - `repo_path`: The path to the repository.
+    - `path_output`: The path where the diff output will be saved.
+    - `extra_opt`: Optional extra options for git diff command.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.Diff.git_generate_diff("main", "./", "./data/test_output.patch")
+  """
   def git_generate_diff(ref_or_branch, repo_path, path_output, extra_opt \\ "--cached") do
     git!(
       [
@@ -116,6 +187,19 @@ defmodule Bonfire.Common.Extensions.Diff do
     )
   end
 
+  @doc """
+  Executes a git command with the specified arguments.
+
+  ## Parameters
+    - `args`: The list of arguments for the git command.
+    - `repo_path`: The path to the repository.
+    - `into`: Optional destination for command output (defaults to standard output)
+    - `original_cwd`: The original working directory.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.Diff.git!(["status"], "./")
+  """
   def git!(args, repo_path \\ ".", into \\ default_into(), original_cwd \\ root())
       when is_list(args) do
     args = ["-C", Path.join(original_cwd, repo_path)] ++ args

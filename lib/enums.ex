@@ -59,6 +59,26 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
+  Updates a nested map using a list of keys and a value to set. It returns a new map with the updated value at the specified location.
+
+  ## Examples
+
+      iex> map_put_in(%{}, [:a, :b, :c], 3)
+      %{a: %{b: %{c: 3}}}
+
+  ## Parameters
+    * `root` - The initial map (can be an empty map or a populated one).
+    * `keys` - A list of keys specifying the path to the value.
+    * `value` - The value to set at the specified location.
+  """
+  def map_put_in(root \\ %{}, keys, value) do
+    # root = %{} or non empty map
+    # keys = [:a, :b, :c]
+    # value = 3
+    put_in(root, Enum.map(keys, &Access.key(&1, %{})), value)
+  end
+
+  @doc """
   Attempt getting a value out of a map by atom key, or try with string key, or return a fallback
   """
   def enum_get(map, key, fallback \\ nil)

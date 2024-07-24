@@ -40,31 +40,23 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   By using [Gettext](https://hexdocs.pm/gettext),
   your module gains a set of macros for translations, for example:
 
-      import Bonfire.Common.Localise.Gettext
 
-      # Simple translation
+  # Simple translation
 
-      usage:
-        <%= l("Hello") %>
-        <%= l("Hello %{name}", name: "Bookchin") %>
-        <%= l("Hi", [], "test context") %>
-
-
-      output:
-        Hello
-        Hello Bookchin
-        Hi
+  iex> l("Hello")
+  "Hello"
+  iex> l("Hello %{name}", name: "Bookchin")
+  "Hello Bookchin"
+  iex> l("Hi", [], "test context")
+  "Hi"
 
 
-      # Plural translation
+  # Plural translation
 
-      usage:
-        <%= lp("Hi friend", "Hi friends", 2) %>
-        <%= lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context") %>
-
-      output:
-        Hi friends
-        Hiya Bookchin
+  iex> lp("Hi friend", "Hi friends", 2)
+  "Hi friends"
+  iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
+  "Hiya Bookchin"
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for details.
   """
@@ -74,6 +66,28 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   import Bonfire.Common.Localise.Gettext
   use Untangle
 
+  @doc """
+  Translates a string with optional bindings, context, and domain.
+
+  This macro provides translation capabilities based on Gettext. It determines the appropriate domain and context for the translation.
+
+  ## Examples
+
+  ```elixir
+  iex> l("Hello")
+  "Hello"
+  iex> l("Hello %{name}", name: "Bookchin")
+  "Hello Bookchin"
+  iex> l("Hi", [], "test context")
+  "Hi"
+  ```
+
+  ## Parameters
+    * `msgid` - The text or message ID to be translated.
+    * `bindings` - (Optional) A list or map of bindings to interpolate in the message.
+    * `context` - (Optional) A context for the translation.
+    * `domain` - (Optional) A domain for the translation.
+  """
   defmacro l(original_text_or_id, bindings \\ [], context \\ nil, domain \\ nil)
 
   defmacro l(msgid, bindings, nil, nil)
@@ -140,8 +154,28 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
             )
   end
 
-  ### Localisation with pluralisation ###
+  @doc """
+  Translates a plural text with optional bindings, context, and domain.
 
+  This macro provides plural translation capabilities based on Gettext. It determines the appropriate domain and context for the translation.
+
+  ## Examples
+
+  ```elixir
+  iex> lp("Hi friend", "Hi friends", 2)
+  "Hi friends"
+  iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
+  "Hiya Bookchin"
+  ```
+
+  ## Parameters
+    * `msgid` - The singular message id to be translated.
+    * `msgid_plural` - The plural message id to be translated.
+    * `n` - The number used to determine singular or plural form.
+    * `bindings` - (Optional) A list or map of bindings to interpolate in the message.
+    * `context` - (Optional) A context for the translation.
+    * `domain` - (Optional) A domain for the translation.
+  """
   defmacro lp(
              original_text_or_id,
              msgid_plural,
@@ -245,6 +279,22 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
             )
   end
 
+  @doc """
+  Dynamically localises a text. This function is useful for localising strings only known at runtime (when you can't use the `l` or `lp` macros).
+
+  ## Examples
+
+  ```elixir
+  iex> localise_dynamic("some_message_id")
+  "some_message_id"
+  iex> localise_dynamic("some_message_id", MyApp.MyModule)
+  "some_message_id"
+  ```
+
+  ## Parameters
+    * `msgid` - The message id to be localized.
+    * `caller_module` - (Optional) The module from which the call originates.
+  """
   # @decorate time()
   def localise_dynamic(msgid, caller_module \\ nil) do
     otp_app = caller_app(caller_module) || :bonfire
@@ -257,8 +307,24 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   @doc """
-  Localise a list of strings at compile time
+  Localizes a list of strings at compile time.
+
+  This macro evaluates the list of strings and localizes each string based on the domain derived from the caller module. This is useful if you want to provide a list of strings at compile time that will later be used at runtime by `localise_dynamic/2`.
+
+  ## Examples
+
+  ```elixir
+  iex> localise_strings(["hello", "world"])
+  ["hello", "world"]
+  iex> localise_strings(["hello", "world"], MyApp.MyModule)
+  ["hello", "world"]
+  ```
+
+  ## Parameters
+    * `strings` - A list of strings to be localized.
+    * `caller_module` - (Optional) The module from which the call originates.
   """
+
   defmacro localise_strings(strings, caller_module \\ nil) do
     {strings, _} = Code.eval_quoted(strings)
     {caller_module, _} = Code.eval_quoted(caller_module)

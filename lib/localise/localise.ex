@@ -11,6 +11,15 @@ defmodule Bonfire.Common.Localise do
     end
   end
 
+  @doc """
+  Gets the default locale from the configuration or returns "en".
+
+  ## Examples
+
+      iex> default_locale()
+      "en"
+
+  """
   def default_locale,
     do:
       Bonfire.Common.Config.get(
@@ -18,6 +27,15 @@ defmodule Bonfire.Common.Localise do
         "en"
       )
 
+  @doc """
+  Gets the known locales from the Cldr module.
+
+  ## Examples
+
+      > known_locales()
+      [:en, :es, :fr]
+
+  """
   def known_locales do
     Bonfire.Common.Localise.Cldr.known_locale_names()
     # ([default_locale()]
@@ -26,6 +44,14 @@ defmodule Bonfire.Common.Localise do
     # |> Enum.uniq()
   end
 
+  @doc """
+  Gets the current locale from the Cldr module.
+
+  ## Examples
+
+      iex> get_locale()
+      Bonfire.Common.Localise.Cldr.Locale.new!("en")
+  """
   def get_locale() do
     # Cldr locale
     Bonfire.Common.Localise.Cldr.get_locale()
@@ -34,11 +60,29 @@ defmodule Bonfire.Common.Localise do
     # Gettext.get_locale(Bonfire.Common.Localise.Gettext)
   end
 
+  @doc """
+  Gets the current locale ID.
+
+  ## Examples
+
+      iex> get_locale_id()
+      :en
+
+  """
   def get_locale_id() do
     locale = get_locale()
     Utils.e(locale, :cldr_locale_name, locale)
   end
 
+  @doc """
+  Sets the given locale for both Cldr and Gettext.
+
+  ## Examples
+
+      iex> put_locale("es")
+      nil
+
+  """
   def put_locale(locale) do
     # change Cldr locale
     Bonfire.Common.Localise.Cldr.put_locale(locale)
@@ -53,6 +97,17 @@ defmodule Bonfire.Common.Localise do
     # Enum.each(Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :extra_gettext], []), & Gettext.put_locale(&1, to_string(locale)) )
   end
 
+  @doc """
+  Converts a locale atom to its string representation.
+
+  ## Examples
+
+      iex> locale_name(:en)
+      "English"
+      iex> locale_name("fr")
+      "French"
+
+  """
   def locale_name(locale) when is_atom(locale),
     do: Atom.to_string(locale) |> locale_name()
 
@@ -71,6 +126,7 @@ defmodule Bonfire.Common.Localise do
     end
   end
 
+  @doc "Config for the `Cldr.Plug.SetLocale` plug"
   def set_locale_config() do
     [
       default: Bonfire.Common.Localise.default_locale(),

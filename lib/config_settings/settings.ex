@@ -1,16 +1,24 @@
 defmodule Bonfire.Common.Settings do
   @moduledoc """
-  Helpers to get app/extension settings, or to override a config key. 
+  Helpers to get app/extension settings, or to override a config key.
 
-  Fetching a setting follows a bottom-up system of overrides: 
+  This module provides functionality for fetching and updating application and extension settings. The process for fetching settings follows a bottom-up system of overrides:
 
-  1. if `opts` contains a `current_user`, check user settings
-  2. if no settings found, and if `opts` contains a `current_account`, check account settings
-  3. if no settings found, check instance settings *
-  4. if no settings found, act as a wrapper of `Bonfire.Common.Config` (i.e. check OTP config / application env)
-  5. if no settings found, use `default` param
+  1. **User-specific settings:** 
+    If `opts` contains `current_user`, settings are fetched from the user's settings.
 
-  > * Note: any instance settings changed using the UI are stored both in the database and OTP app config / application env, and on app startup all settings are queried and copied into OTP app config / application env (see `Bonfire.Common.Settings.LoadInstanceConfig`), so step 3 is actually rolled into step 4
+  2. **Account-specific settings:** 
+    If no settings are found for the user and `opts` contains `current_account`, settings are fetched from the account's settings.
+
+  3. **Instance-specific settings:** 
+     NOTE: Changes to instance settings are stored both in the database and the OTP app config/application environment, and are loaded from the DB into OTP config at app startup by `Bonfire.Common.Settings.LoadInstanceConfig`.
+
+  4. **Default OTP config:** 
+    If no settings are found at the user or account level, instance settings are loaded from OTP application configuration via `Bonfire.Common.Config`.
+
+  5. **Default value:** 
+    If no settings are found in the previous steps, the provided `default` value is returned.
+
   """
 
   use Bonfire.Common.Utils
@@ -29,6 +37,47 @@ defmodule Bonfire.Common.Settings do
   Same with these two (i.e. not specifying a module or app as the first key will default to the main OTP app):
   `get([:random_atom, :sub_key])`
   `get([:bonfire, :random_atom, :sub_key])`
+  """
+
+  @doc """
+  Retrieves the setting value for a given config key or nested key path.
+
+  As explained above, this function checks settings in the following order:
+  1. **User settings** (if `opts` contains `current_user`).
+  2. **Account settings** (if `opts` contains `current_account` and no user settings are found).
+  3. **Instance settings**.
+  4. **OTP application config (includes compile time and runtime config)**.
+  5. **Default value** (if no settings are found).
+
+  ## Examples
+
+      iex> get(:test_key)
+      "test_value"
+
+      iex> get([:non_existing_extension, :sub_key])
+      nil
+
+      iex> get(:non_existing_key, "default")
+      "default"
+
+      iex> get(:otp_app)
+      :bonfire
+
+      iex> get([:bonfire_common, :otp_app])
+      :bonfire
+      
+      iex> get([:bonfire_common, :otp_app])
+      :bonfire
+
+      iex> get([Bonfire.Common.Localise.Cldr, :gettext])
+      Bonfire.Common.Localise.Gettext
+
+      iex> get([:bonfire_common, Bonfire.Common.Localise.Cldr, :gettext])
+      Bonfire.Common.Localise.Gettext
+
+  ## Options
+    * `:otp_app` - Optionally specifies the OTP application for which to fetch settings. If none is specified, it will look at the (first) key and check if it references a known OTP application (i.e. an extension) or a module, in which case it will fetch settings from that application. Otherwise it will look in the configured top-level OTP app (see `Config.top_level_otp_app/0`). 
+    * `:scope` - Optionally defines the scope for settings retrieval (e.g., `:user`, `:account`, or `:instance`).
   """
   def get(key, default \\ nil, opts \\ [])
 
@@ -68,7 +117,20 @@ defmodule Bonfire.Common.Settings do
     get([key], default, opts)
   end
 
-  def get!(key, opts) do
+  @doc """
+  Retrieves the setting value for a given config key like in `get/3`, but raises an exception if the key is not found, ensuring that the setting must be present.
+
+  ## Examples
+
+      iex> get!(:test_key)
+      "test_value"
+
+      iex> get!(:non_existing_key)
+      ** (RuntimeError) Missing setting or configuration value: :non_existing_key
+
+  """
+
+  def get!(key, opts \\ []) do
     case get(key, nil, opts) do
       nil ->
         raise "Missing setting or configuration value: #{inspect(key, pretty: true)}"
@@ -317,12 +379,34 @@ defmodule Bonfire.Common.Settings do
   end
 
   @doc """
-  Put a setting using a key like `:key` or list of nested keys like `[:top_key, :sub_key]`
+  Sets a value for a specific key or list of nested keys.
+
+  This function updates the configuration with the provided value. You can specify a single key or a list of nested keys.
+
+  ## Examples
+
+      # when no scope or current_user are passed in opts:
+      iex> put(:some_key, "new_value")
+      {:error, "You need to be authenticated to change settings."}
+
+      # when the scope is :instance but an admin isn't passed as current_user in opts:
+      iex> put(:some_key, "new_value", scope: :instance)
+      ** (Bonfire.Fail) You do not have permission to change instance settings. Please contact an admin.
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = put(:some_key, "new_value", skip_boundary_check: true, scope: :instance)
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = put([:top_key, :sub_key], "new_value", skip_boundary_check: true, scope: "instance")
+
+  ## Options
+    * `:otp_app` - Specifies the OTP application for which to set settings. If not specified, it decides where to put it using the same logic as `get/3`.
+    * `:scope` - Defines the scope for settings (e.g., `:user`, `:account`, or `:instance`).
   """
+  def put(keys, value, opts \\ [])
+
   def put(keys, value, opts) when is_list(keys) do
     # keys = Config.keys_tree(keys) # Note: doing this in set/2 instead
     # |> debug("Putting settings for")
-    map_put_in(keys, value)
+    Enums.map_put_in(keys, value)
     |> debug("map_put_in")
     |> input_to_atoms(
       discard_unknown_keys: true,
@@ -338,18 +422,24 @@ defmodule Bonfire.Common.Settings do
 
   def put(key, value, opts), do: put([key], value, opts)
 
-  def map_put_in(root \\ %{}, keys, value) do
-    # root = %{} or non empty map
-    # keys = [:a, :b, :c]
-    # value = 3
-    put_in(root, Enum.map(keys, &Access.key(&1, %{})), value)
-  end
-
   @doc """
-  Set several settings at once.
-  Accepts nested attributes as map with string keys (which are transformed into keyword list), or a keyword list.
-  Determines what scope to use & sets/updates settings for it.
+  Sets multiple settings at once.
+
+  This function accepts a map or keyword list of settings to be updated. It determines the appropriate scope and updates the settings accordingly.
+
+  ## Examples
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = set(%{some_key: "value", another_key: "another_value"}, skip_boundary_check: true, scope: :instance)
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = set([some_key: "value", another_key: "another_value"], skip_boundary_check: true, scope: "instance")
+
+  ## Options
+    * `:otp_app` - Specifies the OTP application for which to set settings.
+    * `:scope` - Defines the scope for settings (e.g., `:user`, `:account`, or `:instance`).
   """
+
+  def set(attrs, opts \\ [])
+
   def set(attrs, opts) when is_map(attrs) do
     attrs
     |> input_to_atoms(
@@ -368,6 +458,16 @@ defmodule Bonfire.Common.Settings do
     |> set_with_hooks(to_options(opts))
   end
 
+  @doc """
+  Resets settings for the instance scope.
+
+  This function deletes the settings associated with the whole instance and returns the result.
+
+  ## Examples
+
+      > reset_instance()
+      {:ok, %Bonfire.Data.Identity.Settings{id: "some_id"}}
+  """
   def reset_instance() do
     with {:ok, set} <-
            repo().delete(struct(Bonfire.Data.Identity.Settings, id: id(instance_scope())), []) do
@@ -378,6 +478,16 @@ defmodule Bonfire.Common.Settings do
     end
   end
 
+  @doc """
+  Resets all settings.
+
+  This function deletes all settings from the database, including instance-specific settings and user-specific settings for all users. Please be careful!
+
+  ## Examples
+
+      > reset_all()
+      {:ok, %{}}
+  """
   def reset_all() do
     reset_instance()
     repo().delete_all(Bonfire.Data.Identity.Settings)
@@ -436,14 +546,14 @@ defmodule Bonfire.Common.Settings do
     current_user = current_user(opts)
     current_account = current_account(opts)
     # FIXME: do we need to associate each setting key to a verb? (eg. :describe)
-    is_admin =
+    is_admin_or_skip =
       e(opts, :skip_boundary_check, nil) ||
         Bonfire.Boundaries.can?(current_account, :configure, :instance)
 
     scope =
       case maybe_to_atom(e(settings, :scope, nil) || e(opts, :scope, nil))
            |> debug("scope specified to set") do
-        :instance when is_admin == true ->
+        :instance when is_admin_or_skip == true ->
           {:instance, instance_scope()}
 
         :instance ->

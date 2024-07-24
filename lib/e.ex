@@ -6,12 +6,70 @@ defmodule Bonfire.Common.E do
   alias Bonfire.Common
   alias Bonfire.Common.Enums
 
-  @doc "Returns a value, or a fallback if empty"
+  @doc """
+  Returns a value if it is not empty, or a fallback value if it is empty.
+
+  This function delegates to `Bonfire.Common.Enums.filter_empty/2` to determine if `val` is empty and returns `fallback` if so.
+
+  ## Examples
+
+      iex> e("non-empty value", "fallback")
+      "non-empty value"
+
+      iex> e("", "fallback")
+      "fallback"
+
+      iex> e(nil, "fallback")
+      "fallback"
+
+  """
   def e(val, fallback \\ nil) do
     Enums.filter_empty(val, fallback)
   end
 
-  @doc "Extracts a value from a map (and various other data structures), or returns a fallback if not present or empty. If more arguments are provided it looks for nested data (with the last argument always being the fallback)."
+  @doc """
+  Extracts a value from a map or other data structure, or returns a fallback if not present or empty.
+  If additional arguments are provided, it searches for nested data structures, with the last argument always being the fallback.
+
+  ## Examples
+
+      iex> e(%{key: "value"}, :key, "fallback")
+      "value"
+
+      iex> e(%{key: nil}, :key, "fallback")
+      "fallback"
+
+      iex> e(%{key: "value"}, :missing_key, "fallback")
+      "fallback"
+
+      iex> e({:ok, %{key: "value"}}, :key, "fallback")
+      "value"
+
+      iex> e(%{__context__: %{key: "context_value"}}, :key, "fallback")
+      "context_value"
+
+      iex> e(%{a: %{b: "value"}}, :a, :b, "fallback")
+      "value"
+
+      iex> e(%{a: %{b: nil}}, :a, :b, "fallback")
+      "fallback"
+
+      iex> e(%{a: %{b: %{c: "value"}}}, :a, :b, :c, "fallback")
+      "value"
+
+      iex> e(%{a: %{b: %{c: "value"}}}, :a, :b, :c, :d, "fallback")
+      "fallback"
+
+      iex> e(%{a: %{b: %{c: %{d: "value"}}}}, :a, :b, :c, :d, "fallback")
+      "value"
+
+      iex> e(%{a: %{b: %{c: %{d: "value"}}}}, :a, :b, :c, :d, :e, "fallback")
+      "fallback"
+
+      iex> e(%{a: %{b: %{c: %{d: %{e: "value"}}}}}, :a, :b, :c, :d, :e, "fallback")
+      "value"
+
+  """
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
   # @decorate time()

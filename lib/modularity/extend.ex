@@ -1,5 +1,5 @@
 defmodule Bonfire.Common.Extend do
-  @moduledoc "Helpers for using and managing the extensibility of Bonfire, eg. checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`"
+  @moduledoc "Helpers for using and managing the extensibility of Bonfire, such as checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`."
 
   use Arrows
   require Logger
@@ -10,10 +10,12 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Settings
 
   @doc """
-  Extend a module (i.e. define `defdelegate` and `defoverridable` for all functions from the source module in the current module. 
-  Usage:
-  import Module.Extend
-  extend_module Common.Text
+  Extend a module by defining `defdelegate` and `defoverridable` for all functions from the source module in the current module.
+
+  ## Examples
+
+      > import Bonfire.Common.Extend
+      > extend_module Common.Text
   """
   defmacro extend_module(module) do
     require Logger
@@ -98,6 +100,25 @@ defmodule Bonfire.Common.Extend do
 
   Important note: you should make sure to use the returned module, rather than the one provided as argument, as it can be different, this allows for swapping out modules in config or user settings (eg. by having in config something like `config Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
   """
+  @doc """
+  Given an Elixir module, returns the module if it is present and not disabled, or its replacement if configured.
+
+  ## Examples
+
+  iex> maybe_module(Bonfire.Common)
+  Bonfire.Common
+
+  iex> Config.put(DisabledModule, modularity: :disabled)
+  iex> maybe_module(DisabledModule)
+  nil
+
+  iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
+  iex> maybe_module(Bonfire.Common.Text)
+  Bonfire.Common.TextExtended
+  iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
+  iex> maybe_module(Bonfire.Common.Text)
+  Bonfire.Common.Text
+  """
   def maybe_module(module, opts \\ [])
   def maybe_module(nil, _), do: nil
   def maybe_module(false, _), do: nil
@@ -146,6 +167,17 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Returns the module if it is present and not disabled; raises an error if the module is disabled and no replacement is configured.
+
+  ## Examples
+
+  iex> maybe_module!(Bonfire.Common)
+  Bonfire.Common
+
+  iex> maybe_module!(SomeDisabledModule)
+  ** (RuntimeError) Module Elixir.SomeDisabledModule is disabled and no replacement was configured
+  """
   def maybe_module!(module, opts \\ []) do
     case maybe_module(module, opts) do
       nil -> raise "Module #{module} is disabled and no replacement was configured"
@@ -154,7 +186,15 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Whether an Elixir module or extension / OTP app is present AND not disabled (eg. by having in config something like `config :bonfire_common, modularity: :disabled`)
+  Whether an Elixir module or extension/OTP app is present and not disabled.
+
+  ## Examples
+
+      iex> module_enabled?(Bonfire.Common)
+      true
+
+      iex> module_enabled?(SomeDisabledModule)
+      false
   """
   def module_enabled?(module, opts \\ []) do
     opts = Opts.to_options(opts)
@@ -165,12 +205,31 @@ defmodule Bonfire.Common.Extend do
   end
 
   @decorate time()
+  @doc """
+  Checks if an Elixir module exists.
+
+  ## Examples
+
+      iex> extension_enabled?(Bonfire.Common)
+      true
+
+      iex> extension_enabled?(SomeOtherModule)
+      false
+  """
   def module_exists?(module) when is_atom(module) do
     function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
 
   @doc """
-  Whether an Elixir module or extension / OTP app is present AND not part of a disabled Bonfire extension (by having in config something like `config :bonfire_common, modularity: :disabled`)
+  Checks if an Elixir module or extension/OTP app is present and not part of a disabled Bonfire extension.
+
+  ## Examples
+
+      iex> extension_enabled?(Bonfire.Common)
+      true
+
+      iex> extension_enabled?(:non_existent_extension)
+      false
   """
   def extension_enabled?(module_or_otp_app, opts \\ []) when is_atom(module_or_otp_app) do
     opts = Opts.to_options(opts)
@@ -400,6 +459,14 @@ defmodule Bonfire.Common.Extend do
     |> debug("reverse_router generated?")
   end
 
+  @doc """
+  Retrieves the file path of the module's source file.
+
+  ## Examples
+
+      > module_file(Bonfire.Common)
+      "/path/lib/common.ex"
+  """
   def module_file(module) when is_atom(module) and not is_nil(module) do
     if module_exists?(module) do
       path =
@@ -422,6 +489,14 @@ defmodule Bonfire.Common.Extend do
     nil
   end
 
+  @doc """
+  Retrieves the source code of a module.
+
+  ## Examples
+
+      > module_file_code(Bonfire.Common)
+      "defmodule Bonfire.Common do ... end"
+  """
   def module_file_code(module, opts \\ []) do
     prod? = Config.env() == :prod
 
@@ -469,6 +544,9 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Returns the text given raw data.
+  """
   def return_file(raw) do
     String.trim(to_string(raw))
   rescue
@@ -477,6 +555,14 @@ defmodule Bonfire.Common.Extend do
       if is_list(raw), do: List.first(raw), else: raw
   end
 
+  @doc """
+  Retrieves the content of a code file.
+
+  ## Examples
+
+      > file_code("mix.ex")
+      "defmodule ... end"
+  """
   def file_code(code_file) do
     case tar_file_code(code_file) do
       {:ok, code} ->
@@ -490,6 +576,14 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the content of a code file within the source code tar file (available in Bonfire prod releases).
+
+  ## Examples
+
+      > tar_file_code("/mix.exs")
+      "defmodule ... end"
+  """
   def tar_file_code(code_file) do
     with tar_file = Path.join(:code.priv_dir(:bonfire), "static/source.tar.gz"),
          true <- File.exists?(tar_file) || error(tar_file, "Tar file does not exits"),
@@ -504,13 +598,27 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the code of a module from the source.
+
+  ## Examples
+
+      > module_code(Bonfire.Common)
+      "defmodule Bonfire.Common do ... end"
+  """
   def module_code(module, opts \\ []) do
     with {:ok, _rel_code_file, code} <- module_file_code(module, opts) do
       {:ok, code}
     end
   end
 
-  @doc "re-create a module's code from compiled Beam artifacts"
+  @doc """
+  Re-creates a module's code from compiled Beam artifacts.
+
+  ## Examples
+
+      iex> {:ok, _} = module_beam_code(Bonfire.Common)
+  """
   def module_beam_code(module, opts \\ []) do
     with {:ok, code} <- BeamFile.elixir_code(module, opts) do
       {:ok, code}
@@ -525,6 +633,14 @@ defmodule Bonfire.Common.Extend do
       nil
   end
 
+  @doc """
+  Retrieves the code of a module from its object code.
+
+  ## Examples
+
+      > module_code_from_object_code(Bonfire.Common)
+      "defmodule Bonfire.Common do ... end"
+  """
   def module_code_from_object_code(module) do
     with {:ok, byte_code} <- module_object_byte_code(module) do
       ast =
@@ -542,11 +658,26 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the code of a module from its AST (Abstract Syntax Tree).
+
+  ## Examples
+
+      > module_code_from_ast(Bonfire.Common, ast)
+      "defmodule Bonfire.Common do ... end"
+  """
   def module_code_from_ast(module, ast, target \\ :ast) do
     module_ast_normalize(module, ast, target)
     |> Macro.to_string()
   end
 
+  @doc """
+  Normalizes the AST of a module for use.
+
+  ## Examples
+
+      > module_ast_normalize(Bonfire.Common, ast)
+  """
   def module_ast_normalize(module, ast, target \\ :ast) do
     BeamFile.Normalizer.normalize(
       {:defmodule, [context: Elixir, import: Kernel],
@@ -558,6 +689,13 @@ defmodule Bonfire.Common.Extend do
     )
   end
 
+  @doc """
+  Retrieves the file path of a module from its object code.
+
+  ## Examples
+
+      > module_file_from_object_code(Bonfire.Common)
+  """
   def module_file_from_object_code(module) do
     with {:ok, byte_code} <- module_object_byte_code(module) do
       case byte_code |> Enum.find_value(& &1[:source]) do
@@ -567,6 +705,14 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the beam file path from the object code of a module.
+
+  ## Examples
+
+      > beam_file_from_object_code(Bonfire.Common)
+      "/path/ebin/Elixir.Bonfire.Common.beam"
+  """
   def beam_file_from_object_code(module) do
     with {_, _code, beam_path} <- module_object_code_tuple(module) do
       beam_path
@@ -574,6 +720,14 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the bytecode of a module's object code.
+
+  ## Examples
+
+      > module_object_byte_code(Bonfire.Common)
+      <<...>>
+  """
   def module_object_byte_code(module) do
     with {mod, binary, _path} when mod == module <- module_object_code_tuple(module),
          {:ok, byte_code} when mod == module <- BeamFile.byte_code(binary) do
@@ -584,10 +738,25 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Retrieves the object code tuple for a module.
+
+  ## Examples
+
+      iex> {Bonfire.Common, _bytecode, _path} = module_object_code_tuple(Bonfire.Common)
+  """
   def module_object_code_tuple(module) do
     :code.get_object_code(module)
   end
 
+  @doc """
+  Retrieves the code of a specific function from a module.
+
+  ## Examples
+
+      > function_code(Bonfire.Common, :some_function)
+      "def some_function do ... end"
+  """
   def function_code(module, fun, opts \\ []) do
     with {:ok, code} <- module_code(module, opts),
          {first_line, last_line} <- function_line_numbers(module, fun, opts) do
@@ -643,7 +812,14 @@ defmodule Bonfire.Common.Extend do
       numbers
   end
 
-  @doc "Return the number of the first line where a function is defined in a module"
+  @doc """
+  Returns the line number of the first line where a function is defined in a module.
+
+  ## Examples
+
+      > function_line_number(Bonfire.Common, :some_function)
+      10
+  """
   def function_line_number(module, fun, opts \\ [])
 
   def function_line_number(module, fun, opts) when is_atom(module) do
@@ -695,8 +871,13 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Copy the code defining a function from its original module to one that extends it (or a manually specified module). 
-  Usage: `Module.Extend.inject_function(Common.TextExtended, :blank?)`
+  Copies the code defining a function from its original module to a target module.
+
+  The target module can be specified, otherwise, the function will be injected into a default extension module.
+
+  ## Examples
+
+      iex> inject_function(Common.TextExtended, :blank?)
   """
   def inject_function(module, fun, target_module \\ nil) do
     with module_file when is_binary(module_file) <- module_file(module),
@@ -738,7 +919,14 @@ defmodule Bonfire.Common.Extend do
   def split_lines(string) when is_binary(string),
     do: :binary.split(string, ["\r", "\n", "\r\n"], [:global])
 
-  @doc "Fetches `module`'s @moduledoc as a markdown string"
+  @doc """
+  Fetches the `@moduledoc` of a module as a markdown string.
+
+  ## Examples
+
+      > fetch_docs_as_markdown(SomeModule)
+      "This is the moduledoc for SomeModule"
+  """
   @spec fetch_docs_as_markdown(module()) :: nil | binary()
   def fetch_docs_as_markdown(module) do
     case Code.fetch_docs(module) do

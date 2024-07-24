@@ -1,5 +1,8 @@
 defmodule Bonfire.Common.Extensions do
-  @moduledoc "Helpers for managing Bonfire extensions, eg. enabling/disabling a module or extension, or listing available extensions and their metadata."
+  @moduledoc """
+  Helpers for managing Bonfire extensions, e.g., enabling/disabling a module or extension,
+  or listing available extensions and their metadata.
+  """
 
   @prefix "bonfire"
   @prefix_ui "bonfire_ui_"
@@ -11,12 +14,32 @@ defmodule Bonfire.Common.Extensions do
 
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
+  @doc """
+  Disables a given extension globally.
+
+  ## Parameters
+    - `extension`: The name of the extension to disable.
+
+  ## Examples
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: :disabled}}}}} =  Bonfire.Common.Extensions.global_disable(:my_test_extension)
+  """
   def global_disable(extension) do
-    global_toggle(extension, true)
+    global_toggle(extension, false)
   end
 
+  @doc """
+  Enables a given extension globally.
+
+  ## Parameters
+    - `extension`: The name of the extension to enable.
+
+  ## Examples
+
+      iex> {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: nil}}}}} = Bonfire.Common.Extensions.global_enable(:my_test_extension)
+  """
   def global_enable(extension) do
-    global_toggle(extension, nil)
+    global_toggle(extension, true)
   end
 
   defp global_toggle(extension, enable?) do
@@ -34,6 +57,14 @@ defmodule Bonfire.Common.Extensions do
     put
   end
 
+  @doc """
+  Retrieves a list of all dependencies.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.all_deps()
+      [%Mix.Dep{...}, %Mix.Dep{...}]
+  """
   def all_deps, do: loaded_deps(:flat)
 
   def data() do
@@ -74,6 +105,20 @@ defmodule Bonfire.Common.Extensions do
     ]
   end
 
+  @doc """
+  Retrieves a list of all dependencies in a specific format based on the options provided.
+
+  ## Parameters
+    - `opts`: Options to determine the format, e.g., `:flat`, `:tree_flat`, `:nested`.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.loaded_deps(:flat)
+      [%Mix.Dep{}, %Mix.Dep{}, ...]
+
+      > Bonfire.Common.Extensions.loaded_deps(:tree_flat)
+      [%Mix.Dep{}, %Mix.Dep{}, ...]
+  """
   def loaded_deps(opts \\ [])
 
   def loaded_deps(:flat) do
@@ -110,6 +155,17 @@ defmodule Bonfire.Common.Extensions do
     |> Enum.uniq_by(&dep_name(&1))
   end
 
+  @doc """
+  Retrieves a list of all dependency names in a specific format based on the options provided.
+
+  ## Parameters
+    - `opts`: Options to determine the format, e.g., `:flat`, `:tree_flat`, `:nested`.
+
+  ## Examples
+
+      > Bonfire.Common.Extensions.loaded_deps_names()
+      [:dep1, :dep2]
+  """
   def loaded_deps_names(opts \\ []) do
     prepare_loaded_deps(opts)
     |> Enum.map(&dep_name(&1))
@@ -186,6 +242,20 @@ defmodule Bonfire.Common.Extensions do
     end
   end
 
+  @doc """
+  Outputs the current version string for a dependency.
+
+  ## Parameters
+    - `dep`: The dependency from which to get the version.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.get_version(%{status: {:ok, "1.0.0"}})
+      "1.0.0"
+
+      iex> Bonfire.Common.Extensions.get_version(%{requirement: ">= 1.0.0"})
+      ">= 1.0.0"
+  """
   def get_version(%{scm: Mix.SCM.Path} = dep),
     do:
       "forked from " <>
@@ -197,6 +267,20 @@ defmodule Bonfire.Common.Extensions do
   defp do_get_version(%{requirement: version}), do: version
   defp do_get_version(_), do: ""
 
+  @doc """
+  Retrieves the branch name for a dependency.
+
+  ## Parameters
+    - `dep`: The dependency from which to get the branch.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.get_branch(%{git: nil, branch: "main"})
+      "main"
+
+      iex> Bonfire.Common.Extensions.get_branch(%{lock: {:git, nil, nil, [branch: "feature"]}})
+      "feature"
+  """
   def get_branch(%{opts: opts}) when is_list(opts),
     do: get_branch(Enum.into(opts, %{}))
 
@@ -204,6 +288,20 @@ defmodule Bonfire.Common.Extensions do
   def get_branch(%{lock: {:git, _url, _, [branch: branch]}}), do: branch
   def get_branch(_dep), do: ""
 
+  @doc """
+  Returns a link to the package or repository of a dependency.
+
+  ## Parameters
+    - `dep`: The dependency from which to generate the link.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.get_link(%{hex: "example_package"})
+      "https://hex.pm/packages/example_package"
+
+      iex> Bonfire.Common.Extensions.get_link(%{git: "https://github.com/user/repo", branch: "main"})
+      "https://github.com/user/repo/tree/main"
+  """
   def get_link(%{app: app, opts: opts}) when is_list(opts),
     do: get_link(Enum.into(opts, %{app: app}))
 
@@ -222,11 +320,36 @@ defmodule Bonfire.Common.Extensions do
     # "#"
   end
 
+  @doc """
+  Constructs a link to the code of a dependency.
+
+  ## Parameters
+    - `dep`: The dependency from which to generate the link.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.get_code_link(%{app: "my_app"})
+      "/settings/extensions/code/my_app"
+  """
   def get_code_link(%{app: app}),
     do: "/settings/extensions/code/#{app}"
 
   def get_code_link(dep), do: get_version_link(dep)
 
+  @doc """
+  Constructs a link to the version of a dependency.
+
+  ## Parameters
+    - `dep`: The dependency from which to generate the version link.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.get_version_link(%{app: "my_app", path: "file.ex"})
+      "/settings/extensions/diff?app=my_app&local=file.ex"
+
+      iex> Bonfire.Common.Extensions.get_version_link(%{lock: {:git, "https://github.com/user/repo", "abc123", [branch: "main"]}})
+      "https://github.com/user/repo/compare/abc123...main"
+  """
   def get_version_link(%{app: app, opts: opts}) when is_list(opts),
     do: get_version_link(Enum.into(opts, %{app: app}))
 
@@ -243,8 +366,25 @@ defmodule Bonfire.Common.Extensions do
 
   def get_version_link(dep), do: get_link(dep)
 
-  defp dep_name(%Mix.Dep{app: dep}) when is_atom(dep), do: dep
-  defp dep_name(dep) when is_tuple(dep), do: elem(dep, 0) |> dep_name()
-  defp dep_name(dep) when is_atom(dep), do: dep
-  defp dep_name(dep) when is_binary(dep), do: dep
+  @doc """
+  Extracts the dependency name from a `Mix.Dep` struct or similar data.
+
+  ## Parameters
+    - `dep`: The dependency from which to extract the name.
+
+  ## Examples
+
+      iex> Bonfire.Common.Extensions.dep_name(%Mix.Dep{app: :my_app})
+      :my_app
+
+      iex> Bonfire.Common.Extensions.dep_name(:my_app)
+      :my_app
+
+      iex> Bonfire.Common.Extensions.dep_name("my_app")
+      "my_app"
+  """
+  def dep_name(%Mix.Dep{app: dep}) when is_atom(dep), do: dep
+  def dep_name(dep) when is_tuple(dep), do: elem(dep, 0) |> dep_name()
+  def dep_name(dep) when is_atom(dep), do: dep
+  def dep_name(dep) when is_binary(dep), do: dep
 end

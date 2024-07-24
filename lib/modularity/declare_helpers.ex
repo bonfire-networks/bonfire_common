@@ -1,7 +1,19 @@
 defmodule Bonfire.Common.Modularity.DeclareHelpers do
-  @moduledoc "Helpers for declaring the existence for an extension (i.e. so it gets included in extension settings and nav)"
+  @moduledoc """
+  Helpers for declaring the existence of an extension (i.e., so it gets included in extension settings and nav).
+  """
 
-  # alias Bonfire.Common.Extend
+  @doc """
+  Declares an extension by setting up the module with the given name and options.
+
+  ## Examples
+
+      iex> defmodule MyExtension do
+      ...>   import Bonfire.Common.Modularity.DeclareHelpers
+      ...>   declare_extension("My Extension", readme: "MY_README.md")
+      ...> end
+
+  """
 
   defmacro declare_extension(name, opts \\ []) do
     quote do
@@ -25,6 +37,21 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
     end
   end
 
+  @doc """
+  Generates a map representing a link with metadata for the extension with the given name, module, and options.
+
+  ## Examples
+
+      iex> Bonfire.Common.Modularity.DeclareHelpers.generate_link(:bonfire_common, Bonfire.Common, href: "/my_extension")
+      %{
+        name: :bonfire_common,
+        module: Bonfire.Common,
+        app: :bonfire_common,
+        href: "/my_extension",
+        type: :link
+      }
+
+  """
   def generate_link(name, module, opts) do
     Enum.into(opts, %{
       name: name,
@@ -35,5 +62,6 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
     })
   end
 
+  @doc "Gets the OTP app name for a module"
   def app(module), do: Application.get_application(module)
 end
