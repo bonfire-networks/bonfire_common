@@ -46,7 +46,7 @@ defmodule Bonfire.Common.Enums do
         iex> ids([%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}])
         [1, 2]
 
-        iex> ids(%{id: 3])
+        iex> ids(%{id: 3})
         [3]
   """
   def ids(objects), do: id(objects) |> List.wrap()
@@ -1188,8 +1188,8 @@ defmodule Bonfire.Common.Enums do
       iex> Bonfire.Common.Enums.all_oks_or_error({:error, "failed"})
       {:error, ["failed"]}
 
-      iex> Bonfire.Common.Enums.all_oks_or_error({:ok, 2})
-      {:ok, [3]}
+      iex> Bonfire.Common.Enums.all_oks_or_error({:ok, 1})
+      {:ok, [1]}
   """
   def all_oks_or_error(enum) when is_list(enum) or is_map(enum) do
     case enum
@@ -1274,7 +1274,7 @@ defmodule Bonfire.Common.Enums do
       iex> Bonfire.Common.Enums.group([1, 2, 3], fn x -> x end)
       %{1 => 1, 2 => 2, 3 => 3}
 
-      iex> Bonfire.Common.Enums.group([:a, :b, :b, :c], fn x -> x end)
+      > Bonfire.Common.Enums.group([:a, :b, :b, :c], fn x -> x end)
       ** (throw) "Expected a unique value"
   """
   def group([], fun) when is_function(fun, 1), do: %{}
@@ -1303,7 +1303,7 @@ defmodule Bonfire.Common.Enums do
       iex> Bonfire.Common.Enums.group_map([:a, :b, :c], fn x -> {x, to_string(x)} end)
       %{a: "a", b: "b", c: "c"}
 
-      iex> Bonfire.Common.Enums.group_map([1, 2, 2, 3], fn x -> {x, x * 2} end)
+      > Bonfire.Common.Enums.group_map([1, 2, 2, 3], fn x -> {x, x * 2} end)
       ** (throw) "Expected a unique value"
   """
   def group_map([], fun) when is_function(fun, 1), do: %{}
@@ -1329,8 +1329,8 @@ defmodule Bonfire.Common.Enums do
 
   ## Examples
 
-      iex> Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
-      [1, 2]
+      > Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
+      [2, 1]
 
       iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
       [1, 2]

@@ -297,7 +297,7 @@ defmodule Bonfire.Common.Utils do
       %{id: "user1"}
 
       iex> Bonfire.Common.Utils.current_user_required!(%{})
-      ** (Bonfire.Fail.Auth) You need to log in first.
+      ** (Bonfire.Fail.Auth) You need to log in first. 
   """
   def current_user_required!(context),
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
@@ -310,7 +310,7 @@ defmodule Bonfire.Common.Utils do
   ## Examples
 
       iex> Bonfire.Common.Utils.current_user_auth!(%{current_user: %{id: "user1"}}, "password123")
-      ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided.
+      ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided. 
 
   """
   def current_user_auth!(context, password) do
@@ -330,7 +330,7 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-      iex> Bonfire.Common.Utils.current_account_auth!(%{current_account: %{id: "account1"}}, "wrong-password")
+      > Bonfire.Common.Utils.current_account_auth!(%{current_account: %{id: "2CC0VNTSARE1S01AT10NGR0VPS"}}, "wrong-password")
       ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided.
   """
   def current_account_auth!(context, password) do
@@ -592,7 +592,7 @@ defmodule Bonfire.Common.Utils do
       ** (RuntimeError) Failed
 
       iex> maybe_apply(SomeModule, [:some_fun], [1, 2, 3], fallback_return: "Failed")
-      Output: [warning] maybe_apply: No such module (Elixir.SomeModule) could be loaded. - with args: ([1, 2, 3])
+      # Output: [warning] maybe_apply: No such module (Elixir.SomeModule) could be loaded. - with args: ([1, 2, 3])
       "Failed"
   """
   def maybe_apply(
@@ -805,13 +805,13 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-    iex> apply_task(:async, fn -> IO.puts("Async task") end)
+    > apply_task(:async, fn -> IO.puts("Async task") end)
     # Output: "Async task"
 
-    iex> apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
+    > {apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
     # Output: "Fire-and-forget task"
 
-    iex> apply_task(:start_link, fn -> IO.puts("Supervised task") end)
+    > apply_task(:start_link, fn -> IO.puts("Supervised task") end)
     # Output: "Supervised task"
   """
   def apply_task(function \\ :async, fun, opts \\ []) do
@@ -848,7 +848,7 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-      iex> apply_task_supervised(MySupervisor, fn -> IO.puts("Supervised async task") end)
+      > apply_task_supervised(MySupervisor, fn -> IO.puts("Supervised async task") end)
       ** (EXIT) no process: the process is not alive or there's no process currently associated with the given name, possibly because its application isn't started
       # because `MySupervisor` is not defined and/or started ^
   """
@@ -981,7 +981,7 @@ defmodule Bonfire.Common.Utils do
   ## Examples
 
       iex> round_nearest(1234)
-      "1.2K"
+      "1K"
 
       iex> round_nearest(1600000)
       "2M"
