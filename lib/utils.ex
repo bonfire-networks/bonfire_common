@@ -111,6 +111,25 @@ defmodule Bonfire.Common.Utils do
 
   @doc """
   Returns the current user from socket, assigns, or options.
+
+  This function traverses various possible structures to find and return the current user (or current user ID if that's all that's available). 
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_user(%{current_user: %{id: "user1"}})
+      %{id: "user1"}
+
+      iex> Bonfire.Common.Utils.current_user(%{assigns: %{current_user: %{id: "user2"}}})
+      %{id: "user2"}
+
+      iex> Bonfire.Common.Utils.current_user(%{socket: %{assigns: %{current_user: %{id: "user3"}}}})
+      %{id: "user3"}
+
+      iex> Bonfire.Common.Utils.current_user([current_user: %{id: "user4"}])
+      %{id: "user4"}
+
+      iex> Bonfire.Common.Utils.current_user(%{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
+      "5EVSER1S0STENS1B1YHVMAN01D"
   """
   def current_user(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
@@ -193,6 +212,25 @@ defmodule Bonfire.Common.Utils do
 
   @doc """
   Returns the current user ID from socket, assigns, or options.
+
+  This function traverses various possible structures to find and return the current user ID.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_user_id(%{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
+      "5EVSER1S0STENS1B1YHVMAN01D"
+
+      iex> Bonfire.Common.Utils.current_user_id(%{assigns: %{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"}})
+      "5EVSER1S0STENS1B1YHVMAN01D"
+
+      iex> Bonfire.Common.Utils.current_user_id(%{assigns: %{__context__: %{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"}}})
+      "5EVSER1S0STENS1B1YHVMAN01D"
+
+      iex> Bonfire.Common.Utils.current_user_id("5EVSER1S0STENS1B1YHVMAN01D")
+      "5EVSER1S0STENS1B1YHVMAN01D"
+      
+      iex> Bonfire.Common.Utils.current_user_id("invalid id")
+      nil
   """
   def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
@@ -250,9 +288,31 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  @doc """
+  Ensures that the current user is present and raises an exception if not logged in.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_user_required!(%{current_user: %{id: "user1"}})
+      %{id: "user1"}
+
+      iex> Bonfire.Common.Utils.current_user_required!(%{})
+      ** (Bonfire.Fail.Auth) You need to log in first.
+  """
   def current_user_required!(context),
     do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
 
+  @doc """
+  (Re)authenticates the current user using the provided password.
+
+  Raises an exception if the credentials are invalid.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_user_auth!(%{current_user: %{id: "user1"}}, "password123")
+      ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided.
+
+  """
   def current_user_auth!(context, password) do
     current_user = current_user(context)
     current_account_id = current_account_id(current_user)
@@ -263,6 +323,16 @@ defmodule Bonfire.Common.Utils do
        else: raise(Bonfire.Fail.Auth, :invalid_credentials)
   end
 
+  @doc """
+  (Re)authenticates the current account using the provided password.
+
+  Raises an exception if the credentials are invalid.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_account_auth!(%{current_account: %{id: "account1"}}, "wrong-password")
+      ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided.
+  """
   def current_account_auth!(context, password) do
     current_account = current_account(context)
     current_account_id = Enums.id(current_account)
@@ -275,6 +345,23 @@ defmodule Bonfire.Common.Utils do
 
   @doc """
   Returns the current account from socket, assigns, or options.
+
+  This function traverses various possible structures to find and return the current account.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_account(%{current_account: %{id: "account1"}})
+      %{id: "account1"}
+
+      iex> Bonfire.Common.Utils.current_account(%{assigns: %{current_account: %{id: "account2"}}})
+      %{id: "account2"}
+
+      iex> Bonfire.Common.Utils.current_account(%{socket: %{assigns: %{current_account: %{id: "account3"}}}})
+      %{id: "account3"}
+
+      iex> Bonfire.Common.Utils.current_account([current_account: %{id: "account4"}])
+      %{id: "account4"}
+
   """
   def current_account(current_account_or_socket_or_opts, recursing \\ false) do
     case current_account_or_socket_or_opts do
@@ -364,6 +451,25 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  @doc """
+  Returns the current account ID from socket, assigns, or options.
+
+  This function traverses various possible structures to find and return the current account ID.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_account_id(%{current_account_id: "2CC0VNTSARE1S01AT10NGR0VPS"})
+      "2CC0VNTSARE1S01AT10NGR0VPS"
+
+      iex> Bonfire.Common.Utils.current_account_id(%{assigns: %{current_account_id: "2CC0VNTSARE1S01AT10NGR0VPS"}})
+      "2CC0VNTSARE1S01AT10NGR0VPS"
+
+      iex> Bonfire.Common.Utils.current_account_id(%{socket: %{assigns: %{current_account_id: "2CC0VNTSARE1S01AT10NGR0VPS"}}})
+      "2CC0VNTSARE1S01AT10NGR0VPS"
+
+      iex> Bonfire.Common.Utils.current_account_id("2CC0VNTSARE1S01AT10NGR0VPS")
+      "2CC0VNTSARE1S01AT10NGR0VPS"
+  """
   def current_account_id(current_account_or_socket_or_opts, recursing \\ false) do
     case current_account_or_socket_or_opts do
       %{current_account_id: id} = _options ->
@@ -427,6 +533,28 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  @doc """
+  Returns a list of current account IDs and/or user IDs.
+
+  This function returns a keyword list with the current account IDs and/or user IDs.
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_account_and_or_user_ids(%{current_account_id: "2CC0VNTSARE1S01AT10NGR0VPS", current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
+      [account: "2CC0VNTSARE1S01AT10NGR0VPS", user: "5EVSER1S0STENS1B1YHVMAN01D"]
+      
+      iex> Bonfire.Common.Utils.current_account_and_or_user_ids(%{current_account: %{id: "2CC0VNTSARE1S01AT10NGR0VPS"}, current_user: %{id: "5EVSER1S0STENS1B1YHVMAN01D"}})
+      [account: "2CC0VNTSARE1S01AT10NGR0VPS", user: "5EVSER1S0STENS1B1YHVMAN01D"]
+
+      iex> Bonfire.Common.Utils.current_account_and_or_user_ids(%{current_account_id: "2CC0VNTSARE1S01AT10NGR0VPS"})
+      [account: "2CC0VNTSARE1S01AT10NGR0VPS"]
+
+      iex> Bonfire.Common.Utils.current_account_and_or_user_ids(%{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
+      [user: "5EVSER1S0STENS1B1YHVMAN01D"]
+
+      iex> Bonfire.Common.Utils.current_account_and_or_user_ids(%{})
+      []
+  """
   def current_account_and_or_user_ids(assigns) do
     case {current_account_id(assigns), current_user_id(assigns)} do
       {nil, nil} -> []
@@ -436,28 +564,37 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  def socket_connected?(%{socket_connected?: bool}) do
-    bool
-  end
+  @doc """
+    Helper for calling hypothetical functions another modules. 
+    
+  Attempts to apply a function from a specified module with the given arguments and returns the result. 
 
-  def socket_connected?(%{__context__: %{socket_connected?: bool}}) do
-    bool
-  end
+  Returns an error if the function is not defined,  unless a fallback function was provided to be invoked, or a fallback value to be returned.
 
-  def socket_connected?(%{assigns: %{__context__: %{socket_connected?: bool}}}) do
-    bool
-  end
+  ## Parameters
 
-  def socket_connected?(%struct{} = socket) when struct == Phoenix.LiveView.Socket do
-    maybe_apply(Phoenix.LiveView, :connected?, socket, fallback_return: false)
-  end
+    - `module`: The module to check for the function.
+    - `funs`: A list of function names (atoms) to try.
+    - `args`: Arguments to pass to the function.
+    - `opts`: Options for error handling and fallback. Options include:
+      - `:fallback_fun` - A function to call if the primary function is not found.
+      - `:fallback_return` - A default return value if the function cannot be applied.
 
-  def socket_connected?(assigns) do
-    warn(Types.typeof(assigns), "Unable to find Socket or :socket_connected? info in")
-    false
-  end
+  ## Examples
 
-  @doc "Helpers for calling hypothetical functions in other modules. Returns the result of calling a function with the given arguments, or the result of fallback function if the primary function is not defined (by default just logging an error message)."
+      iex> maybe_apply(Enum, :map, [[1, 2, 3], &(&1 * 2)])
+      [2, 4, 6]
+
+      iex> maybe_apply(Enum, [:nonexistent_fun], [])
+      {:error, "None of the functions [:nonexistent_fun] are defined at Elixir.Enum with arity 0"}
+
+      iex> maybe_apply(Enum, [:nonexistent_fun], [], fallback_fun: fn error, _args, _opts -> raise "Failed" end)
+      ** (RuntimeError) Failed
+
+      iex> maybe_apply(SomeModule, [:some_fun], [1, 2, 3], fallback_return: "Failed")
+      Output: [warning] maybe_apply: No such module (Elixir.SomeModule) could be loaded. - with args: ([1, 2, 3])
+      "Failed"
+  """
   def maybe_apply(
         module,
         fun,
@@ -657,25 +794,92 @@ defmodule Bonfire.Common.Utils do
   - `Task.Supervisor.start_child/2` allows you to start a fire-and-forget task when you don't care about its results or if it completes successfully or not.
 
   - `Task.Supervisor.async/2` + `Task.await/2` allows you to execute tasks concurrently and retrieve its result. If the task fails, the caller will also fail.
+
+
+  ## Parameters
+
+  - `function`: The type of task to start (e.g. `:async`, `:start_link`, or `:start`).
+  - `fun`: The function to execute async.
+  - `opts`: Options for task execution, including:
+    - `:module` - The module to use for task execution (defaults to `Task`).
+
+  ## Examples
+
+    iex> apply_task(:async, fn -> IO.puts("Async task") end)
+    # Output: "Async task"
+
+    iex> apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
+    # Output: "Fire-and-forget task"
+
+    iex> apply_task(:start_link, fn -> IO.puts("Supervised task") end)
+    # Output: "Supervised task"
   """
   def apply_task(function \\ :async, fun, opts \\ []) do
+    do_apply_task(opts[:module] || Task, function, fun, [], opts)
+  end
+
+  defp do_apply_task(module, function, fun, args, _opts \\ []) do
     pid = self()
     current_endpoint = Process.get(:phoenix_endpoint_module)
 
-    apply(opts[:module] || Task, function, [
-      fn ->
-        Process.put(:task_parent_pid, pid)
-        Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
-        fun.()
-      end
-    ])
+    apply(
+      module,
+      function,
+      args ++
+        [
+          fn ->
+            Process.put(:task_parent_pid, pid)
+            Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+            fun.()
+          end
+        ]
+    )
   end
 
-  def apply_task_supervised(function \\ :async, fun, opts \\ []) do
-    apply_task(function, fun, opts ++ [module: Task.Supervisor])
+  @doc """
+  Runs a function asynchronously using `Task.Supervisor`. This is similar to `apply_task/3` but specifically uses `Task.Supervisor` for supervision.
+
+  ## Parameters
+
+    - `module`: The supervisor module to use for task execution
+    - `fun`: The function to execute async
+    - `opts`: Options for task execution, including:
+      - `:function` - The `Task.Supervisor` function to use for task execution (defaults to `:async`).
+
+  ## Examples
+
+      iex> apply_task_supervised(MySupervisor, fn -> IO.puts("Supervised async task") end)
+      ** (EXIT) no process: the process is not alive or there's no process currently associated with the given name, possibly because its application isn't started
+      # because `MySupervisor` is not defined and/or started ^
+  """
+  def apply_task_supervised(supervisor, fun, opts \\ []) do
+    do_apply_task(Task.Supervisor, opts[:function] || :async, fun, [supervisor], opts)
   end
 
-  @doc "Returns true if the given value is nil, an empty enumerable, or an empty string."
+  @doc """
+  Checks if the given value is `nil`, an empty enumerable, or an empty string.
+
+  ## Parameters
+
+    - `v`: The value to check.
+
+  ## Examples
+
+      iex> empty?(nil)
+      true
+
+      iex> empty?("")
+      true
+
+      iex> empty?([])
+      true
+
+      iex> empty?([1, 2, 3])
+      false
+
+      iex> empty?("hello")
+      false
+  """
   def empty?(v) when is_nil(v) or v == %{} or v == [] or v == "", do: true
   def empty?(v) when is_binary(v), do: String.trim(v) == ""
 
@@ -685,11 +889,52 @@ defmodule Bonfire.Common.Utils do
       else: false
   end
 
-  @doc "Returns true if the given value is 0, false, nil, or empty (see `empty?/1`)"
+  @doc """
+  Checks if the given value is `nil`, `false`, `0`, or an empty value (using `empty?/1`).
+
+  ## Parameters
+
+    - `v`: The value to check.
+
+  ## Examples
+
+      iex> nothing?(nil)
+      true
+
+      iex> nothing?(false)
+      true
+
+      iex> nothing?(0)
+      true
+
+      iex> nothing?("")
+      true
+
+      iex> nothing?([1, 2, 3])
+      false
+
+      iex> nothing?("hello")
+      false
+  """
   def nothing?(v) when is_nil(v) or v == false or v == 0 or v == "0", do: true
   def nothing?(v), do: empty?(v)
 
-  @doc "Applies change_fn if the first parameter is not nil."
+  @doc """
+  Applies the given function if the first parameter is not `nil`.
+
+  ## Parameters
+
+    - `val`: The value to check.
+    - `change_fn`: A function to apply if `val` is not `nil`.
+
+  ## Examples
+
+      iex> maybe(nil, fn x -> x * 2 end)
+      nil
+
+      iex> maybe(3, fn x -> x * 2 end)
+      6
+  """
   def maybe(nil, _change_fn), do: nil
 
   def maybe(val, change_fn) do
@@ -697,7 +942,27 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc """
-  Unwraps an `{:ok, val}` tuple, returning the value, or returns a fallback value (nil by default) if the tuple is `{:error, _}` or `:error`.
+
+  Unwraps an `{:ok, val}` tuple, returning the value. If not OK, returns a fallback value (default is `nil`).
+
+  ## Parameters
+
+    - `val`: The value or tuple to unwrap.
+    - `fallback`: The fallback value if the tuple is an error.
+
+  ## Examples
+
+      iex> ok_unwrap({:ok, 42})
+      42
+
+      iex> ok_unwrap({:error, "something went wrong"}, "default")
+      "default"
+
+      iex> ok_unwrap(:error, "default")
+      "default"
+
+      iex> ok_unwrap(nil, "default")
+      "default"
   """
   def ok_unwrap(val, fallback \\ nil)
   def ok_unwrap({:ok, val}, _fallback), do: val
@@ -710,6 +975,17 @@ defmodule Bonfire.Common.Utils do
   def ok_unwrap(:error, fallback), do: fallback
   def ok_unwrap(val, fallback), do: val || fallback
 
+  @doc """
+  Rounds a number and uses `Bonfire.Common.Localise.Cldr.Number.to_string/2` function to format into a human readable string.
+
+  ## Examples
+
+      iex> round_nearest(1234)
+      "1.2K"
+
+      iex> round_nearest(1600000)
+      "2M"
+  """
   def round_nearest(num) when is_number(num) do
     case maybe_apply(Bonfire.Common.Localise.Cldr.Number, :to_string, [num, [format: :short]]) do
       {:ok, formatted} ->
@@ -725,6 +1001,25 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
+  @doc """
+  Rounds a number to the nearest specified target. 
+
+  ## Parameters
+
+    - `num`: The number to round.
+    - `target`: The target to round to (optional).
+
+  ## Examples
+
+      iex> round_nearest(1234, 10)
+      1230
+
+      iex> round_nearest(1234, 100)
+      1200
+
+      iex> round_nearest(1234, 1000)
+      1000
+  """
   def round_nearest(num, target) when is_number(num) and is_number(target),
     do: round(num / target) * target
 

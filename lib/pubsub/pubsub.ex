@@ -17,6 +17,7 @@ defmodule Bonfire.Common.PubSub do
 
   def subscribe(topic, socket_etc) when is_binary(topic) do
     # debug(socket)
+    # FIXME: should we only subscribe if socket is actually connected?
     if socket_connected_or_user?(socket_etc) do
       do_subscribe(topic)
     else
@@ -123,9 +124,10 @@ defmodule Bonfire.Common.PubSub do
     "#{inspect(env.module)}.#{fun}/#{arity}"
   end
 
-  defp socket_connected_or_user?(%struct{} = socket) when struct == Phoenix.LiveView.Socket,
-    do: Utils.socket_connected?(socket)
-
-  defp socket_connected_or_user?(other),
-    do: if(Utils.current_user(other), do: true, else: false)
+  defp socket_connected_or_user?(socket),
+    do:
+      if(Utils.current_user_id(socket),
+        do: true,
+        else: maybe_apply(Bonfire.UI.Common, :socket_connected?, [socket], fallback_return: false)
+      )
 end

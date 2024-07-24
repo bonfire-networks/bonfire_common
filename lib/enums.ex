@@ -40,6 +40,15 @@ defmodule Bonfire.Common.Enums do
     nil
   end
 
+  @doc """
+  Extracts the IDs from a list of maps, changesets, or other data structures and returns a list of these IDs.
+
+        iex> ids([%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}])
+        [1, 2]
+
+        iex> ids(%{id: 3])
+        [3]
+  """
   def ids(objects), do: id(objects) |> List.wrap()
 
   @doc "Takes an enumerable object and converts it to a map. If it is not an enumerable, a map is created with the data under a fallback key (`:data` by default)."
@@ -90,6 +99,9 @@ defmodule Bonfire.Common.Enums do
 
   def enum_get(map, key, fallback), do: maybe_get(map, key, fallback)
 
+  @doc """
+  Attempts to retrieve a value from a map by its key, and otherwise returns the provided fallback value.
+  """
   def maybe_get(_, _, fallback \\ nil)
 
   def maybe_get(%{} = map, key, fallback),
@@ -278,6 +290,9 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  @doc """
+  Checks a map for a value with provided key. If it already exists, the existing value is retained, but if not set or nil, then it is set to the provided default.
+  """
   def map_put_default(map, key, default) do
     Map.update(map, key, default, fn
       nil -> default
@@ -453,7 +468,9 @@ defmodule Bonfire.Common.Enums do
     Ecto.Changeset.merge(cs1, cs2)
   end
 
-  @doc "Merges two maps map_1 and map_2, but only keeps the keys that exist in map_1."
+  @doc """
+  Merges two maps while keeping only the keys that exist in the first map.
+  """
   def merge_keeping_only_first_keys(map_1, map_2) do
     map_1
     |> Map.keys()
@@ -1006,6 +1023,23 @@ defmodule Bonfire.Common.Enums do
            values_to_integers
          )
 
+  @doc """
+  Converts input to value based on the provided options.
+
+  ## Examples
+
+      iex> input_to_value("42", false, true, nil, true, nil, true)
+      42
+
+      iex> input_to_value("Bonfire.Common", false, true, nil, true, nil, false)
+      Bonfire.Common
+
+      iex> input_to_value("bonfire_common", false, true, nil, true, nil, false)
+      :bonfire_common
+
+      iex> input_to_value("unknown_example_string", false, true, nil, true, nil, false)
+      "unknown_example_string"
+  """
   # support truthy/falsy values
   def input_to_value("nil", _, true = _including_values, _, _, _, _), do: nil
   def input_to_value("false", _, true = _including_values, _, _, _, _), do: false
@@ -1036,6 +1070,7 @@ defmodule Bonfire.Common.Enums do
   def input_to_value(v, _, _, _, _, _, _), do: v
 
   @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
+
   def maybe_to_structs(v, opts \\ [])
   def maybe_to_structs(v, _opts) when is_struct(v), do: v
 
@@ -1108,7 +1143,9 @@ defmodule Bonfire.Common.Enums do
 
   def maybe_to_struct(obj, _type), do: obj
 
-  # MIT licensed function by Kum Sackey
+  @doc """
+  Converts a map to a struct (based on MIT licensed function by Kum Sackey)
+  """
   def struct_from_map(a_map, as: a_struct) do
     keys = Map.keys(Map.delete(a_struct, :__struct__))
     # Process map, checking for both string / atom keys
@@ -1120,14 +1157,41 @@ defmodule Bonfire.Common.Enums do
     |> Map.merge(a_struct, ...)
   end
 
-  @doc "Counts the number of items in an enumerable that satisfy the given function."
+  @doc """
+  Counts the number of items in an enumerable that satisfy the given function.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.count_where([1, 2, 3, 4, 5], fn x -> rem(x, 2) == 0 end)
+      2
+
+      iex> Bonfire.Common.Enums.count_where([:ok, :error, :ok], &(&1 == :ok))
+      2
+  """
   def count_where(collection, function \\ &is_nil/1) do
     Enum.reduce(collection, 0, fn item, count ->
       if function.(item), do: count + 1, else: count
     end)
   end
 
-  def only_ok(enum) when is_list(enum) or is_map(enum) do
+  @doc """
+  Filters the given value or enumerable and if it contains any `:error` tuple, return an `:error` tuple with a list of error values, other return an `:ok` tuple with a list of values. 
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.all_oks_or_error([{:ok, 1}, {:error, "failed"}])
+      {:error, ["failed"]}
+
+      iex> Bonfire.Common.Enums.all_oks_or_error([{:ok, 2}, {:ok, 3}])
+      {:ok, [2, 3]}
+
+      iex> Bonfire.Common.Enums.all_oks_or_error({:error, "failed"})
+      {:error, ["failed"]}
+
+      iex> Bonfire.Common.Enums.all_oks_or_error({:ok, 2})
+      {:ok, [3]}
+  """
+  def all_oks_or_error(enum) when is_list(enum) or is_map(enum) do
     case enum
          |> Enum.group_by(&elem(&1, 0), &elem(&1, 1)) do
       %{error: errors} -> {:error, errors}
@@ -1135,22 +1199,66 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def only_ok({:ok, val}), do: {:ok, val}
-  def only_ok({:error, val}), do: {:error, val}
-  def only_ok(val), do: {:error, val}
+  def all_oks_or_error({:ok, val}), do: {:ok, List.wrap(val)}
+  def all_oks_or_error({:error, val}), do: {:error, List.wrap(val)}
+  def all_oks_or_error(val), do: {:error, List.wrap(val)}
 
+  @doc """
+  Checks if there are any `:ok` tuples in the enumerable.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.has_ok?([{:ok, 1}, {:error, "failed"}])
+      true
+
+      iex> Bonfire.Common.Enums.has_ok?([{:error, "failed"}])
+      false
+  """
   def has_ok?(enum) do
     has_tuple_key?(enum, :ok)
   end
 
+  @doc """
+  Checks if all tuples in the enumerable are `:ok`.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.all_ok?([{:ok, 1}, {:ok, 2}])
+      true
+
+      iex> Bonfire.Common.Enums.all_ok?([{:ok, 1}, {:error, "failed"}])
+      false
+  """
   def all_ok?(enum) do
     !has_error?(enum)
   end
 
+  @doc """
+  Checks if there are any `:error` tuples in the enumerable.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.has_error?([{:ok, 1}, {:error, "failed"}])
+      true
+
+      iex> Bonfire.Common.Enums.has_error?([{:ok, 1}])
+      false
+  """
   def has_error?(enum) do
     has_tuple_key?(enum, :error)
   end
 
+  @doc """
+  Checks if there are any tuples with the given key in the enumerable.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.has_tuple_key?([{:ok, 1}, {:error, "failed"}], :ok)
+      true
+
+      iex> Bonfire.Common.Enums.has_tuple_key?([{:ok, 1}], :error)
+      false
+  """
   def has_tuple_key?(enum, key) do
     Enum.any?(enum, fn
       {i_key, _} -> i_key == key
@@ -1159,8 +1267,15 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Like `Enum.group_by/3`, except children are required to be unique (will throw
-  otherwise!) and the resulting map does not wrap each item in a list
+  Like `Enum.group_by/3`, except children are required to be unique (will throw otherwise!) and the resulting map does not wrap each item in a list.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.group([1, 2, 3], fn x -> x end)
+      %{1 => 1, 2 => 2, 3 => 3}
+
+      iex> Bonfire.Common.Enums.group([:a, :b, :b, :c], fn x -> x end)
+      ** (throw) "Expected a unique value"
   """
   def group([], fun) when is_function(fun, 1), do: %{}
 
@@ -1174,9 +1289,23 @@ defmodule Bonfire.Common.Enums do
   defp group([], acc, _), do: acc
 
   defp group_item(key, value, acc)
-       when not is_map_key(acc, key),
-       do: Map.put(acc, key, value)
+       when is_map_key(acc, key),
+       do: throw("Expected a unique value")
 
+  defp group_item(key, value, acc),
+    do: Map.put(acc, key, value)
+
+  @doc """
+  Groups an enumerable by a function that returns key-value pairs, ensuring that keys are unique.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.group_map([:a, :b, :c], fn x -> {x, to_string(x)} end)
+      %{a: "a", b: "b", c: "c"}
+
+      iex> Bonfire.Common.Enums.group_map([1, 2, 2, 3], fn x -> {x, x * 2} end)
+      ** (throw) "Expected a unique value"
+  """
   def group_map([], fun) when is_function(fun, 1), do: %{}
 
   def group_map(list, fun)
@@ -1189,10 +1318,26 @@ defmodule Bonfire.Common.Enums do
   defp group_map([], acc, _), do: acc
 
   defp group_map_item({key, value}, acc)
-       when not is_map_key(acc, key),
-       do: Map.put(acc, key, value)
+       when is_map_key(acc, key),
+       do: throw("Expected a unique value")
 
-  @doc "Applies a function from one of Elixir's `Map`, `Keyword`, or `List` modules depending on the type of the given enumerable."
+  defp group_map_item({key, value}, acc),
+    do: Map.put(acc, key, value)
+
+  @doc """
+  Applies a function from one of Elixir's `Map`, `Keyword`, or `List` modules depending on the type of the given enumerable.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
+      [1, 2]
+
+      iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
+      [1, 2]
+      
+      iex> Bonfire.Common.Enums.fun([1, 2, 3], :first)
+      1
+  """
   def fun(map, fun, args \\ [])
 
   def fun(map, fun, args) when is_map(map) do
@@ -1215,9 +1360,20 @@ defmodule Bonfire.Common.Enums do
       else: Utils.maybe_apply(Enum, fun, args)
   end
 
-  def unwrap_tuples(responses, key) do
+  @doc """
+  Unwraps tuples from a list of responses based on the specified key.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.unwrap_tuples([{:ok, 1}, {:error, "failed"}, {:ok, 2}], :ok)
+      [1, 2]
+
+      iex> Bonfire.Common.Enums.unwrap_tuples([{:ok, 1}, {:error, "failed"}], :error)
+      ["failed"]
+  """
+  def unwrap_tuples(enum, key) do
     # TODO: optimise
-    Enum.filter(responses, fn resp -> elem(resp, 0) == key end)
+    Enum.filter(enum, fn resp -> elem(resp, 0) == key end)
     |> Enum.map(fn v -> elem(v, 1) end)
     |> Enum.uniq()
     |> filter_empty(nil)
