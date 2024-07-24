@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Bonfire.Extension.New do
 
     rename_modules(extension_name)
     rename_config_file(extension_name)
-    remove_git(extension_name)
+    reset_git(extension_name)
 
     IO.puts(
       "Done! You can now start developing your extension in ./extensions/#{extension_name}/"
@@ -57,7 +57,10 @@ defmodule Mix.Tasks.Bonfire.Extension.New do
     File.rename(old_name, new_name)
   end
 
-  defp remove_git(extension_name) do
+  defp reset_git(extension_name) do
     System.cmd("rm", ["-rf", ".git"], cd: "extensions/#{extension_name}")
+    System.cmd("git", ["init"], cd: "extensions/#{extension_name}")
+    System.cmd("git", ["add", "."], cd: "extensions/#{extension_name}")
+    System.cmd("git", ["commit", "-m", "new extension"], cd: "extensions/#{extension_name}")
   end
 end
