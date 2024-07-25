@@ -169,36 +169,36 @@ defmodule Bonfire.Common.Media do
 
   ## Examples
 
-  iex> avatar_url(%{profile: %{icon: %{url: "http://example.com/avatar.png"}}})
-  "http://example.com/avatar.png"
+      iex> avatar_url(%{profile: %{icon: %{url: "http://example.com/avatar.png"}}})
+      "http://example.com/avatar.png"
 
-  iex> avatar_url(%{icon: %{path: "http://example.com/path.png"}})
-  "http://example.com/path.png"
+      iex> avatar_url(%{icon: %{path: "http://example.com/path.png"}})
+      "http://example.com/path.png"
 
-  iex> avatar_url(%{icon_id: "icon123"})
-  # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/icon123.png"
-  "http://example.com/icon123.png"
+      iex> avatar_url(%{icon_id: "icon123"})
+      # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/icon123.png"
+      "http://example.com/icon123.png"
 
-  iex> avatar_url(%{path: "image.jpg"})
-  # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/image.jpg"
-  "http://example.com/image.jpg"
+      iex> avatar_url(%{path: "image.jpg"})
+      # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/image.jpg"
+      "http://example.com/image.jpg"
 
-  iex> avatar_url(%{icon: "http://example.com/icon.png"})
-  "http://example.com/icon.png"
+      iex> avatar_url(%{icon: "http://example.com/icon.png"})
+      "http://example.com/icon.png"
 
-  iex> avatar_url(%{image: "http://example.com/image.png"})
-  "http://example.com/image.png"
+      iex> avatar_url(%{image: "http://example.com/image.png"})
+      "http://example.com/image.png"
 
-  iex> avatar_url(%{id: "user123", shared_user: nil})
-  # Assume avatar_fallback/1 returns "/images/avatar.png"
-  "/images/avatar.png"
+      iex> avatar_url(%{id: "user123", shared_user: nil})
+      # Assume avatar_fallback/1 returns "/images/avatar.png"
+      "/images/avatar.png"
 
-  iex> avatar_url(%{id: "user456", shared_user: %{id: "shared123"}})
-  "https://picsum.photos/seed/user456/128/128?blur"
+      iex> avatar_url(%{id: "user456", shared_user: %{id: "shared123"}})
+      "https://picsum.photos/seed/user456/128/128?blur"
 
-  iex> avatar_url(%{id: "user789"})
-  # Assume avatar_fallback/1 returns "/images/avatar.png"
-  "/images/avatar.png"
+      iex> avatar_url(%{id: "user789"})
+      # Assume avatar_fallback/1 returns "/images/avatar.png"
+      "/images/avatar.png"
   """
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url

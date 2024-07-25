@@ -805,14 +805,14 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-    > apply_task(:async, fn -> IO.puts("Async task") end)
-    # Output: "Async task"
+      > apply_task(:async, fn -> IO.puts("Async task") end)
+      # Output: "Async task"
 
-    > {apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
-    # Output: "Fire-and-forget task"
+      > {apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
+      # Output: "Fire-and-forget task"
 
-    > apply_task(:start_link, fn -> IO.puts("Supervised task") end)
-    # Output: "Supervised task"
+      > apply_task(:start_link, fn -> IO.puts("Supervised task") end)
+      # Output: "Supervised task"
   """
   def apply_task(function \\ :async, fun, opts \\ []) do
     do_apply_task(opts[:module] || Task, function, fun, [], opts)

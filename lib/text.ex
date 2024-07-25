@@ -211,16 +211,16 @@ defmodule Bonfire.Common.Text do
   Truncates the input string at the last underscore (`_`) if its length exceeds the given length.
   If the input string is shorter than or equal to the given length, it returns the string as is.
 
-  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 4)
-  "abc"
+      iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 4)
+      "abc"
 
-  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 10)
-  "abc_def"
+      iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 10)
+      "abc_def"
 
-  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 5)
-  "abc"
+      iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 5)
+      "abc"
 
-  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 0)
+      iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 0)
   """
   def underscore_truncate(input, length \\ 250) do
     if(String.length(input) > length) do
@@ -263,14 +263,14 @@ defmodule Bonfire.Common.Text do
   Converts the input content from markdown to HTML if the markdown library is enabled.
   If the content starts with an HTML tag or if the markdown library is not enabled, it skips conversion.
 
-  iex> Bonfire.Common.Text.maybe_markdown_to_html("*Hello World*", [])
-  "<p><em>Hello World</em></p>\n"
+      > Bonfire.Common.Text.maybe_markdown_to_html("*Hello World*", [])
+      "<p><em>Hello World</em></p>"
 
-  iex> Bonfire.Common.Text.maybe_markdown_to_html("<p>Hello</p>", [])
-  "<p>Hello</p>"
+      iex> Bonfire.Common.Text.maybe_markdown_to_html("<p>Hello</p>", [])
+      "<p>Hello</p>"
 
-  iex> Bonfire.Common.Text.maybe_markdown_to_html("Not markdown", [])
-  "<p>Not markdown</p>\n"
+      > Bonfire.Common.Text.maybe_markdown_to_html("Not markdown", [])
+      "<p>Not markdown</p>"
   """
   def maybe_markdown_to_html(nothing, opts \\ [])
 
@@ -396,14 +396,14 @@ defmodule Bonfire.Common.Text do
   Generates a URL-friendly slug from the given text.
   The text is downcased, trimmed, spaces are replaced with dashes, and it is URI-encoded.
 
-  iex> Bonfire.Common.Text.slug("Hello World!")
-  "hello-world!"
+      iex> Bonfire.Common.Text.slug("Hello World!")
+      "hello-world!"
 
-  iex> Bonfire.Common.Text.slug("Elixir Programming")
-  "elixir-programming"
+      iex> Bonfire.Common.Text.slug("Elixir Programming")
+      "elixir-programming"
 
-  iex> Bonfire.Common.Text.slug("Special & Characters")
-  "special-&-characters"
+      iex> Bonfire.Common.Text.slug("Special & Characters")
+      "special-&-characters"
   """
   def slug({_tag, _attrs, text, _extra}), do: slug(text)
 
@@ -744,8 +744,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    > list_unchecked_boxes("* [ ] task")
-    [["task"]]
+      > list_unchecked_boxes("* [ ] task")
+      [["task"]]
   """
   def list_unchecked_boxes(text) do
     regex_list(@checkbox_regex_unchecked_line, text)
@@ -756,8 +756,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    > list_checkboxes("* [ ] task\n* [x] done")
-    [[" ", "task"], [" ", "done"]]
+      > list_checkboxes("* [ ] task\n* [x] done")
+      [[" ", "task"], [" ", "done"]]
   """
   def list_checkboxes(text) do
     regex_list(@checkbox_regex_checkbox_line, text)
@@ -774,8 +774,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    iex> upcase_first("hello")
-    "Hello"
+      iex> upcase_first("hello")
+      "Hello"
   """
   def upcase_first(<<first::utf8, rest::binary>>),
     do: String.upcase(<<first::utf8>>) <> rest
@@ -785,8 +785,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    iex> camelise("hello world")
-    "HelloWorld"
+      iex> camelise("hello world")
+      "HelloWorld"
   """
   def camelise(str) do
     words = ~w(#{str})
@@ -800,8 +800,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    > maybe_render_templated("Hello {{name}}", %{name: "World"})
-    "Hello World"
+      > maybe_render_templated("Hello {{name}}", %{name: "World"})
+      "Hello World"
   """
   def maybe_render_templated(templated_content, data)
       when is_binary(templated_content) and is_map(data) do
@@ -837,8 +837,8 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-    > verb_infinitive("running")
-    "run"
+      > verb_infinitive("running")
+      "run"
   """
   def verb_infinitive(verb_conjugated) do
     with true <- module_enabled?(Irregulars),

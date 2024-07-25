@@ -43,20 +43,20 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   # Simple translation
 
-  iex> l("Hello")
-  "Hello"
-  iex> l("Hello %{name}", name: "Bookchin")
-  "Hello Bookchin"
-  iex> l("Hi", [], "test context")
-  "Hi"
+      iex> l("Hello")
+      "Hello"
+      iex> l("Hello %{name}", name: "Bookchin")
+      "Hello Bookchin"
+      iex> l("Hi", [], "test context")
+      "Hi"
 
 
   # Plural translation
 
-  iex> lp("Hi friend", "Hi friends", 2)
-  "Hi friends"
-  iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
-  "Hiya Bookchin"
+      iex> lp("Hi friend", "Hi friends", 2)
+      "Hi friends"
+      iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
+      "Hiya Bookchin"
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for details.
   """
@@ -73,14 +73,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   ## Examples
 
-  ```elixir
-  iex> l("Hello")
-  "Hello"
-  iex> l("Hello %{name}", name: "Bookchin")
-  "Hello Bookchin"
-  iex> l("Hi", [], "test context")
-  "Hi"
-  ```
+      iex> l("Hello")
+      "Hello"
+      iex> l("Hello %{name}", name: "Bookchin")
+      "Hello Bookchin"
+      iex> l("Hi", [], "test context")
+      "Hi"
 
   ## Parameters
     * `msgid` - The text or message ID to be translated.
@@ -161,12 +159,10 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   ## Examples
 
-  ```elixir
-  iex> lp("Hi friend", "Hi friends", 2)
-  "Hi friends"
-  iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
-  "Hiya Bookchin"
-  ```
+      iex> lp("Hi friend", "Hi friends", 2)
+      "Hi friends"
+      iex> lp("Hiya %{user_or_users}", "Hiyas %{user_or_users}", 1, [user_or_users: "Bookchin"], "test context")
+      "Hiya Bookchin"
 
   ## Parameters
     * `msgid` - The singular message id to be translated.
@@ -284,12 +280,10 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   ## Examples
 
-  ```elixir
-  iex> localise_dynamic("some_message_id")
-  "some_message_id"
-  iex> localise_dynamic("some_message_id", MyApp.MyModule)
-  "some_message_id"
-  ```
+      iex> localise_dynamic("some_message_id")
+      "some_message_id"
+      iex> localise_dynamic("some_message_id", MyApp.MyModule)
+      "some_message_id"
 
   ## Parameters
     * `msgid` - The message id to be localized.
@@ -313,12 +307,10 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   ## Examples
 
-  ```elixir
-  iex> localise_strings(["hello", "world"])
-  ["hello", "world"]
-  iex> localise_strings(["hello", "world"], MyApp.MyModule)
-  ["hello", "world"]
-  ```
+      iex> localise_strings(["hello", "world"])
+      ["hello", "world"]
+      iex> localise_strings(["hello", "world"], MyApp.MyModule)
+      ["hello", "world"]
 
   ## Parameters
     * `strings` - A list of strings to be localized.

@@ -105,19 +105,19 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-  iex> maybe_module(Bonfire.Common)
-  Bonfire.Common
+      iex> maybe_module(Bonfire.Common)
+      Bonfire.Common
 
-  iex> Config.put(DisabledModule, modularity: :disabled)
-  iex> maybe_module(DisabledModule)
-  nil
+      iex> Config.put(DisabledModule, modularity: :disabled)
+      iex> maybe_module(DisabledModule)
+      nil
 
-  iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
-  iex> maybe_module(Bonfire.Common.Text)
-  Bonfire.Common.TextExtended
-  iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
-  iex> maybe_module(Bonfire.Common.Text)
-  Bonfire.Common.Text
+      iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
+      iex> maybe_module(Bonfire.Common.Text)
+      Bonfire.Common.TextExtended
+      iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
+      iex> maybe_module(Bonfire.Common.Text)
+      Bonfire.Common.Text
   """
   def maybe_module(module, opts \\ [])
   def maybe_module(nil, _), do: nil
@@ -172,11 +172,11 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-  iex> maybe_module!(Bonfire.Common)
-  Bonfire.Common
+      iex> maybe_module!(Bonfire.Common)
+      Bonfire.Common
 
-  iex> maybe_module!(SomeDisabledModule)
-  ** (RuntimeError) Module Elixir.SomeDisabledModule is disabled and no replacement was configured
+      iex> maybe_module!(SomeDisabledModule)
+      ** (RuntimeError) Module Elixir.SomeDisabledModule is disabled and no replacement was configured
   """
   def maybe_module!(module, opts \\ []) do
     case maybe_module(module, opts) do
