@@ -6,7 +6,20 @@ defmodule Bonfire.Common.Errors do
   import Bonfire.Common.Extend
   alias Bonfire.Common.Config
 
-  @doc "Turns various kind of errors into an error message string. Used to format errors in a way that can be easily read by the user."
+  @doc """
+  Turns various kinds of errors into an error message string. Used to format errors in a way that can be easily read by the user.
+
+  ## Examples
+
+      iex> error_msg([{:error, "something went wrong"}])
+      ["something went wrong"]
+
+      iex> error_msg(%{message: "custom error"})
+      "custom error"
+
+      iex> error_msg(:some_other_error)
+      ":some_other_error"
+  """
   def error_msg(errors) when is_list(errors) do
     errors
     |> Enum.map(&error_msg/1)
@@ -32,19 +45,64 @@ defmodule Bonfire.Common.Errors do
   def error_msg(message), do: inspect(message)
 
   @spec maybe_ok_error(any, any) :: any
-  @doc "Applies change_fn if the first parameter is an {:ok, val} tuple, else returns the value"
+  @doc """
+  Applies `change_fn` if the first parameter is an `{:ok, val}` tuple, else returns the value.
+
+  ## Examples
+
+      iex> maybe_ok_error({:ok, 42}, &(&1 * 2))
+      {:ok, 84}
+
+      iex> maybe_ok_error({:error, :some_error}, &(&1 * 2))
+      {:error, :some_error}
+
+      iex> maybe_ok_error(42, &(&1 * 2))
+      42
+  """
   def maybe_ok_error({:ok, val}, change_fn) do
     {:ok, change_fn.(val)}
   end
 
   def maybe_ok_error(other, _change_fn), do: other
 
+  @doc """
+  Maps an error tuple to a new value using the provided function.
+
+  ## Examples
+
+      iex> map_error({:error, :some_error}, &(&1 |> to_string()))
+      "some_error"
+
+      iex> map_error(42, &(&1 * 2))
+      42
+  """
   def map_error({:error, value}, fun), do: fun.(value)
   def map_error(other, _), do: other
 
+  @doc """
+  Replaces the error value in an error tuple with a new value.
+
+  ## Examples
+
+      iex> replace_error({:error, :old_value}, :new_value)
+      {:error, :new_value}
+
+      iex> replace_error(42, :new_value)
+      42
+  """
   def replace_error({:error, _}, value), do: {:error, value}
   def replace_error(other, _), do: other
 
+  @doc """
+  Logs a debug message with exception and stacktrace information.
+
+  ## Examples
+
+      iex> debug_exception("An error occurred", %RuntimeError{message: "error"}, nil, :error, [])
+      # Output: An error occurred: %RuntimeError{message: "error"}
+      {:error, "An error occurred"}
+
+  """
   def debug_exception(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, opts \\ [])
 
   def debug_exception(msg, exception, stacktrace, kind, opts) do
@@ -90,6 +148,17 @@ defmodule Bonfire.Common.Errors do
 
   # defp maybe_stacktrace(_), do: nil
 
+  @doc """
+  Logs a debug message with optional exception and stacktrace information.
+
+  ## Examples
+
+      iex> debug_log("A debug message", %RuntimeError{message: "error"}, nil, :error)
+      # Output: A debug message: %RuntimeError{message: "error"}
+
+      iex> debug_log("A debug message", nil, nil, :info)
+      # Output: A debug message: nil
+  """
   def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, msg_text \\ nil)
 
   def debug_log(msg, exception, stacktrace, kind, msg_text) do
@@ -192,12 +261,23 @@ defmodule Bonfire.Common.Errors do
   end
 
   @doc """
-  Normalizes and formats any throw/error/exit.
-  The message is formatted and displayed in the same
-  format as used by Elixir's CLI.
-  The third argument is the stacktrace which is used to enrich
-  a normalized error with more information. It is only used when
-  the kind is an error.
+  Normalizes and formats any throw/error/exit. The message is formatted and displayed in the same format as used by Elixir's CLI.
+
+  The third argument is the stacktrace which is used to enrich a normalized error with more information. It is only used when the kind is an error.
+
+  ## Examples
+
+      iex> format_banner(:error, %RuntimeError{message: "error"})
+      "** Elixir.RuntimeError: error"
+
+      iex> format_banner(:throw, :some_reason)
+      "** (throw) :some_reason"
+
+      iex> format_banner(:exit, :some_reason)
+      "** (exit) :some_reason"
+
+      > format_banner({:EXIT, self()}, :some_reason)
+      "** (EXIT from #PID<0.780.0>) :some_reason"
   """
   def format_banner(kind, exception, stacktrace \\ [], opts \\ [])
 
@@ -222,9 +302,15 @@ defmodule Bonfire.Common.Errors do
   end
 
   @doc """
-  Formats the stacktrace.
-  A stacktrace must be given as an argument. If not, the stacktrace
-  is retrieved from `Process.info/2`.
+  Formats the stacktrace. A stacktrace must be given as an argument. If not, the stacktrace is retrieved from `Process.info/2`.
+
+  ## Examples
+
+      > format_stacktrace([{MyModule, :my_fun, 1, [file: 'my_file.ex', line: 42]}], [])
+      "my_file.ex:42: MyModule.my_fun/1"
+
+      > format_stacktrace(nil, [])
+      "stacktrace here..."
   """
   def format_stacktrace(trace \\ nil, opts) do
     case trace || last_stacktrace() do
@@ -250,6 +336,14 @@ defmodule Bonfire.Common.Errors do
 
   @doc """
   Receives a stacktrace entry and formats it into a string.
+
+  ## Examples
+
+      iex> format_stacktrace_entry({MyModule, :my_fun, 1, [file: 'my_file.ex', line: 42]}, [])
+      "my_file.ex:42: MyModule.my_fun/1"
+
+      > format_stacktrace_entry({fn -> :ok end, 0, [file: 'another_file.ex', line: 7]}, [])
+      "another_file.ex:7: some_fun/2"
   """
   def format_stacktrace_entry(entry, opts \\ [])
 
@@ -284,19 +378,20 @@ defmodule Bonfire.Common.Errors do
   end
 
   @doc """
-  Receives a module, fun and arity and formats it
-  as shown in stacktraces. The arity may also be a list
-  of arguments.
+  Receives a module, function, and arity and formats it as shown in stacktraces. The arity may also be a list of arguments.
+
+  Anonymous functions are reported as -func/arity-anonfn-count-, where func is the name of the enclosing function. Convert to "anonymous fn in func/arity"
+
   ## Examples
-      iex> Exception.format_mfa(Foo, :bar, 1)
-      {Foo, :bar, "Foo.bar/1"}
-      iex> Exception.format_mfa(Foo, :bar, [])
-      {Foo, :bar, "Foo.bar()"}
+
+      iex> format_mfa(Foo, :bar, 1)
+      {"Foo", "bar", "Foo.bar/1"}
+
+      iex> format_mfa(Foo, :bar, [])
+      {"Foo", "bar", "Foo.bar()"}
+
       iex> Exception.format_mfa(nil, :bar, [])
-      {nil, :bar, "nil.bar()"}
-  Anonymous functions are reported as -func/arity-anonfn-count-,
-  where func is the name of the enclosing function. Convert to
-  "anonymous fn in func/arity"
+      "nil.bar()"
   """
   def format_mfa(module, fun, arity) when is_atom(module) and is_atom(fun) do
     if function_exported?(Macro, :inspect_atom, 2) do

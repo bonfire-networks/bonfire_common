@@ -11,7 +11,65 @@ defmodule Bonfire.Common.Types do
   alias Bonfire.Common.Extend
   alias Bonfire.Common.Text
 
-  @doc "Takes an object and returns its data type as a module name or atom"
+  @doc """
+  Takes an object and returns its data type as a module name or atom.
+
+  ## Examples
+
+      iex> typeof(%{__struct__: Ecto.Schema})
+      Ecto.Schema
+
+      iex> typeof(%{__context__: nil, __changed__: nil})
+      :assigns
+
+      iex> typeof(nil)
+      :empty
+
+      iex> typeof(%Ecto.Changeset{})
+      Ecto.Changeset
+
+      iex> typeof([1, 2])
+      List
+
+      iex> typeof([])
+      :empty
+
+      iex> typeof("string")
+      String
+
+      iex> typeof(:atom)
+      Atom
+
+      iex> typeof(123)
+      Integer
+
+      iex> typeof(%{id: 1})
+      Map
+
+      iex> typeof(%{})
+      :empty
+
+      iex> typeof(3.14)
+      Float
+
+      iex> typeof({:ok, 42})
+      Tuple
+
+      iex> typeof(fn -> :ok end)
+      Function
+
+      iex> typeof(self())
+      Process
+
+      iex> typeof(Port.open({:spawn, "cat"}, [:binary]))
+      Port
+
+      iex> typeof(make_ref())
+      :reference
+
+      iex> typeof(%{__struct__: Bonfire.Classify.Category})
+      Bonfire.Classify.Category
+  """
   def typeof(%{__struct__: exception_struct}) when is_exception(exception_struct),
     do: exception_struct
 
@@ -54,7 +112,29 @@ defmodule Bonfire.Common.Types do
   def typeof(reference) when is_reference(reference), do: :reference
   def typeof(_), do: nil
 
-  @doc "Takes an object or list of objects and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID(s) if present in the object."
+  @doc """
+  Takes an object or list of objects and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID(s) if present in the object.
+
+  ## Examples
+
+      iex> ulid(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      "01J3MNBPD0VX96MFY9B15BCHYP"
+
+      iex> ulid(%{pointer: %{id: "01J3MNBPD0VX96MFY9B15BCHYP"}})
+      "01J3MNBPD0VX96MFY9B15BCHYP"
+
+      iex> ulid(%{id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      "01J3MNBPD0VX96MFY9B15BCHYP"
+      
+      iex> ulid("01J3MNBPD0VX96MFY9B15BCHYP")
+      "01J3MNBPD0VX96MFY9B15BCHYP"
+
+      iex> ulid(["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"])
+      ["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"]
+
+      iex> ulid("invalid_id")
+      nil
+  """
   def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
   def ulid(%{pointer: %{id: id}}) when is_binary(id), do: ulid(id)
 
@@ -104,7 +184,17 @@ defmodule Bonfire.Common.Types do
     List.wrap(ulid(object) || fallback)
   end
 
-  @doc "Takes an object and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID if present in the object. Throws an error if the ULID ID is not present."
+  @doc """
+  Takes an object and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID if present in the object. Throws an error if a ULID ID is not present.
+
+  ## Examples
+
+      iex> ulid!(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      "01J3MNBPD0VX96MFY9B15BCHYP"
+
+      iex> ulid!("invalid_id")
+      ** (RuntimeError) Expected an object or ID (ULID)
+  """
   def ulid!(object) do
     case ulid(object) do
       id when is_binary(id) ->
@@ -116,7 +206,19 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  @doc "Takes a value and returns true if it's a number or can be converted to a float"
+  @doc """
+  Takes a value and returns true if it's a number or can be converted to a float.
+
+  ## Examples
+    iex> is_numeric(123)
+    true
+
+    iex> is_numeric("123.45")
+    true
+
+    iex> is_numeric("abc")
+    false
+  """
   def is_numeric(num) when is_integer(num) or is_float(num), do: true
 
   def is_numeric(str) when is_binary(str) do
@@ -128,7 +230,19 @@ defmodule Bonfire.Common.Types do
 
   def is_numeric(_), do: false
 
-  @doc "Converts a value to a floating-point number if possible. If the value cannot be converted to a float, it returns a fallback value (which defaults to 0 if not provided)"
+  @doc """
+  Converts a value to a floating-point number if possible. If the value cannot be converted to a float, it returns a fallback value (which defaults to 0 if not provided).
+
+  ## Examples
+    iex> maybe_to_float(123)
+    123
+
+    iex> maybe_to_float("123.45")
+    123.45
+
+    iex> maybe_to_float("abc", 0.0)
+    0.0
+  """
   def maybe_to_float(val, fallback \\ 0)
   def maybe_to_float(num, _fallback) when is_integer(num) or is_float(num), do: num
 
@@ -149,7 +263,19 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  @doc "Converts a value to an integer if possible. If the value is not an integer, it attempts to convert it to a float and then rounds it to the nearest integer. Otherwise it returns a fallback value (which defaults to 0 if not provided)."
+  @doc """
+  Converts a value to an integer if possible. If the value is not an integer, it attempts to convert it to a float and then rounds it to the nearest integer. Otherwise it returns a fallback value (which defaults to 0 if not provided).
+
+  ## Examples
+    iex> maybe_to_integer(123.45)
+    123
+
+    iex> maybe_to_integer("123")
+    123
+
+    iex> maybe_to_integer("abc", 0)
+    0
+  """
   def maybe_to_integer(val, fallback \\ 0)
   def maybe_to_integer(val, _fallback) when is_integer(val), do: val
   def maybe_to_integer(val, _fallback) when is_float(val), do: round(val)
@@ -164,7 +290,16 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  @doc "Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier)"
+  @doc """
+  Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier).
+
+  ## Examples
+    iex> is_ulid?("01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+    true
+
+    iex> is_ulid?("invalid_ulid")
+    false
+  """
   def is_ulid?(str) when is_binary(str) and byte_size(str) == 26 do
     with :error <- Needle.ULID.cast(str) do
       false
@@ -175,7 +310,16 @@ defmodule Bonfire.Common.Types do
 
   def is_ulid?(_), do: false
 
-  @doc "Takes a string and returns true if it is a valid UUID (Universally Unique Identifier)"
+  @doc """
+  Takes a string and returns true if it is a valid UUID (Universally Unique Identifier).
+
+  ## Examples
+    iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
+    true
+
+    iex> is_uuid?("invalid_uuid")
+    false
+  """
   def is_uuid?(str) do
     with true <- is_binary(str) and byte_size(str) == 36,
          {:ok, _} <- Ecto.UUID.cast(str) do
@@ -185,14 +329,32 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  @doc "Takes a string and returns an atom if it can be converted to one, else returns the input itself"
+  @doc """
+  Takes a string and returns an atom if it can be converted to one, else returns the input itself.
+
+  ## Examples
+    iex> maybe_to_atom("atom_name")
+    :atom_name
+
+    iex> maybe_to_atom("def_non_existing_atom")
+    "def_non_existing_atom"
+  """
   def maybe_to_atom(str) when is_binary(str) do
     maybe_to_atom!(str) || str
   end
 
   def maybe_to_atom(other), do: other
 
-  @doc "Takes a string or an atom and returns an atom if it is one or can be converted to one, else returns nil."
+  @doc """
+  Takes a string or an atom and returns an atom if it is one or can be converted to one, else returns nil.
+
+  ## Examples
+    iex> maybe_to_atom!("atom_name")
+    :atom_name
+
+    iex> maybe_to_atom!("def_non_existing_atom")
+    nil
+  """
   def maybe_to_atom!("false"), do: false
   def maybe_to_atom!("nil"), do: nil
   def maybe_to_atom!(""), do: nil
@@ -208,7 +370,16 @@ defmodule Bonfire.Common.Types do
   def maybe_to_atom!(atom) when is_atom(atom), do: atom
   def maybe_to_atom!(_), do: nil
 
-  @doc "Takes a string and returns the corresponding Elixir module if it exists and is not disabled in the app."
+  @doc """
+  Takes a string and returns the corresponding Elixir module if it exists and is not disabled in the app.
+
+  ## Examples
+    iex> maybe_to_module("Enum")
+    Enum
+
+    iex> maybe_to_module("NonExistentModule")
+    nil
+  """
   def maybe_to_module(str, force \\ true)
 
   def maybe_to_module("Elixir." <> _ = str, force) do
@@ -235,6 +406,16 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_module(_, _), do: nil
 
+  @doc """
+  Takes a string or atom and attempts to convert it to an atom or module, depending on the flags.
+
+  ## Examples
+    iex> maybe_to_atom_or_module(:some_atom, true, true)
+    :some_atom
+
+    iex> maybe_to_atom_or_module("Enum", true, true)
+    Enum
+  """
   def maybe_to_atom_or_module(k, _force, _to_snake) when is_atom(k),
     do: k
 
@@ -250,7 +431,16 @@ defmodule Bonfire.Common.Types do
   def maybe_to_atom_or_module(k, _false = force, _false = _to_snake),
     do: maybe_to_module(k, force) || maybe_to_atom(k)
 
-  @doc "Takes a module atom and converts it to a string, or a string and removes the `Elixir.` prefix if it exists."
+  @doc """
+  Takes a module atom and converts it to a string, or a string and removes the `Elixir.` prefix if it exists.
+
+  ## Examples
+    iex> module_to_str(SomeModule)
+    "SomeModule"
+
+    iex> module_to_str(Elixir.SomeModule)
+    "SomeModule"
+  """
   def module_to_str(str) when is_binary(str) do
     case str do
       "Elixir." <> name -> name
@@ -261,25 +451,48 @@ defmodule Bonfire.Common.Types do
   def module_to_str(atom) when is_atom(atom),
     do: maybe_to_string(atom) |> module_to_str()
 
-  @doc "Handles multiple cases where the input value is of a different type (atom, list, tuple, etc.) and returns a string representation of it."
+  @doc """
+  Handles multiple cases where the input value is of a different type (atom, list, tuple, etc.) and returns a string representation of it.
+
+  ## Examples
+  iex> maybe_to_string(:some_atom)
+  "some_atom"
+
+  iex> maybe_to_string([1, 2, 3])
+  "[1, 2, 3]"
+
+  iex> maybe_to_string({:a, :tuple})
+  "a: tuple"
+  """
   def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
     Atom.to_string(atom)
   end
 
   def maybe_to_string(list) when is_list(list) do
     # IO.inspect(list, label: "list")
-    List.to_string(list)
+    inspect(list)
   end
 
   def maybe_to_string({key, val}) do
-    maybe_to_string(key) <> ":" <> maybe_to_string(val)
+    maybe_to_string(key) <> ": " <> maybe_to_string(val)
   end
 
   def maybe_to_string(other) do
     to_string(other)
   end
 
-  @doc "Takes a module name (as a string or an atom) and converts it to a human-readable string. It removes the `Elixir.` prefix (if it exists) and any other prefixes (eg. `Bonfire.Common.`) and converts the final part of the module name to a string in title case (eg. `Types`)."
+  @doc """
+  Takes a module name (as a string or an atom) and converts it to a human-readable string. 
+
+  It removes the `Elixir.` prefix (if it exists) and any other prefixes (e.g., `Bonfire.Common.`) and converts the final part of the module name to a string in title case (e.g., `Types`).
+
+  ## Examples
+    iex> module_to_human_readable("Elixir.Bonfire.Common.Types")
+    "Types"
+
+    iex> module_to_human_readable(Bonfire.Common.Types)
+    "Types"
+  """
   def module_to_human_readable(module) do
     module
     |> module_to_str()
@@ -288,7 +501,16 @@ defmodule Bonfire.Common.Types do
     |> Recase.to_title()
   end
 
-  @doc "Takes a map or list of maps, and if the value of a key in the map is a ULID, it replaces it with the corresponding Crockford Base32 encoded string."
+  @doc """
+  Takes a map or list of maps, and if the value of a key in the map is a ULID, it replaces it with the corresponding Crockford Base32 encoded string.
+
+  ## Examples
+    iex> maybe_convert_ulids(%{key: "01FJ4ZZZ8P5RMZMM00XDDDF8"})
+    %{key: "01FJ4ZZZ8P5RMZMM00XDDDF8"}
+
+    iex> maybe_convert_ulids([%{key: "01FJ4ZZZ8P5RMZMM00XDDDF8"}])
+    [%{key: "01FJ4ZZZ8P5RMZMM00XDDDF8"}]
+  """
   def maybe_convert_ulids(list) when is_list(list),
     do: Enum.map(list, &maybe_convert_ulids/1)
 
@@ -308,10 +530,31 @@ defmodule Bonfire.Common.Types do
   def maybe_convert_ulids({:ok, val}), do: {:ok, maybe_convert_ulids(val)}
   def maybe_convert_ulids(val), do: val
 
-  @doc "Takes a string as input, converts it to snake_case, and converts it to an atom if such an atom exists, otherwise returns nil."
+  @doc """
+  Takes a string as input, converts it to snake_case, and converts it to an atom if such an atom exists, otherwise returns nil.
+
+  ## Examples
+    iex> maybe_to_snake_atom("SomeString")
+    :some_string
+
+    iex> maybe_to_snake_atom("DefNonExistingAtom")
+    nil
+  """
   def maybe_to_snake_atom(string), do: maybe_to_atom!(Text.maybe_to_snake(string))
 
-  @doc "Takes an object or module name and checks if it defines a struct"
+  @doc """
+  Takes an object or module name and checks if it defines a struct.
+
+  ## Examples
+    iex> defines_struct?(Needle.Pointer)
+    true
+
+    iex> defines_struct?(%{__struct__: Bonfire.Common})
+    true
+
+    iex> defines_struct?(%{some_key: "some_value"})
+    false
+  """
   def defines_struct?(module) when is_atom(module) do
     function_exported?(module, :__struct__, 0)
   end
@@ -324,7 +567,27 @@ defmodule Bonfire.Common.Types do
     false
   end
 
-  @doc "Takes an object, module name, or string, and returns the type of the object. The function uses various patterns to match different object types (such as associations, Pointables, edges/verbs, etc.). If none of the patterns match, the function returns nil."
+  @doc """
+  Takes an object, module name, or string, and returns the type of the object. 
+
+  The function uses various patterns to match different object types (such as associations, Pointables, edges/verbs, etc.). If none of the patterns match, the function returns nil.
+
+  ## Examples
+    iex> object_type(%Ecto.Association.NotLoaded{})
+    nil
+
+    iex> object_type(%{table_id: "601NTERTAB1EF0RA11TAB1ES00"})
+    Needle.Table
+
+    iex> object_type(%{pointer_id: "User"})
+    Bonfire.Data.Identity.User
+
+    iex> object_type("User")
+    Bonfire.Data.Identity.User
+
+    iex> object_type(:some_atom)
+    :some_atom
+  """
   def object_type(object)
 
   def object_type(%Ecto.Association.NotLoaded{}) do
@@ -533,6 +796,16 @@ defmodule Bonfire.Common.Types do
     end
   end
 
+  @doc """
+  Outputs a human-readable representation of an object type.
+
+  ## Examples
+    iex> object_type_display(:user)
+    "user"
+
+    iex> object_type_display(%Bonfire.Data.Social.APActivity{})
+    "apactivity"
+  """
   # @decorate time()
   def object_type_display(object_type)
       when is_atom(object_type) and not is_nil(object_type) do
@@ -551,7 +824,10 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc """
-  Outputs the names all object types, for the purpose of adding to the localisation strings, as long as the output is piped through to localise_strings/1 at compile time.
+  Outputs the names of all object types for the purpose of adding to the localisation strings (as long as the output is piped through to `Bonfire.Common.Localise.Gettext.localise_strings/1` at compile time)
+
+    > all_object_type_names()
+    ["User", "Delete this User", "Post", "Delete this Post", ...]
   """
   def all_object_type_names() do
     Bonfire.Common.SchemaModule.modules()
@@ -572,17 +848,15 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc """
-  Given a list of schema types, returns a list of their respective table types. Filters out any empty values.
+  Given a list of schema types, returns a list of their respective table types. Filters out any empty values. 
 
-  ## Examples
     iex> table_types([%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"}, %Bonfire.Data.Social.APActivity{}])
-    "30NF1REAPACTTAB1ENVMBER0NE"
+    ["30NF1REAPACTTAB1ENVMBER0NE"]
 
-  Given a single schema type, returns its respective table type.
+    Given a single schema type, it returns its respective table type.
 
-  ## Examples
     iex> table_types(Bonfire.Data.Social.APActivity)
-    "30NF1REAPACTTAB1ENVMBER0NE"
+    ["30NF1REAPACTTAB1ENVMBER0NE"]
   """
   def table_types(types) when is_list(types),
     do: Enum.map(types, &table_type/1) |> Enums.filter_empty([]) |> Enum.dedup()
@@ -639,13 +913,17 @@ defmodule Bonfire.Common.Types do
   def table_id(_), do: nil
 
   @doc """
-  Used for mapping schema types to user-friendly names.
-
-  Given a string representing a schema type name, returns a sanitised version of it, or nil for object types (or mixins) that shouldn't be displayed.
+  Used for mapping schema types to user-friendly names. Given a string representing a schema type name, returns a sanitised version of it, or nil for object types (or mixins) that shouldn't be displayed.
 
   ## Examples
     iex> sanitise_name("Apactivity")
     "Federated Object"
+
+    iex> sanitise_name("Settings")
+    "Setting"
+
+    iex> sanitise_name("Created")
+    nil
   """
   def sanitise_name("Replied"), do: "Reply in Thread"
   def sanitise_name("Named"), do: "Name"

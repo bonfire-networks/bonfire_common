@@ -13,6 +13,13 @@ defmodule Bonfire.Common.URIs do
 
   @doc """
   Validates a URI string.
+
+  ## Examples
+
+  iex> {:ok, %URI{scheme: "http", host: "example.com"}} = validate_uri("http://example.com")
+
+  iex> {:error, %URI{scheme: nil, host: nil}} = validate_uri("invalid_uri")
+
   """
   def validate_uri(str) do
     uri = URI.parse(str)
@@ -26,6 +33,12 @@ defmodule Bonfire.Common.URIs do
 
   @doc """
   Returns true if the given string is a valid URI.
+
+  iex> is_uri?("http://example.com")
+  true
+
+  iex> is_uri?("invalid_uri")
+  false
   """
   def is_uri?(str) do
     case URI.parse(str) do
@@ -37,6 +50,25 @@ defmodule Bonfire.Common.URIs do
 
   @doc """
   Returns the path (URL on the local instance) for the given object/struct (eg. a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
+
+  Returns the path (URL on the local instance) for the given object/struct (e.g., a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
+
+  ## Examples
+
+  > path(:user, [1], [])
+  "/users/1"
+
+  > path(User, [1], [])
+  "/users/1"
+
+  > path(%{id: "1"}, :show, [])
+  "/users/1/show"
+
+  > path(%{id: "1"}, [some: :args], [])
+  "/users/1/some_args"
+
+  iex> path("12345", [some: :args], [])
+  nil
   """
   def path(view_module_or_path_name_or_object, args \\ [], opts \\ [])
 
@@ -278,12 +310,61 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{id: id}), do: id
   defp path_id(other), do: other
 
-  @doc "Returns the full URL (including domain and path) for a given object, module, or path name."
+  @doc """
+  Returns the full URL (including domain and path) for a given object, module, or path name.
+
+
+  iex> url_path(:user, [1])
+  "http://localhost:4000/discussion/user/1"
+
+  """
   def url_path(view_module_or_path_name_or_object, args \\ []) do
     base_url() <> path(view_module_or_path_name_or_object, args)
   end
 
-  @doc "Returns the canonical URL (i.e. the one used for ActivityPub federation) of an object"
+  @doc """
+  Returns the canonical URL (i.e., the one used for ActivityPub federation) of an object.
+
+  ## Examples
+
+  ```elixir
+  iex> canonical_url(%{canonical_uri: "http://example.com"})
+  "http://example.com"
+
+  iex> canonical_url(%{canonical_url: "http://example.com"})
+  "http://example.com"
+
+  iex> canonical_url(%{"canonicalUrl" => "http://example.com"})
+  "http://example.com"
+
+  iex> canonical_url(%{peered: %{canonical_uri: "http://example.com"}})
+  "http://example.com"
+
+  iex> canonical_url(%{character: %{canonical_uri: "http://example.com"}})
+  "http://example.com"
+
+  iex> canonical_url(%{character: %{peered: %{canonical_uri: "http://example.com"}}})
+  "http://example.com"
+
+  iex> canonical_url(%{peered: %Ecto.Association.NotLoaded{}})
+  nil
+
+  iex> canonical_url(%{created: %Ecto.Association.NotLoaded{}})
+  nil
+
+  iex> canonical_url(%{character: %Ecto.Association.NotLoaded{}})
+  nil
+
+  iex> canonical_url(%{character: %{peered: %{}}})
+  nil
+
+  iex> canonical_url(%{path: "http://example.com"})
+  "http://example.com"
+
+  iex> canonical_url(%{other: "data"})
+  nil
+
+  """
   def canonical_url(%{canonical_uri: canonical_url})
       when is_binary(canonical_url) do
     canonical_url
@@ -405,7 +486,13 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
-  @doc "Return the homepage URI (as struct) of the local instance"
+  @doc """
+  Returns the homepage URI (as struct) of the local instance.
+
+
+  iex> %URI{scheme: "http", host: "localhost"} = base_uri(:my_endpoint)
+
+  """
   def base_uri(conn_or_socket \\ nil)
 
   def base_uri(%{endpoint: endpoint} = _socket), do: base_uri(endpoint)
@@ -498,6 +585,13 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  @doc """
+  Returns the base domain from the given URI or endpoint.
+
+  iex> base_domain(%URI{host: "example.com", port: 443})
+  "example.com"
+
+  """
   def base_domain(uri_or_endpoint_or_conn \\ nil)
 
   def base_domain(%URI{} = uri) do
@@ -526,6 +620,20 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
+  @doc """
+  Removes the scheme from a URL to get the display URL.
+
+
+  iex> display_url("https://example.com/path")
+  "example.com/path"
+
+  iex> display_url("http://example.com/path")
+  "example.com/path"
+
+  iex> display_url("/path")
+  "/path"
+
+  """
   def based_url(url, conn \\ nil)
   def based_url("http" <> _ = url, conn), do: url
   def based_url("/" <> url, conn), do: "#{base_url(conn)}/#{url}"
@@ -535,6 +643,12 @@ defmodule Bonfire.Common.URIs do
   def display_url("http://" <> url), do: url
   def display_url(url), do: url
 
+  @doc """
+  Generates a static path based on the given path and endpoint module.
+
+  iex> static_path("/assets/image.png")
+  "/assets/image.png"
+  """
   def static_path(path, endpoint_module \\ Bonfire.Common.Config.endpoint_module()) do
     endpoint_module.static_path(path)
   end

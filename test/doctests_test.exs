@@ -19,5 +19,10 @@ defmodule Bonfire.Common.DocsTest do
   doctest Bonfire.Common.Extensions, import: true
   doctest Bonfire.Common.Extensions.Diff, import: true
 
+  doctest Bonfire.Common.DatesTimes, import: true
   doctest Bonfire.Common.Enums, import: true
+  doctest Bonfire.Common.Errors, import: true
+  doctest Bonfire.Common.Text, import: true
+  doctest Bonfire.Common.Types, import: true
+  doctest Bonfire.Common.URIs, import: true
 end

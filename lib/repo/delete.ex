@@ -8,13 +8,44 @@ defmodule Bonfire.Common.Repo.Delete do
   alias Ecto.Changeset
 
   @spec soft_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
-  @doc "Just marks an entry as deleted in the database"
+  @doc """
+  Marks an entry as deleted in the database.
+
+  ## Examples
+
+      iex> soft_delete(some_entry)
+      {:ok, some_entry}
+
+      iex> soft_delete(non_existent_entry)
+      {:error, :deletion_error}
+  """
   def soft_delete(it), do: deletion_result(do_soft_delete(it))
 
   @spec soft_delete!(any()) :: any()
-  @doc "Marks an entry as deleted in the database or throws an error"
+  @doc """
+  Marks an entry as deleted in the database or throws an error.
+
+  ## Examples
+
+      iex> soft_delete!(some_entry)
+      some_entry
+
+      iex> soft_delete!(non_existent_entry)
+      ** (RuntimeError) :deletion_error
+  """
   def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
 
+  @doc """
+  Marks an entry as not deleted.
+
+  ## Examples
+
+      iex> undelete(some_entry)
+      {:ok, some_entry}
+
+      iex> undelete(non_existent_entry)
+      {:error, :deletion_error}
+  """
   def undelete(it),
     do:
       deletion_result(
@@ -24,7 +55,17 @@ defmodule Bonfire.Common.Repo.Delete do
   defp do_soft_delete(it), do: repo().update(soft_delete_changeset(it))
 
   #  @spec soft_delete_changeset(Changeset.t(), atom, any) :: Changeset.t()
-  @doc "Creates a changeset for deleting an entity"
+  @doc """
+  Creates a changeset for marking an entity as deleted.
+
+  ## Examples
+
+      iex> soft_delete_changeset(some_entry)
+      %Ecto.Changeset{...}
+
+      iex> soft_delete_changeset({SomeSchema, some_entry}, :deleted_at, nil, "was already deleted")
+      %Ecto.Changeset{...}
+  """
   def soft_delete_changeset(
         it,
         column \\ :deleted_at,
@@ -75,7 +116,17 @@ defmodule Bonfire.Common.Repo.Delete do
   def schema(%schema{} = _it), do: schema
 
   @spec hard_delete(any()) :: {:ok, any()} | {:error, :deletion_error}
-  @doc "Actually deletes an entry from the database"
+  @doc """
+  Actually deletes an entry from the database.
+
+  ## Examples
+
+      iex> hard_delete(some_entry)
+      {:ok, some_entry}
+
+      iex> hard_delete(non_existent_entry)
+      {:error, :deletion_error}
+  """
   def hard_delete(it) do
     it
     |> repo().delete(
@@ -86,7 +137,17 @@ defmodule Bonfire.Common.Repo.Delete do
   end
 
   @spec hard_delete!(any()) :: any()
-  @doc "Deletes an entry from the database, or throws an error"
+  @doc """
+  Actually deletes an entry from the database, or throws an error.
+
+  ## Examples
+
+      iex> hard_delete!(some_entry)
+      some_entry
+
+      iex> hard_delete!(non_existent_entry)
+      ** (RuntimeError) :deletion_error
+  """
   def hard_delete!(it),
     do: deletion_result!(hard_delete(it))
 

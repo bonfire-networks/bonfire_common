@@ -6,6 +6,27 @@ defmodule Bonfire.Common.Needles.Preload do
   alias Bonfire.Common.Enums
   import Untangle
 
+  @doc """
+  Conditionally preloads pointers in an object based on provided keys and options.
+
+  This function handles various cases including tuples with `{:ok, obj}`, maps with an `:edges` key, lists of objects, and individual objects. It supports both single and nested keys for preloading.
+
+  ## Parameters
+    - `object`: The object(s) in which pointers may be preloaded. This can be a map, list, tuple, or other data structures.
+    - `keys`: A list of keys or a single key for preloading pointers. Nested keys can be specified for deeper levels of preloading.
+    - `opts`: Options for preloading, which may include configuration for how pointers are fetched and handled.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_pointers(%{edges: [...]}, [:key], [])
+      %{edges: [...]}
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_pointers(%{key: %Ecto.AssociationNotLoaded{}}, [:key], [])
+      %{key: %LoadedObject{}}
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_pointers(%{key: %{nested_key: %Ecto.AssociationNotLoaded{}}}, [:key, :nested_key], [])
+      %{key: %{nested_key: %LoadedObject{}}}
+  """
   def maybe_preload_pointers(object, keys, opts \\ [])
 
   def maybe_preload_pointers({:ok, obj}, keys, opts),
@@ -64,7 +85,27 @@ defmodule Bonfire.Common.Needles.Preload do
     object
   end
 
-  @doc "Please not this expects nested keys (like `proload` as opposed to `maybe_preload`)"
+  @doc """
+  Conditionally preloads nested pointers in object(s) based on provided keys and options.
+
+  This function handles various cases including nested keys for preloading. It supports preloading pointers in objects, lists of objects, and nested structures. The function processes lists of keys for deeply nested preloading.
+
+  ## Parameters
+    - `object`: The object in which nested pointers may be preloaded. This can be a map, list, or other data structures.
+    - `keys`: A list of nested keys for preloading pointers. The keys can be deeply nested to access and preload pointers at various levels (like in `proload` as opposed to `maybe_preload`)
+    - `opts`: Options for preloading, which may include configuration for how pointers are fetched and handled.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_nested_pointers(%{key: %{nested_key: %Ecto.AssociationNotLoaded{}}}, [key: [:nested_key]], [])
+      %{key: %{nested_key: %LoadedObject{}}}
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_nested_pointers(%{edges: []}, [:key], [])
+      %{edges: []}
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_nested_pointers([%{key: %Ecto.AssociationNotLoaded{}}], [:key], [])
+      [%{key: %LoadedObject{}}]
+  """
   def maybe_preload_nested_pointers(object, keys, opts \\ [])
 
   def maybe_preload_nested_pointers({:ok, obj}, keys, opts),
@@ -116,6 +157,17 @@ defmodule Bonfire.Common.Needles.Preload do
       object
   end
 
+  @doc """
+  Preloads a single pointer if the provided value is a `Needle.Pointer`.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_pointer(%Needle.Pointer{...}, [])
+      %LoadedObject{}
+
+      iex> Bonfire.Common.Needles.Preload.maybe_preload_pointer("not_a_pointer", [])
+      "not_a_pointer"
+  """
   def maybe_preload_pointer(pointer, opts \\ [])
 
   def maybe_preload_pointer(%Needle.Pointer{} = pointer, opts) do
@@ -147,6 +199,13 @@ defmodule Bonfire.Common.Needles.Preload do
     # |> Enum.map(&custom_access_key_fun(&1))
   end
 
+  @doc """
+  Generates an access function based on a key and default value.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Preload.access_key(:key)
+  """
   def access_key(key, default_val \\ nil) do
     fn
       # :get, data, next when is_list(data) ->
@@ -189,6 +248,14 @@ defmodule Bonfire.Common.Needles.Preload do
     end
   end
 
+  @doc """
+  Creates a custom access function for nested keys with an optional transformation function.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Preload.custom_access_key_fun(:key)
+      #Function<...>
+  """
   # TODO: to load multiple nested pointers
   def custom_access_key_fun(key, fun \\ &preload_next_in/1, default_val \\ nil) do
     fn

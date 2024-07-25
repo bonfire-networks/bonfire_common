@@ -15,8 +15,45 @@ defmodule Bonfire.Common.Text do
   @checked_box " <input type=\'checkbox\' checked=\'checked\'>"
   @unchecked_box " <input type=\'checkbox\'>"
 
+  @doc """
+  Checks if a string is blank.
+
+  ## Examples
+
+      iex> blank?(nil)
+      true
+
+      iex> blank?("   ")
+      true
+
+      iex> blank?("not blank")
+      false
+  """
   def blank?(str_or_nil), do: "" == str_or_nil |> to_string() |> String.trim()
 
+  @doc """
+  Returns the length of the input based on its type.
+
+  ## Examples
+
+      iex> strlen("hello")
+      5
+
+      iex> strlen([1, 2, 3])
+      3
+
+      iex> strlen(%{})
+      0
+
+      iex> strlen(nil)
+      0
+
+      iex> strlen(0)
+      0
+
+      iex> strlen(123)
+      1
+  """
   def strlen(x) when is_nil(x), do: 0
   def strlen(%{} = obj) when obj == %{}, do: 0
   def strlen(%{}), do: 1
@@ -26,25 +63,83 @@ defmodule Bonfire.Common.Text do
   # let's just say that 0 is nothing
   def strlen(x) when x == 0, do: 0
 
+  @doc """
+  Checks if a string contains a substring.
+
+  ## Examples
+
+      iex> contains?("hello world", "world")
+      true
+
+      iex> contains?("hello world", "foo")
+      false
+  """
   def contains?(string, substring)
       when is_binary(string) and is_binary(substring),
       do: string =~ substring
 
   def contains?(_, _), do: nil
 
+  @doc """
+  Generates a random string of a given length.
+
+  ## Examples
+
+      iex> random_string(5) |> String.length()
+      5
+
+      > random_string()
+      #=> a string of length 10
+  """
   def random_string(length \\ 10) do
     :crypto.strong_rand_bytes(length)
     |> Base.url_encode64()
     |> binary_part(0, length)
   end
 
+  @doc """
+  Hashes the input using a specified algorithm.
+
+  ## Examples
+
+      iex> hash("data", algorithm: :sha256)
+      "Om6weQ85rIfJTzhWst0sXREOaBFgImGpqSPTuyOtyLc"
+
+      iex> hash("data")
+      "jXd_OF09_siBXSD3SWAm3A"
+  """
   def hash(seed, opts \\ []) do
     :crypto.hash(opts[:algorithm] || :md5, seed)
     |> Base.url_encode64(padding: opts[:padding] || false)
   end
 
+  @doc """
+  Checks if a string contains HTML tags.
+
+  ## Examples
+
+      iex> contains_html?("<div>Test</div>")
+      true
+
+      iex> contains_html?("Just text")
+      false
+  """
   def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
 
+  @doc """
+  Truncates a string to a maximum length, optionally adding a suffix.
+
+  ## Examples
+
+      iex> truncate("Hello world", 5)
+      "Hello"
+
+      iex> truncate("Hello world", 5, "...")
+      "He..."
+
+      iex> truncate("Hello world", 7, "...")
+      "Hell..."
+  """
   def truncate(text, max_length \\ 250, add_to_end \\ nil)
 
   def truncate(text, max_length, add_to_end) when is_binary(text) do
@@ -64,6 +159,17 @@ defmodule Bonfire.Common.Text do
 
   def truncate(text, _, _), do: text
 
+  @doc """
+  Truncates a string to a maximum length, ensuring it ends on a sentence boundary.
+
+  ## Examples
+
+      iex> sentence_truncate("Hello world. This is a test.", 12)
+      "Hello world."
+
+      iex> sentence_truncate("Hello world. This is a test.", 12, "...")
+      "Hello world...."
+  """
   def sentence_truncate(input, length \\ 250, add_to_end \\ "") do
     if(is_binary(input) and String.length(input) > length) do
       "#{do_sentence_truncate(input, length)}#{add_to_end}"
@@ -101,6 +207,21 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  @doc """
+  Truncates the input string at the last underscore (`_`) if its length exceeds the given length.
+  If the input string is shorter than or equal to the given length, it returns the string as is.
+
+  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 4)
+  "abc"
+
+  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 10)
+  "abc_def"
+
+  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 5)
+  "abc"
+
+  iex> Bonfire.Common.Text.underscore_truncate("abc_def_ghi", 0)
+  """
   def underscore_truncate(input, length \\ 250) do
     if(String.length(input) > length) do
       do_underscore_truncate(input, length)
@@ -138,6 +259,19 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  @doc """
+  Converts the input content from markdown to HTML if the markdown library is enabled.
+  If the content starts with an HTML tag or if the markdown library is not enabled, it skips conversion.
+
+  iex> Bonfire.Common.Text.maybe_markdown_to_html("*Hello World*", [])
+  "<p><em>Hello World</em></p>\n"
+
+  iex> Bonfire.Common.Text.maybe_markdown_to_html("<p>Hello</p>", [])
+  "<p>Hello</p>"
+
+  iex> Bonfire.Common.Text.maybe_markdown_to_html("Not markdown", [])
+  "<p>Not markdown</p>\n"
+  """
   def maybe_markdown_to_html(nothing, opts \\ [])
 
   def maybe_markdown_to_html(nothing, _opts)
@@ -258,6 +392,19 @@ defmodule Bonfire.Common.Text do
      ], text, extra}
   end
 
+  @doc """
+  Generates a URL-friendly slug from the given text.
+  The text is downcased, trimmed, spaces are replaced with dashes, and it is URI-encoded.
+
+  iex> Bonfire.Common.Text.slug("Hello World!")
+  "hello-world!"
+
+  iex> Bonfire.Common.Text.slug("Elixir Programming")
+  "elixir-programming"
+
+  iex> Bonfire.Common.Text.slug("Special & Characters")
+  "special-&-characters"
+  """
   def slug({_tag, _attrs, text, _extra}), do: slug(text)
 
   def slug(text) when is_list(text),
@@ -271,13 +418,28 @@ defmodule Bonfire.Common.Text do
     |> URI.encode()
   end
 
-  @doc "takes a string as input and converts it to snake_case"
+  @doc """
+  Converts input to snake_case.
+
+  ## Examples
+
+      iex> maybe_to_snake("CamelCase")
+      "camel_case"
+  """
   def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
   defp md_tag_text({_tag, _attrs, text, _extra}), do: md_tag_text(text)
   defp md_tag_text(text) when is_binary(text), do: text
   defp md_tag_text(_), do: ""
 
+  @doc """
+  Highlights code using Makeup or falls back to Phoenix.HTML if unsupported.
+
+  ## Examples
+
+      > code_syntax("defmodule Test {}", "test.ex")
+      #=> "<pre><code class=\"highlight\">defmodule Test {}</code></pre>"
+  """
   def code_syntax(text, filename) do
     if makeup_supported?(filename) do
       Makeup.highlight(text)
@@ -312,7 +474,14 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
+  Sanitizes HTML content to ensure it is safe.
+
   It is recommended to call this before storing any that data is coming in from the user or from a remote instance
+
+  ## Examples
+
+      > maybe_sane_html("<script>alert('XSS')</script>")
+      #=> "alert('XSS')" (if HtmlSanitizeEx is enabled)
   """
   def maybe_sane_html(content) do
     if module_enabled?(HtmlSanitizeEx) do
@@ -322,6 +491,17 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  @doc """
+  Extracts text from safe or regular content.
+
+  ## Examples
+
+      iex> text_only("<div>Text</div>")
+      "Text"
+
+      iex> text_only({:safe, "<div>Safe Text</div>"})
+      "Safe Text"
+  """
   def text_only({:safe, content}), do: text_only(content)
 
   def text_only(content) when is_binary(content) do
@@ -336,6 +516,17 @@ defmodule Bonfire.Common.Text do
 
   def text_only(_content), do: nil
 
+  @doc """
+  Normalizes HTML content, handling various edge cases.
+
+  ## Examples
+
+      iex> maybe_normalize_html("<p>Test</p>")
+      "Test"
+
+      iex> maybe_normalize_html("<p><br/></p>")
+      ""
+  """
   def maybe_normalize_html("<p>" <> content) do
     # workaround for weirdness with Earmark's parsing of markdown within html
     maybe_normalize_html(content)
@@ -359,6 +550,14 @@ defmodule Bonfire.Common.Text do
     # |> debug(html_string)
   end
 
+  @doc """
+  Converts text to emotes if the Emote module is enabled.
+
+  ## Examples
+
+      iex> maybe_emote(":smile:", nil, [])
+      "😄"
+  """
   def maybe_emote(content, user \\ nil, custom_emoji \\ []) do
     if module_enabled?(Emote) do
       debug(custom_emoji)
@@ -403,7 +602,14 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  # open outside links in a new tab
+  @doc """
+  Makes local links within content live.
+
+  ## Examples
+
+      > make_local_links_live("<a href=\"/path\">Link</a>")
+      "<a href=\"/path\" data-phx-link=\"redirect\" data-phx-link-state=\"push\">Link</a>"
+  """
   def make_local_links_live(content)
       when is_binary(content) and byte_size(content) > 20 do
     # local_instance = Bonfire.Common.URIs.base_url()
@@ -421,6 +627,14 @@ defmodule Bonfire.Common.Text do
 
   def make_local_links_live(content), do: content
 
+  @doc """
+  Normalizes links in the content based on format.
+
+  ## Examples
+
+      > normalise_links("<a href=\"/pub/actors/foo\">Actor</a>", :markdown)
+      "<a href=\"/character/foo\">Actor</a>"
+  """
   def normalise_links(content, format \\ :markdown)
 
   def normalise_links(content, :markdown)
@@ -483,6 +697,14 @@ defmodule Bonfire.Common.Text do
 
   def normalise_links(content, _format), do: content
 
+  @doc """
+  Converts markdown checkboxes to HTML checkboxes.
+
+  ## Examples
+
+      > markdown_checkboxes("* [ ] task\n* [x] done")
+      "<ul><li><input type='checkbox'> task</li><li><input type='checkbox' checked='checked'> done</li></ul>"
+  """
   def markdown_checkboxes(text) do
     text
     |> replace_checked_boxes()
@@ -505,14 +727,38 @@ defmodule Bonfire.Common.Text do
     end
   end
 
+  @doc """
+  Lists checked boxes from the text.
+
+  ## Examples
+
+      > list_checked_boxes("* [x] done")
+      [["done"]]
+  """
   def list_checked_boxes(text) do
     regex_list(@checkbox_regex_checked_line, text)
   end
 
+  @doc """
+  Lists unchecked boxes from the text.
+
+  ## Examples
+
+    > list_unchecked_boxes("* [ ] task")
+    [["task"]]
+  """
   def list_unchecked_boxes(text) do
     regex_list(@checkbox_regex_unchecked_line, text)
   end
 
+  @doc """
+  Lists all checkboxes from the text.
+
+  ## Examples
+
+    > list_checkboxes("* [ ] task\n* [x] done")
+    [[" ", "task"], [" ", "done"]]
+  """
   def list_checkboxes(text) do
     regex_list(@checkbox_regex_checkbox_line, text)
   end
@@ -523,9 +769,25 @@ defmodule Bonfire.Common.Text do
 
   def regex_list(_text, _regex), do: nil
 
+  @doc """
+  Converts the first character of a binary to uppercase.
+
+  ## Examples
+
+    iex> upcase_first("hello")
+    "Hello"
+  """
   def upcase_first(<<first::utf8, rest::binary>>),
     do: String.upcase(<<first::utf8>>) <> rest
 
+  @doc """
+  Converts a string to CamelCase.
+
+  ## Examples
+
+    iex> camelise("hello world")
+    "HelloWorld"
+  """
   def camelise(str) do
     words = ~w(#{str})
 
@@ -533,6 +795,14 @@ defmodule Bonfire.Common.Text do
     |> to_string()
   end
 
+  @doc """
+  Renders templated content if the `Solid` library is enabled.
+
+  ## Examples
+
+    > maybe_render_templated("Hello {{name}}", %{name: "World"})
+    "Hello World"
+  """
   def maybe_render_templated(templated_content, data)
       when is_binary(templated_content) and is_map(data) do
     if module_enabled?(Solid) and String.contains?(templated_content, "{{") do
@@ -563,8 +833,12 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
-  Uses the `Verbs` library to convert an English conjugated verb back to inifinitive form.
-  Currently only supports irregular verbs.
+  Converts an English conjugated verb to its infinitive form using the `Verbs` library. Currently only supports irregular verbs.
+
+  ## Examples
+
+    > verb_infinitive("running")
+    "run"
   """
   def verb_infinitive(verb_conjugated) do
     with true <- module_enabled?(Irregulars),

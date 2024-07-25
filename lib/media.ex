@@ -11,7 +11,36 @@ defmodule Bonfire.Common.Media do
 
   @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
 
-  @doc "Takes a Media map (or an object containing one) and returns a URL for the media"
+  @doc """
+  Takes a Media map (or an object containing one) and returns a URL for the media.
+
+  ## Examples
+
+      iex> media_url(%{path: "http://example.com/image.jpg"})
+      "http://example.com/image.jpg"
+
+      iex> media_url(%{path: "remote.jpg", metadata: %{"module" => "MyModule"}})
+      # Assume MyModule.remote_url/1 is defined and returns "http://example.com/remote.jpg"
+      "http://example.com/remote.jpg"
+
+      iex> media_url(%{media_type: "image/jpeg", path: "image.jpg"})
+      "http://image.jpg"
+
+      iex> media_url(%{media_type: "text/plain", path: "document.txt"})
+      "http://document.txt"
+
+      iex> media_url(%{changes: %{path: "http://changed.example.com/image.jpg"}})
+      "http://changed.example.com/image.jpg"
+
+      iex> media_url(%{path: "image.jpg"})
+      "http://image.jpg"
+
+      iex> media_url(%{media: %{path: "http://nested.example.com/image.jpg"}})
+      "http://nested.example.com/image.jpg"
+
+      iex> media_url(%{nonexistent_key: "value"})
+      nil
+  """
   def media_url(%{path: "http" <> _ = url} = _media) do
     url
   end
@@ -60,6 +89,29 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
+  @doc """
+  Takes a Media map (or an object containing one) and returns the thumbnail's URL.
+
+  ## Examples
+
+      iex> thumbnail_url(%{path: "thumbnail.jpg", metadata: %{"module" => "MyModule"}})
+      # Assume MyModule.remote_url/2 with :thumbnail returns "http://example.com/thumbnail.jpg"
+      "http://example.com/thumbnail.jpg"
+
+      iex> thumbnail_url(%{media_type: "image/jpeg", path: "thumbnail.jpg"})
+      "http://thumbnail.jpg"
+
+      iex> thumbnail_url(%{media_type: "video/mp4", path: "video.mpeg"})
+      # Assume Bonfire.Files.VideoUploader.remote_url/2 with :thumbnail returns "http://video-thumbnail.jpg"
+      "http://video-thumbnail.jpg"
+
+      iex> thumbnail_url(%{path: "document.pdf", media_type: "document"})
+      # Assume Bonfire.Files.DocumentUploader.remote_url/2 with :thumbnail returns "http://document-thumbnail.jpg"
+      "http://document-thumbnail.jpg"
+
+      iex> thumbnail_url(%{nonexistent_key: "value"})
+      nil
+  """
   def thumbnail_url(%{metadata: %{"module" => module}} = media) do
     case Common.Types.maybe_to_module(module) do
       nil ->
@@ -90,12 +142,64 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
-  @doc "Takes a Media map (or an object containing one) and returns the avatar's URL."
+  @doc """
+  Takes a Media map (or an object containing one) and returns the avatar's URL.
+
+  ## Examples
+
+      iex> avatar_media(%{profile: %{icon: "http://example.com/avatar.png"}})
+      %Media{...}
+
+      iex> avatar_media(%{icon: "http://example.com/icon.png"})
+      %Media{...}
+
+      iex> avatar_media(%{profile: %{icon: %{path: "http://example.com/path.png"}}})
+      %Media{...}
+
+      iex> avatar_media(%{nonexistent_key: "value"})
+      nil
+  """
   def avatar_media(%{profile: %{icon: media}}), do: media
   def avatar_media(%{icon: media}), do: media
   def avatar_media(%{} = maybe_media), do: maybe_media
   def avatar_media(_), do: nil
 
+  @doc """
+  Takes a Media map (or an object containing one) and returns the avatar's URL.
+
+  ## Examples
+
+  iex> avatar_url(%{profile: %{icon: %{url: "http://example.com/avatar.png"}}})
+  "http://example.com/avatar.png"
+
+  iex> avatar_url(%{icon: %{path: "http://example.com/path.png"}})
+  "http://example.com/path.png"
+
+  iex> avatar_url(%{icon_id: "icon123"})
+  # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/icon123.png"
+  "http://example.com/icon123.png"
+
+  iex> avatar_url(%{path: "image.jpg"})
+  # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/image.jpg"
+  "http://example.com/image.jpg"
+
+  iex> avatar_url(%{icon: "http://example.com/icon.png"})
+  "http://example.com/icon.png"
+
+  iex> avatar_url(%{image: "http://example.com/image.png"})
+  "http://example.com/image.png"
+
+  iex> avatar_url(%{id: "user123", shared_user: nil})
+  # Assume avatar_fallback/1 returns "/images/avatar.png"
+  "/images/avatar.png"
+
+  iex> avatar_url(%{id: "user456", shared_user: %{id: "shared123"}})
+  "https://picsum.photos/seed/user456/128/128?blur"
+
+  iex> avatar_url(%{id: "user789"})
+  # Assume avatar_fallback/1 returns "/images/avatar.png"
+  "/images/avatar.png"
+  """
   def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
   def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
   def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
@@ -133,7 +237,42 @@ defmodule Bonfire.Common.Media do
     nil
   end
 
-  @doc "Takes a Media map (or an object containing one) and returns the image's URL."
+  @doc """
+  Takes a Media map (or an object containing one) and returns the image's URL.
+
+  ## Examples
+
+      iex> image_url("http://example.com/image.png")
+      "http://example.com/image.png"
+
+      iex> image_url(%{media_type: "text/plain"})
+      nil
+
+      iex> image_url(%{profile: %{image: %{url: "http://example.com/image.png"}}})
+      "http://example.com/image.png"
+
+      iex> image_url(%{image: %{url: "http://example.com/image.png"}})
+      "http://example.com/image.png"
+
+      iex> image_url(%{icon: %{path: "http://example.com/image.png"}})
+      "http://example.com/image.png"
+
+      iex> image_url(%{path: "http://example.com/image.png"})
+      "http://example.com/image.png"
+
+      iex> image_url(%{image_id: "image123"})
+      # Assume Bonfire.Files.ImageUploader.remote_url/1 returns "http://example.com/image123.png"
+      "http://example.com/image123.png"
+
+      iex> image_url(%{image: "http://example.com/image.png"})
+      "http://example.com/image.png"
+
+      iex> image_url(%{profile: %{image: "http://example.com/profile_image.png"}})
+      "http://example.com/profile_image.png"
+
+      iex> image_url(%{nonexistent_key: "value"})
+      nil
+  """
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
 
@@ -169,7 +308,39 @@ defmodule Bonfire.Common.Media do
 
   def image_url(_obj), do: nil
 
-  @doc "Takes a Media map (or an object containing one) and returns the banner's URL."
+  @doc """
+  Takes a Media map (or an object containing one) and returns the banner's URL.
+
+  ## Examples
+
+      iex> banner_url(%{profile: %{image: %{id: "banner123"}}})
+      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner123.png"
+      "http://example.com/banner123.png"
+
+      iex> banner_url(%{image: %{url: "http://example.com/banner.png"}})
+      "http://example.com/banner.png"
+
+      iex> banner_url(%{image: %{path: "http://example.com/banner.png"}})
+      "http://example.com/banner.png"
+
+      iex> banner_url(%{path: "http://example.com/banner.png"})
+      "http://example.com/banner.png"
+
+      iex> banner_url(%{image_id: "banner456"})
+      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner456.png"
+      "http://example.com/banner456.png"
+
+      iex> banner_url(%{image: "http://example.com/banner.png"})
+      "http://example.com/banner.png"
+
+      iex> banner_url(%{profile: %{image: %{id: "banner789"}}})
+      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner789.png"
+      "http://example.com/banner789.png"
+
+      iex> banner_url(%{nonexistent_key: "value"})
+      # Assume banner_fallback/0 returns "/images/bonfires.png"
+      "/images/bonfires.png"
+  """
   def banner_url(%{profile: %{image: %{id: _} = media} = _profile}), do: banner_url(media)
   def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
 
@@ -197,6 +368,23 @@ defmodule Bonfire.Common.Media do
   # TODO: configurable
   def banner_fallback, do: "/images/bonfires.png"
 
+  @doc """
+  Determines the dominant color for a given user’s avatar or banner.
+
+  ## Examples
+
+      iex> maybe_dominant_color(%{profile: %{icon: "http://example.com/avatar.png"}})
+      "#AA4203" # Example dominant color
+
+      iex> maybe_dominant_color(%{profile: %{icon: "http://example.com/avatar.png"}}, nil, "http://example.com/banner.png")
+      "#AA4203" # Example dominant color
+
+      iex> maybe_dominant_color(%{profile: %{icon: "http://example.com/avatar.png"}}, nil, nil, "/images/bonfires.png")
+      "#AA4203" # Example dominant color
+
+      iex> maybe_dominant_color(%{profile: %{icon: nil}}, "http://example.com/banner.png")
+      nil
+  """
   def maybe_dominant_color(user, avatar_url \\ nil, banner_url \\ nil, banner_fallback \\ nil) do
     avatar_url = avatar_url || avatar_url(user)
     banner_url = banner_url || banner_url(user)
@@ -222,6 +410,17 @@ defmodule Bonfire.Common.Media do
 
   @doc """
   Returns a map containing all files and their contents from a tar or compressed tar.gz archive.
+
+  ## Examples
+
+      iex> extract_tar("path/to/archive.tar.gz")
+      %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
+
+      iex> extract_tar("path/to/archive.tar", [:memory])
+      %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
+
+      iex> extract_tar("path/to/archive.tar", [:compressed, :memory])
+      %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
   """
   def extract_tar(archive, opts \\ [:compressed, :memory]) do
     with {:ok, files} <- :erl_tar.extract(archive, opts) do
@@ -231,6 +430,24 @@ defmodule Bonfire.Common.Media do
     end
   end
 
+  @doc """
+  Reads specific files from a tar archive and returns their contents.
+
+  ## Examples
+
+      iex> read_tar_files("path/to/archive.tar", "file1.txt")
+      {:ok, "file1 contents"}
+
+      iex> read_tar_files("path/to/archive.tar", ["file1.txt", "file2.txt"])
+      {:ok, ["file1 contents", "file2 contents"]}
+
+      iex> read_tar_files("path/to/nonexistent.tar", "file1.txt")
+      {:error, "File not found"}
+
+      iex> read_tar_files("path/to/archive.tar", "nonexistent_file.txt")
+      {:error, "File not found"}
+
+  """
   def read_tar_files(archive, file_or_files, _opts \\ [:compressed, :verbose]) do
     # opts
     # |> Keyword.put_new(:cwd, Path.dirname(archive))

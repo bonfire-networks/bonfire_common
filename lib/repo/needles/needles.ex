@@ -16,6 +16,17 @@ defmodule Bonfire.Common.Needles do
   alias Needle.NotFound
   alias Needle.Pointer
 
+  @doc """
+  Retrieves an object by its ID. Raises `NotFound` if the object cannot be found.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.get!("existing_id")
+      %Pointer{id: "existing_id", ...}
+
+      iex> Bonfire.Common.Needles.get!("non_existent_id")
+      ** (Needle.NotFound) ...
+  """
   def get!(id, opts \\ []) do
     with {:ok, obj} <- get(id, opts) do
       obj
@@ -25,6 +36,17 @@ defmodule Bonfire.Common.Needles do
     end
   end
 
+  @doc """
+  Retrieves an object by its ID.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.get("existing_id")
+      {:ok, %Pointer{id: "existing_id", ...}}
+
+      iex> Bonfire.Common.Needles.get("non_existent_id")
+      {:error, :not_found}
+  """
   def get(id, opts \\ [])
 
   def get({:ok, by}, opts), do: get(by, opts)
@@ -55,14 +77,45 @@ defmodule Bonfire.Common.Needles do
     {:error, :not_found}
   end
 
+  @doc """
+  Retrieves an object by its ID or pointer.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.get("some_id")
+      {:ok, %Pointer{id: "some_id", ...}}
+
+      iex> Bonfire.Common.Needles.get([id: "some_id"])
+      {:ok, %Pointer{id: "existing_id", ...}}
+  """
   def one(id, opts \\ [])
   def one(id, opts) when is_binary(id), do: one(filter_one(id), opts)
   # TODO: boundary check by default in one and many?
   def one(filters, opts), do: pointer_query(filters, opts) |> repo().single()
 
+  @doc """
+  Retrieves a single object based on the provided filters with bang.
+
+      iex> Bonfire.Common.Needles.one!("some_id")
+      %Pointer{id: "some_id", ...}
+
+      iex> Bonfire.Common.Needles.one!([id: "some_id"])
+      %Pointer{id: "some_id", ...}
+  """
   def one!(filters, opts \\ []),
     do: pointer_query(filters, opts) |> repo().one!()
 
+  @doc """
+  Checks if an object exists based on the given filters.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.exists?("some_id")
+      true
+
+      iex> Bonfire.Common.Needles.exists?("non_existent_id")
+      false
+  """
   def exists?(filters, opts \\ [])
 
   def exists?(filters, opts) when is_binary(filters),
@@ -76,6 +129,17 @@ defmodule Bonfire.Common.Needles do
       pointer_query(filters, opts ++ [skip_boundary_check: true])
       |> repo().exists?()
 
+  @doc """
+  Retrieves a list of objects based on pointers or IDs.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.list!(["id1", "id2"])
+      [%Pointer{id: "id1", ...}, %Pointer{id: "id2", ...}]
+
+      iex> Bonfire.Common.Needles.list!([%Pointer{id: "id1"}, %Pointer{id: "id2"}])
+      [%Pointer{id: "id1", ...}, %Pointer{id: "id2", ...}]
+  """
   def list!(pointers, opts \\ [])
 
   def list!(pointers, opts)
@@ -95,16 +159,50 @@ defmodule Bonfire.Common.Needles do
     []
   end
 
+  @doc """
+  Retrieves objects based on type and filters.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.list_by_type!(:my_table, [filter: value])
+      [%Pointer{...}, %Pointer{...}]
+  """
   def list_by_type!(table_id_or_schema, filters \\ [], opts \\ []) do
     loader(table_id_or_schema, filters, opts)
   end
 
+  @doc """
+  Retrieves many objects based on the provided filters
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.many([id: "some_id"])
+      {:ok, [%Pointer{id: "some_id", ...}]}
+
+      iex> Bonfire.Common.Needles.many([id: "non_existing_id"])
+      {:ok, []}
+  """
   def many(filters \\ [], opts \\ []),
     do: {:ok, pointer_query(filters, opts) |> repo().many()}
 
+  @doc """
+
+  Retrieves many objects based on the provided filters
+
+      iex> Bonfire.Common.Needles.many!([id: "some_id"])
+      [%Pointer{id: "some_id", ...}]
+  """
   def many!(filters \\ [], opts \\ []),
     do: pointer_query(filters, opts) |> repo().many()
 
+  @doc """
+  Filters a single pointer from a query result.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.filter_one("http://url")
+      [canonical_uri: "http://url"]
+  """
   def filter_one(filters) do
     if Bonfire.Common.Types.is_ulid?(filters) do
       [id: filters]
@@ -117,7 +215,17 @@ defmodule Bonfire.Common.Needles do
     end
   end
 
-  @doc "Prepare a query for generic pointer objects"
+  @doc """
+  Prepares a query for pointers.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.pointer_query(query, opts)
+      %Ecto.Query{...}
+
+      iex> Bonfire.Common.Needles.pointer_query([id: "some_id"], opts)
+      %Ecto.Query{...}
+  """
   def pointer_query(%Ecto.Query{} = q, opts) do
     opts =
       Utils.to_options(opts)
@@ -141,6 +249,17 @@ defmodule Bonfire.Common.Needles do
     |> pointer_query(opts)
   end
 
+  @doc """
+  Preloads associations based on the given preloads option.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.pointer_preloads(query, :with_creator)
+      %Ecto.Query{...}
+
+      iex> Bonfire.Common.Needles.pointer_preloads(query, :tags)
+      %Ecto.Query{...}
+  """
   def pointer_preloads(query, preloads) do
     case preloads do
       _ when is_list(preloads) ->
@@ -183,7 +302,20 @@ defmodule Bonfire.Common.Needles do
     end
   end
 
-  @doc "Turns a thing into a pointer if it is not already or returns nil"
+  @doc """
+  Turns a thing into a pointer if it is not already or returns nil.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.maybe_forge(%Pointer{id: "existing_id"})
+      %Pointer{id: "existing_id"}
+
+      iex> Bonfire.Common.Needles.maybe_forge(%{pointer_id: "existing_id"})
+      %Pointer{id: "existing_id"}
+
+      iex> Bonfire.Common.Needles.maybe_forge(%{id: "existing_id"})
+      nil
+  """
   def maybe_forge(%Pointer{} = thing), do: thing
 
   def maybe_forge(%{pointer_id: pointer_id}) when is_binary(pointer_id),
@@ -194,7 +326,18 @@ defmodule Bonfire.Common.Needles do
 
   def maybe_forge(_), do: nil
 
-  @doc "Turns a thing into a pointer if it is not already. Errors if it cannot be performed"
+  @doc """
+  Turns a thing into a pointer if it is not already. Errors if it cannot be performed.
+
+      iex> Bonfire.Common.Needles.maybe_forge!(%Pointer{id: "existing_id"})
+      %Pointer{id: "existing_id"}
+
+      iex> Bonfire.Common.Needles.maybe_forge!(%{pointer_id: "existing_id"})
+      %Pointer{id: "existing_id"}
+
+      iex> Bonfire.Common.Needles.maybe_forge!(%{id: "non_existing_id"})
+      ** (RuntimeError) ...
+  """
   def maybe_forge!(thing) do
     case {thing, Needle.is_needle?(thing, [:pointable, :virtual])} do
       {%Pointer{}, _} -> thing
@@ -205,11 +348,15 @@ defmodule Bonfire.Common.Needles do
   end
 
   @doc """
-  Forge a pointer from a pointable object
+  Forge a pointer from a pointable object.
 
-  Does not hit the database.
+  Does not hit the database, is safe so long as the provided struct participates in the meta abstraction.
 
-  Is safe so long as the provided struct participates in the meta abstraction.
+  ## Examples
+
+      iex> Bonfire.Common.Needles.forge!(%{__struct__: MySchema, id: "some_id"})
+      %Pointer{id: "some_id", ...}
+
   """
   @spec forge!(%{__struct__: atom, id: binary}) :: %Pointer{}
   def forge!(%{__struct__: schema, id: id} = pointed) do
@@ -219,10 +366,15 @@ defmodule Bonfire.Common.Needles do
   end
 
   @doc """
-  Forges a pointer to a participating meta entity.
+  Forges a pointer to a participating meta entity
 
   Does not hit the database, is safe so long as the entry we wish to
   synthesise a pointer for represents a legitimate entry in the database.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.forge!(:my_table, "some_id")
+      %Pointer{id: "some_id", ...}
   """
   @spec forge!(table_id :: integer | atom, id :: binary) :: %Pointer{}
   def forge!(table_id, id) do
@@ -230,6 +382,17 @@ defmodule Bonfire.Common.Needles do
     %Pointer{id: id, table: table, table_id: table.id}
   end
 
+  @doc """
+  Follows one or more pointers and returns the schema struct.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.follow!(%Pointer{id: "some_id"})
+      %SomeRecord{}
+
+      iex> Bonfire.Common.Needles.follow!([%Pointer{id: "some_id"}])
+      [%SomeRecord{}]
+  """
   def follow!(pointer_or_pointers, opts \\ [])
 
   def follow!(%Pointer{table_id: table_id} = pointer, opts) do
@@ -274,7 +437,13 @@ defmodule Bonfire.Common.Needles do
           Pointer.t() | [Pointer.t()]
 
   @doc """
-  Follows one or more pointers and adds the pointed records to the `pointed` attrs
+  Follows one or more pointers and adds the pointed records to the `pointed` attrs.
+
+      iex> Bonfire.Common.Needles.preload!(%Pointer{id: "some_id"})
+      %Pointer{id: "some_id", pointed: %SomeRecord{}}
+
+      iex> Bonfire.Common.Needles.preload!([%Pointer{id: "some_id"}])
+      [%Pointer{id: "some_id", pointed: %SomeRecord{}}]
   """
   def preload!(pointer_or_pointers, opts \\ [])
 
@@ -433,6 +602,14 @@ defmodule Bonfire.Common.Needles do
     end
   end
 
+  @doc """
+  Queries a dataset based on provided filters.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.query(filters)
+      %Ecto.Query{...}
+  """
   def query(schema, filters, opts \\ [])
 
   def query(schema, %{context: context} = filters, opts) do
@@ -460,6 +637,13 @@ defmodule Bonfire.Common.Needles do
     query(schema, Map.to_list(filters), opts)
   end
 
+  @doc """
+  Filters an object by its ID.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.id_filter(query, id: "some_id")
+  """
   def id_filter(query, id: ids) when is_list(ids) do
     where(query, [p], p.id in ^ids)
   end
@@ -494,6 +678,13 @@ defmodule Bonfire.Common.Needles do
     query
   end
 
+  @doc """
+  Filters an object by its binary ID.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.id_binary(id: "some_id")
+  """
   def id_binary(id: ids) when is_list(ids) do
     [id: Enum.map(ids, &id_binary/1)]
   end
@@ -506,6 +697,14 @@ defmodule Bonfire.Common.Needles do
     with {:ok, ulid} <- Needle.ULID.dump(id), do: ulid
   end
 
+  @doc """
+  Applies filters to a query.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.filters(query, filters)
+      %Ecto.Query{...}
+  """
   def filters(schema, id_filters, opts \\ []) do
     filters_override = Keyword.get(opts, :filters_override, [])
 
@@ -546,12 +745,26 @@ defmodule Bonfire.Common.Needles do
     {:error, error}
   end
 
+  @doc """
+  Retrieves a list of known IDs 
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.list_ids()
+      ["id1", "id2"]
+
+  """
   def list_ids do
     many(select: [:id]) ~> Enum.map(& &1.id)
   end
 
   @doc """
-  Batch loading of associations for GraphQL API
+  Resolves pointers for GraphQL API batch loading.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.dataloader(context)
+      %Dataloader{...}
   """
   def dataloader(context) do
     Dataloader.Ecto.new(repo(),
@@ -560,6 +773,14 @@ defmodule Bonfire.Common.Needles do
     )
   end
 
+  @doc """
+  Resolves associations or fields based on the given parent and context.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.maybe_resolve(parent, field, args, context)
+      {:ok, resolved_data}
+  """
   def maybe_resolve(parent, field, args, context) do
     # WIP
     case Map.get(parent, :field, :no_such_field) do

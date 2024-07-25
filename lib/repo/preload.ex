@@ -17,15 +17,37 @@ defmodule Bonfire.Common.Repo.Preload do
   alias Needle.Tables
   alias Bonfire.Common.Needles
 
+  @doc """
+  Preloads all associations for a given Ecto struct.
+
+  ## Examples
+
+      iex> preload_all(some_struct)
+  """
   def preload_all(%{} = structure, opts \\ []) do
     for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(structure), do: key)
     |> maybe_preload(structure, ..., opts)
   end
 
+  @doc """
+  Preloads mixin associations for a given Ecto struct.
+
+  ## Examples
+
+      iex> preload_mixins(some_struct)
+  """
   def preload_mixins(%{} = structure, opts \\ []) do
     maybe_preload(structure, schema_mixins(structure), opts)
   end
 
+  @doc """
+  Retrieves schema mixins for a given Ecto struct.
+
+  ## Examples
+
+      iex> schema_mixins(some_struct)
+      [:assoc1, :assoc2]
+  """
   def schema_mixins(%{} = structure) do
     mixin_modules = Tables.mixin_modules()
 
@@ -38,6 +60,17 @@ defmodule Bonfire.Common.Repo.Preload do
   #   CommonsPub.Contexts.prepare_context(obj)
   # end
 
+  @doc """
+  Conditionally preloads associations based on provided options.
+
+  ## Examples
+
+      iex> maybe_preload(some_struct, [:assoc1, :assoc2])
+      %{...}
+
+      iex> maybe_preload({:ok, some_struct}, [:assoc1, :assoc2])
+      {:ok, %{...}}
+  """
   def maybe_preload(obj, preloads, opts \\ [])
 
   def maybe_preload({:ok, obj}, preloads, opts),
@@ -127,6 +160,14 @@ defmodule Bonfire.Common.Repo.Preload do
 
   defp try_repo_preload(obj, _, _), do: obj
 
+  @doc """
+  Conditionally preloads associations for nested schemas.
+
+  ## Examples
+
+      iex> maybe_preloads_per_nested_schema(objects, path, preloads)
+      [%{...}, %{...}]
+  """
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts)
@@ -177,6 +218,15 @@ defmodule Bonfire.Common.Repo.Preload do
 
   def maybe_preloads_per_nested_schema(object, _, _, _opts), do: object
 
+  @doc """
+  Conditionally preloads associations for a schema.
+
+  ## Examples
+
+      iex> maybe_preloads_per_schema(some_struct, {Schema, [:assoc1, :assoc2]})
+
+      iex> maybe_preloads_per_schema(pointer_struct, {PointerSchema, [:assoc1, :assoc2]})
+  """
   def maybe_preloads_per_schema(object, schema_preloads, opts \\ [])
 
   def maybe_preloads_per_schema(

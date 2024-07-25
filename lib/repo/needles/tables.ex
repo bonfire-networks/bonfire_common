@@ -12,6 +12,17 @@ defmodule Bonfire.Common.Needles.Tables do
   alias Bonfire.Common.Needles.Tables.Queries
   import Untangle
 
+  @doc """
+  Retrieves a single record by ID or filters.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.one("valid_ulid")
+      {:ok, %Table{}}
+
+      iex> Bonfire.Common.Needles.Tables.one(%{field: "value"})
+      %Table{}
+  """
   def one(id) when is_binary(id) do
     if Bonfire.Common.Types.is_ulid?(id) do
       one(id: id)
@@ -22,13 +33,39 @@ defmodule Bonfire.Common.Needles.Tables do
 
   def one(filters), do: repo().single(Queries.query(Table, filters))
 
+  @doc """
+  Retrieves a single record by filters, raising an error if not found.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.one!(%{field: "value"})
+      %Table{}
+  """
   def one!(filters), do: repo().one!(Queries.query(Table, filters))
 
+  @doc """
+  Retrieves details of multiple tables based on filters.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.many(%{field: "value"})
+      {:ok, [%Table{}]}
+  """
   def many(filters \\ []), do: {:ok, repo().many(Queries.query(Table, filters))}
 
   @doc """
-  Retrieves the Table that a pointer points to
-  Note: Throws an error if the table cannot be found
+  Retrieves the Table that a pointer points to.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.table!(%Pointer{table_id: "valid_id"})
+      %Table{}
+
+      iex> Bonfire.Common.Needles.Tables.table!("valid_id")
+      %Table{}
+
+      iex> Bonfire.Common.Needles.Tables.table!("invalid_id")
+      # throws error
   """
   @spec table!(Pointer.t()) :: Table.t()
   def table!(%Pointer{table_id: id}), do: table!(id)
@@ -36,6 +73,17 @@ defmodule Bonfire.Common.Needles.Tables do
   def table!(schema_or_tablename_or_id),
     do: Needle.Tables.table!(schema_or_tablename_or_id)
 
+  @doc """
+  Retrieves the schema or table name.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.schema_or_table!("valid_id")
+      MySchema
+
+      iex> Bonfire.Common.Needles.Tables.schema_or_table!("table_name")
+      MySchema
+  """
   def schema_or_table!(schema_or_tablename_or_id) do
     # TODO
     with {:ok, table} <- Needle.Tables.table(schema_or_tablename_or_id) do
@@ -51,6 +99,17 @@ defmodule Bonfire.Common.Needles.Tables do
     end
   end
 
+  @doc """
+  Retrieves fields of a table given a schema or table name.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.table_fields(MySchema)
+      [:field1, :field2]
+
+      iex> Bonfire.Common.Needles.Tables.table_fields("table_name")
+      [:field1, :field2]
+  """
   def table_fields(schema) when is_atom(schema), do: table_fields(schema.__schema__(:source))
 
   def table_fields(table) when is_binary(table) do
@@ -70,6 +129,17 @@ defmodule Bonfire.Common.Needles.Tables do
     end
   end
 
+  @doc """
+  Retrieves metadata about fields of a table given a schema or table name.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.table_fields_meta(MySchema)
+      [%{column_name: "field1", data_type: "type", column_default: nil, is_nullable: "NO"}]
+
+      iex> Bonfire.Common.Needles.Tables.table_fields_meta("table_name")
+      [%{column_name: "field1", data_type: "type", column_default: nil, is_nullable: "NO"}]
+  """
   def table_fields_meta(schema) when is_atom(schema),
     do: table_fields_meta(schema.__schema__(:source))
 
@@ -95,7 +165,17 @@ defmodule Bonfire.Common.Needles.Tables do
   #   end
   # end
 
-  @doc "Lists all Pointable Tables"
+  @doc """
+  Lists all Pointable Tables.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.list_tables()
+      [%Table{}]
+
+      iex> Bonfire.Common.Needles.Tables.list_tables(:db)
+      %{"table_name" => %Table{}}
+  """
   def list_tables(source \\ :code)
 
   def list_tables(:code), do: Needle.Tables.data()
@@ -107,10 +187,26 @@ defmodule Bonfire.Common.Needles.Tables do
     end)
   end
 
+  @doc """
+  Lists IDs of all Pointable Tables.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.list_ids()
+      ["id1", "id2"]
+  """
   def list_ids do
     many(select: [:id]) ~> Enum.map(& &1.id)
   end
 
+  @doc """
+  Lists schemas of all Pointable Tables.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.list_schemas()
+      [:schema1, :schema2]
+  """
   def list_schemas() do
     tables = list_tables()
 
@@ -119,6 +215,14 @@ defmodule Bonfire.Common.Needles.Tables do
     end)
   end
 
+  @doc """
+  Lists and debugs all Pointable Tables.
+
+  ## Examples
+
+      iex> Bonfire.Common.Needles.Tables.list_tables_debug()
+      [{:ok, "table1"}, {:error, "Code and DB have differing IDs for the same table", "table2", "id2a", "id2b"}, {:error, "Table present in DB but not in code", "table3"}]
+  """
   def list_tables_debug() do
     Enum.concat(list_tables_db_vs_code(), list_tables_code_vs_db())
     |> Enum.sort(:desc)
