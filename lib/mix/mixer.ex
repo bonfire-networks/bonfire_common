@@ -285,17 +285,18 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def extra_guide_paths(config) do
       deps = deps_names_for(:docs, config) ++ umbrella_extension_paths()
 
-      (List.wrap(config[:guides]) ++
-         Enum.map(Path.wildcard("flavours/*/README.md"), &flavour_readme/1) ++
-         Enum.map(Path.wildcard("docs/DEPENDENCIES/*.md"), &flavour_deps_doc/1) ++
-         Enum.flat_map(
-           deps,
-           &readme_path/1
-         ) ++
-         Enum.flat_map(
-           deps,
-           &dep_paths(&1, "docs/*.md")
-         ))
+      List.wrap(config[:guides]) ++
+        Enum.map(Path.wildcard("flavours/*/README.md"), &flavour_readme/1) ++
+        Enum.map(Path.wildcard("docs/DEPENDENCIES/*.md"), &flavour_deps_doc/1) ++
+        Enum.flat_map(
+          deps,
+          &readme_path/1
+        ) ++
+        Enum.flat_map(
+          deps,
+          &dep_paths(&1, "docs/*.md")
+        )
+
       # |> IO.inspect(limit: :infinity)
     end
 
@@ -467,7 +468,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def dep_path(dep, force? \\ false)
 
     def dep_path(dep, force?) when is_binary(dep) do
-      Enum.map(forks_paths(), &(path_if_exists(&1 <> dep)))
+      Enum.map(forks_paths(), &path_if_exists(&1 <> dep))
       |> Enum.reject(&is_nil/1)
       |> List.first() ||
         (
@@ -505,7 +506,8 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def dep_paths(dep, extra) when is_binary(extra) do
       dep_path =
         dep_path(dep, true)
-        # |> IO.inspect()
+
+      # |> IO.inspect()
 
       if dep_path do
         # path = 
