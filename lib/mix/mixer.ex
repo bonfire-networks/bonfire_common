@@ -8,7 +8,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
     def deps(config, :bonfire, extensions) do
       # extensions = extensions || umbrella_extension_names()
-      # |> IO.inspect(label: "prefixes")
+      # |> log(label: "prefixes")
       prefixes =
         case multirepo_prefixes(config) do
           [] ->
@@ -23,7 +23,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
         end
 
       (config[:deps] || config)
-      # |> IO.inspect()
+      # |> log()
       |> Enum.filter(&in_multirepo?(&1, prefixes, extensions))
     end
 
@@ -41,7 +41,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def deps(config, deps_subtype, _) when is_atom(deps_subtype),
       do:
         (config[:deps] || config)
-        # |> IO.inspect(limit: :infinity)
+        # |> log(limit: :infinity)
         |> Enum.filter(&include_dep?(deps_subtype, &1, config[:deps_prefixes][deps_subtype]))
 
     def deps do
@@ -136,12 +136,23 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     # flavour_path(config_or_flavour)
 
     def forks_path(), do: System.get_env("FORKS_PATH", "extensions/")
+    def forks_paths(), do: [forks_path(), "forks/"]
+
+    def compile_disabled? do
+      case System.get_env("COMPILE_DISABLED_EXTENSIONS", "prod") do
+        "prod" -> System.get_env("MIX_ENV") == "prod"
+        "1" -> true
+        "yes" -> true
+        "all" -> true
+        _ -> false
+      end
+    end
 
     def mess_sources(flavour) do
       mess_source_files(System.get_env("WITH_FORKS", "1"), System.get_env("WITH_GIT_DEPS", "1"))
       |> maybe_all_flavour_sources(flavour, System.get_env("WITH_ALL_FLAVOUR_DEPS", "1"))
 
-      # |> IO.inspect(label: "deps sources")
+      # |> log(label: "messy")
     end
 
     def mess_other_flavour_deps(current_flavour \\ System.get_env("FLAVOUR", "classic")) do
@@ -150,23 +161,22 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
       current_flavour_deps =
         enum_mess_sources(current_flavour_sources)
-        # |> IO.inspect(label: "current_mess_sources")
+        # |> log(label: "current_mess_sources")
         |> Mess.deps([], [])
         |> deps_names_list()
 
-      # |> IO.inspect(label: "current_flavour_deps", limit: :infinity)
+      # |> log(label: "current_flavour_deps", limit: :infinity)
 
       other_flavours_sources = other_flavour_sources(current_flavour_sources, current_flavour)
-      # |> IO.inspect(label: "other_flavours_sources")
+      # |> log(label: "other_flavours_sources")
 
       Mess.deps(other_flavours_sources, [], [])
-      # |> IO.inspect(label: "other_flavours_deps")
+      # |> log(label: "other_flavours_deps")
       |> Enum.reject(fn
         {dep, _} -> dep in current_flavour_deps
         {dep, _, _} -> dep in current_flavour_deps
       end)
-
-      # |> IO.inspect(label: "other_flavour_deps")
+      |> log("other_flavour_deps")
     end
 
     def mess_other_flavour_dep_names(current_flavour \\ System.get_env("FLAVOUR", "classic")) do
@@ -200,7 +210,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
         end
         |> Enum.reject(&(&1 == "flavours/#{current_flavour}/config"))
 
-      # |> IO.inspect(label: "creams")
+      # |> log(label: "creams")
 
       Enum.map(
         flavour_paths,
@@ -250,9 +260,8 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def deps_to_update(config) do
       deps(config, :update)
       |> deps_names()
-      |> IO.inspect(
-        label:
-          "Running Bonfire #{version(config)} at #{System.get_env("HOSTNAME", "localhost")} with configuration from #{flavour_path(config)} in #{Mix.env()} environment. You can run `just mix bonfire.deps.update` to update these extensions and dependencies"
+      |> log(
+        "Running Bonfire #{version(config)} at #{System.get_env("HOSTNAME", "localhost")} with configuration from #{flavour_path(config)} in #{Mix.env()} environment. You can run `just mix bonfire.deps.update` to update these extensions and dependencies"
       )
     end
 
@@ -273,15 +282,22 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
       beam_paths(config, :docs, umbrella_extension_names() || [])
     end
 
-    def readme_paths(config),
-      do:
-        List.wrap(config[:guides]) ++
-          Enum.map(Path.wildcard("flavours/*/README.md"), &flavour_readme/1) ++
-          Enum.map(Path.wildcard("docs/DEPENDENCIES/*.md"), &flavour_deps_doc/1) ++
-          Enum.flat_map(
-            deps_names_for(:docs, config) ++ umbrella_extension_paths(),
-            &readme_path/1
-          )
+    def extra_guide_paths(config) do
+      deps = deps_names_for(:docs, config) ++ umbrella_extension_paths()
+
+      (List.wrap(config[:guides]) ++
+         Enum.map(Path.wildcard("flavours/*/README.md"), &flavour_readme/1) ++
+         Enum.map(Path.wildcard("docs/DEPENDENCIES/*.md"), &flavour_deps_doc/1) ++
+         Enum.flat_map(
+           deps,
+           &readme_path/1
+         ) ++
+         Enum.flat_map(
+           deps,
+           &dep_paths(&1, "docs/*.md")
+         ))
+      # |> IO.inspect(limit: :infinity)
+    end
 
     defp readme_path(dep) when not is_nil(dep),
       do: dep_paths(dep, "README.md") |> List.first() |> readme_path(dep)
@@ -289,8 +305,21 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     defp readme_path(path, dep) when not is_nil(path),
       # naming the readme's like this should mean they get overriden by the moduledoc of the extension's main module, which ideally read the readme contents using e.g. `@moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()`
       do: [
-        {path |> String.to_atom(),
-         [filename: dep_name(dep) |> String.replace("_", "/") |> Macro.camelize()]}
+        {path
+         |> Path.relative_to_cwd()
+         |> String.to_atom(),
+         [
+           filename:
+             dep_name(dep)
+             |> String.replace("bonfire_data_", "Bonfire/Data/")
+             |> String.replace("bonfire_api_", "Bonfire/API/")
+             |> String.replace("bonfire_ui_", "Bonfire/UI/")
+             |> String.replace("bonfire_editor_", "Bonfire/Editor/")
+             |> String.replace("bonfire_", "bonfire/")
+             |> String.replace("needle_", "Needle/")
+             |> Macro.camelize()
+         ]}
+        # |> log()
       ]
 
     defp readme_path(_, _), do: []
@@ -365,8 +394,32 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def test_paths(config),
       do: [
         "test"
-        | Enum.flat_map(deps(config, :test) ++ umbrella_extension_paths(), &dep_paths(&1, "test"))
+        | Enum.flat_map(test_deps(config), &dep_paths(&1, "test"))
       ]
+
+    def test_deps(config) do
+      case System.get_env("MIX_TEST_ONLY") do
+        "backend" ->
+          Enum.reject(deps(config, :test_backend) ++ umbrella_extension_paths(), fn dep ->
+            String.starts_with?(dep_name(dep), ["bonfire_ui_", "bonfire_federate_"])
+          end)
+
+        "federation" ->
+          deps(config, :test_federation) ++ umbrella_extension_paths()
+
+        "ui" ->
+          deps(config, :test_ui) ++ umbrella_extension_paths()
+
+        _all ->
+          deps(config, :test) ++ umbrella_extension_paths()
+      end
+      |> Enum.uniq()
+      |> Enum.reject(fn
+        {_dep, opts} -> opts[:runtime] == false
+        {_dep, _v, opts} -> opts[:runtime] == false
+      end)
+      |> log("test_deps: #{System.get_env("MIX_TEST_ONLY")}")
+    end
 
     # Specifies which paths to compile per environment
     def elixirc_paths(config, :test),
@@ -374,7 +427,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
         # "lib",
         "test/support"
         | Enum.flat_map(
-            deps(config, :test) ++ umbrella_extension_paths(),
+            test_deps(config),
             &dep_paths(&1, "test/support")
           )
       ]
@@ -414,7 +467,9 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def dep_path(dep, force? \\ false)
 
     def dep_path(dep, force?) when is_binary(dep) do
-      path_if_exists(forks_path() <> dep) ||
+      Enum.map(forks_paths(), &(path_if_exists(&1 <> dep)))
+      |> Enum.reject(&is_nil/1)
+      |> List.first() ||
         (
           path =
             (Mix.Project.deps_path() <> "/" <> dep)
@@ -448,11 +503,14 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
       do: Enum.flat_map(extra, &dep_paths(dep, &1))
 
     def dep_paths(dep, extra) when is_binary(extra) do
-      dep_path = dep_path(dep, true)
+      dep_path =
+        dep_path(dep, true)
+        # |> IO.inspect()
 
       if dep_path do
-        path = Path.join(dep_path, extra) |> path_if_exists()
-        if path, do: [path], else: []
+        # path = 
+        Path.join(dep_path, extra) |> Path.wildcard()
+        # if path, do: [path], else: []
       else
         []
       end
@@ -499,7 +557,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
     def list_deps_by_size(sort_by \\ :app, paths \\ Mix.Project.deps_paths()) do
       deps_by_size(sort_by, paths)
-      |> IO.inspect(limit: :infinity)
+      |> log(limit: :infinity)
 
       :ok
     end
@@ -564,12 +622,23 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def ok_unwrap({:ok, val}, _fallback), do: val
 
     def ok_unwrap({:error, val}, fallback) do
-      IO.warn(inspect(val))
+      log(val)
       fallback
     end
 
     def ok_unwrap(:ok, fallback), do: fallback
     def ok_unwrap(:error, fallback), do: fallback
     def ok_unwrap(val, fallback), do: val || fallback
+
+    def log(thing, opts \\ [])
+    def log(thing, label) when is_binary(label), do: log(thing, label: label)
+
+    def log(thing, opts) do
+      if System.get_env("MIX_QUIET") != "1" do
+        IO.inspect(thing, opts)
+      else
+        thing
+      end
+    end
   end
 end
