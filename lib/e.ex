@@ -42,6 +42,9 @@ defmodule Bonfire.Common.E do
       iex> e(%{key: "value"}, :missing_key, "fallback")
       "fallback"
 
+      iex> e(%{key: %Ecto.Association.NotLoaded{}}, :key, "fallback")
+      "fallback"
+
       iex> e({:ok, %{key: "value"}}, :key, "fallback")
       "value"
 
@@ -49,6 +52,12 @@ defmodule Bonfire.Common.E do
       "context_value"
 
       iex> e(%{a: %{b: "value"}}, :a, :b, "fallback")
+      "value"
+
+      iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, "fallback")
+      "fallback"
+
+      iex> e(%{a: %{b: "value"}}, [:a, :b], "fallback")
       "value"
 
       iex> e(%{a: %{b: nil}}, :a, :b, "fallback")
@@ -72,6 +81,13 @@ defmodule Bonfire.Common.E do
   """
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
+  def e(map, keys, fallback) when is_map(map) and is_list(keys) do
+    get_in_access_keys_or(map, keys, fallback, fn map ->
+      # if get_in didn't work, call e again but with one-param-per-key
+      apply(__MODULE__, :e, [map] ++ keys ++ [fallback])
+    end)
+  end
+
   # @decorate time()
   def e(%{__context__: context} = object, key, fallback) do
     # try searching in Surface's context (when object is assigns), if present
@@ -86,9 +102,10 @@ defmodule Bonfire.Common.E do
   end
 
   def e(map, key, fallback) when is_map(map) do
-    # attempt using key as atom or string, fallback if doesn't exist or is nil
-    Enums.enum_get(map, key, nil)
-    |> Common.maybe_fallback(fallback)
+    get_in_access_keys_or(map, key, fallback, fn map ->
+      # if get_in didn't work, try using key as atom or string, and return fallback if doesn't exist or is nil
+      Enums.enum_get(map, key, nil)
+    end)
   end
 
   def e({key, v}, key, fallback) do
@@ -133,27 +150,54 @@ defmodule Bonfire.Common.E do
 
   @doc "Returns a value from a nested map, or a fallback if not present"
   def e(object, key1, key2, fallback) do
-    e(object, key1, %{})
-    |> e(key2, fallback)
+    get_in_access_keys_or(object, [key1, key2], fallback, fn object ->
+      # if get_in didn't work, revert to peeling one layer at a time
+      e(object, key1, %{})
+      |> e(key2, nil)
+    end)
   end
 
   def e(object, key1, key2, key3, fallback) do
-    e(object, key1, key2, %{})
-    |> e(key3, fallback)
+    get_in_access_keys_or(object, [key1, key2, key3], fallback, fn object ->
+      e(object, key1, key2, %{})
+      |> e(key3, nil)
+    end)
   end
 
   def e(object, key1, key2, key3, key4, fallback) do
-    e(object, key1, key2, key3, %{})
-    |> e(key4, fallback)
+    get_in_access_keys_or(object, [key1, key2, key3, key4], fallback, fn object ->
+      e(object, key1, key2, key3, %{})
+      |> e(key4, nil)
+    end)
   end
 
   def e(object, key1, key2, key3, key4, key5, fallback) do
-    e(object, key1, key2, key3, key4, %{})
-    |> e(key5, fallback)
+    get_in_access_keys_or(object, [key1, key2, key3, key4, key5], fallback, fn object ->
+      e(object, key1, key2, key3, key4, %{})
+      |> e(key5, nil)
+    end)
   end
 
   def e(object, key1, key2, key3, key4, key5, key6, fallback) do
-    e(object, key1, key2, key3, key4, key5, %{})
-    |> e(key6, fallback)
+    get_in_access_keys_or(object, [key1, key2, key3, key4, key5, key6], fallback, fn object ->
+      e(object, key1, key2, key3, key4, key5, %{})
+      |> e(key6, nil)
+    end)
+  end
+
+  defp get_in_access_keys_or(map, keys, fallback, fallback_fun) when is_map(map) do
+    case Enums.get_in_access_keys(map, keys, :empty) do
+      :empty ->
+        fallback_fun.(map)
+
+      val ->
+        val
+    end
+    |> Common.maybe_fallback(fallback)
+  end
+
+  defp get_in_access_keys_or(map, _keys, fallback, fallback_fun) do
+    fallback_fun.(map)
+    |> Common.maybe_fallback(fallback)
   end
 end

@@ -75,7 +75,71 @@ defmodule Bonfire.Common.Enums do
     # root = %{} or non empty map
     # keys = [:a, :b, :c]
     # value = 3
-    put_in(root, Enum.map(keys, &Access.key(&1, %{})), value)
+    put_in(root, access_keys(keys, %{}), value)
+  end
+
+  def get_in_access_keys!(%schema{} = map, keys, last_fallback) when is_map(map) do
+    if Extend.module_behaviour?(schema, Access) do
+      case try_access(fn -> get_in(map, keys) end) do
+        nil ->
+          last_fallback
+
+        BadMapError ->
+          last_fallback
+
+        FunctionClauseError ->
+          last_fallback
+
+        UndefinedFunctionError ->
+          get_in(map, access_keys(keys, last_fallback))
+
+        val ->
+          val
+          |> debug("with struct Access")
+      end
+    else
+      get_in(map, access_keys(keys, last_fallback))
+    end
+  end
+
+  def get_in_access_keys!(map, keys, last_fallback) when is_map(map) do
+    get_in(map, access_keys(keys, last_fallback))
+  end
+
+  def get_in_access_keys(map, keys, last_fallback) do
+    try_access(fn -> get_in_access_keys!(map, keys, last_fallback) end, last_fallback)
+  end
+
+  defp try_access(fun, error_fallback \\ nil) do
+    fun.()
+  rescue
+    e in BadMapError ->
+      # eg. an element in the tree is not a map
+      error(e)
+      error_fallback || BadMapError
+
+    e in FunctionClauseError ->
+      error(e)
+      error_fallback || FunctionClauseError
+
+    e in UndefinedFunctionError ->
+      # eg. function MyStruct.fetch/2 is undefined (does not implement the Access behaviour)
+      error(e)
+      error_fallback || UndefinedFunctionError
+  end
+
+  def access_keys(keys, last_fallback \\ nil)
+  def access_keys(key, last_fallback) when not is_list(key), do: access_keys([key], last_fallback)
+
+  def access_keys(keys, %{}) do
+    Enum.map(keys, &Access.key(&1, %{}))
+  end
+
+  def access_keys(keys, last_fallback) do
+    {last, keys} = List.pop_at(keys, -1)
+
+    access_keys(keys, %{}) ++
+      [Access.key(last, last_fallback)]
   end
 
   @doc """

@@ -459,6 +459,18 @@ defmodule Bonfire.Common.Extend do
     |> debug("reverse_router generated?")
   end
 
+  def module_behaviour?(module, behaviour) do
+    behaviour in module_behaviours(module)
+  end
+
+  def module_behaviours(module) do
+    (module_exists?(module) and
+       module.module_info(:attributes)
+       |> Keyword.get_values(:behaviour)
+       |> List.flatten())
+    |> List.wrap()
+  end
+
   @doc """
   Retrieves the file path of the module's source file.
 

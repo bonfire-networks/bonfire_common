@@ -140,19 +140,9 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   defp modules_with_behaviour(modules, behaviour) when is_list(modules) and is_atom(behaviour) do
     # filter out any modules that do not have the `behaviour` specified
     modules
-    |> Enum.filter(fn mod ->
-      behaviour in (module_behaviours(mod) || [])
+    |> Enum.filter(fn module ->
+      Extend.module_behaviour?(module, behaviour)
     end)
-
-    # |> debug()
-  end
-
-  def module_behaviours(module \\ __MODULE__) do
-    Extend.module_exists?(module) and
-      module.module_info(:attributes)
-      |> Keyword.get_values(:behaviour)
-      |> List.flatten()
-      |> List.wrap()
 
     # |> debug()
   end
