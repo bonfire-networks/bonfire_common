@@ -317,7 +317,7 @@ defmodule Bonfire.Common.Enums do
   # defp re_filter_empty([val], nil), do: val
   defp re_filter_empty(val, _fallback), do: val
 
-  def filter_empty(%{key: nil}, fallback, key) do
+  def filter_empty(%{key: nil}, fallback, _key) do
     fallback
   end
 

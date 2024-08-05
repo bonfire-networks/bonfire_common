@@ -631,7 +631,7 @@ defmodule Bonfire.Common.URIs do
 
   """
   def based_url(url, conn \\ nil)
-  def based_url("http" <> _ = url, conn), do: url
+  def based_url("http" <> _ = url, _conn), do: url
   def based_url("/" <> url, conn), do: "#{base_url(conn)}/#{url}"
   def based_url(url, _), do: url
 

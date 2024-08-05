@@ -770,7 +770,7 @@ defmodule Bonfire.Common.Types do
     object_type(object)
   end
 
-  def object_type(type) do
+  def object_type(_type) do
     # warn(type, "no pattern matched")
     # typeof(type)
     nil
