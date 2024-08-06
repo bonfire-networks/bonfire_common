@@ -18,26 +18,22 @@ defmodule Mix.Tasks.Bonfire.Widget.New do
 
     path_prefix = "lib/web/widgets"
 
-    igniter =
-      igniter
-      |> Igniter.include_or_create_elixir_file(ext_path_for_module(module_name, path_prefix), """
-      defmodule #{inspect(module_name)} do
-        use Bonfire.UI.Common.Web, :stateless_component
+    igniter
+    |> Igniter.create_new_elixir_file(ext_path_for_module(module_name, path_prefix), """
+    defmodule #{inspect(module_name)} do
+      use Bonfire.UI.Common.Web, :stateless_component
 
-        prop widget_title, :string, default: nil
-        prop class, :css_class, default: nil
+      prop widget_title, :string, default: nil
+      prop class, :css_class, default: nil
 
-        # to add extra props or slots, see https://surface-ui.org/properties and https://surface-ui.org/slots
-      end
-      """)
-
-    File.write!(ext_path_for_module(module_name, path_prefix, "sface"), """
+      # to add extra props or slots, see https://surface-ui.org/properties and https://surface-ui.org/slots
+    end
+    """)
+    |> Igniter.create_new_file(ext_path_for_module(module_name, path_prefix, "sface"), """
     <Bonfire.UI.Common.WidgetBlockLive widget_title={e(@widget_title, "")} class={@class, ""}>
       Hello world!
     </Bonfire.UI.Common.WidgetBlockLive>
     """)
-
-    igniter
   end
 
   def ext_path_for_module(
