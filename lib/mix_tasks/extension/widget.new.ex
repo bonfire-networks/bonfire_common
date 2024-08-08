@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Bonfire.Widget.New do
   will present you with a diff and create new files
   """
   import Bonfire.Common.Extend
-  use_if_enabled Igniter.Mix.Task
+  use_if_enabled(Igniter.Mix.Task)
 
   def igniter(igniter, [module_name | _] = argv) do
     app_name = Bonfire.Application.name()
