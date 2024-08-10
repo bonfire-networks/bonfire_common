@@ -189,8 +189,9 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
            current_flavour,
            "1" = _WITH_ALL_FLAVOUR_DEPS
          ) do
-      enum_mess_sources(existing_sources) ++
-        [disabled: other_flavour_sources(existing_sources, current_flavour)]
+      (enum_mess_sources(existing_sources) ++
+         [disabled: other_flavour_sources(existing_sources, current_flavour)])
+      |> log("all_flavour_sources")
     end
 
     defp maybe_all_flavour_sources(existing_sources, _flavour, _not_WITH_ALL_FLAVOUR_DEPS) do
