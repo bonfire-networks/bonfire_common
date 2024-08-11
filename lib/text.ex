@@ -309,13 +309,17 @@ defmodule Bonfire.Common.Text do
     if module_enabled?(MDEx, opts) do
       [
         parse: [
-          smart: false
+          smart: false,
+          relaxed_tasklist_matching: true,
+          relaxed_autolinks: true
         ],
         render: [
           hardbreaks: true,
           # unsafe_: opts[:__unsafe__],
-          _unsafe: opts[:__unsafe__],
-          escape: !opts[:__unsafe__]
+          # Allow rendering of raw HTML and potentially dangerous links
+          _unsafe: opts[:__unsafe__] || opts[:sanitize] || false,
+          # !opts[:sanitize] and !opts[:__unsafe__] # Escape raw HTML instead of clobbering it.
+          escape: false
         ],
         extension: [
           strikethrough: true,
@@ -327,6 +331,7 @@ defmodule Bonfire.Common.Text do
           header_ids: ""
         ],
         features: [
+          sanitize: opts[:sanitize] || false,
           # sanitize: opts[:__unsafe__], # sanitizes the HTML (but strips things like class and attributes)
           # TODO: auto-set appropriate theme based on user's daisy theme
           syntax_highlight_theme: "adwaita_dark"
