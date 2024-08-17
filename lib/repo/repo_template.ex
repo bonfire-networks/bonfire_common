@@ -528,6 +528,26 @@ defmodule Bonfire.Common.RepoTemplate do
       end
 
       @doc """
+      Select and return only specific fields (specified as an atom or list of atoms)
+
+      ## Examples
+          > pluck(:id)
+          [id1, id2]
+
+          > pluck([:id, :inserted_at])
+          [%{id: id1, inserted_at: _}, %{id: id2, inserted_at: _}]
+      """
+      def pluck(query, fields, opts \\ [])
+
+      def pluck(query, field, opts) when is_atom(field) do
+        query |> select(^[field]) |> many(opts) |> Enum.map(&Map.get(&1, field))
+      end
+
+      def pluck(query, fields, opts) when is_list(fields) do
+        query |> select(^fields) |> many(opts) |> Enum.map(&Map.take(&1, fields))
+      end
+
+      @doc """
       Execute a query to delete all matching records.
 
       ## Examples
