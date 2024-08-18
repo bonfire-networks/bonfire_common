@@ -42,7 +42,8 @@ defmodule Bonfire.Common.ContextModule do
         )
 
   def maybe_apply(schema_or_context, fun, args, opts)
-      when is_atom(schema_or_context) and (is_atom(fun) or is_list(fun)) and is_list(args) and
+      when is_atom(schema_or_context) and not is_nil(schema_or_context) and
+             (is_atom(fun) or is_list(fun)) and is_list(args) and
              is_list(opts) do
     if module_enabled?(schema_or_context, opts) do
       object_context_module = maybe_context_module(schema_or_context)
