@@ -115,16 +115,16 @@ defmodule Bonfire.Common.Enums do
   rescue
     e in BadMapError ->
       # eg. an element in the tree is not a map
-      error(e)
+      warn(e)
       error_fallback || BadMapError
 
     e in FunctionClauseError ->
-      error(e)
+      warn(e)
       error_fallback || FunctionClauseError
 
     e in UndefinedFunctionError ->
       # eg. function MyStruct.fetch/2 is undefined (does not implement the Access behaviour)
-      error(e)
+      warn(e)
       error_fallback || UndefinedFunctionError
   end
 
@@ -194,6 +194,32 @@ defmodule Bonfire.Common.Enums do
       |> magic_filter_empty(map, key, fallback)
 
   def maybe_get(_, _, fallback), do: fallback
+
+  def first!(list) when is_list(list) do
+    case List.first(list, :none) do
+      :none ->
+        debug(list)
+        raise ArgumentError, message: "List is empty"
+
+      val ->
+        val
+    end
+  end
+
+  def first!(tuple) when is_tuple(tuple) do
+    elem(tuple, 0)
+  end
+
+  def first!(enum) do
+    case Enum.at(enum, 0, :none) do
+      :none ->
+        debug(enum)
+        raise ArgumentError, message: "Enumerable is empty"
+
+      val ->
+        val
+    end
+  end
 
   @doc "Checks if the given list contains any duplicates. Takes an optional function that can be used to extract and/or compute the value to compare for each element in the list."
   def has_duplicates?(list, fun \\ nil),
