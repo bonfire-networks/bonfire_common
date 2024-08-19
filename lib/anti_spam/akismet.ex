@@ -1,6 +1,8 @@
 defmodule Bonfire.Common.AntiSpam.Akismet do
   @moduledoc """
-  Validate user data
+  Integration with Akismet.com for spam detection
+
+  Credit to https://joinmobilizon.org for the original code.
   """
   use Bonfire.Common.Utils
 

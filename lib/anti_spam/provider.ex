@@ -6,6 +6,7 @@ defmodule Bonfire.Common.AntiSpam.Provider do
 
     * `Bonfire.Common.AntiSpam.Akismet` [🔗](https://akismet.com/)
 
+  Credit to https://joinmobilizon.org for the original code.
   """
 
   @type spam_result :: :ham | :spam | :discard

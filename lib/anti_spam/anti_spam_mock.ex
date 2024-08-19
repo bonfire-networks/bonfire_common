@@ -1,6 +1,8 @@
 defmodule Bonfire.Common.AntiSpam.Mock do
   @moduledoc """
   Mock for Anti-spam Provider implementations.
+
+  Credit to https://joinmobilizon.org for the original code.
   """
 
   alias Bonfire.Common.AntiSpam.Provider
