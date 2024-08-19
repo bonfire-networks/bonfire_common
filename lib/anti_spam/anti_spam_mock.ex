@@ -13,16 +13,17 @@ defmodule Bonfire.Common.AntiSpam.Mock do
   def ready?, do: true
 
   @impl Provider
-  def check_current_user(_email, _ip, _user_agent), do: :ham
+  def check_current_user(_context), do: :ham
 
   @impl Provider
-  def check_profile("spam", _summary, _email, _ip, _user_agent), do: :spam
-  def check_profile(_preferred_username, _summary, _email, _ip, _user_agent), do: :ham
+  def check_profile("spam", _context), do: :spam
+  def check_profile(_text, _context), do: :ham
 
   @impl Provider
-  def check_event("some spam event", _username, _email, _ip, _user_agent), do: :spam
-  def check_event(_event_body, _username, _email, _ip, _user_agent), do: :ham
+  def check_object("some spam object", _context), do: :spam
+  def check_object(_event_body, _context), do: :ham
 
   @impl Provider
-  def check_comment(_comment_body, _username, _is_reply?, _email, _ip, _user_agent), do: :ham
+  def check_comment("some spam text", _is_reply?, _context), do: :spam
+  def check_comment(_comment_body, _is_reply?, _context), do: :ham
 end
