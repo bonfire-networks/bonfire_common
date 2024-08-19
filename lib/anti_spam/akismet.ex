@@ -71,8 +71,8 @@ defmodule Bonfire.Common.AntiSpam.Akismet do
           user_ip: maybe_from_opts(context, :user_ip),
           comment_author: e(current_user, :character, :username, nil),
           #  to always mark as spam
-          comment_author_email: "akismet-guaranteed-spam@example.com",
-          # comment_author_email: e(current_account, :email, :email_address, nil) || maybe_apply(Bonfire.Me.Characters, :display_username, [current_user, true, nil, ""], fallback_return: nil),
+          # comment_author_email: "akismet-guaranteed-spam@example.com",
+          comment_author_email: e(current_account, :email, :email_address, nil) || maybe_apply(Bonfire.Me.Characters, :display_username, [current_user, true, nil, ""], fallback_return: nil),
           user_agent: maybe_from_opts(context, :user_agent),
           permalink: URIs.canonical_url(maybe_from_opts(context, :current_url)),
           is_test: Config.env() != :prod
