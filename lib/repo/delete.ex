@@ -97,7 +97,7 @@ defmodule Bonfire.Common.Repo.Delete do
       )
 
       # Bonfire.Common.Needles.maybe_forge!(it)
-      Bonfire.Common.Needles.one(ulid!(it), skip_boundary_check: true)
+      Bonfire.Common.Needles.one(ulid!(it), skip_boundary_check: true, deleted: true)
       ~> soft_delete_changeset(
         {Needle.Pointer, ...},
         :deleted_at,
@@ -108,7 +108,7 @@ defmodule Bonfire.Common.Repo.Delete do
   end
 
   def soft_delete_changeset(it, column, value, error) when is_binary(it) do
-    Bonfire.Common.Needles.get(it, skip_boundary_check: true)
+    Bonfire.Common.Needles.get(it, skip_boundary_check: true, deleted: true)
     ~> soft_delete_changeset(column, value, error)
   end
 

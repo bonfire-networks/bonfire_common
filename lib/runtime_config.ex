@@ -21,6 +21,9 @@ defmodule Bonfire.Common.RuntimeConfig do
       ]
 
     config :bonfire_common, Bonfire.Common.Localise.Cldr, locales: Cldr.all_locale_names()
+
+    config :bonfire_common, Bonfire.Common.AntiSpam.Akismet,
+      api_key: System.get_env("AKISMET_API_KEY")
   end
 
   def skip_test_tags(extras \\ []) do

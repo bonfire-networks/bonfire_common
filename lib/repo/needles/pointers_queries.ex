@@ -25,8 +25,8 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   def query(filters), do: query(Pointer) |> query(filters)
 
   def query(nil, filters), do: filter(query(Pointer), filters)
-
-  def query(q, filters), do: filter(query(q), filters)
+  def query(Pointer, filters), do: filter(query(Pointer), filters)
+  def query(q, filters), do: filter(q, filters)
 
   @spec filter(
           any,

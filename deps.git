@@ -5,3 +5,4 @@ bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identi
 # bonfire_mailer = "https://github.com/bonfire-networks/bonfire_mailer"
 paginator = "https://github.com/bonfire-networks/paginator"
 ecto_shorts = "https://github.com/bonfire-networks/ecto_shorts#refactor/attempt1"
+exkismet = "https://github.com/tcitworld/exkismet#update-project"

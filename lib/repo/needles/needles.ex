@@ -227,6 +227,22 @@ defmodule Bonfire.Common.Needles do
       %Ecto.Query{...}
   """
   def pointer_query(%Ecto.Query{} = q, opts) do
+    pointer_query_boundarise(q, opts)
+  end
+
+  def pointer_query(filters, opts) do
+    if opts[:deleted] do
+      Queries.query_incl_deleted()
+    else
+      Queries.query(Pointer)
+    end
+    |> debug()
+    |> Queries.query(filters)
+    |> debug()
+    |> pointer_query_boundarise(opts)
+  end
+
+  defp pointer_query_boundarise(%Ecto.Query{} = q, opts) do
     opts =
       Utils.to_options(opts)
 
@@ -242,11 +258,6 @@ defmodule Bonfire.Common.Needles do
     |> pointer_preloads(opts[:preload])
 
     # if Utils.e(opts, :log_query, nil), do: info(q), else: q
-  end
-
-  def pointer_query(filters, opts) do
-    Queries.query(nil, filters)
-    |> pointer_query(opts)
   end
 
   @doc """

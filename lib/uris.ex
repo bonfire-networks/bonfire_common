@@ -422,8 +422,24 @@ defmodule Bonfire.Common.URIs do
     maybe_generate_canonical_url(object)
   end
 
-  def canonical_url(%{path: "http" <> _ = path} = object) do
-    path
+  def canonical_url(%{path: "http" <> _ = url} = _object) do
+    url
+  end
+
+  def canonical_url(%{path: "/" <> _ = path} = _object) do
+    "#{base_uri()}#{path}"
+  end
+
+  def canonical_url("http:" <> _ = url) do
+    url
+  end
+
+  def canonical_url("https:" <> _ = url) do
+    url
+  end
+
+  def canonical_url("/" <> _ = path) do
+    "#{base_uri()}#{path}"
   end
 
   def canonical_url(object) do
