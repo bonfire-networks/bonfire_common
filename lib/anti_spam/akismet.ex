@@ -87,116 +87,105 @@ defmodule Bonfire.Common.AntiSpam.Akismet do
     end
   end
 
-  def report_ham(user, text) do
-    report_to_akismet_comment(user, text)
-    |> submit_ham()
-  end
+  # TODO: so the mod can confirm that it's spam or not to train the engine
+  # def report_ham(user, text) do
+  #   report_to_akismet_comment(user, text)
+  #   |> submit_ham()
+  # end
 
-  def report_spam(user, text) do
-    report_to_akismet_comment(user, text)
-    |> submit_spam()
-  end
+  # def report_spam(user, text) do
+  #   report_to_akismet_comment(user, text)
+  #   |> submit_spam()
+  # end
 
-  @spec homepage() :: String.t()
-  defp homepage do
-    Bonfire.Common.URIs.base_url()
-  end
+  # defp report_to_akismet_comment(user, object \\ nil)
 
-  defp api_key do
-    Config.get([__MODULE__, :api_key])
-  end
+  # defp report_to_akismet_comment(user, nil) do
+  #   case actor_details(user) do
+  #     {email, preferred_username, ip} ->
+  #       %AkismetComment{
+  #         blog: homepage(),
+  #         comment_author_email: email,
+  #         comment_author: preferred_username,
+  #         user_ip: ip
+  #       }
 
-  @impl Provider
-  def ready?, do: not is_nil(api_key())
+  #     {:error, err} ->
+  #       {:error, err}
 
-  defp report_to_akismet_comment(user, object \\ nil)
+  #     err ->
+  #       {:error, err}
+  #   end
+  # end
 
-  defp report_to_akismet_comment(user, nil) do
-    case actor_details(user) do
-      {email, preferred_username, ip} ->
-        %AkismetComment{
-          blog: homepage(),
-          comment_author_email: email,
-          comment_author: preferred_username,
-          user_ip: ip
-        }
+  # defp report_to_akismet_comment(user, text) do
+  #   with {email, preferred_username, ip} <- actor_details(user) do
+  #     %AkismetComment{
+  #       comment_content: text,
+  #       blog: homepage(),
+  #       comment_author_email: email,
+  #       comment_author: preferred_username,
+  #       user_ip: ip
+  #     }
+  #   else
+  #     {:error, err} ->
+  #       {:error, err}
 
-      {:error, err} ->
-        {:error, err}
+  #     err ->
+  #       {:error, err}
+  #   end
+  # end
 
-      err ->
-        {:error, err}
-    end
-  end
+  # @spec actor_details(Actor.t()) :: {String.t(), String.t(), any()} | {:error, :invalid_actor}
+  # defp actor_details(%{
+  #        type: :Person,
+  #        preferred_username: preferred_username,
+  #        user: %{
+  #          current_sign_in_ip: current_sign_in_ip,
+  #          last_sign_in_ip: last_sign_in_ip,
+  #          email: email
+  #        }
+  #      }) do
+  #   {email, preferred_username, current_sign_in_ip || last_sign_in_ip}
+  # end
 
-  defp report_to_akismet_comment(user, text) do
-    with {email, preferred_username, ip} <- actor_details(user) do
-      %AkismetComment{
-        comment_content: text,
-        blog: homepage(),
-        comment_author_email: email,
-        comment_author: preferred_username,
-        user_ip: ip
-      }
-    else
-      {:error, err} ->
-        {:error, err}
+  # defp actor_details(%{
+  #        type: :Person,
+  #        preferred_username: preferred_username,
+  #        user_id: user_id
+  #      })
+  #      when not is_nil(user_id) do
+  #   case user_id |> Users.get_user() |> user_details() do
+  #     {email, ip} ->
+  #       {preferred_username, email, ip}
 
-      err ->
-        {:error, err}
-    end
-  end
+  #     _ ->
+  #       {:error, :invalid_actor}
+  #   end
+  # end
 
-  @spec actor_details(Actor.t()) :: {String.t(), String.t(), any()} | {:error, :invalid_actor}
-  defp actor_details(%{
-         type: :Person,
-         preferred_username: preferred_username,
-         user: %{
-           current_sign_in_ip: current_sign_in_ip,
-           last_sign_in_ip: last_sign_in_ip,
-           email: email
-         }
-       }) do
-    {email, preferred_username, current_sign_in_ip || last_sign_in_ip}
-  end
+  # defp actor_details(%{
+  #        type: :Person,
+  #        preferred_username: preferred_username,
+  #        user_id: nil
+  #      }) do
+  #   {nil, preferred_username, "127.0.0.1"}
+  # end
 
-  defp actor_details(%{
-         type: :Person,
-         preferred_username: preferred_username,
-         user_id: user_id
-       })
-       when not is_nil(user_id) do
-    case user_id |> Users.get_user() |> user_details() do
-      {email, ip} ->
-        {preferred_username, email, ip}
+  # defp actor_details(_) do
+  #   {:error, :invalid_actor}
+  # end
 
-      _ ->
-        {:error, :invalid_actor}
-    end
-  end
+  # @spec user_details(User.t()) :: {String.t(), any()} | {:error, :user_not_found}
+  # defp user_details(%{
+  #        current_sign_in_ip: current_sign_in_ip,
+  #        last_sign_in_ip: last_sign_in_ip,
+  #        email: email
+  #      }) do
+  #   {email, current_sign_in_ip || last_sign_in_ip}
+  # end
 
-  defp actor_details(%{
-         type: :Person,
-         preferred_username: preferred_username,
-         user_id: nil
-       }) do
-    {nil, preferred_username, "127.0.0.1"}
-  end
-
-  defp actor_details(_) do
-    {:error, :invalid_actor}
-  end
-
-  @spec user_details(User.t()) :: {String.t(), any()} | {:error, :user_not_found}
-  defp user_details(%{
-         current_sign_in_ip: current_sign_in_ip,
-         last_sign_in_ip: last_sign_in_ip,
-         email: email
-       }) do
-    {email, current_sign_in_ip || last_sign_in_ip}
-  end
-
-  defp user_details(_), do: {:error, :user_not_found}
+  # defp user_details(_), do: {:error, :user_not_found}
 
   @spec submit_spam(AkismetComment.t() | :error) ::
           :ok | {:error, atom()} | {:error, HTTPoison.Response.t()}
@@ -223,6 +212,18 @@ defmodule Bonfire.Common.AntiSpam.Akismet do
   end
 
   defp submit_ham({:error, err}), do: {:error, err}
+
+  @spec homepage() :: String.t()
+  defp homepage do
+    Bonfire.Common.URIs.base_url()
+  end
+
+  defp api_key do
+    Config.get([__MODULE__, :api_key])
+  end
+
+  @impl Provider
+  def ready?, do: not is_nil(api_key())
 
   defp log_response(res),
     do: tap(res, fn res -> debug(res, "Return from Akismet is") end)
