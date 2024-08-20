@@ -2,8 +2,10 @@ defmodule Bonfire.Common.Cache do
   @moduledoc "Helpers for caching data and operations"
 
   use Decorator.Define, cache: 0
-  use Bonfire.Common.Utils
-  require Logger
+  use Untangle
+  use Arrows
+  alias Bonfire.Common.Utils
+  alias Bonfire.Common.Config
 
   # 6 hours
   @default_cache_ttl 1_000 * 60 * 60 * 6
@@ -93,48 +95,58 @@ defmodule Bonfire.Common.Cache do
     # debug(opts)
     key = opts[:cache_key]
     ttl = opts[:ttl] || @default_cache_ttl
+    cache_store = cache_store(opts)
 
-    Cachex.execute!(cache_store(opts), fn cache ->
-      case Cachex.exists?(cache, key) do
-        {:ok, true} ->
-          debug(key, "getting from cache")
+    if Code.loaded?(Cachex) and :ets.whereis(cache_store) != :undefined do
+      Cachex.execute!(cache_store, fn cache ->
+        case Cachex.exists?(cache, key) do
+          {:ok, true} ->
+            debug(key, "getting from cache")
+            # warn(key, "getting from cache", trace_limit: 100)
 
-          if Config.env() != :dev do
-            Cachex.get!(cache, key)
-          else
-            with {:error, e} <- Cachex.get!(cache, key) do
-              error(
-                e,
-                "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
-              )
+            if opts[:check_env] == false or Config.env() != :dev do
+              Cachex.get!(cache, key)
+            else
+              with {:error, e} <- Cachex.get!(cache, key) do
+                error(
+                  e,
+                  "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
+                )
 
-              val = maybe_apply_or_fun(module, fun, args)
-              Cachex.put!(cache, key, val, ttl: ttl)
-              val
+                val = maybe_apply_or_fun(module, fun, args, opts)
+                Cachex.put!(cache, key, val, ttl: ttl)
+                val
+              end
             end
-          end
 
-        {:ok, false} ->
-          with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args) do
-            debug(key, "got an error, putting in cache with short TTL")
-            Cachex.put!(cache, key, ret, ttl: @error_cache_ttl)
-            ret
-          else
-            ret ->
-              debug(key, "fetched and putting in cache for next time")
-              Cachex.put!(cache, key, ret, ttl: ttl)
+          {:ok, false} ->
+            with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
+              debug(key, "got an error, putting in cache with short TTL")
+              Cachex.put!(cache, key, ret, ttl: @error_cache_ttl)
               ret
-          end
+            else
+              ret ->
+                debug(key, "fetched and putting in cache for next time")
+                Cachex.put!(cache, key, ret, ttl: ttl)
+                ret
+            end
 
-        {:error, e} ->
-          error(e, "!! CACHE IS NOT WORKING !!")
-          maybe_apply_or_fun(module, fun, args)
-      end
-    end)
+          {:error, e} ->
+            error(e, "!! CACHE IS NOT WORKING !!")
+            maybe_apply_or_fun(module, fun, args, opts)
+        end
+      end)
+    else
+      # warn(nil, "!! Cache not available, fallback to [re-]running the function without cache !!")
+
+      maybe_apply_or_fun(module, fun, args, opts)
+
+      # ^ this avoids compilation locks when cache is attempted to be used at compile time
+    end
   rescue
     e in Cachex.ExecutionError ->
       error(e, "!! Error with the cache, fallback to [re-]running the function without cache !!")
-      maybe_apply_or_fun(module, fun, args)
+      maybe_apply_or_fun(module, fun, args, opts)
   end
 
   def cached_preloads_for_objects(name, objects, fun)
@@ -142,7 +154,7 @@ defmodule Bonfire.Common.Cache do
     Cachex.execute!(cache_store(), fn cache ->
       maybe_cached =
         Enum.map(objects, fn obj ->
-          id = ulid(obj)
+          id = Bonfire.Common.Types.ulid(obj)
           key = "#{name}:{id}"
 
           with {:ok, ret} <- Cachex.get(cache, key) do
@@ -181,17 +193,19 @@ defmodule Bonfire.Common.Cache do
     |> inspect()
   end
 
-  defp maybe_apply_or_fun(module, fun, args)
+  defp maybe_apply_or_fun(module, fun, args, opts \\ [])
+
+  defp maybe_apply_or_fun(module, fun, args, opts)
        when not is_nil(module) and is_atom(fun) and is_list(args) do
-    maybe_apply(module, fun, args)
+    Utils.maybe_apply(module, fun, args, opts)
   end
 
-  defp maybe_apply_or_fun(_module, fun, no_args)
+  defp maybe_apply_or_fun(_module, fun, no_args, _)
        when (is_function(fun) and is_nil(no_args)) or no_args == [] do
     apply(fun, [])
   end
 
-  defp maybe_apply_or_fun(_module, fun, args) when is_function(fun) and is_list(args) do
+  defp maybe_apply_or_fun(_module, fun, args, _) when is_function(fun) and is_list(args) do
     apply(fun, args)
   end
 end

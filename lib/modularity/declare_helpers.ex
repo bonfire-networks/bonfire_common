@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
         # Enum.into(unquote(opts), %{
         #   name: unquote(name),
         #   module: __MODULE__,
-        #   app: Application.get_application(__MODULE__),
+        #   app: Extend.application_for_module(__MODULE__),
         #   href: unquote(opts)[:href] || path(__MODULE__)
         # })
       end
@@ -63,5 +63,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
   end
 
   @doc "Gets the OTP app name for a module"
+  # NOTE: not using cache because compile-time
   def app(module), do: Application.get_application(module)
+  # Bonfire.Common.Extend.application_for_module(module)
 end

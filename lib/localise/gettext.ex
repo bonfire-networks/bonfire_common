@@ -332,12 +332,13 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   defp caller_app(caller_module) when is_atom(caller_module) do
     case Application.get_application(caller_module) do
+      # ^ can't use cached result at compile time
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         otp_app
 
       _ ->
         mix =
-          if Bonfire.Common.Extend.module_enabled?(Mix.Project),
+          if Code.ensure_loaded?(Mix.Project),
             do: Mix.Project.get()
 
         if mix, do: mix.project()[:app]

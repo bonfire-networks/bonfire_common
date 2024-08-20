@@ -31,17 +31,17 @@ defmodule Bonfire.Common.Utils do
 
   use Arrows
   alias Bonfire.Common
-  import Common.Extend
   # require Bonfire.Common.Localise.Gettext
   # import Bonfire.Common.Localise.Gettext.Helpers
   # import Common.Config, only: [repo: 0]
   use Untangle
   require Logger
   # alias Common.Text
-  # alias Common.Config
+  alias Common.Opts
   alias Common.Cache
   alias Common.Enums
   alias Common.Errors
+  alias Common.Extend
   alias Common.Types
   import Bonfire.Common.Modularity.DeclareHelpers
   require Bonfire.Common.Localise.Gettext
@@ -625,9 +625,9 @@ defmodule Bonfire.Common.Utils do
       )
       when is_atom(module) and not is_nil(module) and is_list(funs) and is_list(args) do
     arity = length(args)
-    opts = to_options(opts)
+    opts = Opts.to_options(opts)
 
-    if module_enabled?(module, opts) do
+    if opts[:force_module] == true or Extend.module_enabled?(module, opts) do
       # debug(module, "module_enabled")
 
       available_funs =

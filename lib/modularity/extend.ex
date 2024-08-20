@@ -2,12 +2,12 @@ defmodule Bonfire.Common.Extend do
   @moduledoc "Helpers for using and managing the extensibility of Bonfire, such as checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`."
 
   use Arrows
-  require Logger
   use Untangle
   alias Bonfire.Common.Config
   alias Bonfire.Common.Opts
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Settings
+  alias Bonfire.Common.Cache
 
   @doc """
   Extend a module by defining `defdelegate` and `defoverridable` for all functions from the source module in the current module.
@@ -299,17 +299,25 @@ defmodule Bonfire.Common.Extend do
 
   def maybe_extension_loaded(module_or_otp_app)
       when is_atom(module_or_otp_app) do
-    case maybe_module_loaded(module_or_otp_app)
-         |> application_for_module() do
+    case maybe_module_loaded(module_or_otp_app) do
       nil ->
         module_or_otp_app
 
       # |> debug("received an atom that isn't a module, return it as-is")
 
-      otp_app ->
-        otp_app
+      module ->
+        #  debug(module, "it's a module, so return the corresponding application")
+        case application_for_module(module) do
+          nil ->
+            module_or_otp_app
 
-        # |> debug("#{inspect module_or_otp_app} is a module, so return the corresponding application")
+          # |> debug("received an atom that isn't a module, return it as-is")
+
+          otp_app ->
+            otp_app
+
+            # |>
+        end
     end
   end
 
@@ -328,7 +336,7 @@ defmodule Bonfire.Common.Extend do
 
   @decorate time()
   defp application_loaded?(extension) do
-    loaded_apps = Application.loaded_applications()
+    loaded_apps = loaded_applications()
     app_names = Enum.map(loaded_apps, &elem(&1, 0))
 
     Enum.member?(
@@ -338,8 +346,30 @@ defmodule Bonfire.Common.Extend do
   end
 
   @decorate time()
-  defp application_for_module(module) do
-    Application.get_application(module)
+  def loaded_applications do
+    if Code.loaded?(Utils),
+      do:
+        Cache.maybe_apply_cached({Application, :loaded_applications}, [],
+          force_module: true,
+          check_env: false
+        ),
+      else: Application.loaded_applications()
+  end
+
+  @decorate time()
+  def application_for_module(module) when is_atom(module) and not is_nil(module) do
+    if Code.loaded?(Utils),
+      do:
+        Cache.maybe_apply_cached({Application, :get_application}, [module],
+          force_module: true,
+          check_env: false
+        ),
+      else: Application.get_application(module)
+  end
+
+  def application_for_module(module) do
+    error(module, "invalid module")
+    nil
   end
 
   @doc """
