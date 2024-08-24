@@ -551,7 +551,6 @@ defmodule Bonfire.Common.Text do
     end
     |> String.trim("<p><br/></p>")
     |> String.trim("<br/>")
-
     # |> debug(html_string)
   end
 
@@ -565,13 +564,13 @@ defmodule Bonfire.Common.Text do
   """
   def maybe_emote(content, user \\ nil, custom_emoji \\ []) do
     if module_enabled?(Emote) do
-      debug(custom_emoji)
+      # debug(custom_emoji)
 
       Emote.convert_text(content,
         custom_fn: fn text -> maybe_other_custom_emoji(text, user) end,
         custom_emoji: custom_emoji
       )
-      |> debug()
+      # |> debug()
     else
       content
     end
@@ -584,7 +583,8 @@ defmodule Bonfire.Common.Text do
          # TEMP workaround for messed up markdown coming from composer 
          |> String.replace("\\_", "_")
          |> String.split(":")
-         |> debug() do
+        #  |> debug()
+          do
       ["", _icon, ""] ->
         case Bonfire.Common.Settings.get([:custom_emoji, text], nil, user) do
           nil ->
