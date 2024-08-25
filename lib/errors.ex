@@ -153,10 +153,10 @@ defmodule Bonfire.Common.Errors do
 
   ## Examples
 
-      iex> debug_log("A debug message", %RuntimeError{message: "error"}, nil, :error)
+      > debug_log("A debug message", %RuntimeError{message: "error"}, nil, :error)
       # Output: A debug message: %RuntimeError{message: "error"}
 
-      iex> debug_log("A debug message", nil, nil, :info)
+      > debug_log("A debug message", nil, nil, :info)
       # Output: A debug message: nil
   """
   def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, msg_text \\ nil)

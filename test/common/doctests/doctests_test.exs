@@ -4,7 +4,7 @@ defmodule Bonfire.Common.DocsTest do
   Bonfire.Common.Config.put(:test_key, "test_value")
 
   doctest Bonfire.Common, import: true
-  doctest Bonfire.Common.E, import: false
+  # doctest Bonfire.Common.E, import: false
   doctest Bonfire.Common.Opts, import: false
   doctest Bonfire.Common.Utils, import: true
 

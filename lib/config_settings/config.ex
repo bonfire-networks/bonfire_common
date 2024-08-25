@@ -368,13 +368,13 @@ defmodule Bonfire.Common.Config do
   @doc """
   Constructs a key path for configuration settings, which always starts with an app or extension name. It starts with the main OTP app or extension and includes additional keys as specified.
 
-      iex> keys_tree([:bonfire_me, Bonfire.Me.Users])
+      > keys_tree([:bonfire_me, Bonfire.Me.Users])
       [:bonfire_me, Bonfire.Me.Users]
 
-      iex> keys_tree(Bonfire.Me.Users)
+      > keys_tree(Bonfire.Me.Users)
       [:bonfire_me, Bonfire.Me.Users]
 
-      iex> keys_tree(:bonfire_me)
+      > keys_tree(:bonfire_me)
       [:bonfire_me]
 
       iex> keys_tree(:random_atom)

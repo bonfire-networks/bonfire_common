@@ -94,10 +94,16 @@ defmodule Bonfire.Common.Opts do
       "default"
 
       iex> maybe_from_opts([context: %{key: "value"}], :key, "default")
-      "default"
+      "value"
 
       iex> maybe_from_opts([context: %{key: "value"}], :key, "default")
-      "default"
+      "value"
+
+      iex> maybe_from_opts(%{context: %{key: "value"}}, :key, "default")
+      "value"
+
+      iex> maybe_from_opts(%{context: %{key: "value"}}, :key, "default")
+      "value"
 
   """
 
@@ -114,8 +120,8 @@ defmodule Bonfire.Common.Opts do
   defp do_from_opts(opts, key, fallback)
        when is_list(opts) or is_map(opts),
        do:
-         E.e(opts, key, nil)
-         |> Common.maybe_fallback(fn -> E.e(opts, :context, key, nil) end)
+         E.ed(opts, key, nil)
+         |> Common.maybe_fallback(fn -> E.ed(opts, :context, key, nil) end)
 
   defp force_from_opts(opts, key, fallback),
     do:

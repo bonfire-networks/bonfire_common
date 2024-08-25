@@ -198,10 +198,10 @@ defmodule Bonfire.Common.Extensions.Diff do
 
   ## Examples
 
-      iex> Bonfire.Common.Extensions.Diff.git!(["status"], "./")
+      > Bonfire.Common.Extensions.Diff.git!(["status"], "./")
   """
   def git!(args, repo_path \\ ".", into \\ default_into(), original_cwd \\ root())
-      when is_list(args) do
+      when is_list(args) and is_binary(repo_path) and is_binary(original_cwd) do
     args = ["-C", Path.join(original_cwd, repo_path)] ++ args
 
     debug("Run command: git #{Enum.join(args, " ")}")

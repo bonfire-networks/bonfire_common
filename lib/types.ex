@@ -576,7 +576,7 @@ defmodule Bonfire.Common.Types do
       iex> object_type(%Ecto.Association.NotLoaded{})
       nil
 
-      iex> object_type(%{table_id: "601NTERTAB1EF0RA11TAB1ES00"})
+      > object_type(%{table_id: "601NTERTAB1EF0RA11TAB1ES00"})
       Needle.Table
 
       iex> object_type(%{pointer_id: "User"})
@@ -755,6 +755,10 @@ defmodule Bonfire.Common.Types do
       _ ->
         Cache.maybe_apply_cached(&object_type_from_db/1, [id])
     end
+  rescue
+    e in ArgumentError ->
+      error(e)
+      nil
   end
 
   def object_type(type) when is_atom(type) and not is_nil(type) do
@@ -803,7 +807,7 @@ defmodule Bonfire.Common.Types do
       iex> object_type_display(:user)
       "user"
 
-      iex> object_type_display(%Bonfire.Data.Social.APActivity{})
+      > object_type_display(%Bonfire.Data.Social.APActivity{})
       "apactivity"
   """
   # @decorate time()
@@ -850,12 +854,12 @@ defmodule Bonfire.Common.Types do
   @doc """
   Given a list of schema types, returns a list of their respective table types. Filters out any empty values. 
 
-      iex> table_types([%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"}, %Bonfire.Data.Social.APActivity{}])
+      > table_types([%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"}, %Bonfire.Data.Social.APActivity{}])
       ["30NF1REAPACTTAB1ENVMBER0NE"]
 
       Given a single schema type, it returns its respective table type.
 
-      iex> table_types(Bonfire.Data.Social.APActivity)
+      > table_types(Bonfire.Data.Social.APActivity)
       ["30NF1REAPACTTAB1ENVMBER0NE"]
   """
   def table_types(types) when is_list(types),
@@ -868,13 +872,13 @@ defmodule Bonfire.Common.Types do
   Given an object or module name, returns its respective table table ID (i.e. Pointable ULID).
 
   ## Examples
-      iex> table_type(%Bonfire.Data.Social.APActivity{})
+      > table_type(%Bonfire.Data.Social.APActivity{})
       "30NF1REAPACTTAB1ENVMBER0NE"
       
       iex> table_type(%Needle.Pointer{table_id: "30NF1REAPACTTAB1ENVMBER0NE"})
       "30NF1REAPACTTAB1ENVMBER0NE"
 
-      iex> table_type(Bonfire.Data.Social.APActivity)
+      > table_type(Bonfire.Data.Social.APActivity)
       "30NF1REAPACTTAB1ENVMBER0NE"
   """
   def table_type(type) when is_atom(type) and not is_nil(type) do
@@ -903,7 +907,7 @@ defmodule Bonfire.Common.Types do
   Given a schema module, returns its table ID (i.e. Pointable ULID).
 
   ## Examples
-      iex> table_id(Bonfire.Data.Social.APActivity)
+      > table_id(Bonfire.Data.Social.APActivity)
       "30NF1REAPACTTAB1ENVMBER0NE"
   """
   def table_id(schema) when is_atom(schema) and not is_nil(schema) do

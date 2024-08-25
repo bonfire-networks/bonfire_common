@@ -570,7 +570,7 @@ defmodule Bonfire.Common.Extend do
       code_file_path ->
         rel_code_file =
           code_file_path
-          |> Path.relative_to(Config.get(:project_path))
+          |> Path.relative_to(Config.get(:project_path) || "./")
 
         # |> debug()
 

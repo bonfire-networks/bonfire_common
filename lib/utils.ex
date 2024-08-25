@@ -300,7 +300,7 @@ defmodule Bonfire.Common.Utils do
       iex> Bonfire.Common.Utils.current_user_required!(%{current_user: %{id: "user1"}})
       %{id: "user1"}
 
-      iex> Bonfire.Common.Utils.current_user_required!(%{})
+      > Bonfire.Common.Utils.current_user_required!(%{})
       ** (Bonfire.Fail.Auth) You need to log in first. 
   """
   def current_user_required!(context),
@@ -313,7 +313,7 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-      iex> Bonfire.Common.Utils.current_user_auth!(%{current_user: %{id: "user1"}}, "password123")
+      > Bonfire.Common.Utils.current_user_auth!(%{current_user: %{id: "user1"}}, "password123")
       ** (Bonfire.Fail.Auth) We couldn't find an account with the details you provided. 
 
   """

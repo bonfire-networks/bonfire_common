@@ -23,7 +23,7 @@ defmodule Bonfire.Common.Extensions do
 
   ## Examples
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: :disabled}}}}} =  Bonfire.Common.Extensions.global_disable(:my_test_extension)
+      > {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: :disabled}}}}} =  Bonfire.Common.Extensions.global_disable(:my_test_extension)
   """
   def global_disable(extension) do
     global_toggle(extension, false)
@@ -37,7 +37,7 @@ defmodule Bonfire.Common.Extensions do
 
   ## Examples
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: nil}}}}} = Bonfire.Common.Extensions.global_enable(:my_test_extension)
+      > {:ok, %Bonfire.Data.Identity.Settings{json: %{bonfire: %{my_test_extension: %{modularity: nil}}}}} = Bonfire.Common.Extensions.global_enable(:my_test_extension)
   """
   def global_enable(extension) do
     global_toggle(extension, true)

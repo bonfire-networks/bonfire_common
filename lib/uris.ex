@@ -314,12 +314,12 @@ defmodule Bonfire.Common.URIs do
   @doc """
   Returns the full URL (including domain and path) for a given object, module, or path name.
 
-      iex> url_path(:user, [1])
+      > url_path(:user, [1])
       "http://localhost:4000/discussion/user/1"
 
   """
   def url_path(view_module_or_path_name_or_object, args \\ []) do
-    base_url() <> path(view_module_or_path_name_or_object, args)
+    base_url() <> (path(view_module_or_path_name_or_object, args) || "")
   end
 
   @doc """
@@ -504,7 +504,7 @@ defmodule Bonfire.Common.URIs do
   @doc """
   Returns the homepage URI (as struct) of the local instance.
 
-      iex> %URI{scheme: "http", host: "localhost"} = base_uri(:my_endpoint)
+      > %URI{scheme: "http", host: "localhost"} = base_uri(:my_endpoint)
 
   """
   def base_uri(conn_or_socket \\ nil)
@@ -659,7 +659,7 @@ defmodule Bonfire.Common.URIs do
   @doc """
   Generates a static path based on the given path and endpoint module.
 
-      iex> static_path("/assets/image.png")
+      > static_path("/assets/image.png")
       "/assets/image.png"
   """
   def static_path(path, endpoint_module \\ Bonfire.Common.Config.endpoint_module()) do

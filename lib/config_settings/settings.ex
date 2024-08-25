@@ -151,8 +151,7 @@ defmodule Bonfire.Common.Settings do
   rescue
     error in FunctionClauseError ->
       error(error, "get_in failed, try with `e`", trace_skip: 2)
-      # NOTE: this won't be able to use Pathex
-      apply(Utils, :e, debug([result] ++ keys_tree ++ [nil]))
+      apply(E, :ed, debug([result] ++ keys_tree ++ [nil]))
   end
 
   defp maybe_fallback(nil, fallback), do: fallback
@@ -211,7 +210,8 @@ defmodule Bonfire.Common.Settings do
             not Ecto.assoc_loaded?(current_account.settings)) do
       warn(
         otp_app,
-        "You should pass a current_user and/or current_account (with settings assoc preloaded) in `opts` depending on what scope of Settings you want for OTP app"
+        "You should pass a current_user and/or current_account (with settings assoc preloaded) in `opts` depending on what scope of Settings you want for OTP app",
+        trace_limit: 7
       )
 
       # debug(opts)
@@ -387,16 +387,16 @@ defmodule Bonfire.Common.Settings do
   ## Examples
 
       # when no scope or current_user are passed in opts:
-      iex> put(:some_key, "new_value")
+      > put(:some_key, "new_value")
       {:error, "You need to be authenticated to change settings."}
 
       # when the scope is :instance but an admin isn't passed as current_user in opts:
-      iex> put(:some_key, "new_value", scope: :instance)
+      > put(:some_key, "new_value", scope: :instance)
       ** (Bonfire.Fail) You do not have permission to change instance settings. Please contact an admin.
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = put(:some_key, "new_value", skip_boundary_check: true, scope: :instance)
+      > {:ok, %Bonfire.Data.Identity.Settings{}} = put(:some_key, "new_value", skip_boundary_check: true, scope: :instance)
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = put([:top_key, :sub_key], "new_value", skip_boundary_check: true, scope: "instance")
+      > {:ok, %Bonfire.Data.Identity.Settings{}} = put([:top_key, :sub_key], "new_value", skip_boundary_check: true, scope: "instance")
 
   ## Options
     * `:otp_app` - Specifies the OTP application for which to set settings. If not specified, it decides where to put it using the same logic as `get/3`.
@@ -430,9 +430,9 @@ defmodule Bonfire.Common.Settings do
 
   ## Examples
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = set(%{some_key: "value", another_key: "another_value"}, skip_boundary_check: true, scope: :instance)
+      > {:ok, %Bonfire.Data.Identity.Settings{}} = set(%{some_key: "value", another_key: "another_value"}, skip_boundary_check: true, scope: :instance)
 
-      iex> {:ok, %Bonfire.Data.Identity.Settings{}} = set([some_key: "value", another_key: "another_value"], skip_boundary_check: true, scope: "instance")
+      > {:ok, %Bonfire.Data.Identity.Settings{}} = set([some_key: "value", another_key: "another_value"], skip_boundary_check: true, scope: "instance")
 
   ## Options
     * `:otp_app` - Specifies the OTP application for which to set settings.
@@ -549,7 +549,9 @@ defmodule Bonfire.Common.Settings do
     # FIXME: do we need to associate each setting key to a verb? (eg. :describe)
     is_admin_or_skip =
       e(opts, :skip_boundary_check, nil) ||
-        Bonfire.Boundaries.can?(current_account, :configure, :instance)
+        maybe_apply(Bonfire.Boundaries, :can?, [current_account, :configure, :instance],
+          fallback_return: false
+        )
 
     scope =
       case maybe_to_atom(e(settings, :scope, nil) || e(opts, :scope, nil))
@@ -771,5 +773,7 @@ defmodule Bonfire.Common.Settings do
   # end
 
   defp instance_scope,
-    do: Bonfire.Boundaries.Circles.get_id(:local) || "3SERSFR0MY0VR10CA11NSTANCE"
+    do:
+      maybe_apply(Bonfire.Boundaries.Circles, :get_id, :local, fallback_return: nil) ||
+        "3SERSFR0MY0VR10CA11NSTANCE"
 end

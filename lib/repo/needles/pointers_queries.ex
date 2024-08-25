@@ -15,7 +15,7 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
 
   def query_incl_deleted(), do: from(p in Pointer, as: :main_object)
 
-  def query(Pointer) do
+  def query(Pointer \\ Pointer) do
     query_incl_deleted()
     |> where([p], is_nil(p.deleted_at))
 
