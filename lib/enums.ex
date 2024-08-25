@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Enums do
 
   use Arrows
   import Untangle
+  use Bonfire.Common.E
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Extend
   alias Ecto.Changeset
@@ -286,7 +287,7 @@ defmodule Bonfire.Common.Enums do
       |> Map.get(key, fallback)
       |> filter_empty(fallback)
     else
-      debug("Utils.e() requested #{inspect(key)} on #{schema} but that assoc was not preloaded")
+      debug("e() requested #{inspect(key)} on #{schema} but that assoc was not preloaded")
 
       fallback
     end
@@ -1192,7 +1193,7 @@ defmodule Bonfire.Common.Enums do
   defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do
     data
     |> Map.new(fn {k, v} ->
-      {k, maybe_to_structs_recurse(v, Utils.e(data, :id, nil))}
+      {k, maybe_to_structs_recurse(v, e(data, :id, nil))}
     end)
     |> maybe_add_mixin_id(parent_id)
     |> maybe_to_struct(type)
@@ -1200,7 +1201,7 @@ defmodule Bonfire.Common.Enums do
 
   defp maybe_to_structs_recurse(%{} = data, _parent_id) do
     Map.new(data, fn {k, v} ->
-      {k, maybe_to_structs_recurse(v, Utils.e(data, :id, nil))}
+      {k, maybe_to_structs_recurse(v, e(data, :id, nil))}
     end)
   end
 

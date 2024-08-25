@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Media do
 
   use Arrows
   import Untangle
+  use Bonfire.Common.E
   alias Bonfire.Common
   alias Common.Utils
   alias Common.Enums
@@ -72,7 +73,7 @@ defmodule Bonfire.Common.Media do
     else
       debug(media, "non-image url")
 
-      Utils.e(media, :metadata, :canonical_url, nil) ||
+      e(media, :metadata, :canonical_url, nil) ||
         Utils.maybe_apply(Bonfire.Files.DocumentUploader, :remote_url, [media],
           fallback_return: nil
         )

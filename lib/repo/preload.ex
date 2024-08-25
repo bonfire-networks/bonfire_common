@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Repo.Preload do
   Helpers for preloading Ecto struct associations
   """
 
+  use Bonfire.Common.E
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Cache
@@ -112,7 +113,7 @@ defmodule Bonfire.Common.Repo.Preload do
   end
 
   def maybe_preload(obj, _, opts) do
-    debug("#{Utils.e(opts, :label, nil)}: can only preload from struct or list of structs")
+    debug("#{e(opts, :label, nil)}: can only preload from struct or list of structs")
 
     obj
   end

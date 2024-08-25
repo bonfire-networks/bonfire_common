@@ -2,6 +2,7 @@ defmodule Bonfire.Common.Localise do
   @moduledoc """
   Various helpers for localisation
   """
+  use Bonfire.Common.E
   alias Bonfire.Common.Utils
 
   defmacro __using__(_opts) do
@@ -71,7 +72,7 @@ defmodule Bonfire.Common.Localise do
   """
   def get_locale_id() do
     locale = get_locale()
-    Utils.e(locale, :cldr_locale_name, locale)
+    e(locale, :cldr_locale_name, locale)
   end
 
   @doc """

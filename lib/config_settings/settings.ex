@@ -151,7 +151,8 @@ defmodule Bonfire.Common.Settings do
   rescue
     error in FunctionClauseError ->
       error(error, "get_in failed, try with `e`", trace_skip: 2)
-      apply(Bonfire.Common.Utils, :e, debug([result] ++ keys_tree ++ [nil]))
+      # NOTE: this won't be able to use Pathex
+      apply(Utils, :e, debug([result] ++ keys_tree ++ [nil]))
   end
 
   defp maybe_fallback(nil, fallback), do: fallback

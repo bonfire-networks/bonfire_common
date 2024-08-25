@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Needles do
 
   use Arrows
   import Untangle
+  use Bonfire.Common.E
   import Bonfire.Common.Config, only: [repo: 0]
   import Bonfire.Common.Extend
   import_if_enabled(Bonfire.Boundaries.Queries)
@@ -257,7 +258,7 @@ defmodule Bonfire.Common.Needles do
     )
     |> pointer_preloads(opts[:preload])
 
-    # if Utils.e(opts, :log_query, nil), do: info(q), else: q
+    # if e(opts, :log_query, nil), do: info(q), else: q
   end
 
   @doc """

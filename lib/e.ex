@@ -2,9 +2,18 @@
 defmodule Bonfire.Common.E do
   @moduledoc "Helper to extract data nested in an object"
 
+  # require Pathex
   import Untangle
+
   alias Bonfire.Common
   alias Bonfire.Common.Enums
+
+  defmacro __using__(_opts \\ []) do
+    quote do
+      # require Pathex
+      import Bonfire.Common.E
+    end
+  end
 
   @doc """
   Returns a value if it is not empty, or a fallback value if it is empty.
@@ -82,6 +91,7 @@ defmodule Bonfire.Common.E do
   def e({:ok, object}, key, fallback), do: e(object, key, fallback)
 
   def e(map, keys, fallback) when is_map(map) and is_list(keys) do
+    # NOTE: this won't be able to use Pathex if called with a dynamic list of keys
     get_in_access_keys_or(map, keys, fallback, fn map ->
       # if get_in didn't work, call e again but with one-param-per-key
       apply(__MODULE__, :e, [map] ++ keys ++ [fallback])
@@ -164,12 +174,34 @@ defmodule Bonfire.Common.E do
     end)
   end
 
+  # defmacro e(object, key1, key2, key3, key4, fallback) do
+  #    Pathex.get(
+  #     object, 
+  #     quote do
+  #     Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4))
+  #   end
+  #   |> Macro.expand_once(__CALLER__), 
+  #     fallback
+  #   )
+  # end
+
   def e(object, key1, key2, key3, key4, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4], fallback, fn object ->
       e(object, key1, key2, key3, %{})
       |> e(key4, nil)
     end)
   end
+
+  # defmacro e(object, key1, key2, key3, key4, key5, fallback) do
+  #    Pathex.get(
+  #     object, 
+  #     quote do
+  #     Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5))
+  #   end
+  #   |> Macro.expand_once(__CALLER__), 
+  #     fallback
+  #   )
+  # end
 
   def e(object, key1, key2, key3, key4, key5, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4, key5], fallback, fn object ->
@@ -178,12 +210,44 @@ defmodule Bonfire.Common.E do
     end)
   end
 
+  # defmacro e(object, key1, key2, key3, key4, key5, key6, fallback) do
+  #   quote do
+  #     Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5) / unquote(key6))
+  #   end
+  #   |> IO.inspect()
+  #   |> Macro.expand(__CALLER__)
+  #   |> IO.inspect()
+  #   |> pathex_get(object,
+  #     fallback
+  #   )
+  # end
+  # defmacro e(object, key1, key2, key3, key4, key5, key6, fallback) do
+  #   Pathex.get(
+  #     object, 
+  #     quote do
+  #     Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5) / unquote(key6))
+  #   end
+  #   |> IO.inspect()
+  #   |> Macro.expand_once(__CALLER__)
+  #   |> IO.inspect(),
+  #     fallback
+  #   )
+  # end
+
   def e(object, key1, key2, key3, key4, key5, key6, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4, key5, key6], fallback, fn object ->
       e(object, key1, key2, key3, key4, key5, %{})
       |> e(key6, nil)
     end)
   end
+
+  # defp pathex_get(quoted_path, object, fallback) do
+  #   Pathex.get(
+  #     object, 
+  #     quoted_path, 
+  #     fallback
+  #   )
+  # end
 
   defp get_in_access_keys_or(map, keys, fallback, fallback_fun) when is_map(map) do
     case Enums.get_in_access_keys(map, keys, :empty) do

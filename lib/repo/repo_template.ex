@@ -8,6 +8,7 @@ defmodule Bonfire.Common.RepoTemplate do
   defmacro __using__(_) do
     quote do
       alias Bonfire.Common.Config
+      use Bonfire.Common.E
       import Config, only: [repo: 0]
       alias Bonfire.Common.Utils
       alias Bonfire.Common.Types
@@ -587,7 +588,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defp handle_postgrex_exception(exception, stacktrace, fallback, _) do
         Errors.debug_exception(
-          Utils.e(exception, :message, "A database error occurred"),
+          e(exception, :message, "A database error occurred"),
           exception,
           stacktrace
         )

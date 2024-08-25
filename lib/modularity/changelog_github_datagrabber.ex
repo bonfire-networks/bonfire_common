@@ -8,6 +8,7 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
     @behaviour Versioce.Changelog.DataGrabber
 
     import Untangle
+    use Bonfire.Common.E
     alias Bonfire.Common.Utils
     alias Bonfire.Common.Enums
     # alias Versioce.Changelog.Sections
@@ -100,7 +101,7 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
                headers: [authorization: "Bearer #{token}"]
              ) do
         body["data"]["search"]["edges"]
-        |> Enum.map(&Utils.e(&1, "node", &1))
+        |> Enum.map(&e(&1, "node", &1))
 
         # |> IO.inspect
       else
@@ -121,11 +122,11 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
 
     defp do_prepare_sections([issue | tail], anchors, acc) do
       labels =
-        Utils.e(issue, "labels", "edges", [])
-        |> Enum.map(&Utils.e(&1, "node", "name", nil))
+        e(issue, "labels", "edges", [])
+        |> Enum.map(&e(&1, "node", "name", nil))
         |> Enums.filter_empty(nil)
 
-      grouping_texts = labels || [Utils.e(issue, "title", "")]
+      grouping_texts = labels || [e(issue, "title", "")]
 
       do_prepare_sections(
         tail,
@@ -172,15 +173,15 @@ if Bonfire.Common.Extend.module_enabled?(Versioce.Changelog.DataGrabber) do
     end
 
     def format_issue(issue) do
-      case Utils.e(issue, "title", nil) do
+      case e(issue, "title", nil) do
         title when is_binary(title) ->
           title = String.trim(title)
-          number = Utils.e(issue, "number", nil)
-          url = Utils.e(issue, "url", nil)
+          number = e(issue, "number", nil)
+          url = e(issue, "url", nil)
 
           assignees =
-            Utils.e(issue, "assignees", "edges", [])
-            |> Enum.map(&Utils.e(&1, "node", "login", nil))
+            e(issue, "assignees", "edges", [])
+            |> Enum.map(&e(&1, "node", "login", nil))
             |> Enum.join(" & ")
 
           maybe_by = if assignees != "", do: "by #{assignees}"

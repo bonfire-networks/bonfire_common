@@ -9,6 +9,7 @@ defmodule Bonfire.Common.Extensions do
   @prefix_data "bonfire_data_"
 
   import Untangle
+  use Bonfire.Common.E
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
 
@@ -229,8 +230,8 @@ defmodule Bonfire.Common.Extensions do
       %{} ->
         # debug(dep)
         repo =
-          Utils.e(dep, :opts, :git, nil) ||
-            Utils.e(dep, :opts, :lock, {nil, nil}) |> elem(1)
+          e(dep, :opts, :git, nil) ||
+            e(dep, :opts, :lock, {nil, nil}) |> elem(1)
 
         # debug(repo)
         if is_binary(repo) and String.contains?(repo, "bonfire"),

@@ -36,6 +36,7 @@ defmodule Bonfire.Common.Utils do
   # import Common.Config, only: [repo: 0]
   use Untangle
   require Logger
+  import Common.E
   # alias Common.Text
   alias Common.Opts
   alias Common.Cache
@@ -49,11 +50,31 @@ defmodule Bonfire.Common.Utils do
 
   defmacro __using__(opts) do
     quote do
-      alias Bonfire.Common
-      alias Common.Utils
+      import Untangle
+      use Arrows
 
+      alias Bonfire.Common
+
+      use Common.E
+
+      # require Utils
+      # can import specific functions with `only` or `except`
+      import Common.Utils, unquote(opts)
+
+      import Common.Enums
+      import Common.Extend
+      import Common.Types
+      import Common.URIs
+      import Bonfire.Common.Modularity.DeclareHelpers
+
+      # localisation
+      require Bonfire.Common.Localise.Gettext
+      import Bonfire.Common.Localise.Gettext.Helpers
+
+      alias Common.Utils
       alias Common.Cache
       alias Common.Config
+      alias Common.E
       alias Common.Errors
       alias Common.Extend
       alias Common.Types
@@ -63,25 +84,8 @@ defmodule Bonfire.Common.Utils do
       alias Common.Media
       alias Common.URIs
       alias Common.HTTP
-      alias Bonfire.Common.Settings
+      alias Common.Settings
       alias Bonfire.Boundaries
-
-      require Utils
-      # can import specific functions with `only` or `except`
-      import Utils, unquote(opts)
-
-      import Enums
-      import Extend
-      import Types
-      import URIs
-      import Bonfire.Common.Modularity.DeclareHelpers
-
-      import Untangle
-      use Arrows
-
-      # localisation
-      require Bonfire.Common.Localise.Gettext
-      import Bonfire.Common.Localise.Gettext.Helpers
     end
   end
 
@@ -91,13 +95,13 @@ defmodule Bonfire.Common.Utils do
     description: l("Common utilities and functionality used by most other extensions.")
   )
 
-  defdelegate e(object, fallback \\ nil), to: Bonfire.Common.E
-  defdelegate e(object, key1, fallback), to: Bonfire.Common.E
-  defdelegate e(object, key1, key2, fallback), to: Bonfire.Common.E
-  defdelegate e(object, key1, key2, key3, fallback), to: Bonfire.Common.E
-  defdelegate e(object, key1, key2, key3, key4, fallback), to: Bonfire.Common.E
-  defdelegate e(object, key1, key2, key3, key4, key5, fallback), to: Bonfire.Common.E
-  defdelegate e(object, key1, key2, key3, key4, key5, key6, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, fallback \\ nil), to: Bonfire.Common.E
+  # defdelegate e(object, key1, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, key1, key2, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, key1, key2, key3, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, key1, key2, key3, key4, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, key1, key2, key3, key4, key5, fallback), to: Bonfire.Common.E
+  # defdelegate e(object, key1, key2, key3, key4, key5, key6, fallback), to: Bonfire.Common.E
 
   @doc """
   Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.

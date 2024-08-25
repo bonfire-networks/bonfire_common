@@ -16,6 +16,7 @@ ex_cldr_locale_display = "~> 1.1"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.8.0" # string recasing
 
+pathex = "~> 2.6"
 json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing
 earmark = "~> 1.4.46" # handle markdown (deprecated)

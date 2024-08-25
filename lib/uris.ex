@@ -2,6 +2,7 @@ defmodule Bonfire.Common.URIs do
   @moduledoc "URI/URL/path helpers"
   import Untangle
   use Arrows
+  use Bonfire.Common.E
   import Bonfire.Common.Extend
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
@@ -304,7 +305,7 @@ defmodule Bonfire.Common.URIs do
          obj
          # |> debug("with character")
          |> repo().maybe_preload(:character)
-         |> Utils.e(:character, obj.id)
+         |> e(:character, obj.id)
          |> path_id()
 
   defp path_id(%{id: id}), do: id
@@ -396,7 +397,7 @@ defmodule Bonfire.Common.URIs do
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
     object = repo().maybe_preload(object, :peered)
 
-    Utils.e(object, :peered, :canonical_uri, nil) ||
+    e(object, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
@@ -407,14 +408,14 @@ defmodule Bonfire.Common.URIs do
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
     object = repo().maybe_preload(object, created: [:peered])
 
-    Utils.e(object, :created, :peered, :canonical_uri, nil) ||
+    e(object, :created, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
   def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object) do
     object = repo().maybe_preload(object, character: [:peered])
 
-    Utils.e(object, :character, :peered, :canonical_uri, nil) ||
+    e(object, :character, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object)
   end
 
