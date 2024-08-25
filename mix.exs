@@ -30,7 +30,7 @@ defmodule Bonfire.Common.MixProject do
             {:dataloader, "~> 2.0", optional: true},
             {:floki, "~> 0.36", optional: true},
             {:emote,
-            "~> 0.1"
+            "~> 0.1",
             #  git: "https://github.com/bonfire-networks/emote", 
              optional: true},
             {:text, "~> 0.2.0", optional: true},
