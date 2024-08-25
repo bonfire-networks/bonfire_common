@@ -24,7 +24,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @callback modules() :: any
 
   defp prepare_data_for_cache(behaviours \\ find_extension_behaviours()) do
-    app_modules_to_scan = app_modules_to_scan(cache_names: true)
+    app_modules_to_scan = app_modules_to_scan(cache: true)
 
     # first find all *declared* behaviours (which are a behaviour of this module)
     find_extension_behaviours()
@@ -62,11 +62,11 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   def apps_to_scan(opts \\ []) do
     pattern = ["bonfire"] ++ Config.get([:extensions_pattern], [])
 
-    Extend.loaded_applications(opts)
+    Extend.loaded_applications_map(opts)
     |> Enum.map(fn
-      {app, description, _} ->
+      {app, {_version, description}} ->
         if String.contains?(to_string(app), pattern) or
-             String.contains?(to_string(description), pattern) do
+             String.contains?(description, pattern) do
           # TODO: exclude any disabled extensions?
           app
         else

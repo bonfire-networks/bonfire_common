@@ -9,8 +9,8 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Settings
   alias Bonfire.Common.Cache
 
-  # @loaded_applications_key {Bonfire.Common, :loaded_applications}
-  @loaded_app_names_key {__MODULE__, :loaded_app_names}
+  @loaded_apps_names_key {__MODULE__, :loaded_app_names}
+  @loaded_apps_key {__MODULE__, :loaded_apps}
 
   @doc """
   Extend a module by defining `defdelegate` and `defoverridable` for all functions from the source module in the current module.
@@ -339,35 +339,51 @@ defmodule Bonfire.Common.Extend do
 
   @decorate time()
   defp application_loaded?(extension) do
-    extensions = loaded_application_names()
-
-    Enum.member?(extensions, extension)
+    Map.has_key?(loaded_applications_names(), extension)
   end
 
-  def loaded_application_names() do
-    with [] <- :persistent_term.get(@loaded_app_names_key, []) do
-      warn("could not use cache")
-      names_from_applications(Application.loaded_applications())
+  def loaded_applications_names(opts \\ [cache: false]) do
+    with nil <- :persistent_term.get(@loaded_apps_names_key, nil) do
+      uncached_loaded_applications_map(opts)
     end
   end
 
-  @decorate time()
-  def loaded_applications(opts \\ [cache_names: false]) do
-    applications = Application.loaded_applications()
-
-    if opts[:cache_names] do
-      names_from_applications(applications)
-      |> warn("caching loaded apps")
-      |> :persistent_term.put(@loaded_app_names_key, ...)
+  def loaded_applications_map(opts \\ [cache: false]) do
+    with nil <- :persistent_term.get(@loaded_apps_key, nil) do
+      uncached_loaded_applications_map(opts)
     end
-
-    applications
   end
 
-  defp names_from_applications(applications) do
-    for {app_name, _, _} <- applications do
-      app_name
+  defp uncached_loaded_applications_map(opts \\ [cache: false]) do
+    apps_map =
+      Application.loaded_applications()
+      |> prepare_loaded_applications_map()
+
+    if opts[:cache] do
+      names_map =
+        for {app_name, _} <- apps_map do
+          {app_name, true}
+        end
+        |> Map.new()
+        |> info("caching loaded app names")
+        |> :persistent_term.put(@loaded_apps_names_key, ...)
+
+      apps_map
+      # |> info("caching loaded apps")
+      |> :persistent_term.put(@loaded_apps_key, ...)
+    else
+      debug("could not use loaded_applications cache")
     end
+
+    apps_map
+  end
+
+  defp prepare_loaded_applications_map(applications) when is_list(applications) do
+    for {app_name, description, version} <- applications do
+      {app_name, {to_string(version), to_string(description)}}
+    end
+    |> Map.new()
+    |> debug()
   end
 
   @decorate time()
