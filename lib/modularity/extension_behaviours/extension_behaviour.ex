@@ -38,7 +38,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   def apps_to_scan do
     pattern = ["bonfire"] ++ Config.get([:extensions_pattern], [])
 
-    Extend.loaded_applications()
+    Extend.loaded_applications(put_cache: true)
     |> Enum.map(fn
       {app, description, _} ->
         if String.contains?(to_string(app), pattern) or
