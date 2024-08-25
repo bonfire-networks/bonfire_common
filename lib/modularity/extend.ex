@@ -9,6 +9,9 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Settings
   alias Bonfire.Common.Cache
 
+  # @loaded_applications_key {Bonfire.Common, :loaded_applications}
+  @loaded_app_names_key {__MODULE__, :loaded_app_names}
+
   @doc """
   Extend a module by defining `defdelegate` and `defoverridable` for all functions from the source module in the current module.
 
@@ -334,47 +337,42 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  @loaded_extensions_key {__MODULE__, :extensions_loaded}
   @decorate time()
   defp application_loaded?(extension) do
-    extensions = :persistent_term.get(@loaded_extensions_key, %{})
+    extensions = loaded_application_names()
 
-    case Map.get(extensions, extension) do
-      nil ->
-        result =
-          loaded_applications()
-          |> Enum.reduce_while(false, fn {app_name, _, _}, _acc ->
-            if app_name == extension do
-              {:halt, true}
-            else
-              {:cont, false}
-            end
-          end)
+    Enum.member?(extensions, extension)
+  end
 
-        :persistent_term.put(@loaded_extensions_key, Map.put(extensions, extension, result))
-        result
-
-      result ->
-        result
+  def loaded_application_names() do
+    with [] <- :persistent_term.get(@loaded_app_names_key, []) do
+      warn("could not use cache")
+      names_from_applications(Application.loaded_applications())
     end
   end
 
-  @loaded_applications_key {Bonfire.Common, :applications_loaded}
   @decorate time()
-  def loaded_applications(opts \\ [put_cache: false]) do
-    with nil <- :persistent_term.get(@loaded_applications_key, nil) do
-      applications = Application.loaded_applications()
+  def loaded_applications(opts \\ [cache_names: false]) do
+    applications = Application.loaded_applications()
 
-      if opts[:put_cache] do
-        :persistent_term.put(@loaded_applications_key, applications)
-      end
+    if opts[:cache_names] do
+      names_from_applications(applications)
+      |> warn("caching loaded apps")
+      |> :persistent_term.put(@loaded_app_names_key, ...)
+    end
 
-      applications
+    applications
+  end
+
+  defp names_from_applications(applications) do
+    for {app_name, _, _} <- applications do
+      app_name
     end
   end
 
   @decorate time()
   def application_for_module(module) when is_atom(module) and not is_nil(module) do
+    # TODO? would it be more performant to cache the data from `Bonfire.Common.ExtensionBehaviour.app_modules_to_scan` and re-use that here?
     if Code.loaded?(Utils),
       do:
         Cache.maybe_apply_cached({Application, :get_application}, [module],

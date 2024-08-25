@@ -23,22 +23,46 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
 
-  def find_extension_behaviours() do
-    adopters_of_behaviour(__MODULE__)
+  defp prepare_data_for_cache(behaviours \\ find_extension_behaviours()) do
+    app_modules_to_scan = app_modules_to_scan(cache_names: true)
+
+    # first find all *declared* behaviours (which are a behaviour of this module)
+    find_extension_behaviours()
+    #  then find modules that implement those behaviours
+    |> find_adopters_of_behaviours()
+  end
+
+  # multiple behaviours
+  def find_adopters_of_behaviours(
+        behaviours \\ find_extension_behaviours(),
+        app_modules_to_scan \\ app_modules_to_scan()
+      ) do
+    app_modules_to_scan
+    |> apps_with_behaviour(behaviours)
+  end
+
+  def find_extension_behaviours(app_modules_to_scan \\ app_modules_to_scan()) do
+    adopters_of_behaviour(__MODULE__, app_modules_to_scan)
     |> modules_only()
 
     # |> debug()
   end
 
-  def find_adopters_of_behaviours(behaviours \\ find_extension_behaviours()) do
-    app_modules_to_scan()
-    |> apps_with_behaviour(behaviours)
+  @doc """
+  Given a behaviour module, filters app modules to only those that implement that behaviour
+  """
+  def adopters_of_behaviour(behaviour \\ __MODULE__, app_modules_to_scan \\ app_modules_to_scan())
+      when is_atom(behaviour) do
+    # [:bonfire, :bonfire_common]
+    app_modules_to_scan
+    # |> debug()
+    |> apps_with_behaviour(behaviour)
   end
 
-  def apps_to_scan do
+  def apps_to_scan(opts \\ []) do
     pattern = ["bonfire"] ++ Config.get([:extensions_pattern], [])
 
-    Extend.loaded_applications(put_cache: true)
+    Extend.loaded_applications(opts)
     |> Enum.map(fn
       {app, description, _} ->
         if String.contains?(to_string(app), pattern) or
@@ -54,8 +78,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     # |> debug()
   end
 
-  def app_modules_to_scan do
-    apps_to_scan()
+  def app_modules_to_scan(opts \\ []) do
+    apps_to_scan(opts)
     |> Enum.map(fn app ->
       case Application.spec(app, :modules) do
         [] ->
@@ -72,16 +96,6 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> Enum.reject(&is_nil/1)
 
     # |> debug()
-  end
-
-  @doc """
-  Given a behaviour module, filters app modules to only those that implement that behaviour
-  """
-  def adopters_of_behaviour(behaviour \\ __MODULE__) when is_atom(behaviour) do
-    # [:bonfire, :bonfire_common]
-    app_modules_to_scan()
-    # |> debug()
-    |> apps_with_behaviour(behaviour)
   end
 
   defp apps_with_behaviour(apps, behaviour) when is_list(apps) and is_atom(behaviour) do
@@ -224,12 +238,9 @@ defmodule Bonfire.Common.ExtensionBehaviour do
       "Analysing the app to prepare a list of extensions and their behaviour modules..."
     )
 
-    {time, indexed} = :timer.tc(__MODULE__, :find_adopters_of_behaviours, [])
-    # indexed = find_adopters_of_behaviours()
+    indexed = prepare_data_for_cache()
 
-    Logger.info(
-      "Indexed the modules from #{Enum.count(indexed)} behaviours in #{time / 1_000_000} seconds"
-    )
+    Logger.info("Indexed the modules from #{Enum.count(indexed)} behaviours")
 
     # IO.inspect(indexed)
 
