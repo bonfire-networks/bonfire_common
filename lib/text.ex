@@ -1,8 +1,12 @@
 defmodule Bonfire.Common.Text do
   @moduledoc "Helpers for handling plain or rich text (markdown, HTML, etc)"
 
-  use Bonfire.Common.Utils
-  # import Untangle
+  use Untangle
+  use Arrows
+  use Bonfire.Common.E
+  alias Bonfire.Common.Extend
+  alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings
 
   # @add_to_end "..."
   @sentence_seperator " "
@@ -79,6 +83,17 @@ defmodule Bonfire.Common.Text do
       do: string =~ substring
 
   def contains?(_, _), do: nil
+
+  @doc """
+  Splits a string into lines.
+
+  ## Examples
+
+      iex> split_lines("line1\\nline2\\r\\nline3\\rline4")
+      ["line1", "line2", "line3", "line4"]
+  """
+  def split_lines(string) when is_binary(string),
+    do: :binary.split(string, ["\r", "\n", "\r\n"], [:global])
 
   @doc """
   Generates a random string of a given length.
@@ -306,7 +321,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_as_html_mdex(content, opts) do
-    if module_enabled?(MDEx, opts) do
+    if Extend.module_enabled?(MDEx, opts) do
       [
         parse: [
           smart: false,
@@ -345,11 +360,11 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_as_html_earmark(content, opts) do
-    # if module_enabled?(Makedown) do
+    # if Extend.module_enabled?(Makedown, opts) do
     # # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
     #   Makedown
     # else
-    processor = if module_enabled?(Earmark), do: Earmark
+    processor = if Extend.module_enabled?(Earmark, opts), do: Earmark
     # end
 
     if processor do
@@ -456,7 +471,7 @@ defmodule Bonfire.Common.Text do
   end
 
   defp makeup_supported?(filename) do
-    (module_enabled?(Makeup) and
+    (Extend.module_enabled?(Makeup) and
        Path.extname(filename) in [
          ".ex",
          ".exs",
@@ -489,7 +504,7 @@ defmodule Bonfire.Common.Text do
       #=> "alert('XSS')" (if HtmlSanitizeEx is enabled)
   """
   def maybe_sane_html(content) do
-    if module_enabled?(HtmlSanitizeEx) do
+    if Extend.module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.markdown_html(content)
     else
       content
@@ -510,7 +525,7 @@ defmodule Bonfire.Common.Text do
   def text_only({:safe, content}), do: text_only(content)
 
   def text_only(content) when is_binary(content) do
-    if module_enabled?(HtmlSanitizeEx) do
+    if Extend.module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.strip_tags(content)
     else
       content
@@ -538,7 +553,7 @@ defmodule Bonfire.Common.Text do
   end
 
   def maybe_normalize_html(html_string) when is_binary(html_string) do
-    if module_enabled?(Floki) do
+    if Extend.module_enabled?(Floki) do
       with {:ok, fragment} <- Floki.parse_fragment(html_string) do
         Floki.raw_html(fragment)
       else
@@ -564,7 +579,7 @@ defmodule Bonfire.Common.Text do
       "😄"
   """
   def maybe_emote(content, user \\ nil, custom_emoji \\ []) do
-    if module_enabled?(Emote) do
+    if Extend.module_enabled?(Emote, user) do
       # debug(custom_emoji)
 
       Emote.convert_text(content,
@@ -587,7 +602,7 @@ defmodule Bonfire.Common.Text do
          |> String.replace("\\_", "_")
          |> String.split(":") do
       ["", _icon, ""] ->
-        case Bonfire.Common.Settings.get([:custom_emoji, text], nil, user) do
+        case Settings.get([:custom_emoji, text], nil, user) do
           nil ->
             text
 
@@ -811,7 +826,7 @@ defmodule Bonfire.Common.Text do
   """
   def maybe_render_templated(templated_content, data)
       when is_binary(templated_content) and is_map(data) do
-    if module_enabled?(Solid) and String.contains?(templated_content, "{{") do
+    if Extend.module_enabled?(Solid) and String.contains?(templated_content, "{{") do
       templated_content = templated_content |> String.replace("&quot;", "\"")
 
       with {:ok, template} <- Solid.parse(templated_content),
@@ -847,7 +862,7 @@ defmodule Bonfire.Common.Text do
       "run"
   """
   def verb_infinitive(verb_conjugated) do
-    with true <- module_enabled?(Irregulars),
+    with true <- Extend.module_enabled?(Irregulars),
          [{infinitive, _}] <-
            Enum.filter(Irregulars.verb_forms(), fn {_infinitive, conjugations} ->
              verb_conjugated in conjugations

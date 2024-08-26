@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Extend do
-  @moduledoc "Helpers for using and managing the extensibility of Bonfire, such as checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`."
-
+  @moduledoc """
+  Helpers for using and managing the extensibility of Bonfire, such as checking if a module or extension is enabled or hot-swapped, or loading code or docs. See also `Bonfire.Common.Extensions`.
+  """
   use Arrows
   use Untangle
   alias Bonfire.Common.Config
@@ -99,12 +100,11 @@ defmodule Bonfire.Common.Extend do
   # end 
 
   @doc """
-  Given an Elixir module, this returns an Elixir module, as long as the module and extension / OTP app is present AND not disabled (eg. by having in config something like `config Bonfire.Common.Text, modularity: :disabled`)
+  Given an Elixir module, returns the module if available and not disabled, or its replacement if configured.
 
-  Important note: you should make sure to use the returned module, rather than the one provided as argument, as it can be different, this allows for swapping out modules in config or user settings (eg. by having in config something like `config Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
-  """
-  @doc """
-  Given an Elixir module, returns the module if it is present and not disabled, or its replacement if configured.
+  Checks both that module and the extension / OTP app it belongs to are available *and* not disabled (eg. by configuring something like `config :bonfire_common, Bonfire.Common.Text, modularity: :disabled`)
+
+  Important note: you should make sure to use the returned module after calling this function, as it can be different from the one you intended to call, as this allows for swapping out modules in config or user settings (eg. by configuring something like `config :bonfire_common, Bonfire.Common.Text, modularity: MyCustomExtension.Text`) 
 
   ## Examples
 
@@ -189,7 +189,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Whether an Elixir module or extension/OTP app is present and not disabled.
+  Checks if an Elixir module or the extension/OTP app it belongs to is present and not disabled. 
 
   ## Examples
 
@@ -209,14 +209,14 @@ defmodule Bonfire.Common.Extend do
 
   @decorate time()
   @doc """
-  Checks if an Elixir module exists.
+  Checks if an Elixir module exists and can be loaded.
 
   ## Examples
 
-      iex> extension_enabled?(Bonfire.Common)
+      iex> module_exists?(Bonfire.Common)
       true
 
-      iex> extension_enabled?(SomeOtherModule)
+      iex> module_exists?(SomeOtherModule)
       false
   """
   def module_exists?(module) when is_atom(module) do
@@ -224,12 +224,20 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Checks if an Elixir module or extension/OTP app is present and not part of a disabled Bonfire extension.
+  Checks if an Elixir module or extension/OTP app is present and not disabled.
+
+  For modules, checks also that the extension/OTP app it belongs is not disabled.
 
   ## Examples
 
       iex> extension_enabled?(Bonfire.Common)
       true
+
+      iex> extension_enabled?(:bonfire_common)
+      true
+
+      iex> extension_enabled?(SomeOtherModule)
+      false
 
       iex> extension_enabled?(:non_existent_extension)
       false
@@ -276,6 +284,20 @@ defmodule Bonfire.Common.Extend do
     |> disabled_value?()
   end
 
+  @doc """
+  Checks if a value indicates that a module or extension is disabled.
+
+  ## Examples
+
+      iex> disabled_value?(:disabled)
+      true
+
+      iex> disabled_value?(false)
+      false
+
+      iex> disabled_value?(disabled: true)
+      true
+  """
   def disabled_value?(value) do
     case value do
       nil -> false
@@ -300,6 +322,20 @@ defmodule Bonfire.Common.Extend do
     module_exists?(extension) or application_loaded?(extension)
   end
 
+  @doc """
+  Returns the OTP app name for a module or extension.
+
+  ## Examples
+
+      iex> maybe_extension_loaded(Bonfire.Common)
+      :bonfire_common
+
+      iex> maybe_extension_loaded(:bonfire_common)
+      :bonfire_common
+
+      iex> maybe_extension_loaded(:non_existent_app)
+      :non_existent_app
+  """
   def maybe_extension_loaded(module_or_otp_app)
       when is_atom(module_or_otp_app) do
     case maybe_module_loaded(module_or_otp_app) do
@@ -325,6 +361,17 @@ defmodule Bonfire.Common.Extend do
   end
 
   @decorate time()
+  @doc """
+  Returns the OTP app name for a module or extension if available, and nil otherwise.
+
+  ## Examples
+
+      iex> maybe_extension_loaded!(Bonfire.Common)
+      :bonfire_common
+
+      iex> maybe_extension_loaded!(:non_existent_app)
+      nil
+  """
   def maybe_extension_loaded!(module_or_otp_app)
       when is_atom(module_or_otp_app) do
     case maybe_extension_loaded(module_or_otp_app) do
@@ -342,12 +389,28 @@ defmodule Bonfire.Common.Extend do
     Map.has_key?(loaded_applications_names(), extension)
   end
 
+  @doc """
+  Returns a map of loaded applications names as keys.
+
+  ## Examples
+
+      iex> %{bonfire_common: true} = loaded_applications_map()
+      
+  """
   def loaded_applications_names(opts \\ [cache: false]) do
     with nil <- :persistent_term.get(@loaded_apps_names_key, nil) do
       uncached_loaded_applications_map(opts)
     end
   end
 
+  @doc """
+  Returns a map of loaded applications with their versions and descriptions.
+
+  ## Examples
+
+      iex> %{bonfire_common: {"0.1.0", "Common utilities for Bonfire"} } = loaded_applications_map()
+
+  """
   def loaded_applications_map(opts \\ [cache: false]) do
     with nil <- :persistent_term.get(@loaded_apps_key, nil) do
       uncached_loaded_applications_map(opts)
@@ -372,7 +435,7 @@ defmodule Bonfire.Common.Extend do
       # |> info("caching loaded apps")
       |> :persistent_term.put(@loaded_apps_key, ...)
     else
-      debug("could not use loaded_applications cache")
+      # debug("could not use loaded_applications cache")
     end
 
     apps_map
@@ -383,10 +446,22 @@ defmodule Bonfire.Common.Extend do
       {app_name, {to_string(version), to_string(description)}}
     end
     |> Map.new()
-    |> debug()
+
+    # |> debug()
   end
 
   @decorate time()
+  @doc """
+  Retrieves the OTP application associated with a given module.
+
+  ## Examples
+
+      iex> application_for_module(Bonfire.Common)
+      :bonfire_common
+
+      iex> application_for_module(SomeUnknownModule)
+      nil
+  """
   def application_for_module(module) when is_atom(module) and not is_nil(module) do
     # TODO? would it be more performant to cache the data from `Bonfire.Common.ExtensionBehaviour.app_modules_to_scan` and re-use that here?
     if Code.loaded?(Utils),
@@ -404,7 +479,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Whether an Elixir module or extension / OTP app has configuration keys set up
+  Checks whether an Elixir module or extension / OTP app has any configuration available.
   """
   def has_extension_config?(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app) || module_or_otp_app
@@ -413,14 +488,47 @@ defmodule Bonfire.Common.Extend do
     config && config != []
   end
 
+  @doc """
+  Checks if a module exists and returns it, otherwise returns nil.
+
+  ## Examples
+
+      iex> maybe_module_loaded(Bonfire.Common)
+      Bonfire.Common
+
+      iex> maybe_module_loaded(NonExistentModule)
+      nil
+  """
   def maybe_module_loaded(module) do
     if module_exists?(module), do: module
   end
 
+  @doc """
+  Returns the given schema module if it exists, otherwise returns `Needle.Pointer`.
+
+  ## Examples
+
+      iex> maybe_schema_or_pointer(SomeSchema)
+      SomeSchema
+
+      iex> maybe_schema_or_pointer(NonExistentSchema)
+      Needle.Pointer
+  """
   def maybe_schema_or_pointer(schema_module) do
     maybe_module(schema_module) || Needle.Pointer
   end
 
+  @doc """
+  Conditionally uses a module if it's enabled, with an optional fallback.
+
+  ## Examples
+
+      defmodule MyModule do
+        use_if_enabled SomeExtension
+        # or
+        use_if_enabled SomeExtension, FallbackModule
+      end
+  """
   defmacro use_if_enabled(module, fallback_module \\ nil),
     do: quoted_use_if_enabled(module, fallback_module, __CALLER__)
 
@@ -455,6 +563,17 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Conditionally imports a module if it's enabled, with an optional fallback.
+
+  ## Examples
+
+      defmodule MyModule do
+        import_if_enabled SomeExtension
+        # or
+        import_if_enabled SomeExtension, FallbackModule
+      end
+  """
   defmacro import_if_enabled(module, fallback_module \\ nil),
     do: quoted_import_if_enabled(module, fallback_module, __CALLER__)
 
@@ -485,6 +604,17 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
+  @doc """
+  Conditionally requires a module if it's enabled, with an optional fallback.
+
+  ## Examples
+
+      defmodule MyModule do
+        require_if_enabled SomeExtension
+        # or
+        require_if_enabled SomeExtension, FallbackModule
+      end
+  """
   defmacro require_if_enabled(module, fallback_module \\ nil),
     do: quoted_require_if_enabled(module, fallback_module, __CALLER__)
 
@@ -514,16 +644,39 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  # generate an updated reverse router based on extensions that are enabled/disabled
+  @doc """
+  Generates an updated reverse router based on enabled/disabled extensions.
+
+  ## Examples
+
+      iex> generate_reverse_router!()
+      :ok
+  """
   def generate_reverse_router!() do
     Utils.maybe_apply(Bonfire.Common.Config.endpoint_module(), :generate_reverse_router!)
     |> debug("reverse_router generated?")
   end
 
+  @doc """
+  Checks if a module implements a specific behaviour.
+
+  ## Examples
+
+      > module_behaviour?(MyModule, SomeBehaviour)
+      true
+  """
   def module_behaviour?(module, behaviour) do
     behaviour in module_behaviours(module)
   end
 
+  @doc """
+  Returns a list of behaviours implemented by a module.
+
+  ## Examples
+
+      > module_behaviours(MyModule)
+      [SomeBehaviour, AnotherBehaviour]
+  """
   def module_behaviours(module) do
     (module_exists?(module) and
        module.module_info(:attributes)
@@ -618,7 +771,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Returns the text given raw data.
+  Returns a string given raw code data.
   """
   def return_file(raw) do
     String.trim(to_string(raw))
@@ -834,13 +987,20 @@ defmodule Bonfire.Common.Extend do
     with {:ok, code} <- module_code(module, opts),
          {first_line, last_line} <- function_line_numbers(module, fun, opts) do
       code
-      |> split_lines()
+      |> Text.split_lines()
       |> Enum.slice((first_line - 1)..(last_line - 1))
       |> Enum.join("\n")
     end
   end
 
-  @doc "Return the numbers (as a tuple) of the first and last lines of a function's definition in a module"
+  @doc """
+  Return the numbers (as a tuple) of the first and last lines of a function's definition in a module
+
+  ## Examples
+
+      > function_line_numbers(Bonfire.Common, :some_function)
+      {10, 20}
+  """
   def function_line_numbers(module, fun, opts \\ [])
 
   def function_line_numbers(module, fun, opts) when is_atom(module) do
@@ -921,6 +1081,14 @@ defmodule Bonfire.Common.Extend do
       number
   end
 
+  @doc """
+  Retrieves the AST of a specific function from a module.
+
+  ## Examples
+
+      iex> function_ast(Bonfire.Common, :some_function)
+      [{:def, [...], [...]}, ...]
+  """
   def function_ast(module, fun, opts \\ [])
 
   def function_ast(module, fun, opts) when is_atom(module) do
@@ -985,12 +1153,18 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  def macro_inspect(fun) do
-    fun.() |> Macro.expand(__ENV__) |> Macro.to_string() |> debug("Macro")
-  end
+  @doc """
+  Inspects a macro by expanding it and converting it to a string.
 
-  def split_lines(string) when is_binary(string),
-    do: :binary.split(string, ["\r", "\n", "\r\n"], [:global])
+  ## Examples
+
+      iex> macro_inspect(fn -> quote do: 1 + 1 end)
+      "1 + 1"
+  """
+  def macro_inspect(fun) do
+    fun.() |> Macro.expand(__ENV__) |> Macro.to_string()
+    # |> debug("Macro")
+  end
 
   @doc """
   Fetches the `@moduledoc` of a module as a markdown string.
