@@ -42,7 +42,7 @@ defmodule Bonfire.Common.Needles.Preload do
   end
 
   def maybe_preload_pointers(object, key, opts) when not is_struct(object) do
-    error(object, "expected a struct")
+    error(object, "expected a struct or list of objects")
     object
   end
 
