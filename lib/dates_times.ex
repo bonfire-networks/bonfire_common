@@ -74,6 +74,31 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   @doc """
+  Formats a `Date` struct or date into a string using `Cldr.Date.to_string/2`.
+
+  ## Examples
+
+      > format(DateTime.now!("Etc/UTC"))
+      "Jul 25, 2024, 11:08:21 AM"
+  """
+  def format_date(date, opts \\ []) do
+    case to_date(date) |> debug("format_date") do
+      nil ->
+        nil
+
+      date ->
+        case Bonfire.Common.Localise.Cldr.Date.to_string(date, opts) do
+          {:ok, formatted} ->
+            formatted
+
+          other ->
+            error(other)
+            nil
+        end
+    end
+  end
+
+  @doc """
   Returns a list of available format keys for the given locale.
 
   ## Examples
@@ -81,8 +106,10 @@ defmodule Bonfire.Common.DatesTimes do
       > available_format_keys()
       [:short, :medium, :long, :full]  # Example output
   """
-  def available_format_keys(locale \\ Cldr.get_locale()) do
-    available_formats(locale)
+  def available_format_keys(scope \\ DateTime, locale \\ Cldr.get_locale())
+
+  def available_format_keys(scope, locale) do
+    available_formats(scope, locale)
     |> Keyword.keys()
   end
 
@@ -94,7 +121,9 @@ defmodule Bonfire.Common.DatesTimes do
       > available_formats()
       [short: "Short", medium: "Medium", long: "Long", full: "Full"]  # Example output
   """
-  def available_formats(locale \\ Cldr.get_locale()) do
+  def available_formats(scope \\ DateTime, locale \\ Cldr.get_locale())
+
+  def available_formats(DateTime, locale) do
     Keyword.merge(
       [short: l("Short"), medium: l("Medium"), long: l("Long"), full: l("Full")],
       with {:ok, formats} <- Cldr.DateTime.Format.date_time_available_formats(locale) do
@@ -115,6 +144,19 @@ defmodule Bonfire.Common.DatesTimes do
     )
   end
 
+  def available_formats(Date, locale) do
+    Keyword.merge(
+      [short: l("Short"), medium: l("Medium"), long: l("Long"), full: l("Full")],
+      with {:ok, formats} <- Cldr.Date.available_formats(locale) do
+        formats
+      else
+        e ->
+          error(e)
+          []
+      end
+    )
+  end
+
   @doc """
   Converts various formats into a `DateTime` struct.
 
@@ -127,6 +169,9 @@ defmodule Bonfire.Common.DatesTimes do
       %DateTime{year: 2024, month: 7, day: 25, ...}  # Example output
 
       > to_date_time(1656115200000)
+      %DateTime{year: 2024, month: 7, day: 25, ...}  # Example output
+
+      > to_date_time(%{"day" => 25, "month" => 7, "year" => 2024})
       %DateTime{year: 2024, month: 7, day: 25, ...}  # Example output
   """
   def to_date_time(%DateTime{} = date_time) do
@@ -188,7 +233,7 @@ defmodule Bonfire.Common.DatesTimes do
 
   def to_date_time(%{"day" => day, "month" => month, "year" => year}),
     do:
-      Date.new(
+      Date.new!(
         Types.maybe_to_integer(year),
         Types.maybe_to_integer(month),
         Types.maybe_to_integer(day)
@@ -199,6 +244,101 @@ defmodule Bonfire.Common.DatesTimes do
     do: date_from_pointer(object)
 
   def to_date_time(_), do: nil
+
+  @doc """
+  Converts various formats into a `DateTime` struct.
+
+  ## Examples
+
+      iex> to_date(%Date{year: 2024, month: 7, day: 25})
+      %Date{year: 2024, month: 7, day: 25} 
+
+      iex> to_date("2024-07-25")
+      %Date{year: 2024, month: 7, day: 25}
+
+      iex> to_date(1656115200000)
+      %Date{year: 2024, month: 7, day: 25}  
+
+      iex> to_date_time(%{"day" => 25, "month" => 7, "year" => 2024})
+      %Date{year: 2024, month: 7, day: 25}  
+  """
+  def to_date(%Date{} = date) do
+    date
+  end
+
+  def to_date(%DateTime{} = date_time) do
+    date_time
+    |> DateTime.to_date!()
+  end
+
+  def to_date(ts) when is_integer(ts) do
+    with {:ok, date} <- DateTime.from_unix(ts, :millisecond) do
+      date
+      |> to_date()
+    else
+      e ->
+        error(e, "not a valid timestamp")
+        nil
+    end
+  end
+
+  def to_date(string) when is_binary(string) and byte_size(string) == 10 do
+    case Date.from_iso8601(string) do
+      {:ok, date} ->
+        date
+
+      other ->
+        error(other)
+        nil
+    end
+  end
+
+  def to_date(string) when is_binary(string) do
+    if Types.is_ulid?(string) do
+      date_from_pointer(string)
+      |> to_date()
+    else
+      case string
+           |> String.trim("/")
+           |> Date.from_iso8601() do
+        {:ok, datetime, 0} ->
+          datetime
+
+        other ->
+          error(other)
+          nil
+      end
+    end
+  end
+
+  def to_date(%{
+        "day" => %{"value" => day},
+        "month" => %{"value" => month},
+        "year" => %{"value" => year}
+      }),
+      do: to_date(%{"day" => day, "month" => month, "year" => year})
+
+  def to_date(%{"day" => day, "month" => month, "year" => year}),
+    do:
+      Date.new!(
+        Types.maybe_to_integer(year),
+        Types.maybe_to_integer(month),
+        Types.maybe_to_integer(day)
+      )
+
+  def to_date(%{id: id}) when is_binary(id),
+    do:
+      date_from_pointer(id)
+      |> to_date()
+
+  def to_date(%{} = object),
+    do:
+      date_from_pointer(object)
+      |> to_date()
+
+  def to_date(other) do
+    warn(other, "not supported")
+  end
 
   defp timex_date_from_now(%DateTime{} = date) do
     date
