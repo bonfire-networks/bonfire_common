@@ -24,7 +24,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
     )
 
     repo.put_dynamic_repo(repo)
-    Logger.metadata(instance: :primary)
+    # Logger.metadata(instance: :primary)
   end
 
   def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
@@ -32,7 +32,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   end
 
   def maybe_declare_test_instance(_) do
-    Logger.metadata(instance: :primary)
+    # Logger.metadata(instance: :primary)
     nil
   end
 
@@ -43,7 +43,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
     )
 
     default_repo().put_dynamic_repo(Bonfire.Common.TestInstanceRepo)
-    Logger.metadata(instance: :test)
+    # Logger.metadata(instance: :test)
   end
 
   # todo: put somewhere reusable

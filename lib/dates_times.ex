@@ -384,7 +384,7 @@ defmodule Bonfire.Common.DatesTimes do
   """
   def maybe_generate_ulid(date_time_or_string) do
     with %DateTime{} = date_time <-
-           to_date_time(date_time_or_string) |> debug("date"),
+           to_date_time(date_time_or_string),
          # only if published in the past
          :lt <-
            DateTime.compare(date_time, DateTime.now!("Etc/UTC")) do
