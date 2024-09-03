@@ -239,13 +239,13 @@ defmodule Bonfire.Common.Utils do
   def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
       %{current_user_id: id} ->
-        Types.ulid(id)
+        Types.uid(id)
 
       %{current_user_id: nil} ->
         nil
 
       # %{user_id: id} ->
-      #   Types.ulid(id)
+      #   Types.uid(id)
 
       %{assigns: %{} = assigns} = _socket ->
         current_user_id(assigns, true)
@@ -266,19 +266,19 @@ defmodule Bonfire.Common.Utils do
         current_user_id(user_id, true)
 
       %{current_user: %{id: user_id}} when is_binary(user_id) ->
-        Types.ulid(user_id)
+        Types.uid(user_id)
 
       %{current_user: user_id} when is_binary(user_id) ->
-        Types.ulid(user_id)
+        Types.uid(user_id)
 
       user_id when is_binary(user_id) ->
-        Types.ulid(user_id)
+        Types.uid(user_id)
 
       _ ->
         if recursing != :skip,
           do:
             current_user(current_user_or_socket_or_opts)
-            |> Types.ulid()
+            |> Types.uid()
     end ||
       (
         if !recursing,
@@ -401,7 +401,7 @@ defmodule Bonfire.Common.Utils do
         end
 
       %{current_account: account_id} when is_binary(account_id) ->
-        Types.ulid(account_id)
+        Types.uid(account_id)
 
       {:current_account, account_id} ->
         current_account(account_id, true)
@@ -477,10 +477,10 @@ defmodule Bonfire.Common.Utils do
   def current_account_id(current_account_or_socket_or_opts, recursing \\ false) do
     case current_account_or_socket_or_opts do
       %{current_account_id: id} = _options ->
-        Types.ulid(id)
+        Types.uid(id)
 
       # %{account_id: id} = _options ->
-      #   Types.ulid(id)
+      #   Types.uid(id)
 
       %{assigns: %{} = assigns} = _socket ->
         current_account_id(assigns, true)
@@ -516,13 +516,13 @@ defmodule Bonfire.Common.Utils do
         account_id
 
       account_id when is_binary(account_id) ->
-        Types.ulid(account_id)
+        Types.uid(account_id)
 
       _ ->
         if recursing != :skip,
           do:
             current_account(current_account_or_socket_or_opts)
-            |> Types.ulid()
+            |> Types.uid()
     end ||
       (
         if !recursing,

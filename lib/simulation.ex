@@ -99,7 +99,10 @@ defmodule Bonfire.Common.Simulation do
   @doc "Generates a random unique uuid"
   def uuid(), do: Zest.Faking.unused(&Faker.UUID.v4/0, :uuid)
   @doc "Generates a random unique ulid"
-  def ulid(), do: Needle.ULID.generate()
+  def uid(), do: Needle.ULID.generate()
+  @doc "Generates a random unique uid"
+  # TODO: switch to prefixed uuid?
+  def uid(), do: Needle.ULID.generate()
   @doc "Generates a random unique email"
   def email(), do: Zest.Faking.unused(&Faker.Internet.email/0, :email)
   @doc "Generates a random domain name"
@@ -119,7 +122,7 @@ defmodule Bonfire.Common.Simulation do
     do: Zest.Faking.unused(&username/0, :preferred_username)
 
   @doc "Picks a random canonical url and makes it unique"
-  def canonical_url(), do: Faker.Internet.url() <> "/" <> ulid()
+  def canonical_url(), do: Faker.Internet.url() <> "/" <> uid()
 
   # utils
 

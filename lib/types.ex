@@ -84,13 +84,18 @@ defmodule Bonfire.Common.Types do
   end
 
   def typeof(string) when is_binary(string) or is_bitstring(string) do
-    if is_ulid?(string) do
-      object_type(string) || Needle.ULID
-    else
-      case maybe_to_module(string) do
-        nil -> String
-        module -> typeof(module)
-      end
+    cond do
+      is_ulid?(string) ->
+        object_type(string) || Needle.ULID
+
+      is_uuid?(string) ->
+        object_type(string) || Ecto.UUID
+
+      true ->
+        case maybe_to_module(string) do
+          nil -> String
+          module -> typeof(module)
+        end
     end
   end
 
@@ -113,75 +118,130 @@ defmodule Bonfire.Common.Types do
   def typeof(_), do: nil
 
   @doc """
-  Takes an object or list of objects and returns the ULID (Universally Unique Lexicographically Sortable Identifier) ID(s) if present in the object.
+  Takes an object and returns a single ULID (Universally Unique Lexicographically Sortable Identifier) ID(s) if present in the object.
 
   ## Examples
 
-      iex> ulid(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      iex> uid(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
       "01J3MNBPD0VX96MFY9B15BCHYP"
 
-      iex> ulid(%{pointer: %{id: "01J3MNBPD0VX96MFY9B15BCHYP"}})
+      iex> uid(%{pointer: %{id: "01J3MNBPD0VX96MFY9B15BCHYP"}})
       "01J3MNBPD0VX96MFY9B15BCHYP"
 
-      iex> ulid(%{id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      iex> uid(%{id: "01J3MNBPD0VX96MFY9B15BCHYP"})
       "01J3MNBPD0VX96MFY9B15BCHYP"
       
-      iex> ulid("01J3MNBPD0VX96MFY9B15BCHYP")
+      iex> uid("01J3MNBPD0VX96MFY9B15BCHYP")
       "01J3MNBPD0VX96MFY9B15BCHYP"
 
-      iex> ulid(["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"])
-      ["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"]
+      > uid(["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"])
+      # ** (ArgumentError) Expected an ID (ULID or UUID) or an object or list containing a single one, but got several
 
-      iex> ulid("invalid_id")
+      iex> uid("invalid_id")
       nil
-  """
-  def ulid(%{pointer_id: id}) when is_binary(id), do: ulid(id)
-  def ulid(%{pointer: %{id: id}}) when is_binary(id), do: ulid(id)
 
-  def ulid(input) when is_binary(input) do
-    # ulid is always 26 chars
+      iex> uid("invalid_id", :fallback)
+      :fallback
+  """
+  def uid(input, fallback \\ nil)
+  def uid(%{pointer_id: id}, fallback) when is_binary(id), do: uid(id, fallback)
+  def uid(%{pointer: %{id: id}}, fallback) when is_binary(id), do: uid(id, fallback)
+
+  def uid(input, fallback) when is_binary(input) do
+    # ulid is always 26 chars # TODO: what about UUID, especially if using prefixed
     id = String.slice(input, 0, 26)
 
-    if is_ulid?(id) do
+    if is_uid?(id) do
       id
     else
-      e = "Expected a ULID ID (or an object with one)"
+      e = "Expected an ID (ULID or UUID) or an object with one"
 
       # throw {:error, e}
       warn(input, e)
-      nil
+      fallback
     end
   end
 
-  def ulid(ids) when is_list(ids),
-    do: ids |> List.flatten() |> Enum.map(&ulid/1) |> Enums.filter_empty(nil)
+  def uid(ids, fallback) when is_list(ids) do
+    case ids |> List.flatten() |> Enum.map(&uid/1) |> Enums.filter_empty(nil) do
+      nil ->
+        fallback
 
-  def ulid(id) do
+      [uid] ->
+        uid
+
+      uids when is_list(uids) ->
+        e =
+          "Expected an ID (ULID or UUID) or an object or list containing a single one, but got several"
+
+        error(uids, e)
+        raise ArgumentError, e
+
+      other ->
+        e = "Expected an ID (ULID or UUID) or an object or list containing a single one"
+        error(other, e)
+        raise ArgumentError, e
+    end
+  end
+
+  def uid(id, fallback) do
     case Enums.id(id) do
       id when is_binary(id) or is_list(id) ->
-        ulid(id)
+        uid(id)
 
       _ ->
-        # e = "Expected a ULID ID (or an object with one)"
-        # throw {:error, e}
+        # e = "Expected n ID (ULID or UUID) or an object with one"
         # debug(id, e)
-        # not showing the error because `Enums.id` already outputs one ^
-        nil
+        # ^ not showing the error because `Enums.id` already outputs one ^
+        fallback
     end
   end
 
-  def ulids(objects), do: ulid(objects) |> List.wrap()
+  @doc """
+  Takes an object or list of objects and returns a list of ULIDs (Universally Unique Lexicographically Sortable Identifier) ID(s) if present.
 
-  def ulids_or(objects, fallback_or_fun) when is_list(objects) do
-    Enum.flat_map(objects, &ulids_or(&1, fallback_or_fun))
+  ## Examples
+
+      iex> uids(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      ["01J3MNBPD0VX96MFY9B15BCHYP"]
+
+      iex> uids(%{pointer: %{id: "01J3MNBPD0VX96MFY9B15BCHYP"}})
+      ["01J3MNBPD0VX96MFY9B15BCHYP"]
+
+      iex> uids([%{id: "01J3MNBPD0VX96MFY9B15BCHYP"}])
+      ["01J3MNBPD0VX96MFY9B15BCHYP"]
+      
+      iex> uids("01J3MNBPD0VX96MFY9B15BCHYP")
+      ["01J3MNBPD0VX96MFY9B15BCHYP"]
+
+      iex> uids(["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"])
+      ["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"]
+
+      iex> uids("invalid_id")
+      []
+  """
+  def uids(objects) do
+    objects |> List.wrap() |> List.flatten() |> Enum.map(&uid/1) |> Enums.filter_empty([])
   end
 
-  def ulids_or(object, fun) when is_function(fun) do
-    List.wrap(ulid(object) || fun.(object))
+  def uid_or_uids(objects) when is_list(objects) do
+    uids(objects)
   end
 
-  def ulids_or(object, fallback) do
-    List.wrap(ulid(object) || fallback)
+  def uid_or_uids(object) do
+    uid(object)
+  end
+
+  def uids_or(objects, fallback_or_fun) when is_list(objects) do
+    Enum.flat_map(objects, &uids_or(&1, fallback_or_fun))
+  end
+
+  def uids_or(object, fun) when is_function(fun) do
+    List.wrap(uid(object) || fun.(object))
+  end
+
+  def uids_or(object, fallback) do
+    List.wrap(uid(object) || fallback)
   end
 
   @doc """
@@ -189,14 +249,14 @@ defmodule Bonfire.Common.Types do
 
   ## Examples
 
-      iex> ulid!(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      iex> uid!(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
       "01J3MNBPD0VX96MFY9B15BCHYP"
 
-      iex> ulid!("invalid_id")
+      iex> uid!("invalid_id")
       ** (RuntimeError) Expected an object or ID (ULID)
   """
-  def ulid!(object) do
-    case ulid(object) do
+  def uid!(object) do
+    case uid(object) do
       id when is_binary(id) ->
         id
 
@@ -288,6 +348,23 @@ defmodule Bonfire.Common.Types do
       float ->
         round(float)
     end
+  end
+
+  @doc """
+  Takes a string and returns true if it is a valid UUID or ULID.
+
+  ## Examples
+      iex> is_uid?("01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      true
+
+      iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
+      true
+
+      iex> is_uid?("invalid_id")
+      false
+  """
+  def is_uid?(str) do
+    is_ulid?(str) or is_uuid?(str)
   end
 
   @doc """
@@ -888,11 +965,11 @@ defmodule Bonfire.Common.Types do
       |> table_id()
   end
 
-  def table_type(%{table_id: table_id}) when is_binary(table_id), do: ulid(table_id)
+  def table_type(%{table_id: table_id}) when is_binary(table_id), do: uid(table_id)
   def table_type(type) when is_map(type), do: object_type(type) |> table_id()
 
   def table_type(type) when is_binary(type) do
-    if is_ulid?(type) do
+    if is_uid?(type) do
       type
     else
       String.capitalize(type)

@@ -24,7 +24,7 @@ defmodule Bonfire.Common.Needles.Tables do
       %Table{}
   """
   def one(id) when is_binary(id) do
-    if Bonfire.Common.Types.is_ulid?(id) do
+    if Bonfire.Common.Types.is_uid?(id) do
       one(id: id)
     else
       {:error, :not_found}

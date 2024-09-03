@@ -154,7 +154,7 @@ defmodule Bonfire.Common.Cache do
     Cachex.execute!(cache_store(), fn cache ->
       maybe_cached =
         Enum.map(objects, fn obj ->
-          id = Bonfire.Common.Types.ulid(obj)
+          id = Bonfire.Common.Types.uid(obj)
           key = "#{name}:{id}"
 
           with {:ok, ret} <- Cachex.get(cache, key) do

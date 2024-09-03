@@ -9,6 +9,7 @@ defmodule Bonfire.Common.Extend do
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Settings
   alias Bonfire.Common.Cache
+  alias Bonfire.Common.Text
 
   @loaded_apps_names_key {__MODULE__, :loaded_app_names}
   @loaded_apps_key {__MODULE__, :loaded_apps}
@@ -394,7 +395,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> %{bonfire_common: true} = loaded_applications_map()
+      iex> %{bonfire_common: true} = loaded_applications_names()
       
   """
   def loaded_applications_names(opts \\ [cache: false]) do
@@ -408,7 +409,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> %{bonfire_common: {"0.1.0", "Common utilities for Bonfire"} } = loaded_applications_map()
+      iex> %{bonfire_common: {_version, _description} } = loaded_applications_map()
 
   """
   def loaded_applications_map(opts \\ [cache: false]) do
@@ -508,7 +509,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> maybe_schema_or_pointer(SomeSchema)
+      > maybe_schema_or_pointer(SomeSchema)
       SomeSchema
 
       iex> maybe_schema_or_pointer(NonExistentSchema)
@@ -1086,7 +1087,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> function_ast(Bonfire.Common, :some_function)
+      > function_ast(Bonfire.Common, :some_function)
       [{:def, [...], [...]}, ...]
   """
   def function_ast(module, fun, opts \\ [])

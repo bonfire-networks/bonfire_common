@@ -205,7 +205,7 @@ defmodule Bonfire.Common.Needles do
       [canonical_uri: "http://url"]
   """
   def filter_one(filters) do
-    if Bonfire.Common.Types.is_ulid?(filters) do
+    if Bonfire.Common.Types.is_uid?(filters) do
       [id: filters]
     else
       if String.starts_with?(filters, "http") do

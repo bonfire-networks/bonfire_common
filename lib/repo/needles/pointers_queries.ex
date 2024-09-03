@@ -46,7 +46,7 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   ## by fields
 
   def filter(q, {:id, id}) when not is_list(id) do
-    case Types.ulid(id) do
+    case Types.uid(id) do
       id when is_binary(id) ->
         where(q, [main_object: p], p.id == ^id)
 
@@ -56,7 +56,7 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   end
 
   def filter(q, {:id, ids}) when is_list(ids) do
-    where(q, [main_object: p], p.id in ^Types.ulids(ids))
+    where(q, [main_object: p], p.id in ^Types.uids(ids))
   end
 
   def filter(q, {:username, username}) when is_binary(username) do

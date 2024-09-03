@@ -34,10 +34,10 @@ defmodule Bonfire.Common.E do
       iex> e(%{key: %Ecto.Association.NotLoaded{}}, :key, "fallback")
       "fallback"
 
-      iex> e({:ok, %{key: "value"}}, :key, "fallback")
+      iex> e({:ok, %{key: "value"}}, :key, "fallback") # FIXME
       "value"
 
-      iex> e(%{__context__: %{key: "context_value"}}, :key, "fallback")
+      iex> e(%{__context__: %{key: "context_value"}}, :key, "fallback") # FIXME
       "context_value"
 
       iex> e(%{a: %{b: "value"}}, :a, :b, "fallback")

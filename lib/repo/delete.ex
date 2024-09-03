@@ -97,7 +97,7 @@ defmodule Bonfire.Common.Repo.Delete do
       )
 
       # Bonfire.Common.Needles.maybe_forge!(it)
-      Bonfire.Common.Needles.one(ulid!(it), skip_boundary_check: true, deleted: true)
+      Bonfire.Common.Needles.one(uid!(it), skip_boundary_check: true, deleted: true)
       ~> soft_delete_changeset(
         {Needle.Pointer, ...},
         :deleted_at,

@@ -609,7 +609,7 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:current_user, scoped} = _scope_tuple, settings, opts) do
     fetch_or_empty(scoped, opts)
     # |> debug
-    |> upsert(settings, ulid(scoped))
+    |> upsert(settings, uid(scoped))
     ~> {:ok,
      %{
        __context__: %{current_user: map_put_settings(scoped, ...)}
@@ -619,7 +619,7 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:current_account, scoped} = _scope_tuple, settings, opts) do
     fetch_or_empty(scoped, opts)
     # |> debug
-    |> upsert(settings, ulid(scoped))
+    |> upsert(settings, uid(scoped))
     ~> {:ok,
      %{
        __context__: %{current_account: map_put_settings(scoped, ...)}
@@ -631,7 +631,7 @@ defmodule Bonfire.Common.Settings do
     with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
            # |> debug
-           |> upsert(settings, ulid(scoped)) do
+           |> upsert(settings, uid(scoped)) do
       # also put_env to cache it in Elixir's Config
       Config.put(new_data)
       |> debug("put in config")
@@ -646,7 +646,7 @@ defmodule Bonfire.Common.Settings do
 
   defp set_for(scoped, settings, opts) do
     fetch_or_empty(scoped, opts)
-    |> upsert(settings, ulid!(scoped))
+    |> upsert(settings, uid!(scoped))
   end
 
   defp map_put_settings(object, {:ok, settings}),
@@ -693,12 +693,12 @@ defmodule Bonfire.Common.Settings do
     parent
     |> repo().maybe_preload(:settings)
     |> e(:settings, struct(Bonfire.Data.Identity.Settings))
-    |> upsert(new_data, ulid(parent))
+    |> upsert(new_data, uid(parent))
   end
 
   defp upsert(%schema{} = settings, new_data, scope_id)
        when schema == Bonfire.Data.Identity.Settings do
-    %{id: ulid!(scope_id), json: prepare_for_json(new_data)}
+    %{id: uid!(scope_id), json: prepare_for_json(new_data)}
     # |> debug()
     |> Bonfire.Data.Identity.Settings.changeset(settings, ...)
     |> info()
@@ -707,7 +707,7 @@ defmodule Bonfire.Common.Settings do
     e in Ecto.ConstraintError ->
       warn(e, "ConstraintError - will next attempt to update instead")
 
-      do_fetch(ulid!(scope_id))
+      do_fetch(uid!(scope_id))
       |> info("fetched")
       |> do_update(new_data)
   end

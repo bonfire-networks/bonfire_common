@@ -200,7 +200,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def path_by_id(id, args, object, opts) when is_binary(id) do
-    if Types.is_ulid?(id) do
+    if Types.is_uid?(id) do
       with {:ok, pointer} <-
              Cache.maybe_apply_cached(&Bonfire.Common.Needles.one/2, [
                id,
@@ -258,7 +258,7 @@ defmodule Bonfire.Common.URIs do
     case path_id(Enum.at(args, id_at) |> debug()) |> debug() do
       maybe_username_or_id
       when is_binary(maybe_username_or_id) and not is_nil(maybe_username_or_id) ->
-        if Types.is_ulid?(maybe_username_or_id) do
+        if Types.is_uid?(maybe_username_or_id) do
           path(fallback_route, args, fallback: false)
         else
           path(fallback_character_route, args, fallback: false)
@@ -270,7 +270,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   # defp reply_path(object, reply_to_path) when is_binary(reply_to_path) do
-  #   reply_to_path <> "#" <> (Types.ulid(object) || "")
+  #   reply_to_path <> "#" <> (Types.uid(object) || "")
   # end
 
   # defp reply_path(object, _) do
@@ -475,7 +475,7 @@ defmodule Bonfire.Common.URIs do
   def maybe_generate_canonical_url(id) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
 
-    if Types.is_ulid?(id) or Types.is_uuid?(id) do
+    if Types.is_uid?(id) do
       "#{base_url()}#{ap_base_path}/objects/#{id}"
     else
       "#{base_url()}#{ap_base_path}/actors/#{id}"

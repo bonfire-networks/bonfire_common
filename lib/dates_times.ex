@@ -209,7 +209,7 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   def to_date_time(string) when is_binary(string) do
-    if Types.is_ulid?(string) do
+    if Types.is_uid?(string) do
       date_from_pointer(string)
     else
       case string
@@ -267,9 +267,9 @@ defmodule Bonfire.Common.DatesTimes do
       %Date{year: 2024, month: 7, day: 25}
 
       iex> to_date(1656115200000)
-      %Date{year: 2024, month: 7, day: 25}  
+      %Date{year: 2022, month: 6, day: 25}  
 
-      iex> to_date_time(%{"day" => 25, "month" => 7, "year" => 2024})
+      iex> to_date(%{"day" => 25, "month" => 7, "year" => 2024})
       %Date{year: 2024, month: 7, day: 25}  
   """
   def to_date(%Date{} = date) do
@@ -277,13 +277,7 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   def to_date(%DateTime{} = date_time) do
-    with {:ok, date} <- DateTime.to_date(date_time) do
-      date
-    else
-      e ->
-        error(e, "not a valid DateTime")
-        nil
-    end
+    DateTime.to_date(date_time)
   end
 
   def to_date(ts) when is_integer(ts) do
@@ -309,7 +303,7 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   def to_date(string) when is_binary(string) do
-    if Types.is_ulid?(string) do
+    if Types.is_uid?(string) do
       date_from_pointer(string)
       |> to_date()
     else
@@ -381,7 +375,7 @@ defmodule Bonfire.Common.DatesTimes do
       %DateTime{year: 2024, month: 7, day: 25, ...}  # Example output
   """
   def date_from_pointer(object) do
-    with id when is_binary(id) <- Bonfire.Common.Types.ulid(object),
+    with id when is_binary(id) <- Bonfire.Common.Types.uid(object),
          {:ok, ts} <- Needle.ULID.timestamp(id) do
       to_date_time(ts)
     else
