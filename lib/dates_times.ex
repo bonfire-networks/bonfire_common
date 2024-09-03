@@ -2,7 +2,7 @@ defmodule Bonfire.Common.DatesTimes do
   @moduledoc """
   Date/time helpers
   """
-  use Arrows
+  # use Arrows
   use Bonfire.Common.Localise
   import Untangle
   alias Bonfire.Common.Types
@@ -37,9 +37,8 @@ defmodule Bonfire.Common.DatesTimes do
       "now"  # Example output
   """
   def relative_date(date_time, opts \\ []) do
-    date_time
-    |> Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(opts)
-    |> with({:ok, relative} <- ...) do
+    with {:ok, relative} <-
+           Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(date_time, opts) do
       relative
     else
       other ->
@@ -147,7 +146,7 @@ defmodule Bonfire.Common.DatesTimes do
   def available_formats(Date, locale) do
     Keyword.merge(
       [short: l("Short"), medium: l("Medium"), long: l("Long"), full: l("Full")],
-      with {:ok, formats} <- Cldr.Date.available_formats(locale) do
+      with {:ok, formats} <- Cldr.Date.available_formats(locale) |> Keyword.new() do
         formats
       else
         e ->
@@ -179,8 +178,13 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   def to_date_time(%Date{} = date) do
-    date
-    |> DateTime.new!(Time.new!(0, 0, 0))
+    with {:ok, datetime} <- DateTime.new(date, Time.new!(0, 0, 0)) do
+      datetime
+    else
+      e ->
+        error(e, "not a valid date")
+        nil
+    end
   end
 
   def to_date_time(ts) when is_integer(ts) do
@@ -231,14 +235,20 @@ defmodule Bonfire.Common.DatesTimes do
       }),
       do: to_date_time(%{"day" => day, "month" => month, "year" => year})
 
-  def to_date_time(%{"day" => day, "month" => month, "year" => year}),
-    do:
-      Date.new!(
-        Types.maybe_to_integer(year),
-        Types.maybe_to_integer(month),
-        Types.maybe_to_integer(day)
-      )
-      ~> to_date_time()
+  def to_date_time(%{"day" => day, "month" => month, "year" => year}) do
+    with {:ok, date} <-
+           Date.new(
+             Types.maybe_to_integer(year),
+             Types.maybe_to_integer(month) || 1,
+             Types.maybe_to_integer(day) || 1
+           ) do
+      to_date_time(date)
+    else
+      e ->
+        error(e, "not a valid date")
+        nil
+    end
+  end
 
   def to_date_time(%{} = object),
     do: date_from_pointer(object)
@@ -267,8 +277,13 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   def to_date(%DateTime{} = date_time) do
-    date_time
-    |> DateTime.to_date!()
+    with {:ok, date} <- DateTime.to_date(date_time) do
+      date
+    else
+      e ->
+        error(e, "not a valid DateTime")
+        nil
+    end
   end
 
   def to_date(ts) when is_integer(ts) do
@@ -318,13 +333,20 @@ defmodule Bonfire.Common.DatesTimes do
       }),
       do: to_date(%{"day" => day, "month" => month, "year" => year})
 
-  def to_date(%{"day" => day, "month" => month, "year" => year}),
-    do:
-      Date.new!(
-        Types.maybe_to_integer(year),
-        Types.maybe_to_integer(month),
-        Types.maybe_to_integer(day)
-      )
+  def to_date(%{"day" => day, "month" => month, "year" => year}) do
+    with {:ok, date} <-
+           Date.new(
+             Types.maybe_to_integer(year),
+             Types.maybe_to_integer(month) || 1,
+             Types.maybe_to_integer(day) || 1
+           ) do
+      date
+    else
+      e ->
+        error(e, "not a valid date")
+        nil
+    end
+  end
 
   def to_date(%{id: id}) when is_binary(id),
     do:
@@ -341,9 +363,7 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   defp timex_date_from_now(%DateTime{} = date) do
-    date
-    |> Timex.format("{relative}", :relative)
-    |> with({:ok, relative} <- ...) do
+    with {:ok, relative} <- Timex.format(date, "{relative}", :relative) do
       relative
     else
       other ->
