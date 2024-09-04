@@ -85,10 +85,10 @@ defmodule Bonfire.Common.Types do
 
   def typeof(string) when is_binary(string) or is_bitstring(string) do
     cond do
-      is_ulid?(string) ->
+      Needle.UID.is_ulid?(string) ->
         object_type(string) || Needle.ULID
 
-      is_uuid?(string) ->
+      Needle.UID.is_uuid?(string) ->
         object_type(string) || Ecto.UUID
 
       true ->
@@ -147,9 +147,9 @@ defmodule Bonfire.Common.Types do
   def uid(%{pointer_id: id}, fallback) when is_binary(id), do: uid(id, fallback)
   def uid(%{pointer: %{id: id}}, fallback) when is_binary(id), do: uid(id, fallback)
 
-  def uid(input, fallback) when is_binary(input) do
+  def uid(id, fallback) when is_binary(id) do
     # ulid is always 26 chars # TODO: what about UUID, especially if using prefixed
-    id = String.slice(input, 0, 26)
+    # id = String.slice(id, 0, 26)
 
     if is_uid?(id) do
       id
@@ -157,7 +157,7 @@ defmodule Bonfire.Common.Types do
       e = "Expected an ID (ULID or UUID) or an object with one"
 
       # throw {:error, e}
-      warn(input, e)
+      warn(id, e)
       fallback
     end
   end
@@ -364,46 +364,7 @@ defmodule Bonfire.Common.Types do
       false
   """
   def is_uid?(str) do
-    is_ulid?(str) or is_uuid?(str)
-  end
-
-  @doc """
-  Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier).
-
-  ## Examples
-      iex> is_ulid?("01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
-      true
-
-      iex> is_ulid?("invalid_ulid")
-      false
-  """
-  def is_ulid?(str) when is_binary(str) and byte_size(str) == 26 do
-    with :error <- Needle.ULID.cast(str) do
-      false
-    else
-      _ -> true
-    end
-  end
-
-  def is_ulid?(_), do: false
-
-  @doc """
-  Takes a string and returns true if it is a valid UUID (Universally Unique Identifier).
-
-  ## Examples
-      iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
-      true
-
-      iex> is_uuid?("invalid_uuid")
-      false
-  """
-  def is_uuid?(str) do
-    with true <- is_binary(str) and byte_size(str) == 36,
-         {:ok, _} <- Ecto.UUID.cast(str) do
-      true
-    else
-      _ -> false
-    end
+    Needle.UID.is_ulid?(str) || Needle.UID.is_uuid?(str)
   end
 
   @doc """
@@ -596,7 +557,7 @@ defmodule Bonfire.Common.Types do
   end
 
   def maybe_convert_ulids({key, val}) when byte_size(val) == 16 do
-    with {:ok, ulid} <- Needle.ULID.load(val) do
+    with {:ok, ulid} <- Needle.UID.load(val) do
       {key, ulid}
     else
       _ ->

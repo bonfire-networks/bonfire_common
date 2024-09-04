@@ -406,7 +406,7 @@ defmodule Bonfire.Common.DatesTimes do
       # |> debug("date_time")
       |> DateTime.to_unix(:millisecond)
       # |> debug("to_unix")
-      |> Needle.ULID.generate()
+      |> Needle.UID.generate()
     else
       other ->
         debug(other, "skip")

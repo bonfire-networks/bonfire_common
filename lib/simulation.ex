@@ -96,13 +96,12 @@ defmodule Bonfire.Common.Simulation do
 
   # Unique data
 
-  @doc "Generates a random unique uuid"
+  @doc "Generates a random unique UUID"
   def uuid(), do: Zest.Faking.unused(&Faker.UUID.v4/0, :uuid)
-  @doc "Generates a random unique ulid"
-  def uid(), do: Needle.ULID.generate()
-  @doc "Generates a random unique uid"
-  # TODO: switch to prefixed uuid?
-  def uid(), do: Needle.ULID.generate()
+  @doc "Generates a random unique ULID"
+  def ulid(), do: Needle.ULID.generate()
+  @doc "Generates a random unique ID, optionally for a specific schema"
+  def uid(schema \\ nil), do: Needle.UID.generate(schema)
   @doc "Generates a random unique email"
   def email(), do: Zest.Faking.unused(&Faker.Internet.email/0, :email)
   @doc "Generates a random domain name"

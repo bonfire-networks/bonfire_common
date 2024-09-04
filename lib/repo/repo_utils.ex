@@ -13,7 +13,7 @@ defmodule Bonfire.Common.Repo.Utils do
   # defp cast_object(cs, x) when not is_nil(x), do: cs
 
   # defp cast_object(cs, _) do
-  #   id = Needle.ULID.generate()
+  #   id = Needle.UID.generate()
   #   Changeset.put_change(cs, :id, id)
   #   Changeset.put_change(cs, :canonical_url, ActivityPub.Utils.object_url(%{id: id}))
   # end
