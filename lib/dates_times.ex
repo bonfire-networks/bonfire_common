@@ -235,7 +235,7 @@ defmodule Bonfire.Common.DatesTimes do
       }),
       do: to_date_time(%{"day" => day, "month" => month, "year" => year})
 
-  def to_date_time(%{"day" => day, "month" => month, "year" => year}) do
+  def to_date_time(%{"day" => day, "month" => month, "year" => year}) when is_number(year) or is_binary(year) do
     with {:ok, date} <-
            Date.new(
              Types.maybe_to_integer(year),
@@ -327,7 +327,7 @@ defmodule Bonfire.Common.DatesTimes do
       }),
       do: to_date(%{"day" => day, "month" => month, "year" => year})
 
-  def to_date(%{"day" => day, "month" => month, "year" => year}) do
+  def to_date(%{"day" => day, "month" => month, "year" => year}) when is_number(year) or is_binary(year) do
     with {:ok, date} <-
            Date.new(
              Types.maybe_to_integer(year),
