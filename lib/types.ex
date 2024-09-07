@@ -357,7 +357,7 @@ defmodule Bonfire.Common.Types do
       iex> is_uid?("01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
       true
 
-      iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
+      iex> is_uid?("550e8400-e29b-41d4-a716-446655440000")
       true
 
       iex> is_uid?("invalid_id")
