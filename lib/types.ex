@@ -363,8 +363,8 @@ defmodule Bonfire.Common.Types do
       iex> is_uid?("invalid_id")
       false
   """
-  def is_uid?(str) do
-    Needle.UID.is_ulid?(str) || Needle.UID.is_uuid?(str)
+  def is_uid?(str, params \\ nil) do
+    Needle.UID.valid?(str, params)
   end
 
   @doc """
