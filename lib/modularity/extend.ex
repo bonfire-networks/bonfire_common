@@ -221,6 +221,9 @@ defmodule Bonfire.Common.Extend do
       false
   """
   def module_exists?(module) when is_atom(module) do
+    #   Cache.maybe_apply_cached(&do_module_exists?/1, [module], check_env: false)
+    # end
+    # defp do_module_exists?(module) when is_atom(module) do
     function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
   end
 
@@ -318,8 +321,10 @@ defmodule Bonfire.Common.Extend do
   Whether an Elixir module or extension / OTP app is present
   """
   def extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
+    #   Cache.maybe_apply_cached(&do_extension_loaded?/1, [module_or_otp_app], check_env: false)
+    # end
+    # defp do_extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-
     module_exists?(extension) or application_loaded?(extension)
   end
 
