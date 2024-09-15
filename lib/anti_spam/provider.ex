@@ -18,13 +18,13 @@ defmodule Bonfire.Common.AntiSpam.Provider do
   @callback ready?() :: boolean()
 
   @doc """
-  Check an user details
+  Check an user/account's details
   """
   @callback check_current_user(context :: any()) ::
               result()
 
   @doc """
-  Check a profile details
+  Check profile info
   """
   @callback check_profile(
               summary :: String.t(),

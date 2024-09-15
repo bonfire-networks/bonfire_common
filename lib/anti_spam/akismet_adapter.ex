@@ -26,6 +26,7 @@ defmodule Bonfire.Common.AntiSpam.Akismet do
   def check_profile(text, context) do
     check_content(
       %{
+        #  contains name & bio
         comment_content: text,
         comment_type: "signup"
       },
