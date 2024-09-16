@@ -512,7 +512,7 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
-  Extracts text from safe or regular content.
+  Extracts plain text from HTML content.
 
   ## Examples
 

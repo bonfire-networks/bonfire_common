@@ -635,6 +635,14 @@ defmodule Bonfire.Common.URIs do
   end
 
   @doc """
+  TODOC
+  """
+  def based_url(url, conn \\ nil)
+  def based_url("http" <> _ = url, _conn), do: url
+  def based_url("/" <> url, conn), do: "#{base_url(conn)}/#{url}"
+  def based_url(url, _), do: url
+
+  @doc """
   Removes the scheme from a URL to get the display URL.
 
       iex> display_url("https://example.com/path")
@@ -647,11 +655,6 @@ defmodule Bonfire.Common.URIs do
       "/path"
 
   """
-  def based_url(url, conn \\ nil)
-  def based_url("http" <> _ = url, _conn), do: url
-  def based_url("/" <> url, conn), do: "#{base_url(conn)}/#{url}"
-  def based_url(url, _), do: url
-
   def display_url("https://" <> url), do: url
   def display_url("http://" <> url), do: url
   def display_url(url), do: url
