@@ -96,6 +96,28 @@ defmodule Bonfire.Common.Settings do
 
     debug(keys_tree, "Get settings in #{inspect(otp_app)} for", trace_skip: 1)
 
+    get_settings(keys, default, otp_app, opts)
+  end
+
+  def get(key, default, opts) do
+    get([key], default, opts)
+  end
+
+  if Application.compile_env!(:bonfire, :env) == :test do
+    # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
+    def get_settings(keys, default, otp_app, opts) when is_list(keys),
+      do: get_for_process([otp_app] ++ keys) || do_get_settings(keys, default, otp_app, opts)
+
+    def get_settings(key, default, otp_app, opts),
+      do: get_for_process([otp_app, key]) || do_get_settings(key, default, otp_app, opts)
+  else
+    def get_settings(keys, default, otp_app, opts),
+      do: do_get_settings(keys, default, otp_app, opts)
+  end
+
+  def get_for_process(keys), do: ProcessTree.get(keys)
+
+  defp do_get_settings(keys, default, otp_app, opts) do
     case get_for_ext(otp_app, opts) do
       [] ->
         default
@@ -104,17 +126,13 @@ defmodule Bonfire.Common.Settings do
         default
 
       result ->
-        if keys_tree != [] do
-          do_get_in(result, keys_tree)
+        if keys != [] do
+          do_get_in(result, keys)
           |> maybe_fallback(default)
         else
           maybe_fallback(result, default)
         end
     end
-  end
-
-  def get(key, default, opts) do
-    get([key], default, opts)
   end
 
   @doc """
@@ -143,7 +161,7 @@ defmodule Bonfire.Common.Settings do
   def do_get_in(result, keys_tree) do
     if Keyword.keyword?(result) or is_map(result) do
       get_in(result, keys_tree)
-      |> debug(inspect(keys_tree), trace_skip: 2)
+      |> debug("Settings.do_get_in: #{inspect(keys_tree)}", trace_skip: 2)
     else
       error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
       nil

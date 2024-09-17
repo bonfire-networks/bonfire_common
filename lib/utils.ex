@@ -635,9 +635,15 @@ defmodule Bonfire.Common.Utils do
       # debug(module, "module_enabled")
 
       available_funs =
-        Enum.reject(funs, fn f ->
-          not Kernel.function_exported?(module, f, arity)
+        Enum.map(funs, fn
+          f when is_atom(f) ->
+            if Kernel.function_exported?(module, f, arity), do: f
+
+          f ->
+            f = Types.maybe_to_atom!(f)
+            if Kernel.function_exported?(module, f, arity), do: f
         end)
+        |> Enum.reject(&is_nil/1)
 
       fun = List.first(available_funs)
 
