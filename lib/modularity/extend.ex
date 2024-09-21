@@ -532,18 +532,18 @@ defmodule Bonfire.Common.Extend do
       defmodule MyModule do
         use_if_enabled SomeExtension
         # or
-        use_if_enabled SomeExtension, FallbackModule
+        use_if_enabled SomeExtension, [], FallbackModule
       end
   """
-  defmacro use_if_enabled(module, fallback_module \\ nil),
-    do: quoted_use_if_enabled(module, fallback_module, __CALLER__)
+  defmacro use_if_enabled(module, opts \\ [], fallback_module \\ nil),
+    do: quoted_use_if_enabled(module, opts, fallback_module, __CALLER__)
 
-  def quoted_use_if_enabled(module, fallback_module \\ nil, caller \\ nil)
+  def quoted_use_if_enabled(module, opts \\ [], fallback_module \\ nil, caller \\ nil)
 
-  def quoted_use_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
-    do: quoted_use_if_enabled(Macro.expand(module_name_ast, caller), fallback_module)
+  def quoted_use_if_enabled({_, _, _} = module_name_ast, opts, fallback_module, caller),
+    do: quoted_use_if_enabled(Macro.expand(module_name_ast, caller), opts, fallback_module)
 
-  # def quoted_use_if_enabled(modules, _fallback_module, _) when is_list(modules) do
+  # def quoted_use_if_enabled(modules, opts, _fallback_module, _) when is_list(modules) do
   #   debug(modules, "List of modules to use")
   #     quote do
   #       Enum.map(unquote(modules), &use/1)
@@ -551,19 +551,19 @@ defmodule Bonfire.Common.Extend do
   #     end
   # end
 
-  def quoted_use_if_enabled(module, fallback_module, _) do
+  def quoted_use_if_enabled(module, opts, fallback_module, _) do
     # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug("Found module to use: #{module}")
       quote do
-        use unquote(module)
+        use unquote(module), unquote(IO.inspect(opts))
       end
     else
       Logger.debug("Did not find module to use: #{module}")
 
       if fallback_module do
         quote do
-          use unquote(fallback_module)
+          use unquote(fallback_module), unquote(opts)
         end
       end
     end
@@ -577,34 +577,35 @@ defmodule Bonfire.Common.Extend do
       defmodule MyModule do
         import_if_enabled SomeExtension
         # or
-        import_if_enabled SomeExtension, FallbackModule
+        import_if_enabled SomeExtension, [], FallbackModule
       end
   """
-  defmacro import_if_enabled(module, fallback_module \\ nil),
-    do: quoted_import_if_enabled(module, fallback_module, __CALLER__)
+  defmacro import_if_enabled(module, opts \\ [], fallback_module \\ nil),
+    do: quoted_import_if_enabled(module, opts, fallback_module, __CALLER__)
 
-  def quoted_import_if_enabled(module, fallback_module \\ nil, caller \\ nil)
+  def quoted_import_if_enabled(module, opts \\ [], fallback_module \\ nil, caller \\ nil)
 
-  def quoted_import_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
+  def quoted_import_if_enabled({_, _, _} = module_name_ast, opts, fallback_module, caller),
     do:
       quoted_import_if_enabled(
         Macro.expand(module_name_ast, caller),
+        opts,
         fallback_module
       )
 
-  def quoted_import_if_enabled(module, fallback_module, _caller) do
+  def quoted_import_if_enabled(module, opts, fallback_module, _caller) do
     # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug(module, "Found module to import")
       quote do
-        import unquote(module)
+        import unquote(module), unquote(opts)
       end
     else
       # Logger.debug(module, "Did not find module to import")
 
       if fallback_module do
         quote do
-          import unquote(fallback_module)
+          import unquote(fallback_module), unquote(opts)
         end
       end
     end
@@ -618,33 +619,34 @@ defmodule Bonfire.Common.Extend do
       defmodule MyModule do
         require_if_enabled SomeExtension
         # or
-        require_if_enabled SomeExtension, FallbackModule
+        require_if_enabled SomeExtension, [], FallbackModule
       end
   """
-  defmacro require_if_enabled(module, fallback_module \\ nil),
-    do: quoted_require_if_enabled(module, fallback_module, __CALLER__)
+  defmacro require_if_enabled(module, opts \\ [], fallback_module \\ nil),
+    do: quoted_require_if_enabled(module, opts, fallback_module, __CALLER__)
 
-  def quoted_require_if_enabled(module, fallback_module \\ nil, caller \\ nil)
+  def quoted_require_if_enabled(module, opts \\ [], fallback_module \\ nil, caller \\ nil)
 
-  def quoted_require_if_enabled({_, _, _} = module_name_ast, fallback_module, caller),
+  def quoted_require_if_enabled({_, _, _} = module_name_ast, opts, fallback_module, caller),
     do:
       quoted_require_if_enabled(
         Macro.expand(module_name_ast, caller),
+        opts,
         fallback_module
       )
 
-  def quoted_require_if_enabled(module, fallback_module, _caller) do
+  def quoted_require_if_enabled(module, opts, fallback_module, _caller) do
     # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug("Found module to require: #{module}")
       quote do
-        require unquote(module)
+        require unquote(module), unquote(opts)
       end
     else
       # Logger.debug("Did not find module to require: #{module}")
       if fallback_module do
         quote do
-          require unquote(fallback_module)
+          require unquote(fallback_module), unquote(opts)
         end
       end
     end
