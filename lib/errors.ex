@@ -304,6 +304,8 @@ defmodule Bonfire.Common.Errors do
   @doc """
   Formats the stacktrace. A stacktrace must be given as an argument. If not, the stacktrace is retrieved from `Process.info/2`.
 
+  # TODO: consolidate/reuse with similar function in `Untangle`?
+
   ## Examples
 
       > format_stacktrace([{MyModule, :my_fun, 1, [file: 'my_file.ex', line: 42]}], [])
@@ -312,10 +314,17 @@ defmodule Bonfire.Common.Errors do
       > format_stacktrace(nil, [])
       "stacktrace here..."
   """
-  def format_stacktrace(trace \\ nil, opts) do
+  def format_stacktrace(trace \\ nil, opts \\ []) do
     case trace || last_stacktrace() do
-      [] -> "\n"
-      trace -> Enum.map_join(trace, "\n", &format_stacktrace_entry_sliced(&1, opts)) <> "\n"
+      [] ->
+        "\n"
+
+      trace ->
+        if opts[:as_markdown] do
+          Enum.map_join(trace, "\n", &format_stacktrace_entry_sliced(&1, opts)) <> "\n"
+        else
+          Untangle.format_stacktrace(trace) <> "\n"
+        end
     end
   end
 
