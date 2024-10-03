@@ -46,6 +46,7 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   ## by fields
 
   def filter(q, {:id, id}) when not is_list(id) do
+    #  TODO: support prefixed UUIDs?
     case Types.uid(id) do
       id when is_binary(id) ->
         where(q, [main_object: p], p.id == ^id)
