@@ -542,7 +542,7 @@ defmodule Bonfire.Common.Needles do
   end
 
   defp loader_query(table_name, id_filters, opts) when is_binary(table_name) do
-    debug("Needle: loading data from a table without a schema module")
+    debug(table_name, "Needle: loading data from a table without a schema module")
 
     # Cache.maybe_apply_cached(&generic_loader_query/3, [table_name, id_filters, opts])
 

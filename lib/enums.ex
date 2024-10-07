@@ -823,8 +823,8 @@ defmodule Bonfire.Common.Enums do
 
     # |> debug()
 
-    case Bonfire.Common.Types.object_type(first) ||
-           Bonfire.Common.Types.object_type(precedence) do
+    case Bonfire.Common.Types.object_type(first, only_schemas: true) ||
+           Bonfire.Common.Types.object_type(precedence, only_schemas: true) do
       type when is_atom(type) and not is_nil(type) ->
         if Types.defines_struct?(type) do
           debug("schema is available in the compiled app :-)")

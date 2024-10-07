@@ -626,47 +626,52 @@ defmodule Bonfire.Common.Types do
       iex> object_type(:some_atom)
       :some_atom
   """
-  def object_type(object)
+  def object_type(object, opts \\ [])
 
-  def object_type(%Ecto.Association.NotLoaded{}) do
+  def object_type(%Ecto.Association.NotLoaded{}, _opts) do
     error("cannot detect the type on an association that wasn't preloaded")
     nil
   end
 
   # for schema-less queries
-  def object_type(%{table_id: type}), do: object_type(type)
+  def object_type(%{table_id: type}, opts), do: object_type(type, opts)
   # for graphql queries
-  def object_type(%{__typename: type}) when type != Pointer,
-    do: object_type(type)
+  def object_type(%{__typename: type}, opts) when type != Pointer,
+    do: object_type(type, opts)
 
   # for AP objects
-  def object_type(%{pointer_id: type}), do: object_type(type)
+  def object_type(%{pointer_id: type}, opts), do: object_type(type, opts)
   # for search results
-  def object_type(%{index_type: type}), do: object_type(maybe_to_atom(type))
-  def object_type(%{"index_type" => type}), do: object_type(maybe_to_atom(type))
+  def object_type(%{index_type: type}, opts), do: object_type(maybe_to_atom(type), opts)
+  def object_type(%{"index_type" => type}, opts), do: object_type(maybe_to_atom(type), opts)
   # for activities
-  def object_type(%{object: object}), do: object_type(object)
+  def object_type(%{object: object}, opts), do: object_type(object, opts)
 
   # for groups/topics
-  def object_type(%{__struct__: Bonfire.Classify.Category, type: :group}), do: :group
+  def object_type(%{__struct__: Bonfire.Classify.Category, type: :group}, opts) do
+    if !opts[:only_schemas], do: :group, else: Bonfire.Classify.Category
+  end
 
-  def object_type(%{__struct__: schema}) when schema != Pointer,
-    do: object_type(schema)
+  def object_type(%{__struct__: schema}, opts) when schema != Pointer,
+    do: object_type(schema, opts)
 
-  def object_type({:ok, thing}), do: object_type(thing)
+  def object_type({:ok, thing}, opts), do: object_type(thing, opts)
 
-  def object_type(%{display_username: display_username}),
-    do: object_type(display_username)
+  def object_type(%{display_username: display_username}, opts),
+    do: object_type(display_username, opts)
 
-  def object_type("@" <> _), do: Bonfire.Data.Identity.User
-  def object_type("%40" <> _), do: Bonfire.Data.Identity.User
-  def object_type("+" <> _), do: Bonfire.Classify.Category
-  def object_type("&" <> _), do: :group
+  def object_type("@" <> _, _opts), do: Bonfire.Data.Identity.User
+  def object_type("%40" <> _, _opts), do: Bonfire.Data.Identity.User
+  def object_type("+" <> _, _opts), do: Bonfire.Classify.Category
+
+  def object_type("&" <> _, opts) do
+    if !opts[:only_schemas], do: :group, else: Bonfire.Classify.Category
+  end
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
   # Pointables
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Data.Identity.User,
              "Bonfire.Data.Identity.User",
@@ -680,7 +685,7 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Identity.User
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Data.Social.Post,
              "30NF1REP0STTAB1ENVMBER0NEE",
@@ -691,7 +696,7 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Post
 
-  def object_type(type)
+  def object_type(type, opts)
       when type in [
              Bonfire.Classify.Category,
              "Category",
@@ -702,10 +707,11 @@ defmodule Bonfire.Common.Types do
              :Group,
              :group,
              "2AGSCANBECATEG0RY0RHASHTAG"
-           ],
-      do: :group
+           ] do
+    if !opts[:only_schemas], do: :group, else: Bonfire.Classify.Category
+  end
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              #  Bonfire.Classify.Category,
              #  "Category",
@@ -718,7 +724,7 @@ defmodule Bonfire.Common.Types do
       do: Bonfire.Classify.Category
 
   # Edges / verbs
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Data.Social.Follow,
              "70110WTHE1EADER1EADER1EADE",
@@ -728,7 +734,7 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Follow
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Data.Social.Like,
              "11KES11KET0BE11KEDY0VKN0WS",
@@ -738,7 +744,7 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Like
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Data.Social.Boost,
              "300STANN0VNCERESHARESH0VTS",
@@ -748,7 +754,7 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Boost
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              Bonfire.Files.Media,
              "30NF1REF11ESC0NTENT1SGREAT",
@@ -758,7 +764,7 @@ defmodule Bonfire.Common.Types do
       do: Bonfire.Files.Media
 
   # VF
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              ValueFlows.EconomicEvent,
              "EconomicEvent",
@@ -767,11 +773,11 @@ defmodule Bonfire.Common.Types do
            ],
       do: ValueFlows.EconomicEvent
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [ValueFlows.EconomicResource, "EconomicResource"],
       do: ValueFlows.EconomicResource
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [
              ValueFlows.Planning.Intent,
              "Intent",
@@ -782,16 +788,16 @@ defmodule Bonfire.Common.Types do
            ],
       do: ValueFlows.Planning.Intent
 
-  def object_type(type)
+  def object_type(type, _opts)
       when type in [ValueFlows.Process, "Process", "4AYF0R1NPVTST0BEC0ME0VTPVT"],
       do: ValueFlows.Process
 
-  def object_type(id) when is_binary(id) do
+  def object_type(id, opts) when is_binary(id) do
     with {:ok, schema} <- Needle.Tables.schema(id) do
       schema
     else
       _ ->
-        Cache.maybe_apply_cached(&object_type_from_db/1, [id])
+        Cache.maybe_apply_cached(&object_type_from_db/2, [id, opts])
     end
   rescue
     e in ArgumentError ->
@@ -799,26 +805,26 @@ defmodule Bonfire.Common.Types do
       nil
   end
 
-  def object_type(type) when is_atom(type) and not is_nil(type) do
+  def object_type(type, opts) when is_atom(type) and not is_nil(type) do
     debug(type, "atom might be a schema type")
-    type
+    if !opts[:only_schemas] || Bonfire.Common.Extend.module_exists?(type), do: type
   end
 
-  def object_type(%{activity: %{id: _} = activity}) do
-    object_type(activity)
+  def object_type(%{activity: %{id: _} = activity}, opts) do
+    object_type(activity, opts)
   end
 
-  def object_type(%{object: %{id: _} = object}) do
-    object_type(object)
+  def object_type(%{object: %{id: _} = object}, opts) do
+    object_type(object, opts)
   end
 
-  def object_type(_type) do
+  def object_type(_type, _opts) do
     # warn(type, "no pattern matched")
     # typeof(type)
     nil
   end
 
-  defp object_type_from_db(id) do
+  defp object_type_from_db(id, opts) do
     debug(
       id,
       "This isn't the table_id of a known Needle.Table schema, querying it to check if it's a Pointable"
@@ -830,7 +836,7 @@ defmodule Bonfire.Common.Types do
         nil
 
       {:ok, %{table_id: table_id}} ->
-        object_type(table_id)
+        object_type(table_id, opts)
 
       _ ->
         info("This is not the ID of a known Pointer")
