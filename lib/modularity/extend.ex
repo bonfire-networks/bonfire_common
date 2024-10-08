@@ -556,7 +556,7 @@ defmodule Bonfire.Common.Extend do
     if is_atom(module) and module_enabled?(module) do
       # Logger.debug("Found module to use: #{module}")
       quote do
-        use unquote(module), unquote(IO.inspect(opts))
+        use unquote(module), unquote(opts)
       end
     else
       Logger.debug("Did not find module to use: #{module}")
