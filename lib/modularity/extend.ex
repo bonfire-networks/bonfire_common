@@ -1210,4 +1210,21 @@ defmodule Bonfire.Common.Extend do
         end)
     end
   end
+
+  def deps_tree do
+    if function_exported?(Mix.Project, :deps_tree, 0) do
+      Mix.Project.deps_tree()
+    end
+  end
+
+  def deps_tree_flat(tree \\ deps_tree())
+
+  def deps_tree_flat(tree) when is_map(tree) do
+    # note that you should call the compile-time cached list in Bonfire.Application
+    (Map.values(tree) ++ Map.keys(tree))
+    |> List.flatten()
+    |> Enum.uniq()
+  end
+
+  def deps_tree_flat(_), do: nil
 end
