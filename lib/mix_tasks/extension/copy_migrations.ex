@@ -61,14 +61,20 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
       Path.expand(path, File.cwd!())
       |> IO.inspect(label: "to path")
 
+    extensions_pattern =
+      Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :multirepo_prefixes, [],
+        fallback_return: []
+      ) ++ ["bonfire"] ++ Bonfire.Common.Config.get([:extensions_pattern], [])
+
     (extensions ||
-       (Bonfire.Mixer.deps_tree_flat() ||
+       (Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :deps_tree_flat, [], fallback_return: nil) ||
           Bonfire.Common.Extensions.loaded_deps_names())
        |> IO.inspect(label: "all deps")
        |> Enum.map(&to_string/1)
        |> Enum.filter(fn
+         #  FIXME: make this configurable
          "bonfire_" <> _ -> true
-         _ -> false
+         name -> String.starts_with?(name, extensions_pattern)
        end))
     |> IO.inspect(label: "deps to include")
     |> Bonfire.Mixer.dep_paths(opts[:from] || @default_path)

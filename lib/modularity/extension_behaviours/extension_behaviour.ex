@@ -60,13 +60,15 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   def apps_to_scan(opts \\ []) do
-    pattern = ["bonfire"] ++ Config.get([:extensions_pattern], [])
+    pattern =
+      Utils.maybe_apply(Bonfire.Mixer, :multirepo_prefixes, [], fallback_return: []) ++
+        ["bonfire"] ++ Config.get([:extensions_pattern], [])
 
     Extend.loaded_applications_map(opts)
     |> Enum.map(fn
       {app, {_version, description}} ->
-        if String.contains?(to_string(app), pattern) or
-             String.contains?(description, pattern) do
+        if String.starts_with?(to_string(app), pattern) or
+             String.starts_with?(description, pattern) do
           # TODO: exclude any disabled extensions?
           app
         else

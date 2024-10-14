@@ -35,7 +35,7 @@ defmodule Bonfire.Common.MixProject do
              optional: true},
             {:text, "~> 0.2.0", optional: true},
             {:text_corpus_udhr, "~> 0.1.0", optional: true},
-            {:bumblebee, "~> 0.5.0", optional: true},
+            {:bumblebee, "~> 0.6.0", optional: true},
             # needed for graphql client, eg github for changelog
             {:neuron, "~> 5.0", optional: true},
             # for extension install + mix tasks that do patching 
