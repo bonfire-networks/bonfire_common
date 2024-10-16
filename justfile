@@ -34,15 +34,21 @@ clean:
     mix deps.clean --all
     rm -rf .hex .mix .cache lib/mix
 
+boilerplate-update:
+    mkdir -p .bonfire-extension-boilerplate
+    git clone https://github.com/bonfire-networks/bonfire-extension-boilerplate.git --branch main --single-branch .bonfire-extension-boilerplate
+    cd .bonfire-extension-boilerplate && cp .envrc justfile .. && cp .github/workflows/main.yml ../.github/workflows/main.yml && cp lib/mix/mess.ex ../mess.exs
+    rm -rf .bonfire-extension-boilerplate
+
 deps-get:
     mix deps.get
 
 deps-update:
-    mix deps.update surface_form
+    mix deps.update --all
 
 common-mix-tasks-setup: deps-get
     mkdir -p lib/mix/
-    cd lib/mix/ && ln -sf ../mix_tasks tasks && cd -
+    cd lib/mix/ && (ln -sf ../../deps/bonfire_common/lib/mix_tasks tasks || ln -sf ../mix_tasks tasks) && cd -
     cd lib/mix/tasks/release/ && MIX_ENV=prod mix escript.build && cd -
 
 ext-migrations-copy: common-mix-tasks-setup
