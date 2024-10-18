@@ -103,7 +103,7 @@ defmodule Bonfire.Common.Settings do
     get([key], default, opts)
   end
 
-  if Application.compile_env!(:bonfire, :env) == :test do
+  if Application.compile_env(:bonfire, :env) == :test do
     # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
     def get_settings(keys, default, otp_app, opts) when is_list(keys),
       do: get_for_process([otp_app] ++ keys) || do_get_settings(keys, default, otp_app, opts)
