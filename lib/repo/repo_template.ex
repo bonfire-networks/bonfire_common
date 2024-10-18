@@ -15,7 +15,7 @@ defmodule Bonfire.Common.RepoTemplate do
       alias Bonfire.Common.Errors
 
       use Ecto.Repo,
-        otp_app: Config.get(:umbrella_otp_app) || Config.get!(:otp_app),
+        otp_app: Config.get(:umbrella_otp_app) || Config.get(:otp_app, :bonfire),
         adapter: Ecto.Adapters.Postgres
 
       import Ecto.Query
