@@ -1,7 +1,6 @@
 defmodule Bonfire.Common.Cache do
   @moduledoc "Helpers for caching data and operations"
 
-  use Decorator.Define, cache: 0
   use Untangle
   use Arrows
   alias Bonfire.Common.Utils
@@ -15,11 +14,18 @@ defmodule Bonfire.Common.Cache do
   @default_store :bonfire_cache
 
   # TODO: explore using Decorator lib to support decorating functions to cache them
+  # use Decorator.Define, cache: 0
   # def cache(fn_body, context) do
   # end
 
   def put(key, value, opts \\ []) do
-    Cachex.put(cache_store(opts), key, value, opts |> Keyword.put_new(:ttl, @default_cache_ttl))
+    Cachex.put(
+      cache_store(opts),
+      key,
+      value,
+      opts |> Keyword.put_new(:expire, @default_cache_ttl)
+    )
+
     value
   end
 
@@ -96,7 +102,7 @@ defmodule Bonfire.Common.Cache do
   defp do_maybe_apply_cached(module \\ nil, fun, args, opts) do
     # debug(opts)
     key = opts[:cache_key]
-    ttl = opts[:ttl] || @default_cache_ttl
+    expire = opts[:expire] || @default_cache_ttl
     cache_store = cache_store(opts)
 
     if Code.loaded?(Cachex) and :ets.whereis(cache_store) != :undefined do
@@ -116,7 +122,7 @@ defmodule Bonfire.Common.Cache do
                 )
 
                 val = maybe_apply_or_fun(module, fun, args, opts)
-                Cachex.put!(cache, key, val, ttl: ttl)
+                Cachex.put!(cache, key, val, expire: expire)
                 val
               end
             end
@@ -124,12 +130,12 @@ defmodule Bonfire.Common.Cache do
           {:ok, false} ->
             with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
               debug(key, "got an error, putting in cache with short TTL")
-              Cachex.put!(cache, key, ret, ttl: @error_cache_ttl)
+              Cachex.put!(cache, key, ret, expire: @error_cache_ttl)
               ret
             else
               ret ->
                 debug(key, "fetched and putting in cache for next time")
-                Cachex.put!(cache, key, ret, ttl: ttl)
+                Cachex.put!(cache, key, ret, expire: expire)
                 ret
             end
 

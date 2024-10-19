@@ -313,83 +313,99 @@ defmodule Bonfire.Common.Text do
   end
 
   def maybe_markdown_to_html(content, opts) do
-    debug(content, "input")
+    # debug(content, "input")
 
-    if Config.get(:markdown_library) == Earmark,
-      do: markdown_as_html_earmark(content, opts),
-      else: markdown_as_html_mdex(content, opts)
-  end
-
-  def markdown_as_html_mdex(content, opts) do
-    if Extend.module_enabled?(MDEx, opts) do
-      [
-        parse: [
-          smart: false,
-          relaxed_tasklist_matching: true,
-          relaxed_autolinks: true
-        ],
-        render: [
-          hardbreaks: true,
-          # unsafe_: opts[:__unsafe__],
-          # Allow rendering of raw HTML and potentially dangerous links
-          _unsafe: opts[:__unsafe__] || opts[:sanitize] || false,
-          # !opts[:sanitize] and !opts[:__unsafe__] # Escape raw HTML instead of clobbering it.
-          escape: false
-        ],
-        extension: [
-          strikethrough: true,
-          tasklist: true,
-          # can't use because things @ mentions are emails
-          autolink: false,
-          table: true,
-          tagfilter: true,
-          header_ids: ""
-        ],
-        features: [
-          sanitize: opts[:sanitize] || false,
-          # sanitize: opts[:__unsafe__], # sanitizes the HTML (but strips things like class and attributes)
-          # TODO: auto-set appropriate theme based on user's daisy theme
-          syntax_highlight_theme: "adwaita_dark"
-        ]
-      ]
-      # |> Keyword.merge(opts)
-      |> MDEx.to_html(content, ...)
+    if markdown_library = choose_markdown_library(opts) do
+      markdown_as_html(markdown_library, content, opts)
     else
+      error("No markdown library seems to be enabled, skipping processing")
       content
     end
   end
 
-  def markdown_as_html_earmark(content, opts) do
-    # if Extend.module_enabled?(Makedown, opts) do
-    # # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
-    #   Makedown
-    # else
-    processor = if Extend.module_enabled?(Earmark, opts), do: Earmark
-    # end
+  defp choose_markdown_library(opts) do
+    default_library = MDEx
+    initial_library = opts[:markdown_library] || Config.get(:markdown_library, default_library)
 
-    if processor do
-      [
-        # inner_html: true,
-        escape: false,
-        breaks: true,
-        smartypants: false,
-        registered_processors: [
-          # {"a", &md_add_target/1},
-          {"h1", &md_heading_anchors/1},
-          {"h2", &md_heading_anchors/1},
-          {"h3", &md_heading_anchors/1},
-          {"h4", &md_heading_anchors/1},
-          {"h5", &md_heading_anchors/1},
-          {"h6", &md_heading_anchors/1}
-        ]
-      ]
-      |> Keyword.merge(opts)
-      |> processor.as_html!(content, ...)
-      |> markdown_checkboxes()
-      |> debug("MD output for: #{content}")
-    else
-      content
+    cond do
+      Extend.module_enabled?(initial_library, opts) ->
+        initial_library
+
+      initial_library == MDEx and Extend.module_enabled?(Earmark, opts) ->
+        Earmark
+
+      initial_library == Earmark and Extend.module_enabled?(MDEx, opts) ->
+        MDEx
+
+      true ->
+        nil
     end
+  end
+
+  defp markdown_as_html(MDEx, content, opts) do
+    with {:ok, html} <-
+           [
+             parse: [
+               smart: false,
+               relaxed_tasklist_matching: true,
+               relaxed_autolinks: true
+             ],
+             render: [
+               hardbreaks: true,
+               # unsafe_: opts[:__unsafe__],
+               # Allow rendering of raw HTML and potentially dangerous links
+               _unsafe: opts[:__unsafe__] || opts[:sanitize] || false,
+               # !opts[:sanitize] and !opts[:__unsafe__] # Escape raw HTML instead of clobbering it.
+               escape: false
+             ],
+             extension: [
+               strikethrough: true,
+               tasklist: true,
+               # can't use because things @ mentions are emails
+               autolink: false,
+               table: true,
+               tagfilter: true,
+               header_ids: ""
+             ],
+             features: [
+               sanitize: opts[:sanitize] || false,
+               # sanitize: opts[:__unsafe__], # sanitizes the HTML (but strips things like class and attributes)
+               # TODO: auto-set appropriate theme based on user's daisy theme
+               syntax_highlight_theme: "adwaita_dark"
+             ]
+           ]
+           # |> Keyword.merge(opts)
+           |> MDEx.to_html(content, ...) do
+      html
+    else
+      e ->
+        error(e)
+        nil
+    end
+  end
+
+  defp markdown_as_html_earmark(processor, content, opts) when processor in [Earmark, Makedown] do
+    # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
+
+    [
+      # inner_html: true,
+      escape: false,
+      breaks: true,
+      smartypants: false,
+      registered_processors: [
+        # {"a", &md_add_target/1},
+        {"h1", &md_heading_anchors/1},
+        {"h2", &md_heading_anchors/1},
+        {"h3", &md_heading_anchors/1},
+        {"h4", &md_heading_anchors/1},
+        {"h5", &md_heading_anchors/1},
+        {"h6", &md_heading_anchors/1}
+      ]
+    ]
+    |> Keyword.merge(opts)
+    |> processor.as_html(content, ...)
+    ~> markdown_checkboxes()
+    |> debug("MD output for: #{content}")
   end
 
   # This will only be applied to nodes as it will become a TagSpecificProcessors
