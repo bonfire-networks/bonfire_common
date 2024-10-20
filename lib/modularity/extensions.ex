@@ -135,7 +135,7 @@ defmodule Bonfire.Common.Extensions do
       Bonfire.Mixer.deps_tree_flat()
     else
       # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
-      Bonfire.Application.deps(:tree_flat)
+      Bonfire.deps(:tree_flat)
     end
   end
 
@@ -147,7 +147,7 @@ defmodule Bonfire.Common.Extensions do
       # |> IO.inspect
     else
       # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
-      Bonfire.Application.deps(:nested)
+      Bonfire.deps(:nested)
     end
   end
 
