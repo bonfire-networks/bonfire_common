@@ -198,7 +198,7 @@ defmodule Bonfire.Common.Errors do
     if module_enabled?(Sentry) do
       Sentry.capture_message(
         inspect(error,
-          stacktrace: stacktrace,
+          stacktrace: stacktrace || [],
           extra: Bonfire.Common.Enums.map_new(msg, :error)
         )
       )
