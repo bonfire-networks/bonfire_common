@@ -2,11 +2,10 @@ import Config
 
 default_locale = "en"
 
-config :bonfire,
-  localisation_path: "priv/localisation"
-
 config :bonfire_common,
-  otp_app: :bonfire
+  otp_app: :bonfire,
+  ecto_repos: [Bonfire.Common.Repo],
+  localisation_path: "priv/localisation"
 
 ## Localisation & internationalisation
 # TODO: determine which keys can be set at runtime vs compile-time
@@ -43,3 +42,9 @@ config :ex_cldr,
   default_locale: default_locale,
   default_backend: Bonfire.Common.Localise.Cldr,
   json_library: Jason
+
+# Choose password hashing backend
+# Note that this corresponds with our dependencies in mix.exs
+hasher = if config_env() in [:dev, :test], do: Pbkdf2, else: Argon2
+
+config :bonfire_data_identity, Bonfire.Data.Identity.Credential, hasher_module: hasher
