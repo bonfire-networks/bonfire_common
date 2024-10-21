@@ -2,12 +2,10 @@ import Config
 
 default_locale = "en"
 
-config :bonfire,
-  localisation_path: "priv/localisation"
-
 config :bonfire_common,
   otp_app: :bonfire,
-  ecto_repos: [Bonfire.Common.Repo]
+  ecto_repos: [Bonfire.Common.Repo],
+  localisation_path: "priv/localisation"
 
 ## Localisation & internationalisation
 # TODO: determine which keys can be set at runtime vs compile-time
