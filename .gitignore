@@ -29,3 +29,6 @@ bonfire_web_phoenix-*.tar
 
 # ignore local mess deps
 deps.path
+
+# Ignore bonfire_common mix tasks symlink
+lib/mix/tasks
