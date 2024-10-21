@@ -28,10 +28,14 @@ defmodule Bonfire.Common.TestSummary do
     # :ets.select(@ets_table_name, select_all)
     :ets.tab2list(@ets_table_name)
     # |> IO.inspect(label: "ETS")
-    |> Enum.group_by(&elem(&1, 1), &elem(&1, 0))
-    |> Enum.map(fn {tag, tests} ->
-      IO.puts("#{length(tests)} tests #{tag}")
-      # IO.inspect(tests)
+    |> Enum.group_by(&elem(&1, 2), &Tuple.delete_at(&1, 2))
+    |> Enum.map(fn
+      {"OK" = tag, tests} ->
+        IO.puts("#{length(tests)} tests #{tag}")
+
+      {tag, tests} ->
+        IO.puts("#{length(tests)} tests #{tag}")
+        for {test, location} <- tests, do: IO.puts("#{test}\n   #{location}\n")
     end)
 
     IO.inspect(times_us, label: "Tests finished")
@@ -50,7 +54,7 @@ defmodule Bonfire.Common.TestSummary do
   end
 
   def handle_test(%{state: nil} = test, _config),
-    do: post_test(test, :ok, "passed OK")
+    do: post_test(test, "OK", "OK")
 
   def handle_test(%{state: {:invalid, module}} = test, _config),
     do: post_test(test, "The test seems invalid (#{inspect(module)})", "invalid")
@@ -80,11 +84,10 @@ defmodule Bonfire.Common.TestSummary do
 
   def post_test(test, status_or_comment, tag) do
     # IO.inspect(test)
-    IO.puts(
-      "\n#{test.name} :: #{status_or_comment}\n#{test.tags.file}:#{test.tags.line} @ #{test.module}}\n"
-    )
+    location = "#{Path.relative_to_cwd(test.tags.file)}:#{test.tags.line} @ #{test.module}"
+    IO.puts("\n#{test.name} :: #{status_or_comment}\n   #{location}\n")
 
-    :ets.insert_new(@ets_table_name, {test.name, tag})
+    :ets.insert_new(@ets_table_name, {test.name, location, tag})
   end
 
   defp formatter(:blame_diff, msg, %{colors: _colors} = _config) do
