@@ -6,7 +6,8 @@ config :bonfire,
   localisation_path: "priv/localisation"
 
 config :bonfire_common,
-  otp_app: :bonfire
+  otp_app: :bonfire,
+  ecto_repos: [Bonfire.Common.Repo]
 
 ## Localisation & internationalisation
 # TODO: determine which keys can be set at runtime vs compile-time
