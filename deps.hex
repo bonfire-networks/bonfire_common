@@ -27,6 +27,8 @@ sizeable = "~> 1.0"
 
 paginator = "~> 1.1" # paginate queries
 
+postgrex = "~> 0.18.0"
+
 opentelemetry_api = "~> 1.0"
 decorator = "~> 1.4 # function decorator helper
 # mappable = "~> 0.2.4" # convert between map/struct/keyword list
