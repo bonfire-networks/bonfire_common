@@ -1,3 +1,4 @@
+# activity_pub = "https://github.com/bonfire-networks/activity_pub"
 # bonfire_data_access_control = "https://github.com/bonfire-networks/bonfire_data_access_control"
 # bonfire_data_activity_pub="https://github.com/bonfire-networks/bonfire_data_activity_pub"
 bonfire_data_identity = "https://github.com/bonfire-networks/bonfire_data_identity"

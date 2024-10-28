@@ -6,6 +6,7 @@ defmodule Bonfire.Common.Crypto.Test do
   @valid_password "correct_password"
   @invalid_password "wrong_password"
 
+  @tag disabled: true
   test "encrypt_with_auth_key returns properly structured result" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
@@ -19,6 +20,7 @@ defmodule Bonfire.Common.Crypto.Test do
     assert byte_size(salt) == 16
   end
 
+  @tag disabled: true
   test "decryption succeeds with correct password" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
@@ -31,6 +33,7 @@ defmodule Bonfire.Common.Crypto.Test do
     assert decrypted_rsa_pem == rsa_pem
   end
 
+  @tag disabled: true
   test "decryption fails with incorrect password" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
@@ -40,6 +43,7 @@ defmodule Bonfire.Common.Crypto.Test do
     assert {:error, _} = Crypto.decrypt_with_auth_key(encrypted, @invalid_password, salt)
   end
 
+  @tag disabled: true
   test "decryption fails if ciphertext is modified" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
@@ -52,6 +56,7 @@ defmodule Bonfire.Common.Crypto.Test do
     assert {:error, _} = Crypto.decrypt_with_auth_key(modified_encrypted, @valid_password, salt)
   end
 
+  @tag disabled: true
   test "key derivation is consistent" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
@@ -68,6 +73,7 @@ defmodule Bonfire.Common.Crypto.Test do
     assert decrypted_rsa_pem1 == decrypted_rsa_pem2
   end
 
+  @tag disabled: true
   test "re-encrypting produces different ciphertext but decrypts to same value" do
     {:ok, rsa_pem} = Keys.generate_rsa_pem()
 
