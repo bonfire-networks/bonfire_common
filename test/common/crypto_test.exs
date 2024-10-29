@@ -8,7 +8,7 @@ defmodule Bonfire.Common.Crypto.Test do
   def secret_binary do
     if Extend.module_exists?(ActivityPub.Safety.Keys),
       do: ActivityPub.Safety.Keys.generate_rsa_pem(),
-      else: {:ok, Faker.Lorem.characters()}
+      else: {:ok, Faker.Lorem.paragraph()}
   end
 
   test "encrypt_with_auth_key returns properly structured result" do
