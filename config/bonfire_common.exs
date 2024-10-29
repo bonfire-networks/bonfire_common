@@ -6,7 +6,17 @@ config :bonfire,
   localisation_path: "priv/localisation"
 
 config :bonfire_common,
-  otp_app: :bonfire
+  otp_app: :bonfire,
+  ecto_repos: [Bonfire.Common.Repo]
+
+config :bonfire, Bonfire.Common.Repo,
+  database: System.get_env("POSTGRES_DB", "bonfire_dev"),
+  username: System.get_env("POSTGRES_USER", "postgres"),
+  password: System.get_env("POSTGRES_PASSWORD", "postgres"),
+  # show_sensitive_data_on_connection_error: true,
+  # EctoSparkles does the logging instead
+  log: false,
+  stacktrace: true
 
 ## Localisation & internationalisation
 # TODO: determine which keys can be set at runtime vs compile-time

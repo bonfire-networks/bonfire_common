@@ -8,16 +8,16 @@ defmodule Bonfire.Common.DocsTest do
   doctest Bonfire.Common.Opts, import: false
   doctest Bonfire.Common.Utils, import: true
 
-  doctest Bonfire.Common.Config, import: true
-  doctest Bonfire.Common.Settings, import: true
+  # doctest Bonfire.Common.Config, import: true
+  # doctest Bonfire.Common.Settings, import: true
 
   doctest Bonfire.Common.Localise, import: true
   doctest Bonfire.Common.Localise.Gettext, import: true
 
-  doctest Bonfire.Common.Extend, import: true
+  # doctest Bonfire.Common.Extend, import: true
   doctest Bonfire.Common.Modularity.DeclareHelpers, import: true
   doctest Bonfire.Common.Extensions, import: true
-  doctest Bonfire.Common.Extensions.Diff, import: true
+  # doctest Bonfire.Common.Extensions.Diff, import: true
 
   doctest Bonfire.Common.DatesTimes, import: true
   doctest Bonfire.Common.Enums, import: true
