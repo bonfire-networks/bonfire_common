@@ -6,10 +6,11 @@ defmodule Bonfire.Common.Crypto.Test do
   @invalid_password "wrong_password"
 
   def secret_binary do
-    if Extend.module_exists?(ActivityPub.Safety.Keys), do: ActivityPub.Safety.Keys.generate_rsa_pem(), else: :crypto.strong_rand_bytes(32)
+    if Extend.module_exists?(ActivityPub.Safety.Keys),
+      do: ActivityPub.Safety.Keys.generate_rsa_pem(),
+      else: Faker.Lorem.characters()
   end
 
-  
   test "encrypt_with_auth_key returns properly structured result" do
     {:ok, secret_binary} = secret_binary()
 
@@ -23,7 +24,6 @@ defmodule Bonfire.Common.Crypto.Test do
     assert byte_size(salt) == 16
   end
 
-  
   test "decryption succeeds with correct password" do
     {:ok, secret_binary} = secret_binary()
 
@@ -36,7 +36,6 @@ defmodule Bonfire.Common.Crypto.Test do
     assert decrypted_secret_binary == secret_binary
   end
 
-  
   test "decryption fails with incorrect password" do
     {:ok, secret_binary} = secret_binary()
 
@@ -46,7 +45,6 @@ defmodule Bonfire.Common.Crypto.Test do
     assert {:error, _} = Crypto.decrypt_with_auth_key(encrypted, @invalid_password, salt)
   end
 
-  
   test "decryption fails if ciphertext is modified" do
     {:ok, secret_binary} = secret_binary()
 
@@ -59,7 +57,6 @@ defmodule Bonfire.Common.Crypto.Test do
     assert {:error, _} = Crypto.decrypt_with_auth_key(modified_encrypted, @valid_password, salt)
   end
 
-  
   test "key derivation is consistent" do
     {:ok, secret_binary} = secret_binary()
 
@@ -76,7 +73,6 @@ defmodule Bonfire.Common.Crypto.Test do
     assert decrypted_secret_binary1 == decrypted_secret_binary2
   end
 
-  
   test "re-encrypting produces different ciphertext but decrypts to same value" do
     {:ok, secret_binary} = secret_binary()
 
