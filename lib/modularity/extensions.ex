@@ -258,9 +258,7 @@ defmodule Bonfire.Common.Extensions do
       ">= 1.0.0"
   """
   def get_version(%{scm: Mix.SCM.Path} = dep),
-    do:
-      "forked from " <>
-        get_branch(dep) <> " " <> do_get_version(dep)
+    do: "forked from #{get_branch(dep)} #{do_get_version(dep)}"
 
   def get_version(dep), do: do_get_version(dep)
 
