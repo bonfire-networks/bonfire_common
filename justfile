@@ -45,7 +45,7 @@ clean-symlinks:
     find lib/ -type l -delete
 
 boilerplate-update:
-    mkdir -p .bonfire-extension-boilerplate
+    mkdir -p .bonfire-extension-boilerplate .github/workflows
     git clone https://github.com/bonfire-networks/bonfire-extension-boilerplate.git --branch main --single-branch .bonfire-extension-boilerplate
     cd .bonfire-extension-boilerplate && cp .envrc justfile .gitignore .. && cp .github/workflows/main.yml ../.github/workflows/main.yml && cp lib/mix/mess.ex ../mess.exs
     rm -rf .bonfire-extension-boilerplate
@@ -53,12 +53,26 @@ boilerplate-update:
 deps-get:
     mix deps.get
 
-deps-update:
-    mix deps.update --all
+deps-update +FLAGS='--all':
+    mix deps.update {{FLAGS}}
 
-common-mix-tasks-setup:
-    cd lib/mix/ && ([ -d ../../deps/bonfire_common/lib/mix_tasks ] && ln -sf ../../deps/bonfire_common/lib/mix_tasks tasks || ln -sf ../mix_tasks tasks) && cd -
-    cd lib/mix/tasks/release/ && MIX_ENV=prod mix escript.build && cd -
+@common-mix-tasks-setup:
+    #!/usr/bin/env bash
+    set -eu
+
+    mkdir -p lib/mix
+
+    cd lib/mix
+
+    if [ -d ../../deps/bonfire_common/lib/mix_tasks ]; then
+      ln -sf ../../deps/bonfire_common/lib/mix_tasks tasks
+    else
+      ln -sf ../mix_tasks tasks
+    fi
+
+    cd tasks/release
+
+    MIX_ENV=prod mix escript.build
 
 ext-migrations-copy: common-mix-tasks-setup
     mkdir -p priv/repo
