@@ -2,7 +2,7 @@ import Config
 
 default_locale = "en"
 
-config :bonfire,
+config :bonfire_common,
   localisation_path: "priv/localisation"
 
 config :bonfire_common,

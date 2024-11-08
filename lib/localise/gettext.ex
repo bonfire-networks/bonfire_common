@@ -28,7 +28,7 @@ defmodule Bonfire.Common.Localise.Gettext do
         "en"
       ),
     plural_forms: Bonfire.Common.Localise.Gettext.Plural,
-    priv: Application.compile_env!(:bonfire, :localisation_path)
+    priv: Application.compile_env!(:bonfire_common, :localisation_path)
 
   # end
 end
