@@ -357,7 +357,7 @@ defmodule Bonfire.Common.Enums do
 
   # def filter_empty(enum, fallback, keys) when is_list(keys)  do
   #   case enum do
-  #     _ when is_map(enum) -> 
+  #     _ when is_map(enum) ->
   #       enum_keys = Map.keys(enum)
   #       if Enum.any?(keys, fn key -> key in keys end) fallback
   #     nil -> fallback
@@ -876,7 +876,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Takes a map or keyword list, and returns a map with any atom keys converted to string keys. It can optionally do so recursively. 
+  Takes a map or keyword list, and returns a map with any atom keys converted to string keys. It can optionally do so recursively.
   """
   def stringify_keys(map, recursive \\ false)
   def stringify_keys(nil, _recursive), do: nil
@@ -1286,7 +1286,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Filters the given value or enumerable and if it contains any `:error` tuple, return an `:error` tuple with a list of error values, other return an `:ok` tuple with a list of values. 
+  Filters the given value or enumerable and if it contains any `:error` tuple, return an `:error` tuple with a list of error values, other return an `:ok` tuple with a list of values.
 
   ## Examples
 
@@ -1445,7 +1445,7 @@ defmodule Bonfire.Common.Enums do
 
       iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
       [1, 2]
-      
+
       iex> Bonfire.Common.Enums.fun([1, 2, 3], :first)
       1
   """
