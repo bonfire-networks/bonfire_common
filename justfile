@@ -12,6 +12,7 @@ set export
 ## Main configs - override these using env vars
 
 APP_VSN_EXTRA := env_var_or_default("APP_VSN_EXTRA", "")
+DB_TESTS := env_var_or_default('DB_TESTS', "1")
 DB_DOCKER_VERSION := env_var_or_default('DB_DOCKER_VERSION', "17-3.5")
 DB_DOCKER_IMAGE := env_var_or_default('DB_DOCKER_IMAGE', if arch() == "aarch64" { "ghcr.io/baosystems/postgis:"+DB_DOCKER_VERSION } else { "postgis/postgis:"+DB_DOCKER_VERSION+"-alpine" })
 DB_STARTUP_TIME := env_var_or_default("DB_STARTUP_TIME", "10")
@@ -81,7 +82,14 @@ ext-migrations-copy: common-mix-tasks-setup
 run-tests *args:
     mix test {{args}}
 
-test *args: start-test-db ext-migrations-copy create-test-db (run-tests args)
+test *args: setup-db (run-tests args)
+
+@setup-db:
+    #!/usr/bin/env bash
+    set -eu
+    if [ "$DB_TESTS" = "1" ]; then
+      just --justfile {{justfile()}} start-test-db ext-migrations-copy create-test-db
+    fi
 
 create-test-db:
     mix ecto.create -r Bonfire.Common.Repo
