@@ -436,10 +436,18 @@ defmodule Bonfire.Common.Settings do
     |> debug("input_to_atoms")
     |> maybe_to_keyword_list(true)
     |> debug("maybe_to_keyword_list")
-    |> set(opts)
+    |> set_with_hooks(to_options(opts))
   end
 
   def put(key, value, opts), do: put([key], value, opts)
+
+  def delete(parent_keys, delete_key, opts \\ [])
+
+  def delete(keys, delete_key, opts) when is_list(keys) do
+    # TODO
+  end
+
+  def delete(key, delete_key, opts), do: put([key], delete_key, opts)
 
   @doc """
   Sets multiple settings at once.
@@ -562,6 +570,20 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp do_set(settings, opts) when is_list(settings) do
+    if scope = check_scope(e(settings, :scope, nil), opts) do
+      settings
+      |> Keyword.drop([:scope])
+      |> Enum.map(&Config.keys_tree/1)
+      |> debug("keyword list to set for #{inspect(scope)}")
+      |> set_for(scope, ..., opts)
+
+      # TODO: if setting a key to `nil` we could remove it instead
+    else
+      {:error, l("You need to be authenticated to change settings.")}
+    end
+  end
+
+  def check_scope(scope \\ nil, opts) do
     current_user = current_user(opts)
     current_account = current_account(opts)
     # FIXME: do we need to associate each setting key to a verb? (eg. :describe)
@@ -572,7 +594,7 @@ defmodule Bonfire.Common.Settings do
         )
 
     scope =
-      case maybe_to_atom(e(settings, :scope, nil) || e(opts, :scope, nil))
+      case maybe_to_atom(scope || e(opts, :scope, nil))
            |> debug("scope specified to set") do
         :instance when is_admin_or_skip == true ->
           {:instance, instance_scope()}
@@ -608,20 +630,7 @@ defmodule Bonfire.Common.Settings do
             end
           end
       end
-
-    debug(scope, "computed scope to set")
-
-    if scope do
-      settings
-      |> Keyword.drop([:scope])
-      |> Enum.map(&Config.keys_tree/1)
-      |> debug("keyword list to set for #{inspect(scope)}")
-      |> set_for(scope, ..., opts)
-
-      # TODO: if setting a key to `nil` we could remove it instead
-    else
-      {:error, l("You need to be authenticated to change settings.")}
-    end
+      |> debug("computed scope to set")
   end
 
   defp set_for({:current_user, scoped} = _scope_tuple, settings, opts) do
@@ -774,21 +783,6 @@ defmodule Bonfire.Common.Settings do
     # )
     # |> debug("to_atoms")
   end
-
-  # def delete(key, opts \\ [])
-  # def delete([key], opts), do: delete(key, opts)
-
-  # def delete([parent_key | keys] = _keys_tree, opts) do
-  #   {_, updated_parent} =
-  #     get(parent_key, [])
-  #     |> get_and_update_in(keys, fn _ -> :pop end)
-
-  #   put(parent_key, updated_parent, opts)
-  # end
-
-  # def delete(key, opts) do
-  #   # Config.delete(key, otp_app) # if scope==instance
-  # end
 
   defp instance_scope,
     do:
