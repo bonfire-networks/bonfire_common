@@ -434,20 +434,33 @@ defmodule Bonfire.Common.Settings do
       also_discard_unknown_nested_keys: false
     )
     |> debug("input_to_atoms")
-    |> maybe_to_keyword_list(true)
-    |> debug("maybe_to_keyword_list")
+    # |> maybe_to_keyword_list(true)
+    # |> debug("maybe_to_keyword_list")
     |> set_with_hooks(to_options(opts))
   end
 
   def put(key, value, opts), do: put([key], value, opts)
 
-  def delete(parent_keys, delete_key, opts \\ [])
+  def delete(key_tree, opts \\ [])
 
-  def delete(keys, delete_key, opts) when is_list(keys) do
-    # TODO
+  def delete(key_tree, opts) when is_list(key_tree) do
+    # TODO: optimise since this also runs in do_set
+    [otp_app | key_tree] = Config.keys_tree(key_tree)
+
+    opts =
+      to_options(opts)
+      # FIXME: won't work if provided keys don't match what is stored (atom / non-atom)
+      |> Keyword.put(:delete_key, key_tree)
+      |> Keyword.put(:otp_app, otp_app)
+
+    # TODO: handle with and without otp_app as first key
+
+    Enums.map_put_in([otp_app] ++ key_tree, nil)
+    |> debug("to_delete")
+    |> set_with_hooks(opts)
   end
 
-  def delete(key, delete_key, opts), do: put([key], delete_key, opts)
+  def delete(key, opts), do: put([key], opts)
 
   @doc """
   Sets multiple settings at once.
@@ -480,7 +493,7 @@ defmodule Bonfire.Common.Settings do
   end
 
   def set(settings, opts) when is_list(settings) do
-    # FIXME: optimise (do not convert to map and then back)
+    # TODO: optimise (do not convert to map and then back)
     Enum.into(settings, %{})
     |> set_with_hooks(to_options(opts))
   end
@@ -636,7 +649,7 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:current_user, scoped} = _scope_tuple, settings, opts) do
     fetch_or_empty(scoped, opts)
     # |> debug
-    |> upsert(settings, uid(scoped))
+    |> upsert(settings, uid(scoped), opts)
     ~> {:ok,
      %{
        __context__: %{current_user: map_put_settings(scoped, ...)}
@@ -646,7 +659,7 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:current_account, scoped} = _scope_tuple, settings, opts) do
     fetch_or_empty(scoped, opts)
     # |> debug
-    |> upsert(settings, uid(scoped))
+    |> upsert(settings, uid(scoped), opts)
     ~> {:ok,
      %{
        __context__: %{current_account: map_put_settings(scoped, ...)}
@@ -658,10 +671,14 @@ defmodule Bonfire.Common.Settings do
     with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
            # |> debug
-           |> upsert(settings, uid(scoped)) do
-      # also put_env to cache it in Elixir's Config
-      Config.put(new_data)
-      |> debug("put in config")
+           |> upsert(settings, uid(scoped), opts) do
+      # also save it in Elixir's Config for quick lookups
+      if delete_key = opts[:delete_key] do
+        Config.delete(delete_key, opts[:otp_app])
+      else
+        Config.put(new_data)
+        |> debug("put in config")
+      end
 
       {:ok, set}
     end
@@ -673,7 +690,7 @@ defmodule Bonfire.Common.Settings do
 
   defp set_for(scoped, settings, opts) do
     fetch_or_empty(scoped, opts)
-    |> upsert(settings, uid!(scoped))
+    |> upsert(settings, uid!(scoped), opts)
   end
 
   defp map_put_settings(object, {:ok, settings}),
@@ -690,7 +707,8 @@ defmodule Bonfire.Common.Settings do
   defp upsert(
          %schema{json: existing_data} = settings,
          new_data,
-         _
+         _,
+         opts
        )
        when (schema == Bonfire.Data.Identity.Settings and is_list(existing_data)) or
               is_map(existing_data) do
@@ -703,32 +721,34 @@ defmodule Bonfire.Common.Settings do
     |> do_upsert(
       settings,
       ...,
-      new_data
+      new_data,
+      opts
     )
   end
 
   defp upsert(
          %schema{id: id} = settings,
          new_data,
-         _
+         _,
+         opts
        )
        when schema == Bonfire.Data.Identity.Settings and is_binary(id) do
     do_update(settings, new_data)
   end
 
-  defp upsert(%{settings: _} = parent, new_data, _) do
+  defp upsert(%{settings: _} = parent, new_data, _, opts) do
     parent
     |> repo().maybe_preload(:settings)
     |> e(:settings, struct(Bonfire.Data.Identity.Settings))
-    |> upsert(new_data, uid(parent))
+    |> upsert(new_data, uid(parent), opts)
   end
 
-  defp upsert(%schema{} = settings, new_data, scope_id)
+  defp upsert(%schema{} = settings, new_data, scope_id, opts)
        when schema == Bonfire.Data.Identity.Settings do
     %{id: uid!(scope_id), json: prepare_for_json(new_data)}
     # |> debug()
     |> Bonfire.Data.Identity.Settings.changeset(settings, ...)
-    |> info()
+    # |> debug()
     |> repo().insert()
   rescue
     e in Ecto.ConstraintError ->
@@ -742,13 +762,23 @@ defmodule Bonfire.Common.Settings do
   defp do_upsert(
          settings,
          existing_data,
-         new_data
+         new_data,
+         opts
        ) do
-    existing_data
-    # |> debug("existing_data")
-    |> deep_merge(new_data, replace_lists: true)
-    |> debug("merged settings to set")
-    |> do_update(settings, ...)
+    if keys = opts[:delete_key] do
+      {_, new_data} =
+        existing_data
+        |> pop_in([opts[:otp_app]] ++ keys)
+        |> debug("settings with deletion to set")
+
+      do_update(settings, new_data)
+    else
+      existing_data
+      # |> debug("existing_data")
+      |> deep_merge(new_data, replace_lists: true)
+      |> debug("merged settings to set")
+      |> do_update(settings, ...)
+    end
   end
 
   defp do_update(

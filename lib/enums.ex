@@ -422,12 +422,13 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Updates a `map` with the given `key` and `value`, but only if the `value` is not `nil`, an empty list or an empty string.
+  Updates a `Map` or `Keyword` with the given `key` and `value`, but only if the `value` is not `nil`, an empty list or an empty string.
   """
   def maybe_put(map, _key, nil), do: map
   def maybe_put(map, _key, []), do: map
   def maybe_put(map, _key, ""), do: map
-  def maybe_put(map, key, value), do: Map.put(map, key, value)
+  def maybe_put(map, key, value) when is_map(map), do: Map.put(map, key, value)
+  def maybe_put(list, key, value) when is_list(list), do: Keyword.put(list, key, value)
 
   @doc """
   Recursively merges two data structures (`left` and `right`), which can be structs, maps or lists.
