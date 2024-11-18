@@ -36,7 +36,7 @@ defmodule Bonfire.Common.Utils do
   # import Common.Config, only: [repo: 0]
   use Untangle
   require Logger
-  import Common.E
+  use Common.E
   # alias Common.Text
   alias Common.Opts
   alias Common.Cache

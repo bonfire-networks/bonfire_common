@@ -466,7 +466,7 @@ defmodule Bonfire.Common.Types do
   def maybe_to_atom_or_module(k, true = force, _false = _to_snake) when is_binary(k),
     do: maybe_to_module(k, force) || String.to_atom(k)
 
-  def maybe_to_atom_or_module(k, _false = force, _false = _to_snake),
+  def maybe_to_atom_or_module(k, _false = force, _false_ = _to_snake),
     do: maybe_to_module(k, force) || maybe_to_atom(k)
 
   @doc """
