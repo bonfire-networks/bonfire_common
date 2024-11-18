@@ -9,7 +9,7 @@ defmodule Bonfire.Common.RuntimeConfig do
   def config do
     import Config
 
-    config :bonfire_common, 
+    config :bonfire_common,
       root_path: File.cwd!()
 
     config :bonfire, :http,
