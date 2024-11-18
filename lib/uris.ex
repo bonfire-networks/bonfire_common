@@ -13,7 +13,7 @@ defmodule Bonfire.Common.URIs do
   alias Common.Types
 
   @doc """
-  Validates a URI string.
+  Validates a URI string and returns a tuple.
 
   ## Examples
 
@@ -26,26 +26,48 @@ defmodule Bonfire.Common.URIs do
     uri = URI.parse(str)
 
     case uri do
-      %URI{scheme: nil} -> {:error, uri}
-      %URI{host: nil} -> {:error, uri}
-      _ -> {:ok, uri}
+      %URI{scheme: nil, host: nil, path: path_as_host} when is_binary(path_as_host) ->
+        # workaround for domain names provided with no scheme
+        if String.contains?(path_as_host, ".") and not String.contains?(path_as_host, "@"),
+          do: {:ok, %{uri | host: path_as_host, path: nil, scheme: "http"}},
+          else: {:error, uri}
+
+      %URI{scheme: nil} ->
+        {:error, uri}
+
+      %URI{host: nil} ->
+        {:error, uri}
+
+      _ ->
+        {:ok, uri}
     end
   end
 
   @doc """
-  Returns true if the given string is a valid URI.
+  Validates a URI string and returns a boolean.
 
-      iex> is_uri?("http://example.com")
-      true
+  ## Examples
 
-      iex> is_uri?("invalid_uri")
-      false
+      iex> true == validate_uri("http://example.com")
+
+      iex> false == validate_uri("invalid_uri")
   """
-  def is_uri?(str) do
-    case URI.parse(str) do
-      %URI{scheme: nil} -> false
-      %URI{host: nil} -> false
-      _ -> true
+  def valid_url?(str) do
+    uri = URI.parse(str)
+
+    case uri do
+      # workaround for domain names provided with no scheme
+      %URI{scheme: nil, host: nil, path: path_as_host} when is_binary(path_as_host) ->
+        String.contains?(path_as_host, ".") and not String.contains?(path_as_host, "@")
+
+      %URI{scheme: nil} ->
+        false
+
+      %URI{host: nil} ->
+        false
+
+      _uri ->
+        true
     end
   end
 

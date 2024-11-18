@@ -26,7 +26,6 @@ config :bonfire_common, Bonfire.Common.Localise.Cldr,
   providers: [
     Cldr.Language,
     Cldr.DateTime,
-    # TEMP: because Jason error at compilation
     Cldr.Number,
     Cldr.Unit,
     Cldr.List,
