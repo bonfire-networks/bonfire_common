@@ -448,11 +448,13 @@ defmodule Bonfire.Common.Types do
   Takes a string or atom and attempts to convert it to an atom or module, depending on the flags.
 
   ## Examples
-      iex> maybe_to_atom_or_module(:some_atom, true, true)
+      
+      iex> maybe_to_atom_or_module("Enum", false, true)
+      Enum
+
+      iex> maybe_to_atom_or_module(:some_atom, false, true)
       :some_atom
 
-      iex> maybe_to_atom_or_module("Enum", true, true)
-      Enum
   """
   def maybe_to_atom_or_module(k, _force, _to_snake) when is_atom(k),
     do: k
