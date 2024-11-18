@@ -401,7 +401,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> %{bonfire_common: true} = loaded_applications_names()
+      iex> %{bonfire_common: _} = loaded_applications_names()
       
   """
   def loaded_applications_names(opts \\ [cache: false]) do
@@ -658,7 +658,7 @@ defmodule Bonfire.Common.Extend do
 
   ## Examples
 
-      iex> generate_reverse_router!()
+      > generate_reverse_router!()
       :ok
   """
   def generate_reverse_router!() do

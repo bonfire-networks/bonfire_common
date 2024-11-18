@@ -1,5 +1,9 @@
 import Config
 
+config :bonfire_common,
+  otp_app: :bonfire_common,
+  env: config_env()
+
 config :needle, :search_path, [:bonfire_common]
 
 # Choose password hashing backend
@@ -9,18 +13,3 @@ config :bonfire_data_identity, Bonfire.Data.Identity.Credential, hasher_module: 
 
 import_config "bonfire_common.exs"
 
-config_file = if Mix.env() == :test, do: "config/test.exs", else: "config/config.exs"
-
-cond do
-  File.exists?("../bonfire/#{config_file}") ->
-    IO.puts("Load #{config_file} from local clone of `bonfire` dep")
-    import_config "../../bonfire/#{config_file}"
-
-  File.exists?("deps/bonfire/#{config_file}") ->
-    IO.puts("Load #{config_file} from `bonfire` dep")
-    import_config "../deps/bonfire/#{config_file}"
-
-  true ->
-    IO.puts("No #{config_file} found")
-    nil
-end

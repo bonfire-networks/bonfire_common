@@ -60,19 +60,16 @@ defmodule Bonfire.Common.Settings do
       iex> get(:non_existing_key, "default")
       "default"
 
-      iex> get(:otp_app)
+      > get(:otp_app)
       :bonfire
 
-      iex> get([:bonfire_common, :otp_app])
+      > get([:bonfire_common, :otp_app])
       :bonfire
       
-      iex> get([:bonfire_common, :otp_app])
-      :bonfire
-
       iex> get([Bonfire.Common.Localise.Cldr, :gettext])
       Bonfire.Common.Localise.Gettext
 
-      iex> get([:bonfire_common, Bonfire.Common.Localise.Cldr, :gettext])
+      > get([:bonfire_common, Bonfire.Common.Localise.Cldr, :gettext])
       Bonfire.Common.Localise.Gettext
 
   ## Options

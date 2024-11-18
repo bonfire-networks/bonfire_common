@@ -9,6 +9,9 @@ defmodule Bonfire.Common.RuntimeConfig do
   def config do
     import Config
 
+    config :bonfire_common, 
+      root_path: File.cwd!()
+
     config :bonfire, :http,
       proxy_url: System.get_env("HTTP_PROXY_URL", nil),
       adapter_options: [

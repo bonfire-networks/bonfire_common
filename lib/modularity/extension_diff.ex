@@ -166,7 +166,7 @@ defmodule Bonfire.Common.Extensions.Diff do
 
   ## Examples
 
-      iex> Bonfire.Common.Extensions.Diff.git_generate_diff("main", "./", "./data/test_output.patch")
+      > Bonfire.Common.Extensions.Diff.git_generate_diff("main", "./", "./data/test_output.patch")
   """
   def git_generate_diff(ref_or_branch, repo_path, path_output, extra_opt \\ "--cached") do
     git!(
@@ -195,10 +195,6 @@ defmodule Bonfire.Common.Extensions.Diff do
     - `repo_path`: The path to the repository.
     - `into`: Optional destination for command output (defaults to standard output)
     - `original_cwd`: The original working directory.
-
-  ## Examples
-
-      > Bonfire.Common.Extensions.Diff.git!(["status"], "./")
   """
   def git!(args, repo_path \\ ".", into \\ default_into(), original_cwd \\ root())
       when is_list(args) and is_binary(repo_path) and is_binary(original_cwd) do

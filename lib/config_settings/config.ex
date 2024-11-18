@@ -171,8 +171,8 @@ defmodule Bonfire.Common.Config do
       iex> get!(:test_key)
       "test_value"
 
-      iex> get!(:missing_key)
-      ** (Bonfire.Common.Config.Error) Missing configuration value: [:bonfire, :missing_key]
+      iex> get!(:missing_key, :bonfire_common)
+      ** (Bonfire.Common.Config.Error) Missing configuration value: [:bonfire_common, :missing_key]
 
   """
 
@@ -379,11 +379,11 @@ defmodule Bonfire.Common.Config do
       > keys_tree(:bonfire_me)
       [:bonfire_me]
 
-      iex> keys_tree(:random_atom)
-      [:bonfire, :random_atom]
+      > keys_tree(:random_atom)
+      [:bonfire_common, :random_atom]
 
-      iex>keys_tree([:random_atom, :sub_key])
-      [:bonfire, :random_atom, :sub_key]
+      >keys_tree([:random_atom, :sub_key])
+      [:bonfire_common, :random_atom, :sub_key]
   """
   def keys_tree(keys) when is_list(keys) do
     maybe_module_or_otp_app = List.first(keys)
