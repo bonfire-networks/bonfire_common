@@ -1181,52 +1181,219 @@ defmodule Bonfire.Common.Enums do
 
   def input_to_value(v, _, _, _, _, _, _), do: v
 
-  @doc "Takes a data structure and recursively converts any known keys to atoms and then tries to recursively convert any maps to structs, using some hints in the data (eg. `__type` or `index_type` fields)."
+  @doc """
+  Takes a data structure and recursively converts any known keys to atoms and then tries to 
+  recursively convert any maps to structs, using hints in the data (eg. `__type` or `index_type` fields) or related schemas (eg. mixins).
 
-  def maybe_to_structs(v, opts \\ [])
-  def maybe_to_structs(v, _opts) when is_struct(v), do: v
+  NOTE: you may want to call `input_to_atoms/2` on the data first if it contains string keys instead of atoms.
 
-  def maybe_to_structs(v, opts),
-    do: v |> input_to_atoms(opts) |> maybe_to_structs_recurse()
+  ## Examples
 
-  defp maybe_to_structs_recurse(data, parent_id \\ nil)
 
-  defp maybe_to_structs_recurse(%{index_type: type} = data, parent_id) do
-    data
+      iex> # Nested maps with `index_type` or `__typename`
+      iex> maybe_to_structs(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     __typename: Bonfire.Data.Identity.Character,
+      ...>     id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+      iex> # Nested maps with `index_type` on top-level and nested mixin with no hint of type (gets inferred from the parent schema)
+      iex> maybe_to_structs(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+
+      iex> # Nested maps with `index_type` on top-level and nested mixin with no ID (gets inferred from the parent schema)
+      iex> maybe_to_structs(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     __typename: Bonfire.Data.Identity.Character,
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+
+      iex> # Nested maps with `index_type` on top-level and nested mixin with no hint of type or ID (both get inferred from the parent schema)
+      iex> maybe_to_structs(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+
+      iex> # Nested maps with type override for the top level 
+      iex> maybe_to_structs(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     __typename: Bonfire.Data.Identity.Character,
+      ...>     id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>     username: "test"
+      ...>   }
+      ...> }, Needle.Pointer)
+      %Needle.Pointer{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+
+      iex> # Struct with nested map with `__typename`
+      iex> maybe_to_structs(%Bonfire.Data.Identity.User{
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     __typename: Bonfire.Data.Identity.Character,
+      ...>     id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %Bonfire.Data.Identity.Character{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+  """
+
+  def maybe_to_structs(data, top_level_type \\ nil, parent_schema_throuple \\ nil)
+
+  # Handle collections (lists, etc)
+  def maybe_to_structs(list, top_level_type, parent_schema_throuple) when is_list(list) do
+    Enum.map(list, &maybe_to_structs(&1, top_level_type, parent_schema_throuple))
+  end
+
+  # Handle maps (including those with type hints)
+  def maybe_to_structs(%{} = data, top_level_type, parent_schema_throuple) do
+    # infer mixins when recursing 
+    data = maybe_add_mixin(data, parent_schema_throuple)
+    type = top_level_type || Types.maybe_to_module(schema_type(data))
+    id = id(data)
+
+    # First recursively process all nested values
+    #  because can't enumerate a struct
+    struct_to_map(data)
     |> Map.new(fn {k, v} ->
-      {k, maybe_to_structs_recurse(v, id(data))}
+      #  passing current type as parent of next level
+      {k, maybe_to_structs(v, nil, {type, id, k})}
     end)
-    |> maybe_add_mixin_id(parent_id)
+    # Convert to struct if possible
     |> maybe_to_struct(type)
   end
 
-  defp maybe_to_structs_recurse(%{} = data, _parent_id) do
-    Map.new(data, fn {k, v} ->
-      {k, maybe_to_structs_recurse(v, id(data))}
-    end)
+  def maybe_to_structs(v, _, _), do: v
+
+  @doc """
+  Adds parent ID to map if it represents a mixin of the parent schema.
+  """
+  defp maybe_add_mixin(%{} = data, {parent_type, parent_id, assoc_key})
+       when not is_nil(parent_type) do
+    debug(assoc_key, inspect(parent_type))
+
+    if module =
+         Bonfire.Common.Needles.Tables.maybe_assoc_mixin_module(assoc_key, parent_type) |> debug() do
+      data
+      |> Map.put(:__typename, module)
+      |> maybe_put(:id, parent_id)
+    else
+      data
+    end
   end
 
-  defp maybe_to_structs_recurse(v, _), do: v
+  defp maybe_add_mixin(data, _parent_schema_throuple), do: data
 
-  defp maybe_add_mixin_id(%{id: id} = data, _parent_id) when not is_nil(id),
-    do: data
+  @doc """
+  Takes a data structure and tries to convert it to a struct, using the optional type provided or some hints in the data (eg. `__type` or `index_type` fields).
 
-  defp maybe_add_mixin_id(data, parent_id) when not is_nil(parent_id),
-    do: Map.merge(data, %{id: parent_id})
+  NOTE: you may want to call `input_to_atoms/2` on the data first if it contains string keys instead of atoms.
 
-  defp maybe_add_mixin_id(data, _parent_id), do: data
+  ## Examples
 
-  @doc "Takes a data structure and tries to convert it to a struct, using some hints in the data (eg. `__type` or `index_type` fields) or a manually-provided type."
+      iex> # Convert map with `index_type` to struct (and leave nested map alone, hint: use `maybe_to_structs/1` to also process nested data)
+      iex> maybe_to_struct(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>   character: %{
+      ...>     id: "01JB4E8T1H928QC6E1MP1XDZD8",
+      ...>     username: "test"
+      ...>   }
+      ...> })
+      %Bonfire.Data.Identity.User{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8",
+        character: %{
+          id: "01JB4E8T1H928QC6E1MP1XDZD8",
+          username: "test"
+        }
+      }
+
+      iex> # Map to a specific struct (ignores hints in data)
+      iex> maybe_to_struct(%{
+      ...>   index_type: "Bonfire.Data.Identity.User",
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8"
+      ...> }, Bonfire.Data.Identity.Character)
+      %Bonfire.Data.Identity.Character{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8"
+      }
+
+      iex> # Struct to a different struct
+      iex> maybe_to_struct(%Bonfire.Data.Identity.User{
+      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8"
+      ...> }, Bonfire.Data.Identity.Character)
+      %Bonfire.Data.Identity.Character{
+        id: "01JB4E8T1H928QC6E1MP1XDZD8"
+      }
+
+  """
   def maybe_to_struct(obj, type \\ nil)
 
-  def maybe_to_struct(%{__struct__: struct_type} = obj, target_type)
+  # Already the correct struct type
+  def maybe_to_struct(%struct_type{} = obj, target_type)
       when target_type == struct_type,
       do: obj
 
+  # Convert between struct types
   def maybe_to_struct(obj, type) when is_struct(obj) do
     struct_to_map(obj) |> maybe_to_struct(type)
   end
 
+  # Handle string type names
   def maybe_to_struct(obj, type) when is_binary(type) do
     case Types.maybe_to_module(type) do
       module when is_atom(module) -> maybe_to_struct(obj, module)
@@ -1234,40 +1401,46 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def maybe_to_struct(obj, type) when is_atom(type) do
-    # if Extend.module_exists?(module) and Extend.module_exists?(Mappable) do
-    #   Mappable.to_struct(obj, module)
-    # else
-    if Extend.module_exists?(type),
-      do: struct(type, obj),
-      else: obj
-
-    # end
+  # Try inferring type from data if no explicit type provided
+  def maybe_to_struct(obj, nil) do
+    case schema_type(obj) do
+      nil -> obj
+      type -> maybe_to_struct(obj, type)
+    end
   end
 
-  # for search results
-  def maybe_to_struct(%{index_type: type} = obj, _type),
-    do: maybe_to_struct(obj, type)
+  # Convert to struct if module exists
+  def maybe_to_struct(obj, type) when is_atom(type) do
+    if Extend.module_exists?(type) do
+      struct(type, obj)
+    else
+      obj
+    end
+  end
 
-  # for graphql queries
-  def maybe_to_struct(%{__typename: type} = obj, _type),
-    do: maybe_to_struct(obj, type)
-
+  # Fallback for no conversion
   def maybe_to_struct(obj, _type), do: obj
 
-  @doc """
-  Converts a map to a struct (based on MIT licensed function by Kum Sackey)
-  """
-  def struct_from_map(a_map, as: a_struct) do
-    keys = Map.keys(Map.delete(a_struct, :__struct__))
-    # Process map, checking for both string / atom keys
-    for(
-      key <- keys,
-      into: %{},
-      do: {key, Map.get(a_map, key) || Map.get(a_map, to_string(key))}
-    )
-    |> Map.merge(a_struct, ...)
-  end
+  @doc "Infer the struct or schema type from a map"
+  def schema_type(%type{}), do: type
+  def schema_type(%{__struct__: type}) when not is_nil(type), do: type
+  def schema_type(%{__typename: type}) when not is_nil(type), do: type
+  def schema_type(%{index_type: type}) when not is_nil(type), do: type
+  def schema_type(_), do: nil
+
+  # @doc """
+  # Converts a map to a struct (based on MIT licensed function by Kum Sackey)
+  # """
+  # def struct_from_map(a_map, as: a_struct) do
+  #   keys = Map.keys(Map.delete(a_struct, :__struct__))
+  #   # Process map, checking for both string / atom keys
+  #   for(
+  #     key <- keys,
+  #     into: %{},
+  #     do: {key, Map.get(a_map, key) || Map.get(a_map, to_string(key))}
+  #   )
+  #   |> Map.merge(a_struct, ...)
+  # end
 
   @doc """
   Counts the number of items in an enumerable that satisfy the given function.

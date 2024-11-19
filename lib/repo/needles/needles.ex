@@ -16,6 +16,7 @@ defmodule Bonfire.Common.Needles do
   alias Bonfire.Common.ContextModule
   alias Needle.NotFound
   alias Needle.Pointer
+  alias Needle.Tables
 
   @doc """
   Retrieves an object by its ID. Raises `NotFound` if the object cannot be found.
@@ -165,7 +166,7 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.list_by_type!(:my_table, [filter: value])
+      > Bonfire.Common.Needles.list_by_type!(:my_table, [filter: value])
       [%Pointer{...}, %Pointer{...}]
   """
   def list_by_type!(table_id_or_schema, filters \\ [], opts \\ []) do
@@ -177,10 +178,10 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.many([id: "some_id"])
+      > Bonfire.Common.Needles.many([id: "some_id"])
       {:ok, [%Pointer{id: "some_id", ...}]}
 
-      iex> Bonfire.Common.Needles.many([id: "non_existing_id"])
+      > Bonfire.Common.Needles.many([id: "non_existing_id"])
       {:ok, []}
   """
   def many(filters \\ [], opts \\ []),
@@ -221,10 +222,10 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.pointer_query(query, opts)
+      > Bonfire.Common.Needles.pointer_query(query, opts)
       %Ecto.Query{...}
 
-      iex> Bonfire.Common.Needles.pointer_query([id: "some_id"], opts)
+      > Bonfire.Common.Needles.pointer_query([id: "some_id"], opts)
       %Ecto.Query{...}
   """
   def pointer_query(%Ecto.Query{} = q, opts) do
@@ -266,10 +267,10 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.pointer_preloads(query, :with_creator)
+      > Bonfire.Common.Needles.pointer_preloads(query, :with_creator)
       %Ecto.Query{...}
 
-      iex> Bonfire.Common.Needles.pointer_preloads(query, :tags)
+      > Bonfire.Common.Needles.pointer_preloads(query, :tags)
       %Ecto.Query{...}
   """
   def pointer_preloads(query, preloads) do
@@ -399,10 +400,10 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.follow!(%Pointer{id: "some_id"})
+      > Bonfire.Common.Needles.follow!(%Pointer{id: "some_id"})
       %SomeRecord{}
 
-      iex> Bonfire.Common.Needles.follow!([%Pointer{id: "some_id"}])
+      > Bonfire.Common.Needles.follow!([%Pointer{id: "some_id"}])
       [%SomeRecord{}]
   """
   def follow!(pointer_or_pointers, opts \\ [])
@@ -451,10 +452,10 @@ defmodule Bonfire.Common.Needles do
   @doc """
   Follows one or more pointers and adds the pointed records to the `pointed` attrs.
 
-      iex> Bonfire.Common.Needles.preload!(%Pointer{id: "some_id"})
+      > Bonfire.Common.Needles.preload!(%Pointer{id: "some_id"})
       %Pointer{id: "some_id", pointed: %SomeRecord{}}
 
-      iex> Bonfire.Common.Needles.preload!([%Pointer{id: "some_id"}])
+      > Bonfire.Common.Needles.preload!([%Pointer{id: "some_id"}])
       [%Pointer{id: "some_id", pointed: %SomeRecord{}}]
   """
   def preload!(pointer_or_pointers, opts \\ [])
@@ -619,7 +620,7 @@ defmodule Bonfire.Common.Needles do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.query(filters)
+      > Bonfire.Common.Needles.query(filters)
       %Ecto.Query{...}
   """
   def query(schema, filters, opts \\ [])

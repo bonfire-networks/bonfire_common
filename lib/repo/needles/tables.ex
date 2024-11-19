@@ -3,11 +3,13 @@ defmodule Bonfire.Common.Needles.Tables do
   @moduledoc "Helpers for querying `Needle` types/tables"
 
   use Arrows
+  use Bonfire.Common.E
   import Ecto.Query
   import Bonfire.Common.Config, only: [repo: 0]
 
   alias Needle.Pointer
   alias Needle.Table
+  alias Needle.Tables
   alias Needle.NotFound
   alias Bonfire.Common.Needles.Tables.Queries
   import Untangle
@@ -17,10 +19,10 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.one("valid_ulid")
+      > Bonfire.Common.Needles.Tables.one("valid_ulid")
       {:ok, %Table{}}
 
-      iex> Bonfire.Common.Needles.Tables.one(%{field: "value"})
+      > Bonfire.Common.Needles.Tables.one(%{field: "value"})
       %Table{}
   """
   def one(id) when is_binary(id) do
@@ -38,7 +40,7 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.one!(%{field: "value"})
+      > Bonfire.Common.Needles.Tables.one!(%{field: "value"})
       %Table{}
   """
   def one!(filters), do: repo().one!(Queries.query(Table, filters))
@@ -48,7 +50,7 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.many(%{field: "value"})
+      > Bonfire.Common.Needles.Tables.many(%{field: "value"})
       {:ok, [%Table{}]}
   """
   def many(filters \\ []), do: {:ok, repo().many(Queries.query(Table, filters))}
@@ -58,13 +60,13 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.table!(%Pointer{table_id: "valid_id"})
+      > Bonfire.Common.Needles.Tables.table!(%Pointer{table_id: "valid_id"})
       %Table{}
 
-      iex> Bonfire.Common.Needles.Tables.table!("valid_id")
+      > Bonfire.Common.Needles.Tables.table!("valid_id")
       %Table{}
 
-      iex> Bonfire.Common.Needles.Tables.table!("invalid_id")
+      > Bonfire.Common.Needles.Tables.table!("invalid_id")
       # throws error
   """
   @spec table!(Pointer.t()) :: Table.t()
@@ -78,11 +80,11 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.schema_or_table!("valid_id")
-      MySchema
+      iex> Bonfire.Common.Needles.Tables.schema_or_table!("5EVSER1S0STENS1B1YHVMAN01D")
+      Bonfire.Data.Identity.User
 
-      iex> Bonfire.Common.Needles.Tables.schema_or_table!("table_name")
-      MySchema
+      iex> Bonfire.Common.Needles.Tables.schema_or_table!("bonfire_data_identity_user")
+      Bonfire.Data.Identity.User
   """
   def schema_or_table!(schema_or_tablename_or_id) do
     # TODO
@@ -104,10 +106,10 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.table_fields(MySchema)
+      > Bonfire.Common.Needles.Tables.table_fields(MySchema)
       [:field1, :field2]
 
-      iex> Bonfire.Common.Needles.Tables.table_fields("table_name")
+      > Bonfire.Common.Needles.Tables.table_fields("table_name")
       [:field1, :field2]
   """
   def table_fields(schema) when is_atom(schema), do: table_fields(schema.__schema__(:source))
@@ -134,10 +136,10 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.table_fields_meta(MySchema)
+      > Bonfire.Common.Needles.Tables.table_fields_meta(MySchema)
       [%{column_name: "field1", data_type: "type", column_default: nil, is_nullable: "NO"}]
 
-      iex> Bonfire.Common.Needles.Tables.table_fields_meta("table_name")
+      > Bonfire.Common.Needles.Tables.table_fields_meta("table_name")
       [%{column_name: "field1", data_type: "type", column_default: nil, is_nullable: "NO"}]
   """
   def table_fields_meta(schema) when is_atom(schema),
@@ -170,11 +172,9 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.list_tables()
-      [%Table{}]
+      iex> tables = Bonfire.Common.Needles.Tables.list_tables()
 
-      iex> Bonfire.Common.Needles.Tables.list_tables(:db)
-      %{"table_name" => %Table{}}
+      iex> tables = Bonfire.Common.Needles.Tables.list_tables(:db)
   """
   def list_tables(source \\ :code)
 
@@ -192,7 +192,7 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.list_ids()
+      > Bonfire.Common.Needles.Tables.list_ids()
       ["id1", "id2"]
   """
   def list_ids do
@@ -204,8 +204,8 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.list_schemas()
-      [:schema1, :schema2]
+      iex> schemas = Bonfire.Common.Needles.Tables.list_schemas()
+      iex> true = Enum.member?(schemas, Needle.Table)
   """
   def list_schemas() do
     tables = list_tables()
@@ -220,7 +220,7 @@ defmodule Bonfire.Common.Needles.Tables do
 
   ## Examples
 
-      iex> Bonfire.Common.Needles.Tables.list_tables_debug()
+      > Bonfire.Common.Needles.Tables.list_tables_debug()
       [{:ok, "table1"}, {:error, "Code and DB have differing IDs for the same table", "table2", "id2a", "id2b"}, {:error, "Table present in DB but not in code", "table3"}]
   """
   def list_tables_debug() do
@@ -270,4 +270,143 @@ defmodule Bonfire.Common.Needles.Tables do
     |> Enum.sort(:desc)
     |> Enum.dedup()
   end
+
+  @doc """
+  Retrieves a list of schema mixins that aren't loaded in the given Ecto struct.
+
+  ## Examples
+
+      > schema_mixins(%Bonfire.Data.Identity.User{})
+      [:account]
+  """
+  def schema_mixins_not_loaded(%type{} = struct) do
+    mixin_modules = Tables.mixin_modules()
+
+    for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(struct), do: key)
+    |> Enum.filter(&(&1 in mixin_modules))
+  end
+
+  @doc """
+  Retrieves schema mixins for a given Ecto struct.
+
+  ## Examples
+
+      iex> schemas = schema_mixin_assocs(Bonfire.Data.Identity.User)
+      iex> true = Enum.member?(schemas, :character)
+  """
+  def schema_mixin_assocs(%type{} = _structure), do: schema_mixin_assocs(type)
+
+  def schema_mixin_assocs(type) do
+    mixin_modules = Tables.mixin_modules()
+
+    type.__schema__(:associations)
+    |> Enum.filter(fn assoc ->
+      case e(type.__schema__(:association, assoc), :queryable, nil) do
+        nil -> false
+        assoc_module -> assoc_module in mixin_modules
+      end
+    end)
+  end
+
+  @doc """
+  Retrieves schema mixins for a given Ecto struct.
+
+  ## Examples
+
+      iex> schemas = schema_mixin_modules(Bonfire.Data.Identity.User)
+      iex> true = Enum.member?(schemas, Bonfire.Data.Identity.Character)
+  """
+  def schema_mixin_modules(%type{} = _structure), do: schema_mixin_modules(type)
+
+  def schema_mixin_modules(type) do
+    mixin_modules = Tables.mixin_modules()
+
+    type.__schema__(:associations)
+    |> Enum.map(fn assoc ->
+      e(type.__schema__(:association, assoc), :queryable, nil)
+    end)
+    |> Enum.reject(&is_nil/1)
+    #  TODO: optimise?
+    |> Enum.filter(&(&1 in mixin_modules))
+  end
+
+  @doc """
+  Returns the module name of an association
+
+  ## Examples
+
+      iex> maybe_assoc_module(:character, Bonfire.Data.Identity.User)
+      Bonfire.Data.Identity.Character
+
+      iex> maybe_assoc_module(:non_existing_assoc_name, Bonfire.Data.Identity.User)
+      nil
+  """
+  def maybe_assoc_module(assoc_name, parent_type)
+      when is_atom(assoc_name) and is_atom(parent_type) do
+    e(parent_type.__schema__(:association, assoc_name), :queryable, nil)
+  end
+
+  def maybe_assoc_module(_, _), do: false
+
+  @doc """
+  Returns the module name of an association if it represents a mixin by checking if it's listed in the parent schema's mixin associations.
+
+  ## Examples
+
+      iex> maybe_assoc_mixin_module(:character, Bonfire.Data.Identity.User)
+      Bonfire.Data.Identity.Character
+
+      iex> maybe_assoc_mixin_module(:non_existing_assoc_name, Bonfire.Data.Identity.User)
+      nil
+  """
+  def maybe_assoc_mixin_module(assoc_name, parent_type)
+      when is_atom(assoc_name) and is_atom(parent_type) do
+    mixin_modules = Tables.mixin_modules()
+
+    module = maybe_assoc_module(assoc_name, parent_type)
+
+    if module in mixin_modules, do: module
+  end
+
+  def maybe_assoc_mixin_module(_, _), do: false
+
+  @doc """
+  Checks if a schema represents a mixin by checking if it's listed in the parent schema's mixin associations.
+
+  ## Examples
+
+      iex> module_mixin_of?(Bonfire.Data.Identity.Character, Bonfire.Data.Identity.User)
+      true
+
+      iex> module_mixin_of?(Needle.Table, Bonfire.Data.Identity.User)
+      false
+  """
+  def module_mixin_of?(assoc_name, parent_type)
+      when is_atom(assoc_name) and is_atom(parent_type) do
+    schema_mixin_modules(parent_type)
+    |> debug(inspect(parent_type))
+    |> Enum.member?(assoc_name)
+  end
+
+  def module_mixin_of?(_, _), do: false
+
+  @doc """
+  Checks if a schema represents a mixin by checking if it's listed in the parent schema's mixin associations.
+
+  ## Examples
+
+      iex> assoc_mixin_of?(:character, Bonfire.Data.Identity.User)
+      true
+
+      iex> assoc_mixin_of?(:non_existing_assoc_name, Bonfire.Data.Identity.User)
+      false
+  """
+  def assoc_mixin_of?(assoc_name, parent_type)
+      when is_atom(assoc_name) and is_atom(parent_type) do
+    schema_mixin_assocs(parent_type)
+    |> debug(inspect(parent_type))
+    |> Enum.member?(assoc_name)
+  end
+
+  def assoc_mixin_of?(_, _), do: false
 end

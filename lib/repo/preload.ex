@@ -38,22 +38,7 @@ defmodule Bonfire.Common.Repo.Preload do
       iex> preload_mixins(some_struct)
   """
   def preload_mixins(%{} = structure, opts \\ []) do
-    maybe_preload(structure, schema_mixins(structure), opts)
-  end
-
-  @doc """
-  Retrieves schema mixins for a given Ecto struct.
-
-  ## Examples
-
-      iex> schema_mixins(some_struct)
-      [:assoc1, :assoc2]
-  """
-  def schema_mixins(%{} = structure) do
-    mixin_modules = Tables.mixin_modules()
-
-    for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(structure), do: key)
-    |> Enum.filter(&(&1 in mixin_modules))
+    maybe_preload(structure, Needles.Tables.schema_mixins_not_loaded(structure), opts)
   end
 
   # def maybe_preload(obj, :context) do

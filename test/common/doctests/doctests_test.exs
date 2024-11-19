@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.DocsTest do
   use Bonfire.Common.DataCase, async: true
+  alias Needle.Pointer
 
   Bonfire.Common.Config.put(:test_key, "test_value")
 
@@ -24,4 +25,7 @@ defmodule Bonfire.Common.DocsTest do
   doctest Bonfire.Common.Text, import: true
   doctest Bonfire.Common.Types, import: true
   doctest Bonfire.Common.URIs, import: true
+
+  # doctest Bonfire.Common.Needles, import: true
+  doctest Bonfire.Common.Needles.Tables, import: true
 end
