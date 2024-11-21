@@ -96,7 +96,9 @@ defmodule Bonfire.Common.Text do
     do: :binary.split(string, ["\r", "\n", "\r\n"], [:global])
 
   @doc """
-  Generates a random string of a given length.
+  Generates a *random* string of a given length. 
+
+  See also `unique_string/1` and `unique_integer/1`
 
   ## Examples
 
@@ -106,10 +108,37 @@ defmodule Bonfire.Common.Text do
       > random_string()
       #=> a string of length 10
   """
-  def random_string(length \\ 10) do
-    :crypto.strong_rand_bytes(length)
+  def random_string(str_length \\ 10) do
+    :crypto.strong_rand_bytes(str_length)
     |> Base.url_encode64()
-    |> binary_part(0, length)
+    |> binary_part(0, str_length)
+  end
+
+  @doc """
+  Generates a *unique* random string.
+
+  "Unique" means that this function will not return the same string more than once on the current OTP runtime.
+
+  ## Examples
+
+      iex> unique_string()
+  """
+  def unique_string() do
+    unique_integer()
+    |> Integer.to_string(16)
+  end
+
+  @doc """
+  Generates a *unique* random integer.
+
+  "Unique" means that this function will not return the same integer more than once on the current OTP runtime.
+
+  ## Examples
+
+      iex> unique_integer()
+  """
+  def unique_integer() do
+    System.unique_integer([:positive])
   end
 
   @doc """

@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   """
   import Untangle
   use Bonfire.Common.Localise
+  alias Bonfire.Common.Text
 
   @doc """
   Generates a diff between the specified reference or branch and the latest commit in the repository.
@@ -242,8 +243,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   end
 
   def tmp_path(prefix) do
-    random_string = Base.encode16(:crypto.strong_rand_bytes(4))
-    Path.join([System.tmp_dir!(), prefix <> random_string])
+    Path.join([System.tmp_dir!(), prefix <> Text.unique_string()])
   end
 
   def root, do: Bonfire.Common.Config.get(:root_path)
