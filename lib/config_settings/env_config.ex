@@ -237,5 +237,4 @@ defmodule Bonfire.Common.EnvConfig do
     do: Keyword.put(opts, :type, type)
 
   defp prepare_want_map_schema(v), do: v
-
 end

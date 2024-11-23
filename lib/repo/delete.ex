@@ -19,7 +19,7 @@ defmodule Bonfire.Common.Repo.Delete do
       iex> soft_delete(non_existent_entry)
       {:error, :deletion_error}
   """
-  def soft_delete(it), do: deletion_result(do_soft_delete(it))
+  def soft_delete(it), do: do_soft_delete(it) |> deletion_result()
 
   @spec soft_delete!(any()) :: any()
   @doc """
@@ -33,7 +33,7 @@ defmodule Bonfire.Common.Repo.Delete do
       iex> soft_delete!(non_existent_entry)
       ** (RuntimeError) :deletion_error
   """
-  def soft_delete!(it), do: deletion_result!(do_soft_delete(it))
+  def soft_delete!(it), do: do_soft_delete(it) |> deletion_result!()
 
   @doc """
   Marks an entry as not deleted.
@@ -149,40 +149,40 @@ defmodule Bonfire.Common.Repo.Delete do
       ** (RuntimeError) :deletion_error
   """
   def hard_delete!(it),
-    do: deletion_result!(hard_delete(it))
+    do: hard_delete(it) |> deletion_result!()
 
-  # FIXME: boilerplate code, or should this be removed in favour of checking authorisation in contexts?
-  def maybe_allow_delete?(user, context) do
-    Map.get(Map.get(user, :local_user, %{}), :is_instance_admin) or
-      maybe_creator_allow_delete?(user, context)
-  end
+  # TODO: boilerplate code, or should this be removed in favour of checking authorisation in contexts? also it should use boundaries
+  # def maybe_allow_delete?(user, object) do
+  #   Map.get(Map.get(user, :local_user, %{}), :is_instance_admin) or
+  #     maybe_creator_allow_delete?(user, object)
+  # end
 
-  defp maybe_creator_allow_delete?(%{id: user_id}, %{creator_id: creator_id})
-       when not is_nil(creator_id) and not is_nil(user_id) do
-    creator_id == user_id
-  end
+  # defp maybe_creator_allow_delete?(%{id: user_id}, %{creator_id: creator_id})
+  #      when not is_nil(creator_id) and not is_nil(user_id) do
+  #   creator_id == user_id
+  # end
 
-  defp maybe_creator_allow_delete?(%{id: user_id}, %{
-         profile: %{creator_id: creator_id}
-       })
-       when not is_nil(creator_id) and not is_nil(user_id) do
-    creator_id == user_id
-  end
+  # defp maybe_creator_allow_delete?(%{id: user_id}, %{
+  #        profile: %{creator_id: creator_id}
+  #      })
+  #      when not is_nil(creator_id) and not is_nil(user_id) do
+  #   creator_id == user_id
+  # end
 
-  defp maybe_creator_allow_delete?(%{id: user_id}, %{
-         character: %{creator_id: creator_id}
-       })
-       when not is_nil(creator_id) and not is_nil(user_id) do
-    creator_id == user_id
-  end
+  # defp maybe_creator_allow_delete?(%{id: user_id}, %{
+  #        character: %{creator_id: creator_id}
+  #      })
+  #      when not is_nil(creator_id) and not is_nil(user_id) do
+  #   creator_id == user_id
+  # end
 
-  # allow to delete self
-  defp maybe_creator_allow_delete?(%{id: user_id}, %{id: id})
-       when not is_nil(id) and not is_nil(user_id) do
-    id == user_id
-  end
+  # # allow to delete self
+  # defp maybe_creator_allow_delete?(%{id: user_id}, %{id: id})
+  #      when not is_nil(id) and not is_nil(user_id) do
+  #   id == user_id
+  # end
 
-  defp maybe_creator_allow_delete?(_, _), do: false
+  # defp maybe_creator_allow_delete?(_, _), do: false
 
   def deletion_result({:error, e}) do
     if module = maybe_module(Bonfire.Fail) do

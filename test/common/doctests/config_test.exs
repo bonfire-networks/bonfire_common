@@ -8,5 +8,5 @@ defmodule Bonfire.Common.ConfigTest do
   doctest Bonfire.Common.Settings, import: true
 
   alias Bonfire.Common.EnvConfig
-  doctest Bonfire.Common.EnvConfig, import: false 
+  doctest Bonfire.Common.EnvConfig, import: false
 end
