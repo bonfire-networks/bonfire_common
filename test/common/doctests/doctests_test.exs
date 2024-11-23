@@ -5,11 +5,7 @@ defmodule Bonfire.Common.DocsTest do
   Bonfire.Common.Config.put(:test_key, "test_value")
 
   doctest Bonfire.Common, import: true
-  doctest Bonfire.Common.Opts, import: false
   doctest Bonfire.Common.Utils, import: true
-
-  doctest Bonfire.Common.Config, import: true
-  doctest Bonfire.Common.Settings, import: true
 
   doctest Bonfire.Common.Localise, import: true
   doctest Bonfire.Common.Localise.Gettext, import: true

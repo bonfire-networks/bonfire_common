@@ -117,7 +117,7 @@ defmodule Bonfire.Common.Text do
   @doc """
   Generates a *unique* random string.
 
-  "Unique" means that this function will not return the same string more than once on the current OTP runtime.
+  "Unique" means that this function will not return the same string more than once on the current BEAM runtime, meaning until the application is next restarted.
 
   ## Examples
 
@@ -131,7 +131,7 @@ defmodule Bonfire.Common.Text do
   @doc """
   Generates a *unique* random integer.
 
-  "Unique" means that this function will not return the same integer more than once on the current OTP runtime.
+  "Unique" means that this function will not return the same integer more than once on the current BEAM runtime, meaning until the application is next restarted.
 
   ## Examples
 
