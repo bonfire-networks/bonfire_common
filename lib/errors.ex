@@ -107,10 +107,14 @@ defmodule Bonfire.Common.Errors do
 
   def debug_exception(msg, exception, stacktrace, kind, opts) do
     {error_msg, exception} =
-      if not is_exception(exception) do
-        {[error_msg(msg), error_msg(exception)], nil}
-      else
+      if is_exception(exception) do
         {error_msg(msg), exception}
+      else
+        if is_nil(exception) do
+          {error_msg(msg), nil}
+        else
+          {[error_msg(msg), error_msg(exception)], nil}
+        end
       end
 
     debug_log(msg, exception, stacktrace, kind, error_msg)

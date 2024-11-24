@@ -224,22 +224,30 @@ defmodule Bonfire.Common.URIs do
   def path_by_id(id, args, object, opts) when is_binary(id) do
     if Types.is_uid?(id) do
       with {:ok, pointer} <-
-             Cache.maybe_apply_cached(&Bonfire.Common.Needles.one/2, [
-               id,
-               [skip_boundary_check: true, preload: :character]
-             ]) do
-        debug(pointer, "path_by_id: found a pointer")
+             Cache.maybe_apply_cached(
+               &Bonfire.Common.Needles.one/2,
+               [
+                 id,
+                 [skip_boundary_check: true, preload: :character]
+               ],
+               check_env: false
+             ) do
+        debug(pointer, "found a pointer")
 
         (object || %{})
         |> Map.merge(pointer)
         |> path(args, opts)
       else
+        {:error, :not_found} ->
+          error(id, "could not find a Pointer for ID")
+          nil
+
         _ ->
-          warn("path_by_id: could not find a Pointer with id #{id}")
+          error(id, "unexpected error trying to find find a Pointer for ID")
           if opts[:fallback] != false, do: fallback(id, args)
       end
     else
-      warn("path_by_id: could not find a matching route for #{id}, using fallback path")
+      warn("could not find a matching route for #{id}, using fallback path")
       if opts[:fallback] != false, do: fallback(id, args)
     end
   end
@@ -277,7 +285,7 @@ defmodule Bonfire.Common.URIs do
     fallback_route = Needle.Pointer
     fallback_character_route = Bonfire.Data.Identity.Character
 
-    case path_id(Enum.at(args, id_at) |> debug()) |> debug() do
+    case path_id(Enum.at(args, id_at)) do
       maybe_username_or_id
       when is_binary(maybe_username_or_id) and not is_nil(maybe_username_or_id) ->
         if Types.is_uid?(maybe_username_or_id) do
