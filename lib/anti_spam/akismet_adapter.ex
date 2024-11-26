@@ -90,6 +90,10 @@ defmodule Bonfire.Common.AntiSpam.Akismet do
     else
       :ham
     end
+  rescue
+    e in HTTPoison.Error ->
+      error(e, "Could not connect to Akismet, skipping...")
+      :ham
   end
 
   # TODO: so the mod can confirm that it's spam or not to train the engine
