@@ -15,6 +15,7 @@ ex_cldr_dates_times = "~> 2.0"
 ex_cldr_units = "~> 3.0"
 ex_cldr_numbers = "~> 2.33.2"
 ex_cldr_locale_display = "~> 1.1"
+ex_cldr_territories = "~> 2.9"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.8.0" # string recasing
 
