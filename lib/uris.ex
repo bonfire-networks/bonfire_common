@@ -115,8 +115,6 @@ defmodule Bonfire.Common.URIs do
               :path,
               ...,
               fn error, details ->
-                IO.inspect(error, label: "reverse_failed")
-
                 if opts[:fallback] == false do
                   debug(details, inspect(error))
                 else

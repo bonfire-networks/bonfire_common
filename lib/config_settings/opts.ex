@@ -72,6 +72,8 @@ defmodule Bonfire.Common.Opts do
         debug(Types.typeof(user_or_socket_or_opts), "No opts found in")
         [context: user_or_socket_or_opts]
     end
+
+    # |> debug()
   end
 
   @doc """
