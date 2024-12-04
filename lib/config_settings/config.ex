@@ -1,9 +1,9 @@
 defmodule Bonfire.Common.Config do
   @moduledoc "Helpers to get app/extension OTP config, or to override a config key. Basically a wrapper of `Application.get_env/3` and `Application.put_env/3`."
 
-  use Bonfire.Common.E
   import Bonfire.Common.Extend
   import Untangle
+  alias Bonfire.Common.E
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
   alias Bonfire.Common.Enums
@@ -321,7 +321,7 @@ defmodule Bonfire.Common.Config do
     access_nil = fn key ->
       fn
         :get, data, next ->
-          next.(e(data, key, []))
+          next.(E.ed(data, key, []))
 
         :get_and_update, data, next ->
           data = Keyword.new(data)
