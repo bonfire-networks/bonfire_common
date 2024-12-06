@@ -6,6 +6,7 @@ defmodule Bonfire.Common.E do
   import Untangle
 
   alias Bonfire.Common
+  alias Bonfire.Common.Config
   alias Bonfire.Common.Enums
 
   defmacro __using__(_opts \\ []) do
@@ -65,153 +66,166 @@ defmodule Bonfire.Common.E do
       "value"
 
   """
-  defmacro e(object, key1, fallback) do
-    quote do
-      key1 = unquote(key1)
-      object = unquote(object)
+  #  in case Pathex was disabled in config, we use the runtime `ed` functions instead
+  if Config.get(:use_pathex, true) do
+    defmacro e(object, key1, fallback) do
+      quote do
+        key1 = unquote(key1)
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(key1),
-             nil
-           ) do
-        nil -> Common.E.pathex_fallback(object, [key1], unquote(fallback))
-        ret -> Common.maybe_fallback(ret, unquote(fallback))
+        case Pathex.get(
+               object,
+               Pathex.path(key1),
+               nil
+             ) do
+          nil -> Common.E.pathex_fallback(object, [key1], unquote(fallback))
+          ret -> Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  defmacro e(object, key1, key2, fallback) do
-    quote do
-      object = unquote(object)
+    defmacro e(object, key1, key2, fallback) do
+      quote do
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(unquote(key1) / unquote(key2)),
-             nil
-           ) do
-        nil -> Common.E.pathex_fallback(object, [unquote(key1), unquote(key2)], unquote(fallback))
-        ret -> Common.maybe_fallback(ret, unquote(fallback))
+        case Pathex.get(
+               object,
+               Pathex.path(unquote(key1) / unquote(key2)),
+               nil
+             ) do
+          nil ->
+            Common.E.pathex_fallback(object, [unquote(key1), unquote(key2)], unquote(fallback))
+
+          ret ->
+            Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  defmacro e(object, key1, key2, key3, fallback) do
-    quote do
-      object = unquote(object)
+    defmacro e(object, key1, key2, key3, fallback) do
+      quote do
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(unquote(key1) / unquote(key2) / unquote(key3)),
-             nil
-           ) do
-        nil ->
-          Common.E.pathex_fallback(
-            object,
-            [unquote(key1), unquote(key2), unquote(key3)],
-            unquote(fallback)
-          )
+        case Pathex.get(
+               object,
+               Pathex.path(unquote(key1) / unquote(key2) / unquote(key3)),
+               nil
+             ) do
+          nil ->
+            Common.E.pathex_fallback(
+              object,
+              [unquote(key1), unquote(key2), unquote(key3)],
+              unquote(fallback)
+            )
 
-        ret ->
-          Common.maybe_fallback(ret, unquote(fallback))
+          ret ->
+            Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  defmacro e(object, key1, key2, key3, key4, fallback) do
-    quote do
-      object = unquote(object)
+    defmacro e(object, key1, key2, key3, key4, fallback) do
+      quote do
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4)),
-             nil
-           ) do
-        nil ->
-          Common.E.pathex_fallback(
-            object,
-            [unquote(key1), unquote(key2), unquote(key3), unquote(key4)],
-            unquote(fallback)
-          )
+        case Pathex.get(
+               object,
+               Pathex.path(unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4)),
+               nil
+             ) do
+          nil ->
+            Common.E.pathex_fallback(
+              object,
+              [unquote(key1), unquote(key2), unquote(key3), unquote(key4)],
+              unquote(fallback)
+            )
 
-        ret ->
-          Common.maybe_fallback(ret, unquote(fallback))
+          ret ->
+            Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  defmacro e(object, key1, key2, key3, key4, key5, fallback) do
-    quote do
-      object = unquote(object)
+    defmacro e(object, key1, key2, key3, key4, key5, fallback) do
+      quote do
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(
-               unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5)
-             ),
-             nil
-           ) do
-        nil ->
-          Common.E.pathex_fallback(
-            object,
-            [unquote(key1), unquote(key2), unquote(key3), unquote(key4), unquote(key5)],
-            unquote(fallback)
-          )
+        case Pathex.get(
+               object,
+               Pathex.path(
+                 unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5)
+               ),
+               nil
+             ) do
+          nil ->
+            Common.E.pathex_fallback(
+              object,
+              [unquote(key1), unquote(key2), unquote(key3), unquote(key4), unquote(key5)],
+              unquote(fallback)
+            )
 
-        ret ->
-          Common.maybe_fallback(ret, unquote(fallback))
+          ret ->
+            Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  defmacro e(object, key1, key2, key3, key4, key5, key6, fallback) do
-    quote do
-      object = unquote(object)
+    defmacro e(object, key1, key2, key3, key4, key5, key6, fallback) do
+      quote do
+        object = unquote(object)
 
-      case Pathex.get(
-             object,
-             Pathex.path(
-               unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5) /
-                 unquote(key6)
-             ),
-             nil
-           ) do
-        nil ->
-          Common.E.pathex_fallback(
-            object,
-            [
-              unquote(key1),
-              unquote(key2),
-              unquote(key3),
-              unquote(key4),
-              unquote(key5),
-              unquote(key6)
-            ],
-            unquote(fallback)
-          )
+        case Pathex.get(
+               object,
+               Pathex.path(
+                 unquote(key1) / unquote(key2) / unquote(key3) / unquote(key4) / unquote(key5) /
+                   unquote(key6)
+               ),
+               nil
+             ) do
+          nil ->
+            Common.E.pathex_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2),
+                unquote(key3),
+                unquote(key4),
+                unquote(key5),
+                unquote(key6)
+              ],
+              unquote(fallback)
+            )
 
-        ret ->
-          Common.maybe_fallback(ret, unquote(fallback))
+          ret ->
+            Common.maybe_fallback(ret, unquote(fallback))
+        end
       end
     end
-  end
 
-  def pathex_fallback({:ok, object}, keys, fallback) do
-    # TODO: can we pattern match that before the first call to Pathex instead? 
-    # apply(__MODULE__, :e, [object] ++ keys ++ [fallback])
-    # e(object, unquote_splicing(keys), fallback)
-    # quote do
-    #   e(object, unquote_splicing(keys), fallback)
-    # end
-    apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
-  end
+    def pathex_fallback({:ok, object}, keys, fallback) do
+      # TODO: can we pattern match that before the first call to Pathex instead? 
+      # apply(__MODULE__, :e, [object] ++ keys ++ [fallback])
+      # e(object, unquote_splicing(keys), fallback)
+      # quote do
+      #   e(object, unquote_splicing(keys), fallback)
+      # end
+      apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
+    end
 
-  def pathex_fallback(%{__context__: object}, keys, fallback) do
-    apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
-  end
+    def pathex_fallback(%{__context__: object}, keys, fallback) do
+      apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
+    end
 
-  def pathex_fallback(_object, _keys, fallback) do
-    Common.maybe_fallback(nil, fallback)
+    def pathex_fallback(_object, _keys, fallback) do
+      Common.maybe_fallback(nil, fallback)
+    end
+  else
+    defdelegate e(object, key1, fallback), to: __MODULE__, as: :ed
+    defdelegate e(object, key1, key2, fallback), to: __MODULE__, as: :ed
+    defdelegate e(object, key1, key2, key3, fallback), to: __MODULE__, as: :ed
+    defdelegate e(object, key1, key2, key3, key4, fallback), to: __MODULE__, as: :ed
+    defdelegate e(object, key1, key2, key3, key4, key5, fallback), to: __MODULE__, as: :ed
+    defdelegate e(object, key1, key2, key3, key4, key5, key6, fallback), to: __MODULE__, as: :ed
   end
 
   @doc """

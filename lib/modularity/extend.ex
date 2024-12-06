@@ -4,7 +4,6 @@ defmodule Bonfire.Common.Extend do
   """
   use Arrows
   use Untangle
-  use Bonfire.Common.E
   alias Bonfire.Common.Config
   alias Bonfire.Common.Opts
   alias Bonfire.Common.Utils

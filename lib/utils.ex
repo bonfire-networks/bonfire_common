@@ -95,14 +95,6 @@ defmodule Bonfire.Common.Utils do
     description: l("Common utilities and functionality used by most other extensions.")
   )
 
-  # defdelegate e(object, fallback \\ nil), to: Bonfire.Common.E
-  # defdelegate e(object, key1, fallback), to: Bonfire.Common.E
-  # defdelegate e(object, key1, key2, fallback), to: Bonfire.Common.E
-  # defdelegate e(object, key1, key2, key3, fallback), to: Bonfire.Common.E
-  # defdelegate e(object, key1, key2, key3, key4, fallback), to: Bonfire.Common.E
-  # defdelegate e(object, key1, key2, key3, key4, key5, fallback), to: Bonfire.Common.E
-  # defdelegate e(object, key1, key2, key3, key4, key5, key6, fallback), to: Bonfire.Common.E
-
   @doc """
   Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
   """
