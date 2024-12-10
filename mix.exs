@@ -1,5 +1,9 @@
 Code.eval_file("mess.exs", if(File.exists?("../../lib/mix/mess.exs"), do: "../../lib/mix/"))
-Code.eval_file("mixer.ex", if(File.exists?("../../lib/mix/mixer.ex"), do: "../../lib/mix/", else: "./lib/mix/"))
+
+Code.eval_file(
+  "mixer.ex",
+  if(File.exists?("../../lib/mix/mixer.ex"), do: "../../lib/mix/", else: "./lib/mix/")
+)
 
 defmodule Bonfire.Common.MixProject do
   use Mix.Project
@@ -25,14 +29,17 @@ defmodule Bonfire.Common.MixProject do
         deps:
           Mess.deps([
             {:assert_value, ">= 0.0.0", only: [:dev, :test]},
+            {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
             {:zest, "~> 0.1", optional: true},
             {:sentry, "~> 10.0", optional: true},
             {:dataloader, "~> 2.0", optional: true},
             {:floki, "~> 0.36", optional: true},
-            {:emote,
-            "~> 0.1",
-            #  git: "https://github.com/bonfire-networks/emote", 
-             optional: true},
+            {
+              :emote,
+              "~> 0.1",
+              #  git: "https://github.com/bonfire-networks/emote",
+              optional: true
+            },
             {:text, "~> 0.2.0", optional: true},
             {:text_corpus_udhr, "~> 0.1.0", optional: true},
             {:bumblebee, "~> 0.6.0", optional: true},
@@ -46,7 +53,7 @@ defmodule Bonfire.Common.MixProject do
       ]
   end
 
-    defp elixirc_paths(:test), do: ["test/support" | elixirc_paths(:dev)]
+  defp elixirc_paths(:test), do: ["test/support" | elixirc_paths(:dev)]
   defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
