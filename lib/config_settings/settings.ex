@@ -430,7 +430,7 @@ defmodule Bonfire.Common.Settings do
       values_to_integers: true,
       also_discard_unknown_nested_keys: false
     )
-    |> debug("input_to_atoms")
+    |> debug("send to hooks")
     # |> maybe_to_keyword_list(true)
     # |> debug("maybe_to_keyword_list")
     |> set_with_hooks(to_options(opts))
@@ -485,13 +485,14 @@ defmodule Bonfire.Common.Settings do
       values_to_integers: true,
       also_discard_unknown_nested_keys: false
     )
-    |> debug("settings as atoms")
+    |> debug("send to hooks")
     |> set_with_hooks(to_options(opts))
   end
 
   def set(settings, opts) when is_list(settings) do
     # TODO: optimise (do not convert to map and then back)
     Enum.into(settings, %{})
+    |> debug("send to hooks")
     |> set_with_hooks(to_options(opts))
   end
 
@@ -532,12 +533,15 @@ defmodule Bonfire.Common.Settings do
 
   # TODO: find a better, more pluggable way to add hooks to settings
   defp set_with_hooks(
-         %{Bonfire.Me.Users => %{undiscoverable: true}, scope: :user} = attrs,
+         %{Bonfire.Me.Users => %{undiscoverable: true}} = attrs,
          opts
        ) do
     current_user = current_user_required!(opts)
 
-    do_set(attrs, opts)
+    # TODO: move this code somewhere else
+
+    maybe_apply(Bonfire.Search.Indexer, :maybe_delete_object, [current_user])
+    |> debug("deleetd?")
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
@@ -548,15 +552,15 @@ defmodule Bonfire.Common.Settings do
       current_user,
       :guests_may_read
     )
+
+    do_set(attrs, opts)
   end
 
   defp set_with_hooks(
-         %{Bonfire.Me.Users => %{undiscoverable: _}, scope: :user} = attrs,
+         %{Bonfire.Me.Users => %{undiscoverable: _}} = attrs,
          opts
        ) do
     current_user = current_user_required!(opts)
-
-    do_set(attrs, opts)
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
@@ -567,6 +571,8 @@ defmodule Bonfire.Common.Settings do
       current_user,
       :guests_may_see_read
     )
+
+    do_set(attrs, opts)
   end
 
   defp set_with_hooks(attrs, opts) do
