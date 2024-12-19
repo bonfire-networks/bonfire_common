@@ -50,7 +50,7 @@ defmodule Mix.Tasks.Bonfire.Localise.Extract do
       Bonfire.Mixer.deps_names_for(:localise_self, mix_config)
       |> debug("other deps to localise")
 
-    Mix.Tasks.Bonfire.Deps.Compile.touch_manifests()
+    Mix.Tasks.Bonfire.Extension.Compile.touch_manifests()
 
     IO.puts(
       "First extract strings from all deps that use the Gettext module in bonfire_common..."
@@ -87,7 +87,7 @@ defmodule Mix.Tasks.Bonfire.Localise.Extract do
   defp extract(app, gettext_config, deps_to_localise) do
     Gettext.Extractor.enable()
 
-    Mix.Tasks.Bonfire.Deps.Compile.force_compile(deps_to_localise)
+    Mix.Tasks.Bonfire.Extension.Compile.force_compile(deps_to_localise)
 
     Gettext.Extractor.pot_files(
       app,

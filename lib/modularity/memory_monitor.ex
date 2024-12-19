@@ -5,7 +5,7 @@ defmodule Bonfire.Common.MemoryMonitor do
   """
 
   use GenServer
-  import Logger
+  require Logger
 
   @time_to_check :timer.seconds(10)
 

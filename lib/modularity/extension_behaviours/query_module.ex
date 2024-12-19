@@ -4,7 +4,9 @@ defmodule Bonfire.Common.QueryModule do
   Back by a global cache of known query_modules to be queried by their schema, or vice versa.
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
-  use Bonfire.Common.Utils, only: [e: 3]
+  use Bonfire.Common.E
+  alias Bonfire.Common.Utils
+  import Untangle
 
   @doc "Declares a query module"
   @callback query_module() :: any
@@ -14,6 +16,8 @@ defmodule Bonfire.Common.QueryModule do
 
   @doc "Points to the related context module"
   @callback context_module() :: atom
+
+  @optional_callbacks query_module: 0, schema_module: 0, context_module: 0
 
   def maybe_query(
         schema,

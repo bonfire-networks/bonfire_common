@@ -3,7 +3,7 @@ defmodule Bonfire.Common.Repo.Utils do
   @moduledoc "Helper functions for changesets"
 
   alias Ecto.Changeset
-  alias Bonfire.Mailer.Checker
+  alias Bonfire.Common.Utils
 
   # @doc "Generates the primary ID for an object, and sets the canonical URL based on that"
   # def cast_object(changeset) do
@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Repo.Utils do
   @doc "Validates an email for correctness"
   def validate_email(changeset, field) do
     with {:ok, email} <- Changeset.fetch_change(changeset, field),
-         {:error, reason} <- Checker.validate_email(email) do
+         {:error, reason} <- Utils.maybe_apply(Bonfire.Mailer.Checker, :validate_email, [email]) do
       message = validate_email_message(reason)
       Changeset.add_error(changeset, field, message, validation: reason)
     else
@@ -41,7 +41,7 @@ defmodule Bonfire.Common.Repo.Utils do
   @spec validate_email_domain(Changeset.t(), atom) :: Changeset.t()
   def validate_email_domain(changeset, field) do
     with {:ok, domain} <- Changeset.fetch_change(changeset, field),
-         {:error, reason} <- Checker.validate_domain(domain) do
+         {:error, reason} <- Utils.maybe_apply(Bonfire.Mailer.Checker, :validate_email, [domain]) do
       message = validate_email_message(reason)
       Changeset.add_error(changeset, field, message, validation: reason)
     else

@@ -9,7 +9,7 @@ defmodule Bonfire.Common.AntiSpam.BumblebeeAdapter do
   @behaviour Provider
 
   @impl Provider
-  def check_current_user(context) do
+  def check_current_user(_context) do
     # TODO: check profile instead?
     :ham
   end
@@ -91,16 +91,15 @@ defmodule Bonfire.Common.AntiSpam.BumblebeeAdapter do
 
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, tokenizer || model})
 
-    serving =
-      Bumblebee.Text.text_classification(model_info, tokenizer,
-        compile: [batch_size: 1, sequence_length: 100],
-        defn_options: [compiler: EXLA]
-      )
+    Bumblebee.Text.text_classification(model_info, tokenizer,
+      compile: [batch_size: 1, sequence_length: 100],
+      defn_options: [compiler: EXLA]
+    )
   end
 
   @impl Provider
   def ready?, do: module_enabled?(Bumblebee)
 
-  defp log_response(res),
-    do: tap(res, fn res -> debug(res, "Return from Akismet is") end)
+  # defp log_response(res),
+  #   do: tap(res, fn res -> debug(res, "Analysis from AI anti-spam is") end)
 end

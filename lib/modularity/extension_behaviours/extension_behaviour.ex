@@ -23,8 +23,8 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
 
-  defp prepare_data_for_cache(behaviours \\ find_extension_behaviours()) do
-    app_modules_to_scan = app_modules_to_scan(cache: true)
+  defp prepare_data_for_cache() do
+    _app_modules_to_scan = app_modules_to_scan(cache: true)
 
     # first find all *declared* behaviours (which are a behaviour of this module)
     find_extension_behaviours()

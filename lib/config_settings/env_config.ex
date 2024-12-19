@@ -31,8 +31,10 @@ defmodule Bonfire.Common.EnvConfig do
   ### Basic usage (usage as a `Want` custom type)
 
       iex> System.put_env("TESTA_DB_HOST", "localhost")
-      iex> Want.cast(System.get_env(), EnvConfig, prefix: "TESTA_DB") # FIXME: Want doesn't currently have a way to cast with a custom type at the top-level, only for data within a map or keyword list
+      iex> EnvConfig.cast(System.get_env(), prefix: "TESTA_DB") 
       {:ok, %{"host"=> "localhost"}}
+      # iex> Want.cast(System.get_env(), EnvConfig, prefix: "TESTA_DB") # FIXME: Want doesn't currently have a way to cast with a custom type at the top-level, only for data within a map or keyword list
+      # {:ok, %{"host"=> "localhost"}}
 
   ### Basic usage with prefix only (direct usage)
 
@@ -120,14 +122,15 @@ defmodule Bonfire.Common.EnvConfig do
   end
 
   def parse(input \\ nil, opts) do
-    prefix = Keyword.fetch!(opts, :prefix)
     indexed_list = Keyword.get(opts, :indexed_list, false)
 
     parse_configs(input || System.get_env(), indexed_list, opts)
   end
 
   defp parse_configs(env, false, opts) do
-    with {:ok, config} <- parse_env_vars(env, opts) do
+    prefix = Keyword.fetch!(opts, :prefix)
+
+    with {:ok, config} <- parse_env_vars(prefix, env, opts) do
       config
     end
   end
@@ -140,7 +143,7 @@ defmodule Bonfire.Common.EnvConfig do
     Stream.iterate(0, &(&1 + 1))
     |> Stream.take(max_index + 1)
     |> Stream.transform({[], 0}, fn index, {acc, empty_count} ->
-      config = parse_env_vars(index, env, opts)
+      config = parse_env_vars(index, prefix, env, opts)
 
       case config do
         nil ->
@@ -160,8 +163,7 @@ defmodule Bonfire.Common.EnvConfig do
     |> Enum.to_list()
   end
 
-  defp parse_env_vars(index \\ nil, env, opts) do
-    prefix = Keyword.fetch!(opts, :prefix)
+  defp parse_env_vars(index \\ nil, prefix, env, opts) do
     want_unknown_keys = Keyword.get(opts, :want_unknown_keys, false)
     want_values = Keyword.get(opts, :want_values)
     transform_keys = Keyword.get(opts, :transform_keys, & &1)

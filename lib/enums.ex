@@ -8,9 +8,9 @@ defmodule Bonfire.Common.Enums do
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Extend
   alias Ecto.Changeset
-  alias Bonfire.Common
+  # alias Bonfire.Common
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Text
+  # alias Bonfire.Common.Text
   alias Bonfire.Common.Types
   alias Bonfire.Common.Utils
 
@@ -380,7 +380,7 @@ defmodule Bonfire.Common.Enums do
   Takes any element, an index and a fallback value. If the element is a Tuple it returns either the tuple value at that index, otherwise it returns the fallback. If the tuple doesn't contain such an index, it raises `ArgumentError`.
   """
   def maybe_elem(tuple, index, fallback \\ nil)
-  def maybe_elem(tuple, index, fallback) when is_tuple(tuple), do: elem(tuple, index)
+  def maybe_elem(tuple, index, _fallback) when is_tuple(tuple), do: elem(tuple, index)
   def maybe_elem(_, _index, fallback), do: fallback
 
   @doc "Renames a key in a map. Optionally changes the value as well."
@@ -709,8 +709,12 @@ defmodule Bonfire.Common.Enums do
     if Enumerable.impl_for(data) do
       data
       |> Enum.map(fn
-        {a, b} -> {a, maybe_to_map(b, true)}
-        other -> throw(:not_tuples)
+        {a, b} ->
+          {a, maybe_to_map(b, true)}
+
+        other ->
+          debug(other, "Expected a tuple")
+          throw(:not_tuples)
       end)
       |> Map.new()
     else
@@ -787,16 +791,16 @@ defmodule Bonfire.Common.Enums do
             # {:__not_kv__, true}
         end),
       else: object
+  rescue
+    e ->
+      warn(e)
+      debug(__STACKTRACE__)
+      object
   catch
     :__item_discarded__ ->
       Map.new(object)
 
     :__not_kv__ ->
-      object
-  rescue
-    e ->
-      warn(e)
-      debug(__STACKTRACE__)
       object
   end
 
@@ -964,7 +968,7 @@ defmodule Bonfire.Common.Enums do
 
   defp input_to_atoms(
          %{} = data,
-         true = discard_unknown_keys,
+         true = _discard_unknown_keys,
          including_values,
          also_discard_unknown_nested_keys,
          force,
@@ -1008,7 +1012,7 @@ defmodule Bonfire.Common.Enums do
 
   defp input_to_atoms(
          %{} = data,
-         false = discard_unknown_keys,
+         false = _discard_unknown_keys,
          including_values,
          also_discard_unknown_nested_keys,
          force,
@@ -1035,7 +1039,7 @@ defmodule Bonfire.Common.Enums do
 
   defp input_to_atoms(
          list,
-         true = discard_unknown_keys,
+         true = _discard_unknown_keys,
          including_values,
          also_discard_unknown_nested_keys,
          force,
@@ -1071,7 +1075,7 @@ defmodule Bonfire.Common.Enums do
 
   defp input_to_atoms(
          list,
-         _false = discard_unknown_keys,
+         false = _discard_unknown_keys,
          including_values,
          also_discard_unknown_nested_keys,
          force,
@@ -1573,7 +1577,7 @@ defmodule Bonfire.Common.Enums do
 
   defp group([], acc, _), do: acc
 
-  defp group_item(key, value, acc)
+  defp group_item(key, _value, acc)
        when is_map_key(acc, key),
        do: throw("Expected a unique value")
 
@@ -1602,7 +1606,7 @@ defmodule Bonfire.Common.Enums do
 
   defp group_map([], acc, _), do: acc
 
-  defp group_map_item({key, value}, acc)
+  defp group_map_item({key, _value}, acc)
        when is_map_key(acc, key),
        do: throw("Expected a unique value")
 
@@ -1610,39 +1614,64 @@ defmodule Bonfire.Common.Enums do
     do: Map.put(acc, key, value)
 
   @doc """
-  Applies a function from one of Elixir's `Map`, `Keyword`, or `List` modules depending on the type of the given enumerable.
+  Applies a function from one of Elixir's `Map`, `Keyword`, `List`, `Tuple` modules depending on the type of the given enumerable, or using a function in `Enum` if no specific one is defined.
 
   ## Examples
 
       > Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
+      # runs `Map.values/1`
       [2, 1]
 
       iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
+      # runs `Keyword.values/1`
       [1, 2]
 
       iex> Bonfire.Common.Enums.fun([1, 2, 3], :first)
+      # runs `List.first/1`
       1
+
+      iex> Bonfire.Common.Enums.fun({1, 2}, :sum)
+      # runs `Tuple.sum/1`
+      3
+
+      iex> Bonfire.Common.Enums.fun({1, 2}, :last)
+      # runs `List.last/1` after converting the tuple to a list
+      2
+      
+      iex> Bonfire.Common.Enums.fun([1, 2, 3], :sum)
+      # runs `Enum.sum/1` because there's no `List.sum/1`
+      6
+      
   """
   def fun(map, fun, args \\ [])
 
   def fun(map, fun, args) when is_map(map) do
-    Utils.maybe_apply(Map, fun, [map] ++ List.wrap(args))
+    args = [map] ++ List.wrap(args)
+
+    Utils.maybe_apply(Map, fun, args, fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end)
   end
 
   def fun(list, fun, args) when is_list(list) do
+    args = [list] ++ List.wrap(args)
+
     if Keyword.keyword?(list) do
-      Utils.maybe_apply(Keyword, fun, [list] ++ List.wrap(args))
+      Utils.maybe_apply(Keyword, fun, args,
+        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
+      )
     else
-      Utils.maybe_apply(List, fun, [list] ++ List.wrap(args))
+      Utils.maybe_apply(List, fun, args,
+        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
+      )
     end
   end
 
-  defp maybe_fun(module, enum, fun, args) when is_map(enum) do
-    args = [enum] ++ List.wrap(args)
-
-    if function_exported?(module, fun, length(args)),
-      do: Utils.maybe_apply(module, fun, args),
-      else: Utils.maybe_apply(Enum, fun, args)
+  def fun(tuple, func, args) when is_tuple(tuple) do
+    # Note: tuples aren't technically enumerables, but included for convenience
+    Utils.maybe_apply(Tuple, func, [tuple] ++ List.wrap(args),
+      fallback_fun: fn ->
+        fun(Tuple.to_list(tuple), func, args)
+      end
+    )
   end
 
   @doc """

@@ -31,24 +31,22 @@ defmodule Bonfire.Common.Utils do
 
   use Arrows
   alias Bonfire.Common
-  # require Bonfire.Common.Localise.Gettext
-  # import Bonfire.Common.Localise.Gettext.Helpers
   # import Common.Config, only: [repo: 0]
   use Untangle
   require Logger
   use Common.E
   # alias Common.Text
   alias Common.Opts
-  alias Common.Cache
+  # alias Common.Cache
   alias Common.Enums
   alias Common.Errors
   alias Common.Extend
   alias Common.Types
   import Bonfire.Common.Modularity.DeclareHelpers
-  require Bonfire.Common.Localise.Gettext
+  use Gettext, backend: Bonfire.Common.Localise.Gettext
   import Bonfire.Common.Localise.Gettext.Helpers
 
-  defmacro __using__(opts) do
+  defmacro common_utils(opts \\ []) do
     quote do
       import Untangle
       use Arrows
@@ -67,10 +65,6 @@ defmodule Bonfire.Common.Utils do
       import Common.URIs
       import Bonfire.Common.Modularity.DeclareHelpers
 
-      # localisation
-      require Bonfire.Common.Localise.Gettext
-      import Bonfire.Common.Localise.Gettext.Helpers
-
       alias Common.Utils
       alias Common.Cache
       alias Common.Config
@@ -86,6 +80,16 @@ defmodule Bonfire.Common.Utils do
       alias Common.HTTP
       alias Common.Settings
       alias Bonfire.Boundaries
+    end
+  end
+
+  defmacro __using__(opts) do
+    quote do
+      # localisation
+      use Gettext, backend: Bonfire.Common.Localise.Gettext
+      import Bonfire.Common.Localise.Gettext.Helpers
+
+      Bonfire.Common.Utils.common_utils(unquote(opts))
     end
   end
 
@@ -135,8 +139,8 @@ defmodule Bonfire.Common.Utils do
       %{current_user: %{id: _} = user} ->
         user
 
-      %{current_user: nil} ->
-        nil
+      # %{current_user: nil} ->
+      #   nil
 
       # %{current_user: id} when is_binary(id) ->
       #   Cache.get!("current_user:#{id}") || %{id: id}
@@ -159,10 +163,10 @@ defmodule Bonfire.Common.Utils do
       %{__context__: %{current_user: _} = context} = _assigns ->
         current_user(context, true)
 
-      %{socket: socket} = _socket ->
+      %{socket: %{} = socket} = _socket ->
         current_user(socket, true)
 
-      %{context: %{} = context} = _api_opts ->
+      %{context: %{current_user: _} = context} = _api_opts ->
         current_user(context, true)
 
       _ when is_list(current_user_or_socket_or_opts) ->
@@ -172,11 +176,8 @@ defmodule Bonfire.Common.Utils do
           Enum.find_value(current_user_or_socket_or_opts, &current_user(&1, true))
         end
 
-      {:current_user, user} ->
+      {:current_user, user} when not is_nil(user) ->
         current_user(user, true)
-
-      {:current_user, nil} ->
-        nil
 
       nil ->
         nil
@@ -230,11 +231,11 @@ defmodule Bonfire.Common.Utils do
   """
   def current_user_id(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
-      %{current_user_id: id} ->
-        Types.uid(id)
-
       %{current_user_id: nil} ->
         nil
+
+      %{current_user_id: id} ->
+        Types.uid(id)
 
       # %{user_id: id} ->
       #   Types.uid(id)
@@ -296,7 +297,7 @@ defmodule Bonfire.Common.Utils do
       ** (Bonfire.Fail.Auth) You need to log in first. 
   """
   def current_user_required!(context),
-    do: current_user(context) || raise(Bonfire.Fail.Auth, :needs_login)
+    do: current_user(context) || fail_auth(:needs_login)
 
   @doc """
   (Re)authenticates the current user using the provided password.
@@ -316,7 +317,7 @@ defmodule Bonfire.Common.Utils do
     if not is_nil(current_user) and not is_nil(current_account_id) and
          Bonfire.Me.Accounts.login_valid?(current_account_id, password),
        do: current_user,
-       else: raise(Bonfire.Fail.Auth, :invalid_credentials)
+       else: fail_auth(:invalid_credentials)
   end
 
   @doc """
@@ -336,7 +337,13 @@ defmodule Bonfire.Common.Utils do
     if not is_nil(current_account_id) and
          Bonfire.Me.Accounts.login_valid?(current_account_id, password),
        do: current_account,
-       else: raise(Bonfire.Fail.Auth, :invalid_credentials)
+       else: fail_auth(:invalid_credentials)
+  end
+
+  defp fail_auth(reason) do
+    if Extend.module_exists?(Bonfire.Fail.Auth),
+      do: raise(Bonfire.Fail.Auth, reason),
+      else: raise(to_string(reason))
   end
 
   @doc """
@@ -492,11 +499,11 @@ defmodule Bonfire.Common.Utils do
       %{current_account_id: nil} ->
         nil
 
-      {:current_account_id, account_id} ->
-        current_account_id(account_id, true)
-
       {:current_account_id, nil} ->
         nil
+
+      {:current_account_id, account_id} ->
+        current_account_id(account_id, true)
 
       %{current_user: %{account: %{id: account_id}}} ->
         account_id
@@ -720,13 +727,17 @@ defmodule Bonfire.Common.Utils do
         opts
       ),
       do:
-        apply_error(
+        maybe_apply_fallback(
           "invalid function call for #{inspect(fun)} on #{inspect(module)}",
           args,
           opts
         )
 
   def maybe_apply_fallback(error, args, opts) do
+    warn(error)
+    # debug(args, "maybe_apply args")
+    # debug(opts, "maybe_apply opts")
+
     do_maybe_apply_fallback(
       Keyword.get(
         opts,
@@ -740,6 +751,16 @@ defmodule Bonfire.Common.Utils do
       args,
       opts
     )
+  end
+
+  defp do_maybe_apply_fallback(fallback_fun, _error, args, _opts)
+       when is_list(args) and is_function(fallback_fun, length(args)) do
+    apply(fallback_fun, args)
+  end
+
+  defp do_maybe_apply_fallback(fallback_fun, _error, args, _opts)
+       when not is_list(args) and is_function(fallback_fun, 1) do
+    apply(fallback_fun, List.wrap(args))
   end
 
   defp do_maybe_apply_fallback(fallback_fun, error, args, opts)
@@ -759,26 +780,16 @@ defmodule Bonfire.Common.Utils do
     )
   end
 
-  defp do_maybe_apply_fallback(fallback_fun, error, args, _opts)
-       when is_function(fallback_fun, 1) do
-    fallback_fun.(args)
-  end
-
-  defp do_maybe_apply_fallback(fallback_fun, error, args, _opts)
+  defp do_maybe_apply_fallback(fallback_fun, _error, _args, _opts)
        when is_function(fallback_fun, 0) do
     fallback_fun.()
   end
 
-  defp do_maybe_apply_fallback(fallback_return, error, args, _opts) do
-    Logger.warning("maybe_apply: #{error} - with args: (#{inspect(args)})")
+  defp do_maybe_apply_fallback(fallback_return, _error, _args, _opts) do
     fallback_return
   end
 
   def apply_error(error, args, opts) do
-    Logger.warning(
-      "maybe_apply: #{error} - with args: #{inspect(args)} - and opts: #{inspect(opts)}"
-    )
-
     {:error, error}
   end
 

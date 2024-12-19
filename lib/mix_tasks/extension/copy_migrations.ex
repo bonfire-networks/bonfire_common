@@ -1,8 +1,8 @@
 defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
   use Mix.Task
-  import Macro, only: [camelize: 1, underscore: 1]
-  import Mix.Generator
-  import Mix.Ecto, except: [migrations_path: 1]
+  # import Macro, only: [camelize: 1, underscore: 1]
+  # import Mix.Generator
+  # import Mix.Ecto, except: [migrations_path: 1]
 
   # TODO: turn into an escript so it can be run without compiling the whole app
 
@@ -52,8 +52,7 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
   end
 
   def maybe_copy(extensions \\ nil, opts) do
-    opts
-    # |> IO.inspect()
+    # IO.inspect(opts)
 
     path = opts[:to] || Path.expand(@default_repo_path, Bonfire.Mixer.flavour_path())
 

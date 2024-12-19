@@ -11,7 +11,7 @@ defmodule Bonfire.Common.Extensions do
   import Untangle
   use Bonfire.Common.E
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Extend
+  # alias Bonfire.Common.Extend
 
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
@@ -71,7 +71,12 @@ defmodule Bonfire.Common.Extensions do
   def data() do
     deps = all_deps()
 
-    required_deps = Bonfire.Application.required_deps()
+    required_deps =
+      Utils.maybe_apply(Bonfire.Application, :required_deps, [],
+        fallback_fun: fn ->
+          raise "Expected a `Bonfire.Application` module to list dependencies"
+        end
+      )
 
     # TODO: refactor using `Enum.split_with/2`
 
@@ -134,8 +139,10 @@ defmodule Bonfire.Common.Extensions do
     if Code.ensure_loaded?(Bonfire.Mixer) do
       Bonfire.Mixer.deps_tree_flat()
     else
-      # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
-      Bonfire.deps(:tree_flat)
+      # Note: we cache this at compile-time in `Bonfire` so it is available in releases
+      Utils.maybe_apply(Bonfire.Application, :deps, [:tree_flat],
+        fallback_fun: fn -> raise "Expected a `Bonfire` module to list dependencies" end
+      )
     end
   end
 
@@ -146,8 +153,10 @@ defmodule Bonfire.Common.Extensions do
       apply(Mix.Dep, func, args)
       # |> IO.inspect
     else
-      # Note: we cache this at compile-time in `Bonfire.Application` so it is available in releases
-      Bonfire.deps(:nested)
+      # Note: we cache this at compile-time in `Bonfire` so it is available in releases
+      Utils.maybe_apply(Bonfire.Application, :deps, [:nested],
+        fallback_fun: fn -> raise "Expected a `Bonfire` module to list dependencies" end
+      )
     end
   end
 
@@ -203,12 +212,12 @@ defmodule Bonfire.Common.Extensions do
     end
   end
 
-  defp filter_bonfire(deps, only, prefix) do
-    Enum.filter(deps, fn
-      dep ->
-        is_bonfire_ext?(dep, prefix, only)
-    end)
-  end
+  # defp filter_bonfire(deps, only, prefix) do
+  #   Enum.filter(deps, fn
+  #     dep ->
+  #       is_bonfire_ext?(dep, prefix, only)
+  #   end)
+  # end
 
   defp is_bonfire_ext?(dep, prefix, only \\ true)
 

@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Types do
   @moduledoc "Helpers for handling the type of objects (structs and more)"
   use Untangle
   import Bonfire.Common.Extend
-  require Bonfire.Common.Localise.Gettext
+  use Gettext, backend: Bonfire.Common.Localise.Gettext
   import Bonfire.Common.Localise.Gettext.Helpers
 
   alias Needle.Pointer
@@ -314,7 +314,7 @@ defmodule Bonfire.Common.Types do
       {num, ""} ->
         num
 
-      {num, extra} ->
+      {_num, extra} ->
         warn(extra, "Do not convert value because Float.parse found extra data in the input")
         fallback
 

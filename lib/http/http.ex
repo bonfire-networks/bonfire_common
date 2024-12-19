@@ -117,7 +117,7 @@ defmodule Bonfire.Common.HTTP do
 
   @behaviour Neuron.Connection
   @impl Neuron.Connection
-  def call(body, options) do
+  def call(_body, _options) do
     raise "TODO"
   end
 end

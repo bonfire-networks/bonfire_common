@@ -16,7 +16,7 @@ defmodule Bonfire.Common.Needles do
   alias Bonfire.Common.ContextModule
   alias Needle.NotFound
   alias Needle.Pointer
-  alias Needle.Tables
+  # alias Needle.Tables
 
   @doc """
   Retrieves an object by its ID. Raises `NotFound` if the object cannot be found.
@@ -796,7 +796,7 @@ defmodule Bonfire.Common.Needles do
   """
   def maybe_resolve(parent, field, args, context) do
     # WIP
-    case Map.get(parent, :field, :no_such_field) do
+    case Map.get(parent, field, :no_such_field) do
       %Ecto.Association.NotLoaded{} ->
         # dataloader(:source, :members).(parent, args, context)
         Absinthe.Resolution.Helpers.dataloader(Needle.Pointer).(parent, args, context)

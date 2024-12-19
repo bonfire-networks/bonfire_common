@@ -114,12 +114,12 @@ defmodule Bonfire.Common.Opts do
   def maybe_from_opts(opts, key, fallback)
       when is_list(opts) or is_map(opts),
       do:
-        do_from_opts(opts, key, fallback)
+        maybe_do_from_opts(opts, key)
         |> Common.maybe_fallback(fn -> force_from_opts(opts, key, fallback) end)
 
   def maybe_from_opts(opts, key, fallback), do: force_from_opts(opts, key, fallback)
 
-  defp do_from_opts(opts, key, fallback)
+  defp maybe_do_from_opts(opts, key)
        when is_list(opts) or is_map(opts),
        do:
          E.ed(opts, key, nil)
@@ -128,6 +128,6 @@ defmodule Bonfire.Common.Opts do
   defp force_from_opts(opts, key, fallback),
     do:
       to_options(opts)
-      |> do_from_opts(key, fallback)
+      |> maybe_do_from_opts(key)
       |> Common.maybe_fallback(fallback)
 end

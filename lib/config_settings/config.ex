@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Config do
   import Bonfire.Common.Extend
   import Untangle
   alias Bonfire.Common.E
-  alias Bonfire.Common.Utils
+  # alias Bonfire.Common.Utils
   alias Bonfire.Common.Extend
   alias Bonfire.Common.Enums
 

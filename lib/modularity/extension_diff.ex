@@ -235,12 +235,12 @@ defmodule Bonfire.Common.Extensions.Diff do
   # Attempt to set the current working directory by default.
   # This addresses an issue changing the working directory when executing from
   # within a secondary node since file I/O is done through the main node.
-  defp cmd_opts(opts) do
-    case root() do
-      {:ok, cwd} -> Keyword.put(opts, :cd, cwd)
-      _ -> opts
-    end
-  end
+  # defp cmd_opts(opts) do
+  #   case root() do
+  #     {:ok, cwd} -> Keyword.put(opts, :cd, cwd)
+  #     _ -> opts
+  #   end
+  # end
 
   def tmp_path(prefix) do
     Path.join([System.tmp_dir!(), prefix <> Text.unique_string()])

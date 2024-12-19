@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Repo.Preload do
 
   use Bonfire.Common.E
   import Bonfire.Common.Config, only: [repo: 0]
-  alias Bonfire.Common.Utils
+  # alias Bonfire.Common.Utils
   alias Bonfire.Common.Cache
 
   use Bonfire.Common.Repo
@@ -15,7 +15,7 @@ defmodule Bonfire.Common.Repo.Preload do
   use Arrows
 
   alias Needle.Pointer
-  alias Needle.Tables
+  # alias Needle.Tables
   alias Bonfire.Common.Needles
 
   @doc """

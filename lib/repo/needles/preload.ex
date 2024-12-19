@@ -41,7 +41,7 @@ defmodule Bonfire.Common.Needles.Preload do
     Enum.map(list, &maybe_preload_pointers(&1, keys, opts))
   end
 
-  def maybe_preload_pointers(object, key, opts) when not is_struct(object) do
+  def maybe_preload_pointers(object, _key, _opts) when not is_struct(object) do
     error(object, "expected a struct or list of objects")
     object
   end
@@ -135,7 +135,7 @@ defmodule Bonfire.Common.Needles.Preload do
 
   def maybe_preload_nested_pointers(object, _, _opts), do: object
 
-  defp do_maybe_preload_nested_pointers(object, keylist, opts)
+  defp do_maybe_preload_nested_pointers(object, keylist, _opts)
        when is_struct(object) or
               (is_list(object) and not is_nil(keylist) and keylist != []) do
     debug(keylist, "do_maybe_preload_nested_pointers: try with get_and_update_in")

@@ -7,7 +7,7 @@ defmodule Nebulex.DiskAdapter do
 
   alias Nebulex.DiskAdapter.DiskCacheHelper
   import DiskCacheHelper
-  import Logger
+  import Untangle
 
   @impl Nebulex.Adapter
   defmacro __before_compile__(_env), do: :ok

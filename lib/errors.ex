@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Errors do
   import Untangle, except: [format_stacktrace_entry: 1, format_location: 2, format_location: 1]
   require Logger
   import Bonfire.Common.Extend
+  alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
 
   @doc """
@@ -36,7 +37,7 @@ defmodule Bonfire.Common.Errors do
   def error_msg({:error, error}), do: error_msg(error)
 
   def error_msg(%{__struct__: struct} = epic) when struct == Bonfire.Epics.Epic,
-    do: Bonfire.Epics.Epic.render_errors(epic)
+    do: Utils.maybe_apply(Bonfire.Epics.Epic, :render_errors, [epic])
 
   def error_msg(%{errors: errors}), do: error_msg(errors)
   def error_msg(%{error: error}), do: error_msg(error)

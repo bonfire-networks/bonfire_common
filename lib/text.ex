@@ -354,17 +354,17 @@ defmodule Bonfire.Common.Text do
 
   defp choose_markdown_library(opts) do
     default_library = MDEx
-    initial_library = opts[:markdown_library] || Config.get(:markdown_library, default_library)
+    initial_library = opts[:markdown_library] || Config.get(:markdown_library) || default_library
 
     cond do
       Extend.module_enabled?(initial_library, opts) ->
         initial_library
 
-      initial_library == MDEx and Extend.module_enabled?(Earmark, opts) ->
-        Earmark
-
-      initial_library == Earmark and Extend.module_enabled?(MDEx, opts) ->
+      initial_library != MDEx and Extend.module_enabled?(MDEx, opts) ->
         MDEx
+
+      initial_library != Earmark and Extend.module_enabled?(Earmark, opts) ->
+        Earmark
 
       true ->
         nil
@@ -413,7 +413,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp markdown_as_html_earmark(processor, content, opts) when processor in [Earmark, Makedown] do
+  defp markdown_as_html(processor, content, opts) when processor in [Earmark, Makedown] do
     # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
 
     [

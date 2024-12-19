@@ -279,7 +279,7 @@ defmodule Bonfire.Common.Needles.Tables do
       > schema_mixins(%Bonfire.Data.Identity.User{})
       [:account]
   """
-  def schema_mixins_not_loaded(%type{} = struct) do
+  def schema_mixins_not_loaded(%_type{} = struct) do
     mixin_modules = Tables.mixin_modules()
 
     for({key, %Ecto.Association.NotLoaded{}} <- Map.from_struct(struct), do: key)

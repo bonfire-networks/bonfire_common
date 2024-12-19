@@ -48,14 +48,14 @@ defmodule Bonfire.Common.ExtensionModule do
   end
 
   def default_nav(%{default_nav: default_nav}) do
-    default_nav
-    |> Bonfire.UI.Common.NavModule.nav()
+    Utils.maybe_apply(Bonfire.UI.Common.NavModule, :nav, [default_nav], fallback_return: nil) ||
+      []
   end
 
   def default_nav(app) when is_atom(app) do
-    # Bonfire.UI.Common.NavModule.nav(app) || 
-    extension(app)[:default_nav]
-    |> Bonfire.UI.Common.NavModule.nav() ||
+    Utils.maybe_apply(Bonfire.UI.Common.NavModule, :nav, [extension(app)[:default_nav]],
+      fallback_return: nil
+    ) ||
       []
   end
 

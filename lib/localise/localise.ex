@@ -7,7 +7,7 @@ defmodule Bonfire.Common.Localise do
 
   defmacro __using__(_opts) do
     quote do
-      require Bonfire.Common.Localise.Gettext
+      use Gettext, backend: Bonfire.Common.Localise.Gettext
       import Bonfire.Common.Localise.Gettext.Helpers
     end
   end

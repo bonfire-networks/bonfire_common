@@ -195,16 +195,16 @@ defmodule Bonfire.Common.Settings do
     # |> debug("domino-merged settings for #{inspect(otp_app)}")
   end
 
-  defp get_merged_ext!(module_or_otp_app, opts \\ []) do
-    case get_merged_ext(module_or_otp_app, opts) do
-      nil ->
-        raise "Missing settings or configuration for extension: #{inspect(module_or_otp_app, pretty: true)}"
-        []
+  # defp get_merged_ext!(module_or_otp_app, opts \\ []) do
+  #   case get_merged_ext(module_or_otp_app, opts) do
+  #     nil ->
+  #       raise "Missing settings or configuration for extension: #{inspect(module_or_otp_app, pretty: true)}"
+  #       []
 
-      value ->
-        value
-    end
-  end
+  #     value ->
+  #       value
+  #   end
+  # end
 
   # @doc "Fetch all config & settings, both from Mix.Config and DB. Order matters! current_user > current_account > instance > Config"
   defp fetch_all_scopes(otp_app, opts) do
@@ -609,44 +609,48 @@ defmodule Bonfire.Common.Settings do
           fallback_return: false
         )
 
-    scope =
-      case maybe_to_atom(scope || e(opts, :scope, nil))
-           |> debug("scope specified to set") do
-        :instance when is_admin_or_skip == true ->
-          {:instance, instance_scope()}
+    case maybe_to_atom(scope || e(opts, :scope, nil))
+         |> debug("scope specified to set") do
+      :instance when is_admin_or_skip == true ->
+        {:instance, instance_scope()}
 
-        :instance ->
-          raise(
-            Bonfire.Fail,
-            {:unauthorized,
-             l("to change instance settings.") <> " " <> l("Please contact an admin.")}
-          )
+      :instance ->
+        fail(
+          {:unauthorized,
+           l("to change instance settings.") <> " " <> l("Please contact an admin.")}
+        )
 
-        :account ->
-          {:current_account, current_account}
+      :account ->
+        {:current_account, current_account}
 
-        :user ->
+      :user ->
+        {:current_user, current_user}
+
+      %schema{} = scope when schema == Bonfire.Data.Identity.Account ->
+        {:current_account, scope}
+
+      %schema{} = scope when schema == Bonfire.Data.Identity.User ->
+        {:current_user, scope}
+
+      object when is_map(object) ->
+        object
+
+      _ ->
+        if current_user do
           {:current_user, current_user}
-
-        %schema{} = scope when schema == Bonfire.Data.Identity.Account ->
-          {:current_account, scope}
-
-        %schema{} = scope when schema == Bonfire.Data.Identity.User ->
-          {:current_user, scope}
-
-        object when is_map(object) ->
-          object
-
-        _ ->
-          if current_user do
-            {:current_user, current_user}
-          else
-            if current_account do
-              {:current_account, current_account}
-            end
+        else
+          if current_account do
+            {:current_account, current_account}
           end
-      end
-      |> debug("computed scope to set")
+        end
+    end
+    |> debug("computed scope to set")
+  end
+
+  defp fail(reason) do
+    if Extend.module_exists?(Bonfire.Fail),
+      do: raise(Bonfire.Fail, reason),
+      else: raise(inspect(reason))
   end
 
   defp set_for({:current_user, scoped} = _scope_tuple, settings, opts) do
@@ -733,7 +737,7 @@ defmodule Bonfire.Common.Settings do
          %schema{id: id} = settings,
          new_data,
          _,
-         opts
+         _opts
        )
        when schema == Bonfire.Data.Identity.Settings and is_binary(id) do
     do_update(settings, new_data)
@@ -746,7 +750,7 @@ defmodule Bonfire.Common.Settings do
     |> upsert(new_data, uid(parent), opts)
   end
 
-  defp upsert(%schema{} = settings, new_data, scope_id, opts)
+  defp upsert(%schema{} = settings, new_data, scope_id, _opts)
        when schema == Bonfire.Data.Identity.Settings do
     %{id: uid!(scope_id), json: prepare_for_json(new_data)}
     # |> debug()

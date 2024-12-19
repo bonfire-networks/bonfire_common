@@ -1,10 +1,15 @@
 defmodule Nebulex.DiskAdapter.DiskCacheHelper do
   @moduledoc "WIP: Nebulex disk adapter based on https://hexdocs.pm/nebulex/creating-new-adapter.html and https://hexdocs.pm/cachex/Cachex.Disk.html"
   use GenServer
-  import Logger
+  import Untangle
 
   def start_link(options \\ []) do
     GenServer.start_link(__MODULE__, [], options)
+  end
+
+  def init(options \\ []) do
+    # TODO?
+    {:ok, options}
   end
 
   defp root_path(opts) do
@@ -29,7 +34,7 @@ defmodule Nebulex.DiskAdapter.DiskCacheHelper do
       true
     else
       e ->
-        warn("Could not write file #{path} for key #{key}: #{inspect(e)}")
+        warn(e, "Could not write file #{path} for key #{key}")
         false
     end
   end
@@ -59,7 +64,7 @@ defmodule Nebulex.DiskAdapter.DiskCacheHelper do
         :erlang.binary_to_term(bin)
       else
         e ->
-          warn("Could not decode key from file #{path}: #{inspect(e)}")
+          warn(e, "Could not decode key from file #{path}")
           nil
       end
     end)
@@ -76,7 +81,7 @@ defmodule Nebulex.DiskAdapter.DiskCacheHelper do
       |> maybe_fun(fun)
     else
       e ->
-        warn("Could not read file #{path} for key #{key}: #{inspect(e)}")
+        warn(e, "Could not read file #{path} for key #{key}")
         nil
     end
   end
@@ -114,7 +119,7 @@ defmodule Nebulex.DiskAdapter.DiskCacheHelper do
       :ok
     else
       e ->
-        warn("Could not delete file #{path} for key #{key}: #{inspect(e)}")
+        warn(e, "Could not delete file #{path} for key #{key}")
         false
     end
   end

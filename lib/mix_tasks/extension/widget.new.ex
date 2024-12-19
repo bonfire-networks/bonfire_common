@@ -7,20 +7,20 @@ defmodule Mix.Tasks.Bonfire.Widget.New do
   import Bonfire.Common.Extend
   use_if_enabled(Igniter.Mix.Task)
 
-  def igniter(igniter, [module_name | _] = argv) do
-    app_name = Bonfire.Application.name()
+  def igniter(igniter, [module_name | _] = _argv) do
+    # app_name = Bonfire.Application.name()
 
     module_name =
       String.trim_trailing(module_name, "Live")
       |> Kernel.<>("Live")
-      |> Igniter.Code.Module.parse()
+      |> Igniter.Project.Module.parse()
 
     # |> IO.inspect()
 
     path_prefix = "lib/web/widgets"
 
     igniter
-    |> Igniter.create_new_elixir_file(ext_path_for_module(module_name, path_prefix), """
+    |> Igniter.create_new_file(ext_path_for_module(module_name, path_prefix), """
     defmodule #{inspect(module_name)} do
       use Bonfire.UI.Common.Web, :stateless_component
 

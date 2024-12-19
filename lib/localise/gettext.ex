@@ -19,7 +19,7 @@ defmodule Bonfire.Common.Localise.Gettext do
   #     plural_forms: Bonfire.Common.Localise.Gettext.Plural,
   #     priv: Bonfire.Common.Config.get!(:localisation_path)
   # else
-  use Gettext,
+  use Gettext.Backend,
     otp_app: :bonfire_common,
     default_locale:
       Bonfire.Common.Config.get_ext(
@@ -63,7 +63,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   # alias the gettext macros for ease-of-use
 
-  import Bonfire.Common.Localise.Gettext
+  use Gettext, backend: Bonfire.Common.Localise.Gettext
   use Untangle
 
   @doc """

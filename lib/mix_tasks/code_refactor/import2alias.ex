@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Import2alias do
     deps = Bonfire.Mixer.deps_names_for(:bonfire)
     # |> IO.inspect()
 
-    Mix.Tasks.Bonfire.Deps.Compile.try_compile(deps, args)
+    Mix.Tasks.Bonfire.Extension.Compile.try_compile(deps, args)
 
     entries = Import2Alias.Server.entries()
     Import2Alias.import2alias(alias, entries)

@@ -15,6 +15,8 @@ defmodule Bonfire.Common.ContextModule do
   @doc "Points to the related queries module"
   @callback query_module() :: atom
 
+  @optional_callbacks context_module: 0, schema_module: 0, query_module: 0
+
   @doc """
   Given an object or schema module name, run a function on the associated context module.
   TODO: refactor to re-use Utils.maybe_apply?

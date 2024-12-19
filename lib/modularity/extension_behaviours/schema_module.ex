@@ -14,6 +14,8 @@ defmodule Bonfire.Common.SchemaModule do
   @doc "Points to the related context module"
   @callback context_module() :: atom
 
+  @optional_callbacks schema_module: 0, query_module: 0, context_module: 0
+
   def app_modules() do
     Bonfire.Common.ExtensionBehaviour.behaviour_app_modules(__MODULE__)
   end

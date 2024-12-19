@@ -45,7 +45,7 @@ defmodule Bonfire.Common.Extend do
         {name, [], args}
       end)
 
-    zipped = List.zip([signatures, functions])
+    zipped = Enum.zip([signatures, functions])
 
     for sig_func <- zipped do
       quote do
@@ -85,7 +85,7 @@ defmodule Bonfire.Common.Extend do
   #     end)
   #   |> IO.inspect
 
-  #   zipped = List.zip([signatures, functions])
+  #   zipped = Enum.zip([signatures, functions])
   #   |> IO.inspect
 
   #   for sig_func <- zipped do
@@ -275,6 +275,11 @@ defmodule Bonfire.Common.Extend do
         end
 
       {otp_app, _opts_with_scope} ->
+        opts =
+          Keyword.put_new_lazy(opts, :scope, fn ->
+            if(!Utils.current_user_id(opts), do: :instance)
+          end)
+
         if otp_app == module_or_extension do
           Settings.get(:modularity, nil, opts)
         else
@@ -429,19 +434,16 @@ defmodule Bonfire.Common.Extend do
       |> prepare_loaded_applications_map()
 
     if opts[:cache] do
-      names_map =
-        for {app_name, _} <- apps_map do
-          {app_name, true}
-        end
-        |> Map.new()
-        |> info("caching loaded app names")
-        |> :persistent_term.put(@loaded_apps_names_key, ...)
+      for {app_name, _} <- apps_map do
+        {app_name, true}
+      end
+      |> Map.new()
+      |> info("caching loaded app names")
+      |> :persistent_term.put(@loaded_apps_names_key, ...)
 
       apps_map
       # |> info("caching loaded apps")
       |> :persistent_term.put(@loaded_apps_key, ...)
-    else
-      # debug("could not use loaded_applications cache")
     end
 
     apps_map

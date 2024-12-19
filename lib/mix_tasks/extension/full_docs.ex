@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Bonfire.FullDocs do
     excluded = Keyword.get_values(opts, :exclude)
 
     deps =
-      Mix.Dep.load_on_environment(deps_opts)
+      deps(deps_opts)
       |> prepare_list(opts)
       |> List.flatten()
       |> Enum.reject(&(Atom.to_string(dep_name(&1)) in excluded))
@@ -57,6 +57,19 @@ defmodule Mix.Tasks.Bonfire.FullDocs do
       )
 
     Mix.Tasks.Docs.run(args, Keyword.put(config, :docs, docs_config))
+  end
+
+  defp deps(args \\ [[]]) do
+    func = loaded_deps_func_name()
+    apply(Mix.Dep, func, args)
+  end
+
+  defp loaded_deps_func_name() do
+    if Keyword.has_key?(Mix.Dep.__info__(:functions), :load_on_environment) do
+      :load_on_environment
+    else
+      :loaded
+    end
   end
 
   defp prepare_list(deps, opts) when is_list(deps) do

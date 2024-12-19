@@ -34,7 +34,7 @@ defmodule Mix.Tasks.Bonfire.Extension.Compile do
 
   def force_compile(dep_or_deps, compile_args \\ []) do
     # mark deps to be recompiled (run this task)
-    Mix.Tasks.Bonfire.Deps.Compile.run(["--force"] ++ List.wrap(dep_or_deps))
+    Mix.Tasks.Bonfire.Extension.Compile.run(["--force"] ++ List.wrap(dep_or_deps))
 
     # If "compile" was never called, the reenabling is a no-op and
     # "compile.elixir" is a no-op as well (because it wasn't re-enabled after
@@ -48,7 +48,7 @@ defmodule Mix.Tasks.Bonfire.Extension.Compile do
 
   def try_compile(dep_or_deps, compile_args \\ []) do
     # mark deps to be recompiled (run this task)
-    Mix.Tasks.Bonfire.Deps.Compile.run(["--force"] ++ List.wrap(dep_or_deps))
+    Mix.Tasks.Bonfire.Extension.Compile.run(["--force"] ++ List.wrap(dep_or_deps))
 
     Mix.Task.rerun("compile.elixir", compile_args)
   end

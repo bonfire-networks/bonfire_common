@@ -8,7 +8,6 @@ defmodule Bonfire.Common.URIs do
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Cache
-  alias Bonfire.Me.Characters
   alias Bonfire.Common
   alias Common.Types
 
@@ -492,11 +491,11 @@ defmodule Bonfire.Common.URIs do
     maybe_generate_canonical_url(id)
   end
 
-  def maybe_generate_canonical_url(%{username: id} = thing) when is_binary(id) do
+  def maybe_generate_canonical_url(%{username: id}) when is_binary(id) do
     maybe_generate_canonical_url(id)
   end
 
-  def maybe_generate_canonical_url(%{id: id} = thing) when is_binary(id) do
+  def maybe_generate_canonical_url(%{id: id}) when is_binary(id) do
     maybe_generate_canonical_url(id)
   end
 

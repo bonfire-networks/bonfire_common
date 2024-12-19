@@ -11,7 +11,9 @@ defmodule ConsoleHelpers do
       import IEx.Helpers, except: [l: 1]
       # ^ to avoid conflicting with our Gettext helpers
 
-      use Common.Utils
+      # use Common.Utils # FIXME: Gettext no longer seems to work in IEx?
+      import Common.Utils
+      common_utils()
       import Bonfire.Me.Fake
       import Untangle
     end
