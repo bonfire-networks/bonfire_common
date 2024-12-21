@@ -85,7 +85,7 @@ defmodule Bonfire.Common.ContextModule do
   end
 
   def apply_error(error, args) do
-    error("Error running function: #{error} with args: (#{inspect(args)})")
+    warn(error, "could not run context function with args: #{inspect(args)} ")
 
     {:error, error}
   end
