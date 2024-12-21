@@ -78,7 +78,16 @@ defmodule Bonfire.Common.DatesTimes do
   ## Examples
 
       > format(DateTime.now!("Etc/UTC"))
-      "Jul 25, 2024, 11:08:21 AM"
+      "Jul 25, 2024"
+
+      iex> format("2024-07-25")
+      "Jul 25, 2024"
+
+      iex> format("2024-7-25")
+      "Jul 25, 2024"
+
+      iex> format("2024-7")
+      "Jul, 2024" # TODO
   """
   def format_date(date, opts \\ []) do
     case to_date(date) |> debug("format_date") do
