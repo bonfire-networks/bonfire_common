@@ -678,10 +678,10 @@ defmodule Bonfire.Common.Types do
              Bonfire.Data.Identity.User,
              "Bonfire.Data.Identity.User",
              "5EVSER1S0STENS1B1YHVMAN01D",
-             "User",
-             "Users",
-             "Person",
-             "Organization",
+             "user",
+             "users",
+             "person",
+             "organization",
              :user,
              :users
            ],
@@ -691,8 +691,8 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Data.Social.Post,
              "30NF1REP0STTAB1ENVMBER0NEE",
-             "Posts",
-             "Post",
+             "posts",
+             "post",
              :post,
              :posts
            ],
@@ -701,10 +701,10 @@ defmodule Bonfire.Common.Types do
   def object_type(type, opts)
       when type in [
              Bonfire.Classify.Category,
-             "Category",
-             "Categories",
-             "Group",
-             "Groups",
+             "category",
+             "categories",
+             "group",
+             "groups",
              :Category,
              :Group,
              :group,
@@ -718,8 +718,8 @@ defmodule Bonfire.Common.Types do
              #  Bonfire.Classify.Category,
              #  "Category",
              #  "Categories",
-             "Topic",
-             "Topics",
+             "topic",
+             "topics",
              #  :Category,
              :Topic
            ],
@@ -730,8 +730,8 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Data.Social.Follow,
              "70110WTHE1EADER1EADER1EADE",
-             "Follow",
-             "Follows",
+             "follow",
+             "follows",
              :follow
            ],
       do: Bonfire.Data.Social.Follow
@@ -740,8 +740,8 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Data.Social.Like,
              "11KES11KET0BE11KEDY0VKN0WS",
-             "Like",
-             "Likes",
+             "like",
+             "likes",
              :like
            ],
       do: Bonfire.Data.Social.Like
@@ -750,8 +750,8 @@ defmodule Bonfire.Common.Types do
       when type in [
              Bonfire.Data.Social.Boost,
              "300STANN0VNCERESHARESH0VTS",
-             "Boost",
-             "Boosts",
+             "boost",
+             "boosts",
              :boost
            ],
       do: Bonfire.Data.Social.Boost
@@ -769,6 +769,8 @@ defmodule Bonfire.Common.Types do
   def object_type(type, _opts)
       when type in [
              ValueFlows.EconomicEvent,
+             "economicevent",
+             "economicevents",
              "EconomicEvent",
              "EconomicEvents",
              "2CTVA10BSERVEDF10WS0FVA1VE"
@@ -782,8 +784,8 @@ defmodule Bonfire.Common.Types do
   def object_type(type, _opts)
       when type in [
              ValueFlows.Planning.Intent,
-             "Intent",
-             "Intents",
+             "intent",
+             "intents",
              "ValueFlows.Planning.Offer",
              "ValueFlows.Planning.Need",
              "1NTENTC0V1DBEAN0FFER0RNEED"
@@ -799,7 +801,13 @@ defmodule Bonfire.Common.Types do
       schema
     else
       _ ->
-        Cache.maybe_apply_cached(&object_type_from_db/2, [id, opts])
+        query_if_unknown = opts[:query_if_unknown]
+
+        if query_if_unknown do
+          Cache.maybe_apply_cached(&object_type_from_db/2, [id, opts])
+        else
+          object_type(String.downcase(id), opts ++ [query_if_unknown: query_if_unknown != false])
+        end
     end
   rescue
     e in ArgumentError ->

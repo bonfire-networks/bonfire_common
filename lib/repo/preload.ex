@@ -124,7 +124,7 @@ defmodule Bonfire.Common.Repo.Preload do
     repo().preload(obj, preloads, opts)
   rescue
     e in ArgumentError ->
-      warn(
+      error(
         preloads,
         "skipped due to wrong argument: #{inspect(e)}"
       )
@@ -134,7 +134,7 @@ defmodule Bonfire.Common.Repo.Preload do
       obj
 
     e ->
-      warn(preloads, "skipped with rescue: #{inspect(e)} // attempted preloads")
+      error(preloads, "skipped with rescue: #{inspect(e)} // attempted preloads")
       obj
   catch
     :exit, e ->
