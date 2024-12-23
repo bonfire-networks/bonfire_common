@@ -16,6 +16,8 @@ defmodule ConsoleHelpers do
       common_utils()
       import Bonfire.Me.Fake
       import Untangle
+
+      IEx.configure(auto_reload: true)
     end
   end
 end

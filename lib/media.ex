@@ -415,7 +415,8 @@ defmodule Bonfire.Common.Media do
       (banner_url == (banner_fallback || banner_fallback()) and
          case avatar_url do
            "http" <> _ ->
-             "#AA4203"
+             # "#AA4203"
+             nil
 
            nil ->
              nil
