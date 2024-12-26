@@ -727,6 +727,29 @@ defmodule Bonfire.Common.RepoTemplate do
         end
       end
 
+      def reject_preload_ids(exclude_ids) do
+        custom_preload_fun(fn ids -> Enum.reject(ids, &(&1 in exclude_ids)) end)
+      end
+
+      def custom_preload_fun(fun) do
+        fn ids, assoc ->
+          #  debug(ids)
+          # debug(assoc)
+
+          %{related_key: related_key, queryable: queryable} = assoc
+
+          ids = fun.(ids)
+          # |> debug()
+
+          repo().all(
+            from q in queryable,
+              where: field(q, ^related_key) in ^ids
+          )
+
+          # |> debug()
+        end
+      end
+
       defdelegate maybe_preload(obj, preloads, opts \\ []),
         to: Bonfire.Common.Repo.Preload
 

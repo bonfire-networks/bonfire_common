@@ -186,7 +186,7 @@ defmodule Bonfire.Common.Utils do
         nil
 
       _ ->
-        if !empty?(current_user_or_socket_or_opts) do
+        if !empty?(current_user_or_socket_or_opts) and recursing != :skip do
           debug(
             current_user_or_socket_or_opts,
             "No current_user found, will fallback to looking for a current_user_id",
@@ -270,7 +270,7 @@ defmodule Bonfire.Common.Utils do
       _ ->
         if recursing != :skip,
           do:
-            current_user(current_user_or_socket_or_opts)
+            current_user(current_user_or_socket_or_opts, :skip)
             |> Types.uid()
     end ||
       (
