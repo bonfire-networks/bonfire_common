@@ -119,29 +119,45 @@ defmodule Bonfire.Common.Repo.Preload do
 
   defp try_repo_preload(%Ecto.Association.NotLoaded{}, _, _), do: nil
 
-  defp try_repo_preload(obj, preloads, opts)
-       when is_struct(obj) or is_list(obj) do
-    repo().preload(obj, preloads, opts)
+  defp try_repo_preload(objects, preloads, opts)
+       when is_struct(objects) or is_list(objects) do
+    repo().preload(objects, preloads, opts)
   rescue
     e in ArgumentError ->
       error(
-        preloads,
-        "skipped due to wrong argument: #{inspect(e)}"
+        e.message,
+        "skipped due to wrong argument: #{inspect(preloads)}"
       )
 
-      # TODO: we should still preload the assocs that do exist when one in the list was invalid
-
-      obj
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object, but we should still preload the assocs that do exist when one in the list was invalid"
+      )
 
     e ->
-      error(preloads, "skipped with rescue: #{inspect(e)} // attempted preloads")
-      obj
+      error(e, "skipped with rescue: #{inspect(preloads)}")
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object, but we should still preload the assocs that do exist when one in the list was invalid"
+      )
   catch
     :exit, e ->
-      error("skipped with exit: #{inspect(e)}")
+      error(e, "skipped with exit: #{inspect(preloads)}")
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object, but we should still preload the assocs that do exist when one in the list was invalid"
+      )
 
     e ->
-      error("skipped with catch: #{inspect(e)}")
+      error(e, "skipped with catch: #{inspect(preloads)}")
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object, but we should still preload the assocs that do exist when one in the list was invalid"
+      )
   end
 
   defp try_repo_preload(obj, _, _), do: obj

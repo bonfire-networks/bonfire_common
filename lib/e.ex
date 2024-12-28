@@ -246,11 +246,13 @@ defmodule Bonfire.Common.E do
 
   """
   def ed(val, fallback \\ nil) do
-    Enums.filter_empty(val, fallback)
+    Enums.filter_empty(val, nil)
+    |> Common.maybe_fallback(fallback)
   end
 
   def e(val, fallback \\ nil) do
-    Enums.filter_empty(val, fallback)
+    Enums.filter_empty(val, nil)
+    |> Common.maybe_fallback(fallback)
   end
 
   @doc """
@@ -343,11 +345,11 @@ defmodule Bonfire.Common.E do
   end
 
   def ed({_, _}, _key, fallback) do
-    fallback
+    Common.maybe_fallback(nil, fallback)
   end
 
   def ed([{_, _}], _key, fallback) do
-    fallback
+    Common.maybe_fallback(nil, fallback)
   end
 
   def ed(list, key, fallback) when is_list(list) do
@@ -371,7 +373,7 @@ defmodule Bonfire.Common.E do
   # end
   def ed(object, key, fallback) do
     debug(object, "did not know how to find #{key} in")
-    fallback
+    Common.maybe_fallback(nil, fallback)
   end
 
   @doc "Returns a value from a nested map, or a fallback if not present"
