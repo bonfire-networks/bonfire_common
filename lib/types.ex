@@ -6,6 +6,7 @@ defmodule Bonfire.Common.Types do
   import Bonfire.Common.Localise.Gettext.Helpers
 
   alias Needle.Pointer
+  alias Bonfire.Common.Utils
   alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Extend
@@ -965,7 +966,7 @@ defmodule Bonfire.Common.Types do
       "30NF1REAPACTTAB1ENVMBER0NE"
   """
   def table_id(schema) when is_atom(schema) and not is_nil(schema) do
-    if Extend.module_exists?(schema), do: schema.__pointers__(:table_id)
+    Utils.maybe_apply(schema, :__pointers__, [:table_id], fallback_return: nil)
   end
 
   def table_id(_), do: nil
