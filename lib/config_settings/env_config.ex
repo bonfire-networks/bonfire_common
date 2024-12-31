@@ -56,8 +56,8 @@ defmodule Bonfire.Common.EnvConfig do
       ...>   prefix: "TESTB_DB",
       ...>   transform_keys: &String.to_existing_atom/1,
       ...> ) 
-      ...> |> Map.new() # just to make the test assertion easier
-      %{host: "localhost", port: "5432"}
+      ...> |> Enum.sort() # just to make the test assertion easier
+      [host: "localhost", port: "5432"]
 
   ### With type casting for specific keys
 
@@ -72,8 +72,8 @@ defmodule Bonfire.Common.EnvConfig do
       ...>     ssl: :boolean
       ...>   }
       ...> ) 
-      ...> |> Map.new() # just to make the test assertion easier
-      %{ssl: true, max_connections: 100, port: 5432}
+      ...> |> Enum.sort() # just to make the test assertion easier
+      [max_connections: 100, port: 5432, ssl: true]
 
   ### With type casting for only some keys, including unknown keys as well (returns a map with mixed keys)
 

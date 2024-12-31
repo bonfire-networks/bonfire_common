@@ -921,7 +921,7 @@ defmodule Bonfire.Common.Types do
     do: Enum.map(types, &table_type/1) |> Enums.filter_empty([]) |> Enum.dedup()
 
   def table_types(type),
-    do: table_types(List.wrap(type))
+    do: table_types([type])
 
   @doc """
   Given an object or module name, returns its respective table table ID (i.e. Pointable ULID).
@@ -947,11 +947,7 @@ defmodule Bonfire.Common.Types do
   def table_type(type) when is_map(type), do: object_type(type) |> table_id()
 
   def table_type(type) when is_binary(type) do
-    if is_uid?(type) do
-      type
-    else
-      String.capitalize(type)
-    end
+    type
     |> object_type()
     |> table_id()
   end
