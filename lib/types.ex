@@ -221,8 +221,8 @@ defmodule Bonfire.Common.Types do
       iex> uids("invalid_id")
       []
   """
-  def uids(objects) do
-    objects |> List.wrap() |> List.flatten() |> Enum.map(&uid/1) |> Enums.filter_empty([])
+  def uids(objects, fallback \\ []) do
+    objects |> List.wrap() |> List.flatten() |> Enum.map(&uid/1) |> Enums.filter_empty(fallback)
   end
 
   def uid_or_uids(objects) when is_list(objects) do
