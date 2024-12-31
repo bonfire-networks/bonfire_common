@@ -456,7 +456,11 @@ defmodule Bonfire.Common.Types do
       iex> maybe_to_atom_or_module(:some_atom, false, true)
       :some_atom
 
+      iex> maybe_to_atom_or_module(:some_atom, false, true)
+      :some_atom
   """
+  def maybe_to_atom_or_module(k, force? \\ nil, to_snake_atom? \\ false)
+
   def maybe_to_atom_or_module(k, _force, _to_snake) when is_atom(k),
     do: k
 
@@ -469,7 +473,10 @@ defmodule Bonfire.Common.Types do
   def maybe_to_atom_or_module(k, true = force, _false = _to_snake) when is_binary(k),
     do: maybe_to_module(k, force) || String.to_atom(k)
 
-  def maybe_to_atom_or_module(k, _false = force, _false_ = _to_snake),
+  def maybe_to_atom_or_module(k, false = force, _false_ = _to_snake),
+    do: maybe_to_module(k, force) || maybe_to_atom!(k)
+
+  def maybe_to_atom_or_module(k, _nil = force, _false_ = _to_snake),
     do: maybe_to_module(k, force) || maybe_to_atom(k)
 
   @doc """
@@ -677,7 +684,7 @@ defmodule Bonfire.Common.Types do
   def object_type(type, _opts)
       when type in [
              Bonfire.Data.Identity.User,
-             "Bonfire.Data.Identity.User",
+             #  "Bonfire.Data.Identity.User",
              "5EVSER1S0STENS1B1YHVMAN01D",
              "user",
              "users",
@@ -794,26 +801,17 @@ defmodule Bonfire.Common.Types do
       do: ValueFlows.Planning.Intent
 
   def object_type(type, _opts)
-      when type in [ValueFlows.Process, "Process", "4AYF0R1NPVTST0BEC0ME0VTPVT"],
+      when type in [ValueFlows.Process, "process", "4AYF0R1NPVTST0BEC0ME0VTPVT"],
       do: ValueFlows.Process
 
-  def object_type(id, opts) when is_binary(id) do
-    with {:ok, schema} <- Needle.Tables.schema(id) do
-      schema
-    else
-      _ ->
-        query_if_unknown = opts[:query_if_unknown]
+  def object_type(string, opts) when is_binary(string) do
+    case maybe_to_atom_or_module(string, false) do
+      nil ->
+        object_type_from_string(string, opts)
 
-        if query_if_unknown do
-          Cache.maybe_apply_cached(&object_type_from_db/2, [id, opts])
-        else
-          object_type(String.downcase(id), opts ++ [query_if_unknown: query_if_unknown != false])
-        end
+      type ->
+        object_type(type, opts) || object_type_from_string(string, opts)
     end
-  rescue
-    e in ArgumentError ->
-      error(e)
-      nil
   end
 
   def object_type(type, opts) when is_atom(type) and not is_nil(type) do
@@ -833,6 +831,28 @@ defmodule Bonfire.Common.Types do
     # warn(type, "no pattern matched")
     # typeof(type)
     nil
+  end
+
+  defp object_type_from_string(string, opts) when is_binary(string) do
+    with {:ok, schema} <- Needle.Tables.schema(string) do
+      schema
+    else
+      _ ->
+        query_if_unknown = opts[:query_if_unknown]
+
+        if query_if_unknown do
+          Cache.maybe_apply_cached(&object_type_from_db/2, [string, opts])
+        else
+          object_type(
+            String.downcase(string),
+            opts ++ [query_if_unknown: query_if_unknown != false]
+          )
+        end
+    end
+  rescue
+    e in ArgumentError ->
+      error(e)
+      nil
   end
 
   defp object_type_from_db(id, opts) do
