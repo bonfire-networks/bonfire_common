@@ -20,7 +20,7 @@ defmodule Bonfire.Common.HTTP.Connection do
   ]
 
   def new(opts \\ []) do
-    adapter = Application.get_env(:tesla, :adapter, {Tesla.Adapter.Finch, name: Bonfire.Finch})
+    adapter = Application.get_env(:tesla, :adapter) || {Tesla.Adapter.Finch, name: Bonfire.Finch}
     Tesla.client([], adapter_options(adapter, Keyword.get(opts, :adapter, [])))
   end
 

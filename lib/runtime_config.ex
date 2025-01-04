@@ -13,7 +13,7 @@ defmodule Bonfire.Common.RuntimeConfig do
       root_path: File.cwd!()
 
     config :bonfire, :http,
-      proxy_url: System.get_env("HTTP_PROXY_URL", nil),
+      proxy_url: System.get_env("HTTP_PROXY_URL"),
       adapter_options: [
         ssl_options: [
           # Workaround for remote server certificate chain issues
