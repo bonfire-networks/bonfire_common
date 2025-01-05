@@ -655,7 +655,7 @@ defmodule Bonfire.Common.Enums do
     |> map_filter_empty()
   end
 
-  def struct_to_map(struct = %{__struct__: _type}, _true) do
+  def struct_to_map(struct = %{__struct__: _type}, true) do
     struct_to_map(struct, false)
     |> Enum.map(&struct_to_map(&1, true))
     |> Map.new()
