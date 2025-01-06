@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Utils do
   Various very commonly used utility functions for the Bonfire application.
 
   This module should contain only a few generic and/or heavily-used functions, and any other functions should be in more specific modules (or in other extensions altogether) for e.g.: 
+
   - `Bonfire.Common.Enums` for functions around maps, structs, keyword lists, and the like
   - `Bonfire.Common.Types` for object types
   - `Bonfire.Common.URIs` and `Linkify` for URI handling
@@ -22,6 +23,7 @@ defmodule Bonfire.Common.Utils do
   - `Bonfire.Common.PubSub` for pub/sub
 
   We may also want to consider reusing functions from existing utils libraries when possible and contributing missing ones there, for example:
+
   - https://hexdocs.pm/moar/readme.html
   - https://hexdocs.pm/bunch/api-reference.html
   - https://hexdocs.pm/swiss/api-reference.html

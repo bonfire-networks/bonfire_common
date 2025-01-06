@@ -58,7 +58,9 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
       module: module,
       app: app(module),
       href: opts[:href] || Bonfire.Common.URIs.path(module),
-      type: :link
+      type: :link,
+      sub_widgets:
+        Enum.map(opts[:sub_links] || [], fn {name, opts} -> generate_link(name, module, opts) end)
     })
   end
 

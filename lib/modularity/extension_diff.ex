@@ -243,7 +243,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   # end
 
   def tmp_path(prefix) do
-    Path.join([System.tmp_dir!(), prefix <> Text.unique_string()])
+    Path.join([System.tmp_dir!(), "bonfire_repos", prefix <> Text.unique_string()])
   end
 
   def root, do: Bonfire.Common.Config.get(:root_path)
