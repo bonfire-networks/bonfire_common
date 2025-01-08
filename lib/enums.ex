@@ -820,6 +820,14 @@ defmodule Bonfire.Common.Enums do
 
   def nested_structs_to_maps(v), do: v
 
+  def merge_to_struct(module \\ nil, first, precedence)
+
+  def merge_to_struct(module, first, precedence) when not is_struct(first),
+    do: merge_to_struct(nil, struct(module, first), precedence)
+
+  def merge_to_struct(_, first, precedence) when is_struct(first),
+    do: struct(first, struct_to_map(precedence))
+
   def maybe_merge_to_struct(first, precedence) when is_struct(first),
     do: struct(first, struct_to_map(precedence))
 
@@ -867,8 +875,13 @@ defmodule Bonfire.Common.Enums do
 
   @doc "Recursively filters nil values from a map"
   def map_filter_empty(data) when is_map(data) and not is_struct(data) do
-    Enum.map(data, &map_filter_empty/1)
-    |> Enum.reject(fn {_, v} -> is_nil(v) end)
+    data
+    # |> Enum.map(&map_filter_empty/1)
+    |> Enum.reject(fn
+      {_, nil} -> true
+      {_, %Ecto.Association.NotLoaded{}} -> true
+      _ -> false
+    end)
     |> Map.new()
   end
 
