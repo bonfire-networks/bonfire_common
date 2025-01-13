@@ -35,11 +35,11 @@ defmodule Bonfire.Common.Crypto do
     secret_auth_key = derive_key(password, salt)
 
     cond do
-      algo() == :chacha and Extend.module_exists?(Plug.Crypto.MessageEncryptor) ->
+      algo() == :chacha and Extend.module_enabled?(Plug.Crypto.MessageEncryptor) ->
         # optionally use XChaCha20-Poly1305 `Plug.Crypto`?
         {:ok, Plug.Crypto.MessageEncryptor.encrypt(clear_text, secret_auth_key, "")}
 
-      Extend.module_exists?(Cloak.Ciphers.AES.GCM) ->
+      Extend.module_enabled?(Cloak.Ciphers.AES.GCM) ->
         # use AES GCM encryption
         Cloak.Ciphers.AES.GCM.encrypt(clear_text,
           key: secret_auth_key,
@@ -75,11 +75,11 @@ defmodule Bonfire.Common.Crypto do
 
   defp do_decrypt(encrypted, secret_auth_key) do
     cond do
-      algo() == :chacha and Extend.module_exists?(Plug.Crypto.MessageEncryptor) ->
+      algo() == :chacha and Extend.module_enabled?(Plug.Crypto.MessageEncryptor) ->
         # optionally use XChaCha20-Poly1305 `Plug.Crypto`?
         Plug.Crypto.MessageEncryptor.decrypt(encrypted, secret_auth_key, "")
 
-      Extend.module_exists?(Cloak.Ciphers.AES.GCM) ->
+      Extend.module_enabled?(Cloak.Ciphers.AES.GCM) ->
         # use AES GCM encryption
         Cloak.Ciphers.AES.GCM.decrypt(encrypted,
           key: secret_auth_key,
@@ -94,7 +94,7 @@ defmodule Bonfire.Common.Crypto do
 
   # Derives a key using PBKDF2-HMAC from the password and salt
   defp derive_key(password, salt) do
-    if Extend.module_exists?(Plug.Crypto.KeyGenerator) do
+    if Extend.module_enabled?(Plug.Crypto.KeyGenerator) do
       # use helper function from `Plug.Crypto` if available
       Plug.Crypto.KeyGenerator.generate(password, salt,
         iterations: @iterations,

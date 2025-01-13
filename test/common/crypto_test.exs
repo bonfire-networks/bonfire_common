@@ -6,7 +6,7 @@ defmodule Bonfire.Common.Crypto.Test do
   @invalid_password "wrong_password"
 
   def secret_binary do
-    if Extend.module_exists?(ActivityPub.Safety.Keys),
+    if Extend.module_enabled?(ActivityPub.Safety.Keys),
       do: ActivityPub.Safety.Keys.generate_rsa_pem(),
       else: {:ok, Faker.Lorem.paragraph()}
   end

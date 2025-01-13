@@ -128,7 +128,7 @@ defmodule Bonfire.Common.Extend do
   def maybe_module(false, _), do: nil
 
   def maybe_module(module, opts) do
-    if module_exists?(module) do
+    if module_available?(module) do
       opts =
         Opts.to_options(opts)
         # |> debug()
@@ -190,7 +190,7 @@ defmodule Bonfire.Common.Extend do
   end
 
   @doc """
-  Checks if an Elixir module or the extension/OTP app it belongs to is present and not disabled. 
+  Checks if an Elixir module or the extension/OTP app it belongs to is available and not disabled. 
 
   ## Examples
 
@@ -203,12 +203,49 @@ defmodule Bonfire.Common.Extend do
   def module_enabled?(module, opts \\ []) do
     opts = Opts.to_options(opts)
 
-    module_exists?(module) and
-      is_module_extension_enabled?(module, opts) and
-      is_disabled?(module, opts) != true
+    module_available?(module) |> debug() and
+      is_module_extension_enabled?(module, opts) |> debug() and
+      is_disabled?(module, opts) |> debug() != true
   end
 
-  @decorate time()
+  @doc """
+  Checks if an Elixir module exists and that it (or the extension/OTP app it belongs to) is not disabled. 
+
+  ## Examples
+
+      iex> module_enabled?(Bonfire.Common)
+      true
+
+      iex> module_enabled?(SomeDisabledModule)
+      false
+  """
+  def module_not_disabled?(module, opts \\ []) do
+    opts = Opts.to_options(opts)
+
+    module_exists?(module) |> debug() and
+      is_module_extension_enabled?(module, opts) |> debug() and
+      is_disabled?(module, opts) |> debug() != true
+  end
+
+  # @decorate time()
+  @doc """
+  Checks if an Elixir module exists and is loaded and that it (or the extension/OTP app it belongs to) is not disabled. 
+
+  ## Examples
+
+      iex> module_available?(Bonfire.Common)
+      true
+
+      iex> module_available?(SomeOtherModule)
+      false
+  """
+  def module_available?(module) when is_atom(module) do
+    #   Cache.maybe_apply_cached(&do_module_available?/1, [module], check_env: false)
+    # end
+    # defp do_module_available?(module) when is_atom(module) do
+    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
+  end
+
   @doc """
   Checks if an Elixir module exists and can be loaded.
 
@@ -224,7 +261,17 @@ defmodule Bonfire.Common.Extend do
     #   Cache.maybe_apply_cached(&do_module_exists?/1, [module], check_env: false)
     # end
     # defp do_module_exists?(module) when is_atom(module) do
-    function_exported?(module, :__info__, 1) || Code.ensure_loaded?(module)
+    case Code.ensure_compiled(module) do
+      {:module, _} ->
+        true
+
+      {:error, :unavailable} ->
+        true
+
+      {:error, e} ->
+        debug(e, "Module `#{module}` is not compiled")
+        false
+    end
   end
 
   @doc """
@@ -330,7 +377,7 @@ defmodule Bonfire.Common.Extend do
     # end
     # defp do_extension_loaded?(module_or_otp_app) when is_atom(module_or_otp_app) do
     extension = maybe_extension_loaded(module_or_otp_app)
-    module_exists?(extension) or application_loaded?(extension)
+    module_available?(extension) or application_loaded?(extension)
   end
 
   @doc """
@@ -508,7 +555,7 @@ defmodule Bonfire.Common.Extend do
       nil
   """
   def maybe_module_loaded(module) do
-    if module_exists?(module), do: module
+    if module_available?(module), do: module
   end
 
   @doc """
@@ -554,9 +601,11 @@ defmodule Bonfire.Common.Extend do
   # end
 
   def quoted_use_if_enabled(module, opts, fallback_module, _) do
+    IO.inspect(module)
     # if module = maybe_module(module) && Code.ensure_loaded?(module) do # TODO
     if is_atom(module) and module_enabled?(module) do
-      # Logger.debug("Found module to use: #{module}")
+      Logger.debug("Found module to use: #{module}")
+
       quote do
         use unquote(module), unquote(opts)
       end
@@ -568,6 +617,63 @@ defmodule Bonfire.Common.Extend do
           use unquote(fallback_module), unquote(opts)
         end
       end
+    end
+  end
+
+  defmacro use_many_if_enabled(module_configs) when is_list(module_configs) do
+    quotes =
+      module_configs
+      |> IO.inspect(label: "module_configs")
+      |> Enum.map(fn
+        # Full tuple with module, opts, and fallback as potential AST nodes
+        {{_, _, _} = module_ast, opts, fallback} ->
+          module = Macro.expand(module_ast, __CALLER__)
+          quoted_use_if_enabled(module, opts, fallback)
+
+        # Tuple with just module and opts as potential AST nodes
+        {{_, _, _} = module_ast, opts} ->
+          module = Macro.expand(module_ast, __CALLER__)
+          quoted_use_if_enabled(module, opts, nil)
+
+        # Single module as potential AST node
+        {_, _, _} = module_ast ->
+          module = Macro.expand(module_ast, __CALLER__)
+          quoted_use_if_enabled(module, [], nil)
+      end)
+      |> IO.inspect(label: "handled_modules")
+      |> Enum.reject(&is_nil/1)
+
+    quote do
+      (unquote_splicing(quotes))
+    end
+  end
+
+  defmacro use_many_if_enabled({_, _, _} = module_configs) do
+    quoted_use_many_if_enabled(Macro.expand(module_configs, __CALLER__))
+  end
+
+  def quoted_use_many_if_enabled(module_configs) when is_list(module_configs) do
+    quotes =
+      module_configs
+      |> IO.inspect(label: "module_configs")
+      |> Enum.map(fn
+        # Full tuple with module, opts, and fallback as potential AST nodes
+        {module, opts, fallback} ->
+          quoted_use_if_enabled(module, opts, fallback)
+
+        # Tuple with just module and opts as potential AST nodes
+        {module, opts} ->
+          quoted_use_if_enabled(module, opts, nil)
+
+        # Single module as potential AST node
+        module ->
+          quoted_use_if_enabled(module, [], nil)
+      end)
+      |> IO.inspect(label: "handled_modules")
+      |> Enum.reject(&is_nil/1)
+
+    quote do
+      (unquote_splicing(quotes))
     end
   end
 
@@ -688,7 +794,7 @@ defmodule Bonfire.Common.Extend do
       [SomeBehaviour, AnotherBehaviour]
   """
   def module_behaviours(module) do
-    (module_exists?(module) and
+    (module_available?(module) and
        module.module_info(:attributes)
        |> Keyword.get_values(:behaviour)
        |> List.flatten())
@@ -704,7 +810,7 @@ defmodule Bonfire.Common.Extend do
       "/path/lib/common.ex"
   """
   def module_file(module) when is_atom(module) and not is_nil(module) do
-    if module_exists?(module) do
+    if module_available?(module) do
       path =
         module.__info__(:compile)[:source]
         |> to_string()
