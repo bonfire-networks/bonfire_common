@@ -203,9 +203,9 @@ defmodule Bonfire.Common.Extend do
   def module_enabled?(module, opts \\ []) do
     opts = Opts.to_options(opts)
 
-    module_available?(module) |> debug() and
-      is_module_extension_enabled?(module, opts) |> debug() and
-      is_disabled?(module, opts) |> debug() != true
+    module_available?(module) and
+      is_module_extension_enabled?(module, opts) and
+      is_disabled?(module, opts) != true
   end
 
   @doc """
@@ -222,9 +222,9 @@ defmodule Bonfire.Common.Extend do
   def module_not_disabled?(module, opts \\ []) do
     opts = Opts.to_options(opts)
 
-    module_exists?(module) |> debug() and
-      is_module_extension_enabled?(module, opts) |> debug() and
-      is_disabled?(module, opts) |> debug() != true
+    module_exists?(module) and
+      is_module_extension_enabled?(module, opts) and
+      is_disabled?(module, opts) != true
   end
 
   # @decorate time()
@@ -623,7 +623,7 @@ defmodule Bonfire.Common.Extend do
   defmacro use_many_if_enabled(module_configs) when is_list(module_configs) do
     quotes =
       module_configs
-      |> IO.inspect(label: "module_configs")
+      |> IO.inspect(label: "input_modules")
       |> Enum.map(fn
         # Full tuple with module, opts, and fallback as potential AST nodes
         {{_, _, _} = module_ast, opts, fallback} ->
@@ -640,7 +640,7 @@ defmodule Bonfire.Common.Extend do
           module = Macro.expand(module_ast, __CALLER__)
           quoted_use_if_enabled(module, [], nil)
       end)
-      |> IO.inspect(label: "handled_modules")
+      |> IO.inspect(label: "resolved_modules")
       |> Enum.reject(&is_nil/1)
 
     quote do
@@ -655,7 +655,7 @@ defmodule Bonfire.Common.Extend do
   def quoted_use_many_if_enabled(module_configs) when is_list(module_configs) do
     quotes =
       module_configs
-      |> IO.inspect(label: "module_configs")
+      |> IO.inspect(label: "input_modules")
       |> Enum.map(fn
         # Full tuple with module, opts, and fallback as potential AST nodes
         {module, opts, fallback} ->
@@ -669,7 +669,7 @@ defmodule Bonfire.Common.Extend do
         module ->
           quoted_use_if_enabled(module, [], nil)
       end)
-      |> IO.inspect(label: "handled_modules")
+      |> IO.inspect(label: "resolved_modules")
       |> Enum.reject(&is_nil/1)
 
     quote do
