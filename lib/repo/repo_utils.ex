@@ -3,6 +3,7 @@ defmodule Bonfire.Common.Repo.Utils do
   @moduledoc "Helper functions for changesets"
 
   alias Ecto.Changeset
+  alias Ecto.Multi
   alias Bonfire.Common.Utils
 
   # @doc "Generates the primary ID for an object, and sets the canonical URL based on that"

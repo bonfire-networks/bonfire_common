@@ -17,6 +17,67 @@ defmodule Bonfire.Common.Enums do
   @compile {:inline, group: 3}
 
   @doc """
+  Applies a function from one of Elixir's `Map`, `Keyword`, `List`, `Tuple` modules depending on the type of the given enumerable, or using a function in `Enum` if no specific one is defined.
+
+  ## Examples
+
+      > Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
+      # runs `Map.values/1`
+      [2, 1]
+
+      iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
+      # runs `Keyword.values/1`
+      [1, 2]
+
+      iex> Bonfire.Common.Enums.fun([1, 2, 3], :first)
+      # runs `List.first/1`
+      1
+
+      iex> Bonfire.Common.Enums.fun({1, 2}, :sum)
+      # runs `Tuple.sum/1`
+      3
+
+      iex> Bonfire.Common.Enums.fun({1, 2}, :last)
+      # runs `List.last/1` after converting the tuple to a list
+      2
+      
+      iex> Bonfire.Common.Enums.fun([1, 2, 3], :sum)
+      # runs `Enum.sum/1` because there's no `List.sum/1`
+      6
+      
+  """
+  def fun(map, fun, args \\ [])
+
+  def fun(map, fun, args) when is_map(map) do
+    args = [map] ++ List.wrap(args)
+
+    Utils.maybe_apply(Map, fun, args, fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end)
+  end
+
+  def fun(list, fun, args) when is_list(list) do
+    args = [list] ++ List.wrap(args)
+
+    if Keyword.keyword?(list) do
+      Utils.maybe_apply(Keyword, fun, args,
+        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
+      )
+    else
+      Utils.maybe_apply(List, fun, args,
+        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
+      )
+    end
+  end
+
+  def fun(tuple, func, args) when is_tuple(tuple) do
+    # Note: tuples aren't technically enumerables, but included for convenience
+    Utils.maybe_apply(Tuple, func, [tuple] ++ List.wrap(args),
+      fallback_fun: fn ->
+        fun(Tuple.to_list(tuple), func, args)
+      end
+    )
+  end
+
+  @doc """
   Extracts a binary ID from various data structures, such as a map containing the key :id or "id", a changeset, or a tuple containing the atom :id.
   """
   def id(id) when is_binary(id), do: id
@@ -1477,6 +1538,64 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
+  Like `Enum.group_by/3`, except children are required to be unique (will throw otherwise!) and the resulting map does not wrap each item in a list.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.group([1, 2, 3], fn x -> x end)
+      %{1 => 1, 2 => 2, 3 => 3}
+
+      > Bonfire.Common.Enums.group([:a, :b, :b, :c], fn x -> x end)
+      ** (throw) "Expected a unique value"
+  """
+  def group([], fun) when is_function(fun, 1), do: %{}
+
+  def group(list, fun)
+      when is_list(list) and is_function(fun, 1),
+      do: group(list, %{}, fun)
+
+  defp group([x | xs], acc, fun),
+    do: group(xs, group_item(fun.(x), x, acc), fun)
+
+  defp group([], acc, _), do: acc
+
+  defp group_item(key, _value, acc)
+       when is_map_key(acc, key),
+       do: throw("Expected a unique value")
+
+  defp group_item(key, value, acc),
+    do: Map.put(acc, key, value)
+
+  @doc """
+  Groups an enumerable by a function that returns key-value pairs, ensuring that keys are unique.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.group_map([:a, :b, :c], fn x -> {x, to_string(x)} end)
+      %{a: "a", b: "b", c: "c"}
+
+      > Bonfire.Common.Enums.group_map([1, 2, 2, 3], fn x -> {x, x * 2} end)
+      ** (throw) "Expected a unique value"
+  """
+  def group_map([], fun) when is_function(fun, 1), do: %{}
+
+  def group_map(list, fun)
+      when is_list(list) and is_function(fun, 1),
+      do: group_map(list, %{}, fun)
+
+  defp group_map([x | xs], acc, fun),
+    do: group_map(xs, group_map_item(fun.(x), acc), fun)
+
+  defp group_map([], acc, _), do: acc
+
+  defp group_map_item({key, _value}, acc)
+       when is_map_key(acc, key),
+       do: throw("Expected a unique value")
+
+  defp group_map_item({key, value}, acc),
+    do: Map.put(acc, key, value)
+
+  @doc """
   Filters the given value or enumerable and if it contains any `:error` tuple, return an `:error` tuple with a list of error values, other return an `:ok` tuple with a list of values.
 
   ## Examples
@@ -1569,125 +1688,6 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Like `Enum.group_by/3`, except children are required to be unique (will throw otherwise!) and the resulting map does not wrap each item in a list.
-
-  ## Examples
-
-      iex> Bonfire.Common.Enums.group([1, 2, 3], fn x -> x end)
-      %{1 => 1, 2 => 2, 3 => 3}
-
-      > Bonfire.Common.Enums.group([:a, :b, :b, :c], fn x -> x end)
-      ** (throw) "Expected a unique value"
-  """
-  def group([], fun) when is_function(fun, 1), do: %{}
-
-  def group(list, fun)
-      when is_list(list) and is_function(fun, 1),
-      do: group(list, %{}, fun)
-
-  defp group([x | xs], acc, fun),
-    do: group(xs, group_item(fun.(x), x, acc), fun)
-
-  defp group([], acc, _), do: acc
-
-  defp group_item(key, _value, acc)
-       when is_map_key(acc, key),
-       do: throw("Expected a unique value")
-
-  defp group_item(key, value, acc),
-    do: Map.put(acc, key, value)
-
-  @doc """
-  Groups an enumerable by a function that returns key-value pairs, ensuring that keys are unique.
-
-  ## Examples
-
-      iex> Bonfire.Common.Enums.group_map([:a, :b, :c], fn x -> {x, to_string(x)} end)
-      %{a: "a", b: "b", c: "c"}
-
-      > Bonfire.Common.Enums.group_map([1, 2, 2, 3], fn x -> {x, x * 2} end)
-      ** (throw) "Expected a unique value"
-  """
-  def group_map([], fun) when is_function(fun, 1), do: %{}
-
-  def group_map(list, fun)
-      when is_list(list) and is_function(fun, 1),
-      do: group_map(list, %{}, fun)
-
-  defp group_map([x | xs], acc, fun),
-    do: group_map(xs, group_map_item(fun.(x), acc), fun)
-
-  defp group_map([], acc, _), do: acc
-
-  defp group_map_item({key, _value}, acc)
-       when is_map_key(acc, key),
-       do: throw("Expected a unique value")
-
-  defp group_map_item({key, value}, acc),
-    do: Map.put(acc, key, value)
-
-  @doc """
-  Applies a function from one of Elixir's `Map`, `Keyword`, `List`, `Tuple` modules depending on the type of the given enumerable, or using a function in `Enum` if no specific one is defined.
-
-  ## Examples
-
-      > Bonfire.Common.Enums.fun(%{a: 1, b: 2}, :values)
-      # runs `Map.values/1`
-      [2, 1]
-
-      iex> Bonfire.Common.Enums.fun([a: 1, b: 2], :values)
-      # runs `Keyword.values/1`
-      [1, 2]
-
-      iex> Bonfire.Common.Enums.fun([1, 2, 3], :first)
-      # runs `List.first/1`
-      1
-
-      iex> Bonfire.Common.Enums.fun({1, 2}, :sum)
-      # runs `Tuple.sum/1`
-      3
-
-      iex> Bonfire.Common.Enums.fun({1, 2}, :last)
-      # runs `List.last/1` after converting the tuple to a list
-      2
-      
-      iex> Bonfire.Common.Enums.fun([1, 2, 3], :sum)
-      # runs `Enum.sum/1` because there's no `List.sum/1`
-      6
-      
-  """
-  def fun(map, fun, args \\ [])
-
-  def fun(map, fun, args) when is_map(map) do
-    args = [map] ++ List.wrap(args)
-
-    Utils.maybe_apply(Map, fun, args, fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end)
-  end
-
-  def fun(list, fun, args) when is_list(list) do
-    args = [list] ++ List.wrap(args)
-
-    if Keyword.keyword?(list) do
-      Utils.maybe_apply(Keyword, fun, args,
-        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
-      )
-    else
-      Utils.maybe_apply(List, fun, args,
-        fallback_fun: fn -> Utils.maybe_apply(Enum, fun, args) end
-      )
-    end
-  end
-
-  def fun(tuple, func, args) when is_tuple(tuple) do
-    # Note: tuples aren't technically enumerables, but included for convenience
-    Utils.maybe_apply(Tuple, func, [tuple] ++ List.wrap(args),
-      fallback_fun: fn ->
-        fun(Tuple.to_list(tuple), func, args)
-      end
-    )
-  end
-
-  @doc """
   Unwraps tuples from a list of responses based on the specified key.
 
   ## Examples
@@ -1699,7 +1699,7 @@ defmodule Bonfire.Common.Enums do
       ["failed"]
   """
   def unwrap_tuples(enum, key) do
-    # TODO: optimise
+    # TODO: optimise & dedup all_oks_or_error?
     Enum.filter(enum, fn resp -> elem(resp, 0) == key end)
     |> Enum.map(fn v -> elem(v, 1) end)
     |> Enum.uniq()
