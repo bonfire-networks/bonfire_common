@@ -4,7 +4,7 @@ untangle = "~> 0.3" # log/inspect with code location
 ecto_sparkles = "~> 0.2"
 ecto_sql = "~> 3.8"
 needle_ulid = "~> 0.3"
-postgrex = "~> 0.18.0"
+postgrex = "~> 0.20.0"
 paginator = "~> 1.1" # paginate queries
 
 gettext = "~> 0.24" # localisation 
