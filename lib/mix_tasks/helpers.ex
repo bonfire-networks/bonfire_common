@@ -1,4 +1,43 @@
 defmodule Bonfire.Common.Mix.Tasks.Helpers do
+  def igniter_copy(igniter, source, target, opts \\ [])
+
+  def igniter_copy(igniter, sources, target, opts) when is_list(sources) do
+    IO.puts("Batch copying #{inspect(sources)} to #{target}")
+
+    Enum.reduce(sources, igniter, fn source, igniter ->
+      igniter_copy(igniter, source, prepare_target_path(source, target), opts)
+    end)
+  end
+
+  def igniter_copy(igniter, source, target, opts) do
+    IO.puts("Copying #{source} to #{target}")
+
+    if File.dir?(source) do
+      sources =
+        File.ls!(source)
+        |> Enum.map(fn file -> Path.join(source, file) end)
+
+      igniter_copy(igniter, sources, target, opts)
+    else
+      contents_to_copy = File.read!(source)
+
+      Igniter.create_or_update_file(igniter, target, contents_to_copy, fn source ->
+        Rewrite.Source.update(source, :content, contents_to_copy)
+      end)
+    end
+  end
+
+  defp prepare_target_path(source, target) do
+    # Remove the repeated part of source from target
+    if String.contains?(target, source) do
+      String.replace(target, source, "")
+      |> String.trim_leading("/")
+      |> (&Path.join(target, &1)).()
+    else
+      Path.join(target, Path.basename(source))
+    end
+  end
+
   def igniter_path_for_module(
         igniter,
         module_name,
