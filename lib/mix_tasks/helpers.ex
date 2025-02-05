@@ -38,6 +38,23 @@ defmodule Bonfire.Common.Mix.Tasks.Helpers do
     end
   end
 
+  def list_extensions do
+    extensions_pattern =
+      Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :multirepo_prefixes, [],
+        fallback_return: []
+      ) ++ ["bonfire"] ++ Bonfire.Common.Config.get([:extensions_pattern], [])
+
+    (Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :deps_tree_flat, [], fallback_return: nil) ||
+       Bonfire.Common.Extensions.loaded_deps_names())
+    |> IO.inspect(label: "all deps")
+    |> Enum.map(&to_string/1)
+    |> Enum.filter(fn
+      #  FIXME: make this configurable
+      "bonfire_" <> _ -> true
+      name -> String.starts_with?(name, extensions_pattern)
+    end)
+  end
+
   def igniter_path_for_module(
         igniter,
         module_name,

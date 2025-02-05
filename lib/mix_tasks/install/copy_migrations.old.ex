@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
 
   # TODO: turn into an escript so it can be run without compiling the whole app?
 
-  @shortdoc "Generates migrations for the extension"
+  @shortdoc "Copies migrations for the extension into the parent app"
   @doc """
   Usage:
   `just mix bonfire.extension.copy_migrations my_extension`
@@ -21,7 +21,7 @@ defmodule Mix.Tasks.Bonfire.Extension.CopyMigrations do
 
   --force (to not ask for confirmation before copying, or to overwrite existing migration files)
   --from priv/repo/migrations (to change the source repo paths, relative to each extension path)
-  --to priv/repo/migrations (to change the target repo path (defaults to current flavour's migrations) relative to working directory)
+  --to repo/migrations (to change the target repo path (defaults to current flavour's migrations) relative to working directory)
   --repo MyRepo (to specify what repo to migrate after)
   """
 

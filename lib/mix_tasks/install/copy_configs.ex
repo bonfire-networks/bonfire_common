@@ -1,8 +1,10 @@
-defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
+defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
   use Igniter.Mix.Task
   alias Bonfire.Common.Mix.Tasks.Helpers
 
-  @shortdoc "Copies migrations for the extension into the parent app"
+  # TODO: turn into an escript so it can be run without compiling the whole app
+
+  @shortdoc "Copies configs for the extension into the parent app"
   @doc """
   Usage:
   `just mix bonfire.install.copy_migrations my_extension`
@@ -15,14 +17,13 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
 
   Optional args:
 
-  --force (to not ask for confirmation before copying, or to overwrite existing migration files - only applies when not using Igniter)
-  --from priv/repo/migrations (to change the source repo paths, relative to each extension path)
-  --to repo/ (to change the target repo path (defaults to current flavour's migrations) relative to working directory)
+  --force (to not ask for confirmation before copying, or to overwrite existing config files - only applies when not using Igniter)
+  --from config (to change the source repo paths, relative to each extension path)
+  --to config/ (to change the target repo path (defaults to current flavour's configs) relative to working directory)
   """
 
   @switches [from: :string, to: :string, force: :boolean]
-  @default_repo_path "repo"
-  @default_mig_path @default_repo_path <> "/migrations"
+  @default_config_path "config"
 
   def igniter(igniter, args) do
     IO.inspect(args, label: "Args")
@@ -46,20 +47,22 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
   def copy_for_extensions(igniter, extensions, opts) do
     IO.inspect(opts, label: "Options")
 
-    path = opts[:to] || Path.expand(@default_repo_path, Bonfire.Mixer.flavour_path())
+    path = opts[:to] || Path.expand(@default_config_path, Bonfire.Mixer.flavour_path())
 
     dest_path =
       Path.expand(path, File.cwd!())
       |> IO.inspect(label: "to path")
 
+    from = opts[:from] || @default_config_path
+
     extension_paths =
       extensions
       |> IO.inspect(label: "deps to include")
-      |> Bonfire.Mixer.dep_paths(opts[:from] || "priv/" <> @default_mig_path)
+      |> Enum.flat_map(&Bonfire.Mixer.dep_paths(&1, Path.join(from, "#{&1}.exs")))
       |> IO.inspect(label: "paths to copy")
 
     if igniter do
-      Igniter.include_glob(igniter, Path.join(dest_path, "**/*.{exs}"))
+      Igniter.include_glob(igniter, Path.join(dest_path, "*"))
       |> Helpers.igniter_copy(extension_paths, dest_path, opts)
     else
       simple_copy(extension_paths, dest_path, opts)
@@ -75,7 +78,7 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
 
     if opts[:force] do
       IO.puts(
-        "\nCopying the following migrations from #{source_path} to #{dest_path}: \n#{inspect(File.ls!(source_path))}\n"
+        "\nCopying the following config from #{source_path} to #{dest_path}: \n#{inspect(File.ls!(source_path))}\n"
       )
 
       with {:error, reason, file} <- File.cp_r(source_path, dest_path) do
@@ -83,7 +86,7 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
       end
     else
       if IO.gets(
-           "Will copy the following migrations from #{source_path} to #{dest_path}: \n#{inspect(File.ls!(source_path))}\n\nType y to confirm: "
+           "Will copy the following config from #{source_path} to #{dest_path}: \n#{inspect(File.ls!(source_path))}\n\nType y to confirm: "
          ) == "y\n" do
         File.cp_r(source_path, dest_path,
           on_conflict: fn source, destination ->
