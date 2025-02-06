@@ -7,10 +7,13 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
 
   use Igniter.Mix.Task
 
+  @default_template "bonfire_extension_template"
+
   @impl Igniter.Mix.Task
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
-      # description: "Creates a new Bonfire extension from a template",
+      # description: "Creates a new Bonfire extension from a template"
+      schema: [template: :string],
       positional: [
         extension_name: [
           type: :string,
@@ -23,29 +26,37 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
 
   @impl Igniter.Mix.Task
   def igniter(igniter) do
-    [extension_name] = igniter.args.argv
+    opts = igniter.args.options
+    extension_name = igniter.args.positional[:extension_name]
     snake_name = Macro.underscore(extension_name)
 
-    camel_name =
-      extension_name
-      |> String.replace("bonfire_", "bonfire/")
-      |> Macro.camelize()
+    camel_name = ext_camel(extension_name)
+
+    template = opts[:template] || @default_template
 
     igniter
-    |> clone_template(snake_name)
-    |> rename_modules(snake_name, camel_name)
-    |> rename_config_file(snake_name)
+    |> clone_template(snake_name, template)
+    |> rename_modules(snake_name, camel_name, template)
+    |> rename_config_file(snake_name, template)
+    # FIXME: do we need to force Igniter to run it's tasks so the commit happens after the changes?
     |> reset_git(snake_name)
     |> Igniter.add_notice(
       "Done! You can now start developing your extension in ./extensions/#{snake_name}/"
     )
   end
 
-  defp clone_template(igniter, snake_name) do
-    if File.exists?("extensions/bonfire_extension_template") do
+  defp ext_camel(extension_name) do
+    camel_name =
+      extension_name
+      |> String.replace("bonfire_", "bonfire/")
+      |> Macro.camelize()
+  end
+
+  defp clone_template(igniter, snake_name, template) do
+    if File.exists?("extensions/#{template}") do
       System.cmd("sh", [
         "-c",
-        "cd extensions/bonfire_extension_template && find . -name '.git' -prune -o -print | cpio -pdm ../#{snake_name}"
+        "cd extensions/#{template} && find . \\( -name '.git' -o -name 'deps' -o -name '_build' \\) -prune -o -print | cpio -pdm ../#{snake_name}"
       ])
     else
       System.cmd(
@@ -54,7 +65,7 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
           "clone",
           "--depth",
           "1",
-          "https://github.com/bonfire-networks/bonfire_extension_template.git",
+          "https://github.com/bonfire-networks/#{template}.git",
           snake_name
         ],
         cd: "extensions"
@@ -64,7 +75,7 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
     igniter
   end
 
-  defp rename_modules(igniter, snake_name, camel_name) do
+  defp rename_modules(igniter, snake_name, camel_name, template) do
     patterns = ["**/*.ex", "**/*.exs", "**/*.md", "**/*.sface"]
     base_path = "extensions/#{snake_name}/"
 
@@ -77,8 +88,8 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
           Rewrite.Source.update(source, :content, fn
             content when is_binary(content) ->
               content
-              |> String.replace("bonfire_extension_template", snake_name)
-              |> String.replace("Bonfire.ExtensionTemplate", camel_name)
+              |> String.replace(template, snake_name)
+              |> String.replace(ext_camel(template), camel_name)
 
             content ->
               content
@@ -88,8 +99,8 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
     end)
   end
 
-  defp rename_config_file(igniter, extension_name) do
-    old_name = "extensions/#{extension_name}/config/bonfire_extension_template.exs"
+  defp rename_config_file(igniter, extension_name, template) do
+    old_name = "extensions/#{extension_name}/config/#{template}.exs"
     new_name = "extensions/#{extension_name}/config/#{extension_name}.exs"
 
     Igniter.move_file(igniter, old_name, new_name)
