@@ -436,7 +436,23 @@ defmodule Bonfire.Common.Settings do
     |> set_with_hooks(to_options(opts))
   end
 
+
+  def put_raw(key, value, opts), do: put_raw([key], value, opts)
+
+  def put_raw(keys, value, opts \\ [])
+
+  def put_raw(keys, value, opts) when is_list(keys) do
+    # keys = Config.keys_tree(keys) # Note: doing this in set/2 instead
+    # |> debug("Putting settings for")
+    Enums.map_put_in(keys, value)
+    |> debug("send to hooks")
+    # |> maybe_to_keyword_list(true)
+    # |> debug("maybe_to_keyword_list")
+    |> set_with_hooks(to_options(opts))
+  end
+
   def put(key, value, opts), do: put([key], value, opts)
+
 
   def delete(key_tree, opts \\ [])
 
