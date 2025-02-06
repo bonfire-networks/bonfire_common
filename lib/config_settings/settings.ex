@@ -436,7 +436,6 @@ defmodule Bonfire.Common.Settings do
     |> set_with_hooks(to_options(opts))
   end
 
-
   def put_raw(key, value, opts), do: put_raw([key], value, opts)
 
   def put_raw(keys, value, opts \\ [])
@@ -452,7 +451,6 @@ defmodule Bonfire.Common.Settings do
   end
 
   def put(key, value, opts), do: put([key], value, opts)
-
 
   def delete(key_tree, opts \\ [])
 
