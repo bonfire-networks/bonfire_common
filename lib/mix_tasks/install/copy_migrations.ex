@@ -21,7 +21,7 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
   """
 
   @switches [from: :string, to: :string, force: :boolean]
-  @default_repo_path "repo"
+  @default_repo_path "priv/repo"
   @default_mig_path @default_repo_path <> "/migrations"
 
   def igniter(igniter, args) do
@@ -46,16 +46,18 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
   def copy_for_extensions(igniter, extensions, opts) do
     IO.inspect(opts, label: "Options")
 
-    path = opts[:to] || Path.expand(@default_repo_path, Bonfire.Mixer.flavour_path())
+    to = opts[:to] || @default_repo_path
 
     dest_path =
-      Path.expand(path, File.cwd!())
+      Path.expand(to, File.cwd!())
       |> IO.inspect(label: "to path")
+
+    from = opts[:from] || @default_mig_path
 
     extension_paths =
       extensions
       |> IO.inspect(label: "deps to include")
-      |> Bonfire.Mixer.dep_paths(opts[:from] || "priv/" <> @default_mig_path)
+      |> Bonfire.Mixer.dep_paths(from)
       |> IO.inspect(label: "paths to copy")
 
     if igniter do

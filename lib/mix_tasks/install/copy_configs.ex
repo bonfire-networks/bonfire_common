@@ -47,10 +47,10 @@ defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
   def copy_for_extensions(igniter, extensions, opts) do
     IO.inspect(opts, label: "Options")
 
-    path = opts[:to] || Path.expand(@default_config_path, Bonfire.Mixer.flavour_path())
+    to = opts[:to] || @default_config_path
 
     dest_path =
-      Path.expand(path, File.cwd!())
+      Path.expand(to, File.cwd!())
       |> IO.inspect(label: "to path")
 
     from = opts[:from] || @default_config_path

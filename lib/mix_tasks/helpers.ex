@@ -19,11 +19,18 @@ defmodule Bonfire.Common.Mix.Tasks.Helpers do
 
       igniter_copy(igniter, sources, target, opts)
     else
-      contents_to_copy = File.read!(source)
+      if File.exists?(source) do
+        contents_to_copy = File.read!(source)
 
-      Igniter.create_or_update_file(igniter, target, contents_to_copy, fn source ->
-        Rewrite.Source.update(source, :content, contents_to_copy)
-      end)
+        if String.contains?(target, "/"), do: File.mkdir_p!(Path.dirname(target))
+
+        Igniter.create_or_update_file(igniter, target, contents_to_copy, fn source ->
+          Rewrite.Source.update(source, :content, contents_to_copy)
+        end)
+      else
+        IO.puts("Warning: Source file `#{source}` does not exist")
+        igniter
+      end
     end
   end
 

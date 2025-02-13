@@ -51,9 +51,9 @@ defmodule Mix.Tasks.Bonfire.Install.Extension do
     defs =
       opts[:defs] ||
         [
-          path: "config/deps.flavour.path",
-          git: "config/deps.flavour.git",
-          hex: "config/deps.flavour.hex"
+          path: "config/current_flavour/deps.path",
+          git: "config/current_flavour/deps.git",
+          hex: "config/current_flavour/deps.hex"
         ]
 
     :ok =

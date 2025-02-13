@@ -769,7 +769,9 @@ defmodule Bonfire.Common.Extend do
       :ok
   """
   def generate_reverse_router!() do
-    Utils.maybe_apply(Bonfire.Common.Config.endpoint_module(), :generate_reverse_router!)
+    Utils.maybe_apply(Config.get(:router_module, Bonfire.Web.Router), :generate_reverse_router!, [
+      Config.get(:otp_app)
+    ])
     |> debug("reverse_router generated?")
   end
 
