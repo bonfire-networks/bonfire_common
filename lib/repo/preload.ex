@@ -84,14 +84,19 @@ defmodule Bonfire.Common.Repo.Preload do
 
       # TODO: cache this as well (only if not needing to double check pointer boundaries)
     else
-      debug(
-        preloads,
-        "maybe_preload #{opts[:label]}: trying to preload (without following pointers)"
-      )
-
       if Keyword.get(opts, :with_cache, false) do
+        debug(
+          preloads,
+          "maybe_preload #{opts[:label]}: trying to preload using cache (without following pointers)"
+        )
+
         maybe_preload_from_cache(obj, preloads, opts)
       else
+        debug(
+          preloads,
+          "maybe_preload #{opts[:label]}: trying to preload (without using cache or following pointers)"
+        )
+
         try_repo_preload(obj, preloads, opts)
       end
     end
@@ -121,6 +126,11 @@ defmodule Bonfire.Common.Repo.Preload do
 
   defp try_repo_preload(objects, preloads, opts)
        when is_struct(objects) or is_list(objects) do
+    debug(
+      # preloads,
+      "maybe_preload: trying Ecto.Repo.preload"
+    )
+
     repo().preload(objects, preloads, opts)
   rescue
     e in ArgumentError ->
@@ -160,7 +170,10 @@ defmodule Bonfire.Common.Repo.Preload do
       )
   end
 
-  defp try_repo_preload(obj, _, _), do: obj
+  defp try_repo_preload(obj, preloads, _) do
+    warn(preloads, "unsupported preloads, return original object(s)")
+    obj
+  end
 
   @doc """
   Conditionally preloads associations for nested schemas.
