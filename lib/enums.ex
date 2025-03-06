@@ -191,6 +191,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   def access_keys(keys, last_fallback \\ nil)
+
   def access_keys(key, last_fallback) when not is_list(key), do: access_keys([key], last_fallback)
 
   def access_keys(keys, %{}) do
