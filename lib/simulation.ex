@@ -160,4 +160,12 @@ defmodule Bonfire.Common.Simulation do
              last >= first do
     some(Faker.random_between(first, last), fun)
   end
+
+  def assert_has_or_open_browser(session, selector, opts \\ []) do
+    PhoenixTest.assert_has(session, selector, opts)
+  rescue
+    e ->
+      PhoenixTest.open_browser(session)
+      reraise e, __STACKTRACE__
+  end
 end
