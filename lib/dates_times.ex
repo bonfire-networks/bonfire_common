@@ -502,4 +502,24 @@ defmodule Bonfire.Common.DatesTimes do
   def future?(%Date{} = dt) do
     Date.after?(dt, now())
   end
+
+  def format_duration(duration) when is_binary(duration) do
+    case Float.parse(duration) do
+      {seconds, _} -> format_duration(seconds)
+      :error -> duration
+    end
+  end
+
+  def format_duration(seconds) when is_float(seconds) do
+    total_minutes = trunc(seconds / 60)
+    hours = div(total_minutes, 60)
+    minutes = rem(total_minutes, 60)
+    remaining_seconds = seconds - total_minutes * 60
+
+    cond do
+      hours > 0 -> "#{hours}h #{minutes}min"
+      minutes > 0 -> "#{minutes}min"
+      true -> "#{Float.round(remaining_seconds, 2)}s"
+    end
+  end
 end
