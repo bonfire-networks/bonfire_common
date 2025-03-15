@@ -987,6 +987,7 @@ defmodule Bonfire.Common.Utils do
     fallback
   end
 
+  def ok_unwrap(:ok, fallback), do: fallback
   def ok_unwrap(:error, fallback), do: fallback
   def ok_unwrap(val, fallback), do: val || fallback
 
