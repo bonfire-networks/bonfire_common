@@ -26,7 +26,7 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
     settings = Bonfire.Common.Settings.load_instance_settings()
 
     if settings do
-      Logger.info("Loaded instance Settings were loaded into the app's Config")
+      Logger.info("Loading instance Settings from DB into the app's Config")
 
       put = Bonfire.Common.Config.put(settings)
 
