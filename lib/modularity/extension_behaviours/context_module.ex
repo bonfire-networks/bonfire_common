@@ -97,7 +97,7 @@ defmodule Bonfire.Common.ContextModule do
         {:ok, query}
 
       _ ->
-        case linked_schema_modules()[query] ||
+        case linked_schema_modules()[query] || linked_verb_modules()[query] ||
                Bonfire.Common.SchemaModule.linked_context_modules()[query] do
           nil -> {:error, :not_found}
           module -> {:ok, module}
@@ -139,6 +139,10 @@ defmodule Bonfire.Common.ContextModule do
 
   def linked_schema_modules() do
     Bonfire.Common.ExtensionBehaviour.apply_modules_cached(modules(), :schema_module)
+  end
+
+  def linked_verb_modules() do
+    Bonfire.Common.ExtensionBehaviour.apply_modules_cached(modules(), :verb_context_module)
   end
 
   def linked_query_modules() do

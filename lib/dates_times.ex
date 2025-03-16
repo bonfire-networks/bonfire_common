@@ -510,7 +510,7 @@ defmodule Bonfire.Common.DatesTimes do
     end
   end
 
-  def format_duration(seconds) when is_float(seconds) do
+  def format_duration(seconds) when is_number(seconds) do
     total_minutes = trunc(seconds / 60)
     hours = div(total_minutes, 60)
     minutes = rem(total_minutes, 60)
@@ -519,7 +519,7 @@ defmodule Bonfire.Common.DatesTimes do
     cond do
       hours > 0 -> "#{hours}h #{minutes}min"
       minutes > 0 -> "#{minutes}min"
-      true -> "#{Float.round(remaining_seconds, 2)}s"
+      true -> "#{Float.round(Types.maybe_to_float(remaining_seconds), 2)}s"
     end
   end
 end
