@@ -556,7 +556,7 @@ defmodule Bonfire.Common.Settings do
 
     # TODO: move this code somewhere else
 
-    maybe_apply(Bonfire.Search.Indexer, :maybe_delete_object, [current_user])
+    maybe_apply(Bonfire.Search, :maybe_unindex, [current_user])
     |> debug("deleetd?")
 
     Bonfire.Boundaries.Controlleds.remove_acls(
