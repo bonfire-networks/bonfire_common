@@ -296,7 +296,7 @@ defmodule Bonfire.Common.Types do
 
   ## Examples
       iex> maybe_to_float(123)
-      123
+      123.0
 
       iex> maybe_to_float("123.45")
       123.45
@@ -688,6 +688,8 @@ defmodule Bonfire.Common.Types do
              #  "Bonfire.Data.Identity.User",
              "5EVSER1S0STENS1B1YHVMAN01D",
              "user",
+             "User",
+             "Users",
              "users",
              "person",
              "organization",

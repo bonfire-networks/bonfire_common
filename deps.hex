@@ -18,6 +18,7 @@ ex_cldr_locale_display = "~> 1.1"
 ex_cldr_territories = "~> 2.9"
 timex = "~> 3.7.8" # date/times
 recase = "~> 0.8.0" # string recasing
+simple_slug = "~> 0.1.1"
 
 pathex = "~> 2.6"
 json_serde = "~> 1.1" # json [de]serialization for elixir data structures

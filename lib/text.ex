@@ -462,24 +462,45 @@ defmodule Bonfire.Common.Text do
   The text is downcased, trimmed, spaces are replaced with dashes, and it is URI-encoded.
 
       iex> Bonfire.Common.Text.slug("Hello World!")
-      "hello-world!"
+      "hello-world"
 
       iex> Bonfire.Common.Text.slug("Elixir Programming")
       "elixir-programming"
 
       iex> Bonfire.Common.Text.slug("Special & Characters")
-      "special-&-characters"
+      "special-characters"
+
+      iex> Bonfire.Common.Text.slug(["Many", nil, ["Words"]])
+      "many-words"
   """
-  def slug({_tag, _attrs, text, _extra}), do: slug(text)
+  def slug(text, opts \\ [])
+  def slug({_tag, _attrs, text, _extra}, opts), do: slug(text, opts)
 
-  def slug(text) when is_list(text),
-    do: text |> Enum.map(&md_tag_text/1) |> Enum.join("-") |> slug()
+  def slug(text, opts) when is_list(text),
+    do:
+      text
+      |> Enum.filter(&(not is_nil(&1) and &1 != ""))
+      |> Enum.flat_map(&md_tag_text/1)
+      |> List.flatten()
+      |> Enum.join(opts[:joiner] || "-")
+      |> slug(opts)
 
-  def slug(text) do
+  def slug(text, opts) do
+    truncate = opts[:truncate]
+
     text
     |> String.trim()
-    |> String.downcase()
-    |> String.replace(~r/\s+/, "-")
+    # |> String.downcase()
+    # |> String.replace(~r/\s+/, opts[:joiner] || "-")
+    |> String.replace(
+      ["/", "-", "+", ":", "@", "%", "*", ",", ".", "|", "(", ")", "&", "!"],
+      opts[:joiner] || "-"
+    )
+    |> SimpleSlug.slugify(
+      joiner: opts[:joiner] || "-",
+      lowercase?: opts[:lowercase?] != false,
+      truncate: if(truncate != false, do: truncate || 128)
+    )
     |> URI.encode()
   end
 
@@ -494,8 +515,9 @@ defmodule Bonfire.Common.Text do
   def maybe_to_snake(string), do: Recase.to_snake("#{string}")
 
   defp md_tag_text({_tag, _attrs, text, _extra}), do: md_tag_text(text)
-  defp md_tag_text(text) when is_binary(text), do: text
-  defp md_tag_text(_), do: ""
+  defp md_tag_text(text) when is_binary(text), do: [text]
+  defp md_tag_text(texts) when is_list(texts), do: texts
+  defp md_tag_text(_), do: []
 
   @doc """
   Highlights code using Makeup or falls back to Phoenix.HTML if unsupported.

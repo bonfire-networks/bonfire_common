@@ -48,7 +48,8 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
         module: Bonfire.Common,
         app: :bonfire_common,
         href: "/my_extension",
-        type: :link
+        type: :link, 
+        sub_widgets: []
       }
 
   """
