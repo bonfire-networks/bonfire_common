@@ -159,6 +159,9 @@ defmodule Bonfire.Common.Utils do
       %Bonfire.Data.Identity.User{} ->
         current_user_or_socket_or_opts
 
+      %{table_id: "5EVSER1S0STENS1B1YHVMAN01D"} ->
+        current_user_or_socket_or_opts
+
       %{assigns: %{} = assigns} = _socket ->
         current_user(assigns, true)
 
@@ -170,6 +173,12 @@ defmodule Bonfire.Common.Utils do
 
       %{context: %{current_user: _} = context} = _api_opts ->
         current_user(context, true)
+
+      %{context: %Bonfire.Data.Identity.User{} = user} ->
+        user
+
+      %{context: %{table_id: "5EVSER1S0STENS1B1YHVMAN01D"} = user} ->
+        user
 
       _ when is_list(current_user_or_socket_or_opts) ->
         if Keyword.keyword?(current_user_or_socket_or_opts) do
@@ -845,9 +854,14 @@ defmodule Bonfire.Common.Utils do
   # Handle LiveView's start_async
   def apply_task(:start_async, fun, opts) when is_list(opts) and is_function(fun) do
     socket =
-      opts[:socket] || raise ArgumentError, "`:socket` is required for LiveView async operations"
+      opts[:socket] ||
+        (warn(opts) && raise ArgumentError, "`:socket` is required for LiveView async operations")
 
-    id = opts[:id] || raise ArgumentError, "`:id` is required for LiveView start_async operations"
+    id =
+      opts[:id] ||
+        (warn(opts) &&
+           raise ArgumentError, "`:id` is required for LiveView start_async operations")
+
     pid = socket.transport_pid
 
     if socket && function_exported?(Phoenix.LiveView, :start_async, 4) do
@@ -875,11 +889,13 @@ defmodule Bonfire.Common.Utils do
   # Handle LiveView's assign_async
   def apply_task(:assign_async, fun, opts) when is_list(opts) and is_function(fun) do
     socket =
-      opts[:socket] || raise ArgumentError, "`:socket` is required for LiveView async operations"
+      opts[:socket] ||
+        (warn(opts) && raise ArgumentError, "`:socket` is required for LiveView async operations")
 
     keys =
       opts[:keys] ||
-        raise ArgumentError, "`:keys` is required for LiveView assign_async operations"
+        (warn(opts) &&
+           raise ArgumentError, "`:keys` is required for LiveView assign_async operations")
 
     pid = socket.transport_pid
 
