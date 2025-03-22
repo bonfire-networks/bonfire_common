@@ -820,16 +820,95 @@ defmodule Bonfire.Common.Utils do
 
   ## Examples
 
-      > apply_task(:async, fn -> IO.puts("Async task") end)
-      # Output: "Async task"
-
+      # Spawn an unsupervised Task for side effects
       > {apply_task(:start, fn -> IO.puts("Fire-and-forget task") end)
       # Output: "Fire-and-forget task"
 
+      # Spawn a supervised Task
       > apply_task(:start_link, fn -> IO.puts("Supervised task") end)
       # Output: "Supervised task"
+
+      # Start an async Task (which you must await to get the result)
+      > apply_task(:async, fn -> IO.puts("Async task") end)
+      # Output: "Async task"
+
+      # Using LiveView's start_async
+      > apply_task(:start_async, fn -> {:ok, %{result: "done"}} end, socket: socket, id: "task-123")
+      # Returns updated socket with async operation
+
+      # Using LiveView's assign_async
+      > apply_task(:assign_async, fn -> {:ok, %{key_to_assign: "value"}} end, socket: socket, keys: [:key_to_assign])
+      # Returns updated socket with async assignment
   """
-  def apply_task(function \\ :async, fun, opts \\ []) do
+  def apply_task(function \\ :async, fun, opts \\ [])
+
+  # Handle LiveView's start_async
+  def apply_task(:start_async, fun, opts) when is_list(opts) and is_function(fun) do
+    socket =
+      opts[:socket] || raise ArgumentError, "`:socket` is required for LiveView async operations"
+
+    id = opts[:id] || raise ArgumentError, "`:id` is required for LiveView start_async operations"
+    pid = socket.transport_pid
+
+    if socket && function_exported?(Phoenix.LiveView, :start_async, 4) do
+      Phoenix.LiveView.start_async(
+        socket,
+        id,
+        fn ->
+          # Preserve multi-tenancy/context in spawned process
+          current_endpoint = Process.get(:phoenix_endpoint_module)
+
+          Process.put(:task_parent_pid, pid)
+          Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+
+          # Execute the function
+          fun.()
+        end,
+        opts
+      )
+    else
+      # Fallback to regular Task if LiveView not available
+      do_apply_task(opts[:module] || Task, :start_link, fun, [], opts)
+    end
+  end
+
+  # Handle LiveView's assign_async
+  def apply_task(:assign_async, fun, opts) when is_list(opts) and is_function(fun) do
+    socket =
+      opts[:socket] || raise ArgumentError, "`:socket` is required for LiveView async operations"
+
+    keys =
+      opts[:keys] ||
+        raise ArgumentError, "`:keys` is required for LiveView assign_async operations"
+
+    pid = socket.transport_pid
+
+    if socket && function_exported?(Phoenix.LiveView, :assign_async, 4) do
+      Phoenix.LiveView.assign_async(
+        socket,
+        keys,
+        fn ->
+          # Preserve multi-tenancy/context in spawned process
+          current_endpoint = Process.get(:phoenix_endpoint_module)
+
+          Process.put(:task_parent_pid, pid)
+          Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+
+          # Execute the function
+          fun.()
+        end,
+        opts
+      )
+    else
+      # Fallback to regular Task if LiveView not available
+      task = do_apply_task(opts[:module] || Task, :async, fun, [], opts)
+      result = Task.await(task)
+      Phoenix.Socket.assign(socket, ok_unwrap(result))
+    end
+  end
+
+  # Use existing apply_task implementation for standard Task operations
+  def apply_task(function, fun, opts) when function in [:async, :start_link, :start] do
     do_apply_task(opts[:module] || Task, function, fun, [], opts)
   end
 
@@ -852,7 +931,7 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc """
-  Runs a function asynchronously using `Task.Supervisor`. This is similar to `apply_task/3` but specifically uses `Task.Supervisor` for supervision.
+  Runs a function asynchronously using `Task.Supervisor`. This is similar to `apply_task(:start_async, fun, opts)` but specifically uses `Task.Supervisor` for supervision.
 
   ## Parameters
 
