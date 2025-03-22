@@ -472,7 +472,7 @@ defmodule Bonfire.Common.Needles do
           %{pointer | pointed: pointed}
 
         other ->
-          debug(other, "Needle: could not load #{inspect(table_id)}")
+          debug(other, "Needle: could not load #{id} from #{inspect(table_id)}")
           pointer
       end
     else
