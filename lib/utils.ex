@@ -859,8 +859,8 @@ defmodule Bonfire.Common.Utils do
 
     id =
       opts[:id] ||
-        (warn(opts) &&
-           raise ArgumentError, "`:id` is required for LiveView start_async operations")
+        (warn(opts, "`:id` is required in opts for LiveView start_async operations") &&
+           raise ArgumentError, "`:id` is required in opts for LiveView start_async operations")
 
     pid = socket.transport_pid
 
@@ -890,12 +890,13 @@ defmodule Bonfire.Common.Utils do
   def apply_task(:assign_async, fun, opts) when is_list(opts) and is_function(fun) do
     socket =
       opts[:socket] ||
-        (warn(opts) && raise ArgumentError, "`:socket` is required for LiveView async operations")
+        (warn(opts) &&
+           raise ArgumentError, "`:socket` is required in opts for LiveView async operations")
 
     keys =
       opts[:keys] ||
         (warn(opts) &&
-           raise ArgumentError, "`:keys` is required for LiveView assign_async operations")
+           raise ArgumentError, "`:keys` is required in opts for LiveView assign_async operations")
 
     pid = socket.transport_pid
 
