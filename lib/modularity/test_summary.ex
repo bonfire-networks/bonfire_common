@@ -17,6 +17,12 @@ defmodule Bonfire.Common.TestSummary do
     {:noreply, config}
   end
 
+  def handle_cast({:test_started, %{name: name}}, config) do
+    IO.puts("#{name} started...")
+
+    {:noreply, config}
+  end
+
   def handle_cast({:module_finished, %{tests: tests} = _tested_module}, config) do
     # IO.inspect(opts, label: "Tests for module done")
     Enum.each(tests, &handle_test(&1, config))
@@ -91,10 +97,10 @@ defmodule Bonfire.Common.TestSummary do
   end
 
   defp formatter(:blame_diff, msg, %{colors: _colors} = _config) do
-    "-" <> msg <> "-"
+    " - " <> Text.truncate(msg, 200, "...") <> " - "
   end
 
   # defp formatter(:extra_info, _msg, _config), do: ""
 
-  defp formatter(_, msg, _config), do: msg
+  defp formatter(_, msg, _config), do: Text.truncate(msg, 200, "...")
 end

@@ -665,6 +665,7 @@ defmodule Bonfire.Common.Utils do
         else
           try do
             apply(module, fun, args)
+            # |> debug("ran")
           rescue
             e in FunctionClauseError ->
               {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)

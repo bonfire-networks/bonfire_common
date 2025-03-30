@@ -20,6 +20,7 @@ timex = "~> 3.7.8" # date/times
 recase = "~> 0.8.0" # string recasing
 simple_slug = "~> 0.1.1"
 
+tesla = "~> 1.3"
 pathex = "~> 2.6"
 json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing

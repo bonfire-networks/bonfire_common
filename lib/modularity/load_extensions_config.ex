@@ -31,7 +31,7 @@ defmodule Bonfire.Common.Config.LoadExtensionsConfig do
     # |> debug()
 
     if is_list(modules) and modules != [] do
-      Enum.each(modules, &maybe_apply(&1, :config))
+      Enum.each(modules, &apply(&1, :config, []))
 
       Logger.info(
         "Extensions' default settings were loaded from their ConfigModule into runtime config: #{inspect(modules)}"
