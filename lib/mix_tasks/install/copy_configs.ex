@@ -7,9 +7,9 @@ defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
   @shortdoc "Copies configs for the extension into the parent app"
   @doc """
   Usage:
-  `just mix bonfire.install.copy_migrations my_extension`
+  `just mix bonfire.install.copy_configs my_extension`
   or
-  `just mix bonfire.install.copy_migrations` 
+  `just mix bonfire.install.copy_configs` 
 
   NOTE: if you don't specify what extension(s) to include, it will automatically include all extensions which:
   - start with `bonfire_`

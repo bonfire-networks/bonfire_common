@@ -17,6 +17,8 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     test_instance = System.get_env("TEST_INSTANCE")
 
+    repo_app = IO.inspect(Bonfire.Common.Config.get(:umbrella_otp_app) || Bonfire.Common.Config.get(:otp_app) || :bonfire_common)
+
     repos =
       if Code.ensure_loaded?(Beacon.Repo),
         do: [Bonfire.Common.Repo, Beacon.Repo],
@@ -59,7 +61,6 @@ defmodule Bonfire.Common.RuntimeConfig do
           socket_options: maybe_repo_ipv6
         ]
       end
-      |> IO.inspect()
 
     database =
       case config_env() do
@@ -86,27 +87,27 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     IO.puts("Note: Starting database connection pool of #{pool_size}")
 
-    config :bonfire_common, ecto_repos: repos
+    config repo_app, ecto_repos: repos
     config :paginator, ecto_repos: repos
     config :activity_pub, ecto_repos: repos
 
-    config :bonfire_common, Bonfire.Common.Repo, repo_connection_config
-    config :bonfire_common, Bonfire.Common.TestInstanceRepo, repo_connection_config
+    config repo_app, Bonfire.Common.Repo, repo_connection_config
+    config repo_app, Bonfire.Common.TestInstanceRepo, repo_connection_config
     config :beacon, Beacon.Repo, repo_connection_config
 
-    config :bonfire_common, Bonfire.Common.Repo, database: database
+    config repo_app, Bonfire.Common.Repo, database: database
     config :beacon, Beacon.Repo, database: database
     config :paginator, Paginator.Repo, database: database
 
-    config :bonfire_common, Bonfire.Common.Repo, pool_size: pool_size
-    config :bonfire_common, Bonfire.Common.TestInstanceRepo, pool_size: pool_size
+    config repo_app, Bonfire.Common.Repo, pool_size: pool_size
+    config repo_app, Bonfire.Common.TestInstanceRepo, pool_size: pool_size
     config :beacon, Beacon.Repo, pool_size: pool_size
     config :paginator, Paginator.Repo, pool_size: pool_size
 
     repo_path = System.get_env("DB_REPO_PATH", "priv/repo")
-    config :bonfire_common, Bonfire.Common.Repo, priv: repo_path
-    config :bonfire_common, Bonfire.Common.Repo, priv: repo_path
-    config :bonfire_common, Bonfire.Common.TestInstanceRepo, priv: repo_path
+    config repo_app, Bonfire.Common.Repo, priv: repo_path
+    config repo_app, Bonfire.Common.Repo, priv: repo_path
+    config repo_app, Bonfire.Common.TestInstanceRepo, priv: repo_path
 
     config :ecto_sparkles,
       slow_query_ms: String.to_integer(System.get_env("DB_SLOW_QUERY_MS", "100")),
@@ -119,7 +120,7 @@ defmodule Bonfire.Common.RuntimeConfig do
       # The MIX_TEST_PARTITION environment variable can be used
       # to provide built-in test partitioning in CI environment.
       # Run `mix help test` for more information.
-      config :bonfire_common, Bonfire.Common.Repo,
+      config repo_app, Bonfire.Common.Repo,
         pool: Ecto.Adapters.SQL.Sandbox,
         # show_sensitive_data_on_connection_error: true,
         # database: db,
