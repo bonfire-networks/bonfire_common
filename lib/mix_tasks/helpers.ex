@@ -53,7 +53,7 @@ defmodule Bonfire.Common.Mix.Tasks.Helpers do
 
     (Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :deps_tree_flat, [], fallback_return: nil) ||
        Bonfire.Common.Extensions.loaded_deps_names())
-    |> IO.inspect(label: "all deps")
+    # |> IO.inspect(label: "all deps")
     |> Enum.map(&to_string/1)
     |> Enum.filter(fn
       #  FIXME: make this configurable

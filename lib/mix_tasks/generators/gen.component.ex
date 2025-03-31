@@ -42,8 +42,7 @@ defmodule Mix.Tasks.Bonfire.Gen.Component do
       """
     )
     |> Igniter.create_new_file(
-      Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix, "sface")
-      |> IO.inspect(),
+      Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix, "sface"),
       """
       <div>
         Hello, This is a new #{state} component for #{ext_module}.

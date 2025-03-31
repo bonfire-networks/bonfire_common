@@ -17,7 +17,9 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     test_instance = System.get_env("TEST_INSTANCE")
 
-    repo_app = IO.inspect(Bonfire.Common.Config.get(:umbrella_otp_app) || Bonfire.Common.Config.get(:otp_app) || :bonfire_common)
+    repo_app =
+      Bonfire.Common.Config.get(:umbrella_otp_app) || Bonfire.Common.Config.get(:otp_app) ||
+        :bonfire_common
 
     repos =
       if Code.ensure_loaded?(Beacon.Repo),

@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Bonfire.Install.Extension do
   @default_config_path "config"
 
   def igniter(igniter, [type | args]) do
-    IO.inspect(args, label: "Args")
+    # IO.inspect(args, label: "Args")
 
     case OptionParser.parse(args, switches: @switches) do
       {_opts, [], _} ->

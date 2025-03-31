@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
   @default_config_path "config"
 
   def igniter(igniter, args) do
-    IO.inspect(args, label: "Args")
+    # IO.inspect(args, label: "Args")
 
     case OptionParser.parse(args, switches: @switches) do
       {opts, [], _} ->
@@ -51,15 +51,17 @@ defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
 
     dest_path =
       Path.expand(to, File.cwd!())
-      |> IO.inspect(label: "to path")
+
+    # |> IO.inspect(label: "to path")
 
     from = opts[:from] || @default_config_path
 
     extension_paths =
       extensions
-      |> IO.inspect(label: "deps to include")
+      # |> IO.inspect(label: "deps to include")
       |> Enum.flat_map(&Bonfire.Mixer.dep_paths(&1, Path.join(from, "#{&1}.exs")))
-      |> IO.inspect(label: "paths to copy")
+
+    # |> IO.inspect(label: "paths to copy")
 
     if igniter do
       Igniter.include_glob(igniter, Path.join(dest_path, "*"))
@@ -73,8 +75,8 @@ defmodule Mix.Tasks.Bonfire.Install.CopyConfigs do
     do: Enum.each(extension_paths, &simple_copy(&1, dest_path, opts))
 
   def simple_copy(source_path, dest_path, opts) do
-    source_path
-    |> IO.inspect()
+    # source_path
+    # |> IO.inspect()
 
     if opts[:force] do
       IO.puts(
