@@ -198,6 +198,14 @@ defmodule Bonfire.Common.Types do
     end
   end
 
+  def uid_or_uids(objects) when is_list(objects) do
+    uids(objects)
+  end
+
+  def uid_or_uids(object) do
+    uid(object)
+  end
+
   @doc """
   Takes an object or list of objects and returns a list of ULIDs (Universally Unique Lexicographically Sortable Identifier) ID(s) if present.
 
@@ -225,12 +233,67 @@ defmodule Bonfire.Common.Types do
     objects |> List.wrap() |> List.flatten() |> Enum.map(&uid/1) |> Enums.filter_empty(fallback)
   end
 
-  def uid_or_uids(objects) when is_list(objects) do
-    uids(objects)
-  end
+  @doc """
+  Takes an object or list of objects and returns a tuple containing:
+  1. A list of valid ULIDs extracted from the objects
+  2. A list of non-ULID values that couldn't be converted (optionally processed through a function)
 
-  def uid_or_uids(object) do
-    uid(object)
+  This is useful when you need to process UIDs and non-UIDs differently in a mixed list.
+
+  ## Examples
+
+      iex> partition_uids(["01J3MNBPD0VX96MFY9B15BCHYP", "not_a_uid", %{id: "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"}, :something_else])
+      {["01J3MNBPD0VX96MFY9B15BCHYP", "01J3MQ2Q4RVB1WTE3KT1D8ZNX1"], ["not_a_uid", :something_else]}
+
+      iex> partition_uids(%{pointer_id: "01J3MNBPD0VX96MFY9B15BCHYP"})
+      {["01J3MNBPD0VX96MFY9B15BCHYP"], []}
+
+      iex> partition_uids("not_a_uid")
+      {[], ["not_a_uid"]}
+
+      iex> partition_uids(["01J3MNBPD0VX96MFY9B15BCHYP", "not_a_uid"], non_uid_fun: &String.upcase/1)
+      {["01J3MNBPD0VX96MFY9B15BCHYP"], ["NOT_A_UID"]}
+      
+      iex> partition_uids([], fallback: [:default])
+      {[], [:default]}
+      
+      iex> partition_uids(nil, fallback: [:default])
+      {[], [:default]}
+  """
+  def partition_uids(objects, opts \\ []) do
+    prepare_non_uid_fun = Keyword.get(opts, :prepare_non_uid_fun)
+
+    case objects do
+      nil ->
+        {[], []}
+
+      [] ->
+        {[], []}
+
+      objects ->
+        # Prepare the objects
+        objects = List.wrap(objects) |> List.flatten()
+
+        # Process each item to attempt UID extraction
+        Enum.reduce(objects, {[], []}, fn item, {valid_uids, non_uids} ->
+          case uid(item) do
+            uid when is_binary(uid) ->
+              # Successfully extracted a UID
+              {[uid | valid_uids], non_uids}
+
+            _ ->
+              # Item couldn't be converted to a UID
+              item =
+                if is_function(prepare_non_uid_fun, 1), do: prepare_non_uid_fun.(item), else: item
+
+              {valid_uids, [item | non_uids]}
+          end
+        end)
+        # Return the accumulated lists 
+        |> then(fn {valid_uids, non_uids} ->
+          {Enums.filter_empty(valid_uids, []), Enums.filter_empty(non_uids, [])}
+        end)
+    end
   end
 
   def uids_or(objects, fallback_or_fun) when is_list(objects) do
