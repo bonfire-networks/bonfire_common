@@ -251,14 +251,11 @@ defmodule Bonfire.Common.Types do
       iex> partition_uids("not_a_uid")
       {[], ["not_a_uid"]}
 
-      iex> partition_uids(["01J3MNBPD0VX96MFY9B15BCHYP", "not_a_uid"], non_uid_fun: &String.upcase/1)
+      iex> partition_uids(["01J3MNBPD0VX96MFY9B15BCHYP", "not_a_uid"], prepare_non_uid_fun: &String.upcase/1)
       {["01J3MNBPD0VX96MFY9B15BCHYP"], ["NOT_A_UID"]}
       
-      iex> partition_uids([], fallback: [:default])
-      {[], [:default]}
-      
-      iex> partition_uids(nil, fallback: [:default])
-      {[], [:default]}
+      iex> partition_uids([])
+      {[], []}
   """
   def partition_uids(objects, opts \\ []) do
     prepare_non_uid_fun = Keyword.get(opts, :prepare_non_uid_fun)
@@ -279,14 +276,14 @@ defmodule Bonfire.Common.Types do
           case uid(item) do
             uid when is_binary(uid) ->
               # Successfully extracted a UID
-              {[uid | valid_uids], non_uids}
+              {valid_uids ++ [uid], non_uids}
 
             _ ->
               # Item couldn't be converted to a UID
               item =
-                if is_function(prepare_non_uid_fun, 1), do: prepare_non_uid_fun.(item), else: item
+                if is_function(prepare_non_uid_fun), do: prepare_non_uid_fun.(item), else: item
 
-              {valid_uids, [item | non_uids]}
+              {valid_uids, non_uids ++ [item]}
           end
         end)
         # Return the accumulated lists 

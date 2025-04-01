@@ -77,22 +77,32 @@ defmodule Bonfire.Common.DatesTimes do
 
   ## Examples
 
-      > format(DateTime.now!("Etc/UTC"))
+      > format_date(DateTime.now!("Etc/UTC"))
       "Jul 25, 2024"
 
-      iex> format("2024-07-25")
+      iex> format_date("2024-07-25")
       "Jul 25, 2024"
 
-      iex> format("2024-7-25")
+      iex> format_date("2024-7-25")
       "Jul 25, 2024"
 
-      iex> format("2024-7")
+      iex> format_date("2024-7")
       "Jul, 2024" # TODO
   """
   def format_date(date, opts \\ []) do
     case to_date(date) |> debug("format_date") do
       nil ->
-        nil
+        # Special case for partial dates
+        if is_binary(date) && Regex.match?(~r/^\d{4}-\d{1,2}$/, date) do
+          # Handle YYYY-MM format
+          parts = String.split(date, "-")
+          year = Enum.at(parts, 0)
+          month = Enum.at(parts, 1) |> String.to_integer()
+          "#{month_name(month) || month}, #{year}"
+        else
+          error(date, "Could not format date")
+          nil
+        end
 
       date ->
         case Bonfire.Common.Localise.Cldr.Date.to_string(date, opts) do
@@ -100,11 +110,31 @@ defmodule Bonfire.Common.DatesTimes do
             formatted
 
           other ->
-            error(other)
-            nil
+            error(other, "Could not format date")
         end
     end
   end
+
+  # Helper function to get month name
+  defp month_name(month) when month in 1..12 do
+    [
+      l("Jan"),
+      l("Feb"),
+      l("Mar"),
+      l("Apr"),
+      l("May"),
+      l("Jun"),
+      l("Jul"),
+      l("Aug"),
+      l("Sep"),
+      l("Oct"),
+      l("Nov"),
+      l("Dec")
+    ]
+    |> Enum.at(month - 1)
+  end
+
+  defp month_name(_), do: nil
 
   @doc """
   Returns a list of available format keys for the given locale.
@@ -276,6 +306,9 @@ defmodule Bonfire.Common.DatesTimes do
       iex> to_date("2024-07-25")
       %Date{year: 2024, month: 7, day: 25}
 
+      iex> to_date("2024-7-25")
+      %Date{year: 2024, month: 7, day: 25}
+
       iex> to_date(1656115200000)
       %Date{year: 2022, month: 6, day: 25}  
 
@@ -307,7 +340,7 @@ defmodule Bonfire.Common.DatesTimes do
         date
 
       other ->
-        error(other)
+        error(other, "Invalid date format")
         nil
     end
   end
@@ -324,8 +357,25 @@ defmodule Bonfire.Common.DatesTimes do
           datetime
 
         other ->
-          error(other)
-          nil
+          if Regex.match?(~r/^\d{4}-\d{1,2}-\d{1,2}$/, string) do
+            # Parse non-standard format dates
+            [year_str, month_str, day_str] = String.split(string, "-")
+            year = String.to_integer(year_str)
+            month = String.to_integer(month_str)
+            day = String.to_integer(day_str)
+
+            case Date.new(year, month, day) do
+              {:ok, date} ->
+                date
+
+              error ->
+                error(error, "Invalid date format")
+                nil
+            end
+          else
+            error(other, "Unsupported date format")
+            nil
+          end
       end
     end
   end
