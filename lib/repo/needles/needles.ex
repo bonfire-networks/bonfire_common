@@ -471,6 +471,17 @@ defmodule Bonfire.Common.Needles do
         [pointed] ->
           %{pointer | pointed: pointed}
 
+        [] ->
+          if opts[:skip_boundary_check] != true do
+            error(
+              "Needle: could not load #{id} from #{inspect(table_id)} (maybe because not allowed by boundaries)"
+            )
+          else
+            debug("Needle: could not find #{id} from #{inspect(table_id)}")
+          end
+
+          pointer
+
         other ->
           debug(other, "Needle: could not load #{id} from #{inspect(table_id)}")
           pointer

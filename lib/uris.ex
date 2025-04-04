@@ -391,92 +391,107 @@ defmodule Bonfire.Common.URIs do
       nil
 
   """
-  def canonical_url(%{canonical_uri: canonical_url})
+  def canonical_url(object, opts \\ [])
+
+  def canonical_url(%{canonical_uri: canonical_url}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{canonical_url: canonical_url})
+  def canonical_url(%{canonical_url: canonical_url}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{"canonicalUrl" => canonical_url})
+  def canonical_url(%{"canonicalUrl" => canonical_url}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{peered: %{canonical_uri: canonical_url}})
+  def canonical_url(%{peered: %{canonical_uri: canonical_url}}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{character: %{canonical_uri: canonical_url}})
+  def canonical_url(%{character: %{canonical_uri: canonical_url}}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{character: %{peered: %{canonical_uri: canonical_url}}})
+  def canonical_url(%{character: %{peered: %{canonical_uri: canonical_url}}}, _opts)
       when is_binary(canonical_url) do
     canonical_url
   end
 
-  def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object) do
-    object = repo().maybe_preload(object, :peered)
+  def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object, opts) do
+    object =
+      if opts[:preload_if_needed] != false,
+        do: repo().maybe_preload(object, :peered),
+        else: object
 
     e(object, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object)
+      query_or_generate_canonical_url(object, opts)
   end
 
-  def canonical_url(%{peered: %{}} = object) do
+  def canonical_url(%{peered: %{}} = object, _opts) do
     maybe_generate_canonical_url(object)
   end
 
-  def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object) do
-    object = repo().maybe_preload(object, created: [:peered])
+  def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object, opts) do
+    object =
+      if opts[:preload_if_needed] != false,
+        do: repo().maybe_preload(object, created: [:peered]),
+        else: object
 
     e(object, :created, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object)
+      query_or_generate_canonical_url(object, opts)
   end
 
-  def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object) do
-    object = repo().maybe_preload(object, character: [:peered])
+  def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object, opts) do
+    object =
+      if opts[:preload_if_needed] != false,
+        do: repo().maybe_preload(object, character: [:peered]),
+        else: object
 
     e(object, :character, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object)
+      query_or_generate_canonical_url(object, opts)
   end
 
-  def canonical_url(%{character: %{peered: %{}}} = object) do
+  def canonical_url(%{character: %{peered: %{}}} = object, _opts) do
     maybe_generate_canonical_url(object)
   end
 
-  def canonical_url(%{path: "http" <> _ = url} = _object) do
+  def canonical_url(%{path: "http" <> _ = url} = _object, _opts) do
     url
   end
 
-  def canonical_url(%{path: "/" <> _ = path} = _object) do
+  def canonical_url(%{path: "/" <> _ = path} = _object, _opts) do
     "#{base_uri()}#{path}"
   end
 
-  def canonical_url("http:" <> _ = url) do
+  def canonical_url("http:" <> _ = url, _opts) do
     url
   end
 
-  def canonical_url("https:" <> _ = url) do
+  def canonical_url("https:" <> _ = url, _opts) do
     url
   end
 
-  def canonical_url("/" <> _ = path) do
+  def canonical_url("/" <> _ = path, _opts) do
     "#{base_uri()}#{path}"
   end
 
-  def canonical_url(object) do
-    query_or_generate_canonical_url(object)
+  def canonical_url(object, opts) do
+    query_or_generate_canonical_url(object, opts)
   end
 
-  defp query_or_generate_canonical_url(object) do
-    remote_canonical_url(object) ||
-      maybe_generate_canonical_url(object)
+  defp query_or_generate_canonical_url(object, opts) do
+    if opts[:preload_if_needed] != false do
+      remote_canonical_url(object) ||
+        maybe_generate_canonical_url(object)
+    else
+      if check_is_local?(object, opts), do: maybe_generate_canonical_url(object)
+    end
   end
 
   def remote_canonical_url(object) do
@@ -694,5 +709,14 @@ defmodule Bonfire.Common.URIs do
   """
   def static_path(path, endpoint_module \\ Bonfire.Common.Config.endpoint_module()) do
     endpoint_module.static_path(path)
+  end
+
+  def check_is_local?(thing, opts \\ []) do
+    Utils.maybe_apply(
+      Bonfire.Federate.ActivityPub.AdapterUtils,
+      :is_local?,
+      [thing, opts],
+      Keyword.put_new(opts, :fallback_return, nil)
+    )
   end
 end
