@@ -158,7 +158,7 @@ defmodule Bonfire.Common.Settings do
   def do_get_in(result, keys_tree) do
     if Keyword.keyword?(result) or is_map(result) do
       get_in(result, keys_tree)
-      |> debug("Settings.do_get_in: #{inspect(keys_tree)}", trace_skip: 2)
+      # |> debug("Settings.do_get_in: #{inspect(keys_tree)}", trace_skip: 2)
     else
       error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
       nil
