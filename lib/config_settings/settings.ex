@@ -112,7 +112,7 @@ defmodule Bonfire.Common.Settings do
       do: do_get_settings(keys, default, otp_app, opts)
   end
 
-  def get_for_process(keys), do: ProcessTree.get(keys)
+  def get_for_process(keys), do: ProcessTree.get(debug(keys))
 
   defp do_get_settings(keys, default, otp_app, opts) do
     case get_for_ext(otp_app, opts) do
