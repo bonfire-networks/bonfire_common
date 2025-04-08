@@ -4,21 +4,6 @@ defmodule Bonfire.Common.HTTP.Connection do
   """
   alias Bonfire.Common.Config
 
-  @hackney_options [
-    connect_timeout: 10_000,
-    recv_timeout: 20_000,
-    follow_redirect: true,
-    pool: :bonfire_common,
-    ssl_options: [
-      # insecure: true
-      #  versions: [:'tlsv1.2'],
-      verify: :verify_peer,
-      cacertfile: :certifi.cacertfile(),
-      verify_fun: &:ssl_verify_hostname.verify_fun/3
-      # customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)] 
-    ]
-  ]
-
   def new(opts \\ []) do
     adapter = Application.get_env(:tesla, :adapter) || {Tesla.Adapter.Finch, name: Bonfire.Finch}
     Tesla.client([], adapter_options(adapter, Keyword.get(opts, :adapter, [])))
@@ -31,7 +16,20 @@ defmodule Bonfire.Common.HTTP.Connection do
     proxy_url = Config.get([:http, :proxy_url])
 
     {Tesla.Adapter.Hackney,
-     @hackney_options
+     [
+       connect_timeout: 10_000,
+       recv_timeout: 20_000,
+       follow_redirect: true,
+       pool: :bonfire_common,
+       ssl_options: [
+         # insecure: true
+         #  versions: [:'tlsv1.2'],
+         verify: :verify_peer,
+         cacertfile: :certifi.cacertfile(),
+         verify_fun: &:ssl_verify_hostname.verify_fun/3
+         # customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)] 
+       ]
+     ]
      |> Keyword.merge(adapter_options)
      |> Keyword.merge(opts)
      |> Keyword.merge(proxy: proxy_url)}
