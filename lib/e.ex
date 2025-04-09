@@ -311,7 +311,7 @@ defmodule Bonfire.Common.E do
 
   def ed(map, keys, fallback) when is_map(map) and is_list(keys) do
     get_in_access_keys_or(map, keys, fallback, fn map ->
-      # if get_in didn't work, call ed again but with one-param-per-key
+      # TODO: optimise, right now if get_in didn't work, we call ed again but with one-param-per-key
       apply(__MODULE__, :ed, [map] ++ keys ++ [fallback])
     end)
   end

@@ -600,12 +600,13 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def dep_paths(dep, extra) when is_binary(extra) do
       dep_path =
         dep_path(dep, true)
-        |> IO.inspect()
+
+      # |> IO.inspect()
 
       if dep_path do
         # path = 
         Path.join(dep_path, extra)
-        |> IO.inspect()
+        # |> IO.inspect()
         |> Path.wildcard()
 
         # if path, do: [path], else: []

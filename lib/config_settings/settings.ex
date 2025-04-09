@@ -93,7 +93,7 @@ defmodule Bonfire.Common.Settings do
 
     debug(keys_tree, "Get settings in #{inspect(otp_app)} for", trace_skip: 1)
 
-    get_settings(keys, default, otp_app, opts)
+    get_settings(keys_tree, default, otp_app, opts)
   end
 
   def get(key, default, opts) do
@@ -124,8 +124,8 @@ defmodule Bonfire.Common.Settings do
 
       result ->
         if keys != [] do
-          do_get_in(result, keys)
-          |> maybe_fallback(default)
+          do_get_in(result, keys, default)
+          |> debug()
         else
           maybe_fallback(result, default)
         end
@@ -155,10 +155,12 @@ defmodule Bonfire.Common.Settings do
     end
   end
 
-  def do_get_in(result, keys_tree) do
+  def do_get_in(result, keys_tree, default) do
     if Keyword.keyword?(result) or is_map(result) do
+      # Enums.get_in_access_keys(result, keys_tree, :not_set)
       get_in(result, keys_tree)
-      # |> debug("Settings.do_get_in: #{inspect(keys_tree)}", trace_skip: 2)
+      |> debug("attempted for #{inspect(keys_tree)}", trace_skip: 2)
+      |> maybe_fallback(default)
     else
       error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
       nil
@@ -169,8 +171,9 @@ defmodule Bonfire.Common.Settings do
       apply(E, :ed, debug([result] ++ keys_tree ++ [nil]))
   end
 
-  defp maybe_fallback(nil, fallback), do: fallback
-  defp maybe_fallback(val, _fallback), do: val
+  defp maybe_fallback(val, fallback, fallback_value \\ nil)
+  defp maybe_fallback(fallback_value, fallback, fallback_value), do: fallback
+  defp maybe_fallback(val, _, _), do: val
 
   defp the_otp_app(module_or_otp_app),
     do: Extend.maybe_extension_loaded!(module_or_otp_app) || Config.top_level_otp_app()
@@ -326,6 +329,7 @@ defmodule Bonfire.Common.Settings do
   defp maybe_fetch(scope_id, opts) when is_binary(scope_id) do
     if e(opts, :preload, nil) do
       do_fetch(scope_id)
+      # |> debug("fetched")
     else
       if !e(opts, :preload, nil) and Config.env() != :test,
         do:

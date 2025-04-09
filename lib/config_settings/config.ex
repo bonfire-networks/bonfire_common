@@ -435,7 +435,12 @@ defmodule Bonfire.Common.Config do
       Bonfire.Common.Repo
   """
 
-  def repo, do: Process.get(:ecto_repo_module) || get(:repo_module, Bonfire.Common.Repo)
+  def repo,
+    do:
+      debug(
+        ProcessTree.get(:ecto_repo_module) || get(:repo_module, Bonfire.Common.Repo),
+        "repo_module"
+      )
 
   @doc """
   Retrieves the Phoenix endpoint module for the application.

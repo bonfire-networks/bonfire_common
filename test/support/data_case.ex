@@ -26,6 +26,8 @@ defmodule Bonfire.Common.DataCase do
       use Bonfire.Common.Utils
 
       # import Bonfire.Common.Fake.Helpers
+
+      @moduletag :backend
     end
   end
 
