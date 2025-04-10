@@ -40,7 +40,7 @@ defmodule Bonfire.Common.TestSummary do
         IO.puts("#{length(tests)} tests #{tag}")
 
       {tag, tests} ->
-        IO.puts("#{length(tests)} tests #{tag}")
+        IO.puts("#{length(tests)} tests #{tag}:")
         for {test, location} <- tests, do: IO.puts("#{test}\n   #{location}\n")
     end)
 

@@ -72,6 +72,7 @@ defmodule Bonfire.Common.RepoTemplate do
         )
       rescue
         exception in Postgrex.Error ->
+          error(exception, "Postgrex error, rolling back")
           rollback("transact_with_unexpected_case")
           handle_postgrex_exception(exception, __STACKTRACE__)
       end
