@@ -112,7 +112,7 @@ defmodule Bonfire.Common.Settings do
       do: do_get_settings(keys, default, otp_app, opts)
   end
 
-  def get_for_process(keys), do: ProcessTree.get(debug(keys))
+  def get_for_process(keys), do: ProcessTree.get(keys)
 
   defp do_get_settings(keys, default, otp_app, opts) do
     case get_for_ext(otp_app, opts) do
@@ -125,7 +125,7 @@ defmodule Bonfire.Common.Settings do
       result ->
         if keys != [] do
           do_get_in(result, keys, default)
-          |> debug()
+          # |> debug()
         else
           maybe_fallback(result, default)
         end
@@ -159,8 +159,8 @@ defmodule Bonfire.Common.Settings do
     if Keyword.keyword?(result) or is_map(result) do
       # Enums.get_in_access_keys(result, keys_tree, :not_set)
       get_in(result, keys_tree)
-      |> debug("attempted for #{inspect(keys_tree)}", trace_skip: 2)
       |> maybe_fallback(default)
+      |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
     else
       error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
       nil
