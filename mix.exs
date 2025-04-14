@@ -43,6 +43,7 @@ defmodule Bonfire.Common.MixProject do
             {:igniter, "~> 0.5", optional: true},
             # for encryption
             {:cloak, "~> 1.1.4", optional: true},
+            
           ])
       ]
   end

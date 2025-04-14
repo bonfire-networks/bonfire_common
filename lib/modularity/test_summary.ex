@@ -6,19 +6,20 @@ defmodule Bonfire.Common.TestSummary do
   @ets_table_name __MODULE__
 
   def init(opts) do
-    IO.inspect(opts, label: "TestSummary init")
+    # IO.inspect(opts, label: "TestSummary init")
     :ets.new(@ets_table_name, [:named_table, :ordered_set, :private])
     {:ok, opts}
   end
 
   def handle_cast({:suite_started, _}, config) do
-    IO.inspect(config, label: "Tests started, with config:")
+    IO.inspect(config, label: "Tests started")
 
     {:noreply, config}
   end
 
-  def handle_cast({:test_started, %{name: name}}, config) do
+  def handle_cast({:test_started, %{name: name, state: nil} = _data}, config) do
     IO.puts("#{name} started...")
+    # IO.inspect(data)
 
     {:noreply, config}
   end
@@ -46,14 +47,14 @@ defmodule Bonfire.Common.TestSummary do
           IO.puts("#{length(tests)} tests #{tag}")
           0
       end)
-      |> IO.inspect(label: "test results")
 
     IO.inspect(times_us, label: "Tests finished")
 
     # Get the number of failed tests (default to 0 if none)
     failed_count =
       Enum.sum(failed_tests)
-      |> IO.inspect(label: "failed_tests")
+
+    # |> IO.inspect(label: "failed_tests")
 
     if failed_count > 0 do
       code = min(failed_count, 255)
