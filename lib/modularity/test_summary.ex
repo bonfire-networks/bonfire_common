@@ -32,19 +32,34 @@ defmodule Bonfire.Common.TestSummary do
   def handle_cast({:suite_finished, times_us}, config) do
     # select_all = :ets.fun2ms(&(&1))
     # :ets.select(@ets_table_name, select_all)
-    :ets.tab2list(@ets_table_name)
-    # |> IO.inspect(label: "ETS")
-    |> Enum.group_by(&elem(&1, 2), &Tuple.delete_at(&1, 2))
-    |> Enum.map(fn
-      {"OK" = tag, tests} ->
-        IO.puts("#{length(tests)} tests #{tag}")
+    failed_tests =
+      :ets.tab2list(@ets_table_name)
+      # |> IO.inspect(label: "ETS")
+      |> Enum.group_by(&elem(&1, 2), &Tuple.delete_at(&1, 2))
+      |> Enum.map(fn
+        {"failed" = tag, tests} ->
+          IO.puts("#{length(tests)} tests #{tag}:")
+          for {test, location} <- tests, do: IO.puts("#{test}\n   #{location}\n")
+          length(tests)
 
-      {tag, tests} ->
-        IO.puts("#{length(tests)} tests #{tag}:")
-        for {test, location} <- tests, do: IO.puts("#{test}\n   #{location}\n")
-    end)
+        {tag, tests} ->
+          IO.puts("#{length(tests)} tests #{tag}")
+          0
+      end)
+      |> IO.inspect(label: "test results")
 
     IO.inspect(times_us, label: "Tests finished")
+
+    # Get the number of failed tests (default to 0 if none)
+    failed_count =
+      Enum.sum(failed_tests)
+      |> IO.inspect(label: "failed_tests")
+
+    if failed_count > 0 do
+      code = min(failed_count, 255)
+      IO.puts("Exiting with code #{code} due to #{failed_count} failed tests")
+      System.halt(min(failed_count, 255))
+    end
 
     {:noreply, config}
   end
