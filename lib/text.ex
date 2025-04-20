@@ -446,7 +446,7 @@ defmodule Bonfire.Common.Text do
                end,
              # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
 
-             #  NOTE: _unsafe should be set to true so the sanitizer is given raw HTML to sanitize
+             #  NOTE: unsafe_ should be set to true so the sanitizer is given raw HTML to sanitize
              syntax_highlight: [
                formatter: {:html_inline, theme: "catppuccin_latte"}
                # TODO: auto-set appropriate theme based on user's daisy theme, see https://autumnus.dev
@@ -612,6 +612,7 @@ defmodule Bonfire.Common.Text do
       #=> "<pre><code class=\"highlight\">defmodule Test {}</code></pre>"
   """
   def code_syntax(text, filename) do
+    # TODO: https://github.com/bonfire-networks/bonfire-app/issues/1205
     if makeup_supported?(filename) do
       Makeup.highlight(text)
     else

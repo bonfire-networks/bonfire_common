@@ -25,11 +25,11 @@ pathex = "~> 2.6"
 json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing
 earmark = "~> 1.4.46" # handle markdown (deprecated)
-mdex ="~> 0.6" # handle markdown 
+mdex ="~> 0.6.1" # handle markdown 
 #earmark_parser = "~> 1.4.37" # parse markdown (we can let earmark specify the version)
 html_sanitize_ex = "~> 1.4" # html sanitation
 sizeable = "~> 1.0"
-want = "~> 1.17.1"
+want = "~> 1.18.0"
 
 opentelemetry_api = "~> 1.0"
 decorator = "~> 1.4 # function decorator helper
