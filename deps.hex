@@ -25,7 +25,7 @@ pathex = "~> 2.6"
 json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing
 earmark = "~> 1.4.46" # handle markdown (deprecated)
-mdex ="~> 0.1 # handle markdown 
+mdex ="~> 0.6" # handle markdown 
 #earmark_parser = "~> 1.4.37" # parse markdown (we can let earmark specify the version)
 html_sanitize_ex = "~> 1.4" # html sanitation
 sizeable = "~> 1.0"
@@ -40,6 +40,6 @@ beam_file = "~> 0.6" # BEAM file decompiler / code formatter
 
 faker = "~> 0.17" # fake data generation, mostly for tests
 
-process_tree = "~> 0.1.1"
+process_tree = "~> 0.2.1"
 
 nebulex = "~> 2.6.1"

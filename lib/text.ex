@@ -142,7 +142,7 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
-  Hashes the input using a specified algorithm.
+  Hashes the input using a specified algorithm (md5 by default, which is fast but not secure).
 
   ## Examples
 
@@ -316,12 +316,8 @@ defmodule Bonfire.Common.Text do
       > Bonfire.Common.Text.maybe_markdown_to_html("Not markdown", [])
       "<p>Not markdown</p>"
   """
+  @decorate time_tree(10)
   def maybe_markdown_to_html(nothing, opts \\ [])
-
-  def maybe_markdown_to_html(nothing, _opts)
-      when not is_binary(nothing) or nothing == "" do
-    nil
-  end
 
   def maybe_markdown_to_html(nothing, _opts)
       when not is_binary(nothing) or nothing == "" do
@@ -344,15 +340,27 @@ defmodule Bonfire.Common.Text do
   def maybe_markdown_to_html(content, opts) do
     # debug(content, "input")
 
-    if markdown_library = choose_markdown_library(opts) do
-      markdown_as_html(markdown_library, content, opts)
-    else
-      error("No markdown library seems to be enabled, skipping processing")
+    if opts[:markdown_library] == :skip do
       content
+    else
+      if markdown_library = markdown_library(opts) do
+        if opts[:cache] do
+          Bonfire.Common.Cache.maybe_apply_cached(
+            &markdown_as_html/3,
+            [markdown_library, content, opts |> Keyword.drop([:markdown_library, :cache])],
+            opts
+          )
+        else
+          markdown_as_html(markdown_library, content, opts)
+        end
+      else
+        error("No markdown library seems to be enabled, skipping processing")
+        content
+      end
     end
   end
 
-  defp choose_markdown_library(opts) do
+  def markdown_library(opts) do
     default_library = MDEx
     initial_library = opts[:markdown_library] || Config.get(:markdown_library) || default_library
 
@@ -379,14 +387,6 @@ defmodule Bonfire.Common.Text do
                relaxed_tasklist_matching: true,
                relaxed_autolinks: true
              ],
-             render: [
-               hardbreaks: true,
-               # unsafe_: opts[:__unsafe__],
-               # Allow rendering of raw HTML and potentially dangerous links
-               _unsafe: opts[:__unsafe__] || opts[:sanitize] || false,
-               # !opts[:sanitize] and !opts[:__unsafe__] # Escape raw HTML instead of clobbering it.
-               escape: false
-             ],
              extension: [
                strikethrough: true,
                tasklist: true,
@@ -395,12 +395,61 @@ defmodule Bonfire.Common.Text do
                table: true,
                tagfilter: true,
                header_ids: ""
+               #  shortcodes: true # NOTE: not needed because we use smile lib
              ],
-             features: [
-               sanitize: opts[:sanitize] || false,
-               # sanitize: opts[:__unsafe__], # sanitizes the HTML (but strips things like class and attributes)
-               # TODO: auto-set appropriate theme based on user's daisy theme
-               syntax_highlight_theme: "adwaita_dark"
+             render: [
+               hardbreaks: true,
+               # unsafe_: opts[:__unsafe__],
+               # Allow rendering of raw HTML and potentially dangerous links
+               unsafe_: opts[:__unsafe__] || opts[:sanitize] != false,
+               # Escape raw HTML instead of clobbering it.
+               escape: opts[:sanitize] == false or !opts[:__unsafe__]
+             ],
+             sanitize:
+               if opts[:sanitize] != false do
+                 [
+                   # TODO: add `noreferrer` as well for non-public content?
+                   link_rel: "nofollow noopener",
+                   # needed for MFM?
+                   generic_attribute_prefixes: ["data-"],
+                   # class needed for MFM?
+                   generic_attributes: ["class"],
+                   url_schemes: [
+                     "ftp",
+                     "ftps",
+                     "geo",
+                     "http",
+                     "https",
+                     "irc",
+                     "ircs",
+                     "magnet",
+                     "mailto",
+                     "news",
+                     "nntp",
+                     "openpgp4fpr",
+                     "sip",
+                     "sms",
+                     "smsto",
+                     "tel",
+                     "url",
+                     "webcal",
+                     "wtai",
+                     "xmpp"
+                   ],
+                   url_relative:
+                     if opts[:url_base] do
+                       {:rewrite_with_base, opts[:url_base]}
+                     else
+                       :deny
+                     end
+                 ]
+               end,
+             # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
+
+             #  NOTE: _unsafe should be set to true so the sanitizer is given raw HTML to sanitize
+             syntax_highlight: [
+               formatter: {:html_inline, theme: "catppuccin_latte"}
+               # TODO: auto-set appropriate theme based on user's daisy theme, see https://autumnus.dev
              ]
            ]
            # |> Keyword.merge(opts)
@@ -416,25 +465,60 @@ defmodule Bonfire.Common.Text do
   defp markdown_as_html(processor, content, opts) when processor in [Earmark, Makedown] do
     # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
 
-    [
-      # inner_html: true,
-      escape: false,
-      breaks: true,
-      smartypants: false,
-      registered_processors: [
-        # {"a", &md_add_target/1},
-        {"h1", &md_heading_anchors/1},
-        {"h2", &md_heading_anchors/1},
-        {"h3", &md_heading_anchors/1},
-        {"h4", &md_heading_anchors/1},
-        {"h5", &md_heading_anchors/1},
-        {"h6", &md_heading_anchors/1}
-      ]
-    ]
-    |> Keyword.merge(opts)
-    |> processor.as_html(content, ...)
-    ~> markdown_checkboxes()
-    |> debug("MD output for: #{content}")
+    case [
+           # inner_html: true,
+           escape: false,
+           breaks: true,
+           smartypants: false,
+           registered_processors: [
+             # {"a", &md_add_target/1},
+             {"h1", &md_heading_anchors/1},
+             {"h2", &md_heading_anchors/1},
+             {"h3", &md_heading_anchors/1},
+             {"h4", &md_heading_anchors/1},
+             {"h5", &md_heading_anchors/1},
+             {"h6", &md_heading_anchors/1}
+           ]
+         ]
+         |> Keyword.merge(
+           Keyword.take(opts, [
+             :all,
+             :annotations,
+             :breaks,
+             :code_class_prefix,
+             :file,
+             :footnote_offset,
+             :footnotes,
+             :gfm,
+             :gfm_tables,
+             :line,
+             :math,
+             :messages,
+             :parse_inline,
+             :pedantic,
+             :pure_links,
+             :renderer,
+             :smartypants,
+             :sub_sup,
+             :timeout,
+             :wikilinks,
+             :inner_html,
+             :registered_processors
+           ])
+         )
+         |> processor.as_html(content, ...) do
+      {:ok, html, _} ->
+        markdown_checkboxes(html)
+        |> debug("MD output for: #{content}")
+
+      {:ok, html} ->
+        markdown_checkboxes(html)
+        |> debug("MD output for: #{content}")
+
+      e ->
+        error(e)
+        nil
+    end
   end
 
   # This will only be applied to nodes as it will become a TagSpecificProcessors
@@ -793,7 +877,7 @@ defmodule Bonfire.Common.Text do
       > markdown_checkboxes("* [ ] task\n* [x] done")
       "<ul><li><input type='checkbox'> task</li><li><input type='checkbox' checked='checked'> done</li></ul>"
   """
-  def markdown_checkboxes(text) do
+  def markdown_checkboxes(text) when is_binary(text) do
     text
     |> replace_checked_boxes()
     |> replace_unchecked_boxes()
