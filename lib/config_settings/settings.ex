@@ -156,14 +156,15 @@ defmodule Bonfire.Common.Settings do
   end
 
   def do_get_in(result, keys_tree, default) do
-    if Keyword.keyword?(result) or is_map(result) do
+    #  Keyword.keyword?(result)
+    if is_list(result) or is_map(result) do
       # Enums.get_in_access_keys(result, keys_tree, :not_set)
       get_in(result, keys_tree)
       |> maybe_fallback(default)
       |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
     else
       error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
-      nil
+      default
     end
   rescue
     error in FunctionClauseError ->
