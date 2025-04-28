@@ -240,12 +240,12 @@ defmodule Bonfire.Common.Config do
 
   ## Examples
 
-      iex> put([:test_key, "test_value"])
+      iex> put([:my_test_key, "test_value"])
       :ok
-      iex> get(:test_key)
+      iex> get(:my_test_key)
       "test_value"
 
-      iex> put([Bonfire.Common.Config, :test_key, true])
+      iex> put([Bonfire.Common.Config, :my_test_key, true])
       :ok
       iex> get([Bonfire.Common.Config, :test_key])
       true
