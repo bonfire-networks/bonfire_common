@@ -236,6 +236,34 @@ defmodule Bonfire.Common.Config do
   end
 
   @doc """
+  Sets the configuration value for a key tree.
+
+  ## Examples
+
+      iex> put([:test_key, "test_value"])
+      :ok
+      iex> get(:test_key)
+      "test_value"
+
+      iex> put([Bonfire.Common.Config, :test_key, true])
+      :ok
+      iex> get([Bonfire.Common.Config, :test_key])
+      true
+
+  """
+  def put(tree) when is_list(tree) or is_map(tree) do
+    Enum.each(tree, &put/1)
+  end
+
+  def put({otp_app, tree}) when is_atom(otp_app) and (is_list(tree) or is_map(tree)) do
+    Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
+  end
+
+  def put(other) do
+    error(other, "Nothing to put")
+  end
+
+  @doc """
   Sets the configuration value for a key or key tree in a specific OTP app or extension.
 
   This function allows you to set the configuration value for the specified key(s) in the given OTP app or extension. It supports nested configurations.
@@ -244,9 +272,18 @@ defmodule Bonfire.Common.Config do
 
       iex> put(:test_key, "test_value")
       :ok
+      iex> get(:test_key)
+      "test_value"
 
-      iex> put([:nested, :key], "test_value", :my_app)
+      iex> put([:test_nested, :key], "value", :my_app)
       :ok
+      iex> get([:test_nested, :key], nil, :my_app)
+      "value"
+
+      iex> put([Bonfire.Common.Config, :test_key], true)
+      :ok
+      iex> get([Bonfire.Common.Config, :test_key])
+      true
 
   """
   def put(key, value, otp_app \\ nil)
@@ -272,18 +309,6 @@ defmodule Bonfire.Common.Config do
 
   def put(key, value, otp_app) do
     put_env(otp_app, key, value)
-  end
-
-  def put(tree) when is_list(tree) or is_map(tree) do
-    Enum.each(tree, &put/1)
-  end
-
-  def put({otp_app, tree}) when is_atom(otp_app) and (is_list(tree) or is_map(tree)) do
-    Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
-  end
-
-  def put(other) do
-    error(other, "Nothing to put")
   end
 
   defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
