@@ -245,9 +245,9 @@ defmodule Bonfire.Common.Config do
       iex> get(:my_test_key, nil, :bonfire_common)
       "test_value"
 
-      iex> put({:bonfire_common, {Bonfire.Common.Config, %{my_test_key: true}}})
+      > put({:bonfire_common, {Bonfire.Common.Config, %{my_test_key: true}}})
       :ok
-      iex> get([Bonfire.Common.Config, :my_test_key])
+      > get([Bonfire.Common.Config, :my_test_key])
       true
 
   """
