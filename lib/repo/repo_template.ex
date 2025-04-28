@@ -425,33 +425,12 @@ defmodule Bonfire.Common.RepoTemplate do
            )
 
       defp paginator_paginate(queryable, opts, repo_opts) when is_list(opts) do
-        merged_opts =
-          Keyword.merge(
-            pagination_defaults(),
-            Keyword.merge(
-              @default_cursor_fields,
-              Keyword.merge(
-                Utils.to_options(opts),
-                Keyword.new(
-                  if is_list(opts[:paginate]) or is_map(opts[:paginate]),
-                    do: opts[:paginate],
-                    else: opts[:paginated] || opts[:pagination] || []
-                )
-              )
-            )
-          )
-          |> Keyword.update(:limit, 10, fn existing_value ->
-            existing_value = Types.maybe_to_integer(existing_value)
+        opts = pagination_opts(opts)
 
-            if is_number(opts[:multiply_limit]),
-              do: ceil(existing_value * opts[:multiply_limit]),
-              else: existing_value
-          end)
-
-        if opts[:return] == :query or merged_opts[:return] == :query do
-          Paginator.paginated_query(queryable, merged_opts)
+        if opts[:return] == :query or opts[:return] == :query do
+          Paginator.paginated_query(queryable, opts)
         else
-          Paginator.paginate(queryable, merged_opts, __MODULE__, repo_opts)
+          Paginator.paginate(queryable, opts, __MODULE__, repo_opts)
         end
       end
 
@@ -463,6 +442,31 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defp paginator_paginate(queryable, _, repo_opts) do
         paginator_paginate(queryable, @default_cursor_fields, repo_opts)
+      end
+
+      def pagination_opts(opts) do
+        Keyword.merge(
+          pagination_defaults(),
+          Keyword.merge(
+            @default_cursor_fields,
+            Keyword.merge(
+              Utils.to_options(opts),
+              # TODO: cleanup/optimize
+              Keyword.new(
+                if is_list(opts[:paginate]) or is_map(opts[:paginate]),
+                  do: opts[:paginate],
+                  else: opts[:paginated] || opts[:pagination] || []
+              )
+            )
+          )
+        )
+        |> Keyword.update(:limit, 10, fn existing_value ->
+          existing_value = Types.maybe_to_integer(existing_value)
+
+          if is_number(opts[:multiply_limit]),
+            do: ceil(existing_value * opts[:multiply_limit]),
+            else: existing_value
+        end)
       end
 
       @doc """

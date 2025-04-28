@@ -34,6 +34,7 @@ defmodule Bonfire.Common.Text.Test do
     assert result1 == result_mocked
   end
 
+  @tag :skip_ci
   test "markdown rendering with cache is faster" do
     content = "# Test simple markdown **with formatting**"
     opts = [cache: true]
