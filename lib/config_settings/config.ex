@@ -240,14 +240,14 @@ defmodule Bonfire.Common.Config do
 
   ## Examples
 
-      iex> put([:my_test_key, "test_value"])
+      iex> put([bonfire_common: [my_test_key, "test_value"]])
       :ok
-      iex> get(:my_test_key)
+      iex> get(:my_test_key, nil, :bonfire_common)
       "test_value"
 
-      iex> put([Bonfire.Common.Config, :my_test_key, true])
+      iex> put({Bonfire.Common.Config, %{my_test_key: true}})
       :ok
-      iex> get([Bonfire.Common.Config, :test_key])
+      iex> get([Bonfire.Common.Config, :my_test_key])
       true
 
   """
@@ -275,9 +275,9 @@ defmodule Bonfire.Common.Config do
       iex> get(:test_key)
       "test_value"
 
-      iex> put([:test_nested, :key], "value", :my_app)
+      iex> put([:test_nested, :key], "value", :bonfire_common)
       :ok
-      iex> get([:test_nested, :key], nil, :my_app)
+      iex> get([:test_nested, :key], nil, :bonfire_common)
       "value"
 
       iex> put([Bonfire.Common.Config, :test_key], true)
