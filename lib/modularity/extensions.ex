@@ -140,7 +140,7 @@ defmodule Bonfire.Common.Extensions do
       Bonfire.Mixer.deps_tree_flat()
     else
       # Note: we cache this at compile-time in `Bonfire` so it is available in releases
-      Utils.maybe_apply(Bonfire.Application, :deps, [:tree_flat],
+      Utils.maybe_apply(Bonfire, :deps, [:tree_flat],
         fallback_fun: fn -> raise "Expected a `Bonfire` module to list dependencies" end
       )
     end
@@ -154,7 +154,7 @@ defmodule Bonfire.Common.Extensions do
       # |> IO.inspect
     else
       # Note: we cache this at compile-time in `Bonfire` so it is available in releases
-      Utils.maybe_apply(Bonfire.Application, :deps, [:nested],
+      Utils.maybe_apply(Bonfire, :deps, [:nested],
         fallback_fun: fn -> raise "Expected a `Bonfire` module to list dependencies" end
       )
     end
