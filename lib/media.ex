@@ -223,6 +223,9 @@ defmodule Bonfire.Common.Media do
   def avatar_url(%{path: _} = media),
     do: Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [media], fallback_return: nil)
 
+  def avatar_url(%{file: _} = media),
+    do: Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [media], fallback_return: nil)
+
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   # handle VF API
   def avatar_url(%{image: url}) when is_binary(url), do: url
@@ -234,7 +237,11 @@ defmodule Bonfire.Common.Media do
   # def avatar_url(%{id: id, shared_user: _} = user), do: repo().maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
   # def avatar_url(obj), do: image_url(obj)
   def avatar_url(%{id: id}) when is_binary(id), do: avatar_fallback(id)
-  def avatar_url(obj), do: avatar_fallback(Bonfire.Common.Enums.id(obj))
+
+  def avatar_url(obj) do
+    debug(obj, "no avatar found")
+    avatar_fallback(Bonfire.Common.Enums.id(obj))
+  end
 
   # TODO: configurable
   def avatar_fallback(_ \\ nil), do: "/images/avatar.png"
