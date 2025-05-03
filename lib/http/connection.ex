@@ -2,7 +2,7 @@ defmodule Bonfire.Common.HTTP.Connection do
   @moduledoc """
   Specifies connection options for HTTP requests
   """
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   def new(opts \\ []) do
     adapter = Application.get_env(:tesla, :adapter) || {Tesla.Adapter.Finch, name: Bonfire.Finch}

@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Crypto do
   import Untangle
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
   alias Bonfire.Common.Extend
 
   #  NOTE: do not change once used, otherwise users won't be able to decrypt existing secrets

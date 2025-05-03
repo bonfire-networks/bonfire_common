@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Mix.Tasks.Helpers do
+  use Bonfire.Common.Config
+
   def igniter_copy(igniter, source, target, opts \\ [])
 
   def igniter_copy(igniter, sources, target, opts) when is_list(sources) do

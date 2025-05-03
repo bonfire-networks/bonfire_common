@@ -5,6 +5,7 @@ defmodule Bonfire.Common.Extensions.Diff do
   import Untangle
   use Bonfire.Common.Localise
   alias Bonfire.Common.Text
+  use Bonfire.Common.Config
 
   @doc """
   Generates a diff between the specified reference or branch and the latest commit in the repository.

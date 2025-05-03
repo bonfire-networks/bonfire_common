@@ -4,6 +4,7 @@ defmodule Bonfire.Common.AntiSpam do
 
   See `Bonfire.Common.AntiSpam.Provider`.
   """
+  use Bonfire.Common.Config
 
   @doc """
   Returns the appropriate service adapter.

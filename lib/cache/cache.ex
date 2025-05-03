@@ -9,7 +9,7 @@ defmodule Bonfire.Common.Cache do
   use Untangle
   use Arrows
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   # 6 hours
   @default_cache_ttl 1_000 * 60 * 60 * 6

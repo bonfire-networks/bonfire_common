@@ -15,89 +15,48 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   use GenServer, restart: :transient
   use Untangle
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
   alias Bonfire.Common.Cache
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Extend
+  alias Bonfire.Common.ModuleAnalyzer
 
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
 
   defp prepare_data_for_cache() do
-    _app_modules_to_scan = app_modules_to_scan(cache: true)
+    _app_modules_to_scan = ModuleAnalyzer.app_modules_to_scan(cache: true)
 
     # first find all *declared* behaviours (which are a behaviour of this module)
     find_extension_behaviours()
-    #  then find modules that implement those behaviours
+    #  then find modules that implement those behaviours
     |> find_adopters_of_behaviours()
   end
 
   # multiple behaviours
   def find_adopters_of_behaviours(
         behaviours \\ find_extension_behaviours(),
-        app_modules_to_scan \\ app_modules_to_scan()
+        app_modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()
       ) do
     app_modules_to_scan
     |> apps_with_behaviour(behaviours)
   end
 
-  def find_extension_behaviours(app_modules_to_scan \\ app_modules_to_scan()) do
+  def find_extension_behaviours(app_modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()) do
     adopters_of_behaviour(__MODULE__, app_modules_to_scan)
-    |> modules_only()
-
-    # |> debug()
+    |> ModuleAnalyzer.modules_only()
   end
 
   @doc """
   Given a behaviour module, filters app modules to only those that implement that behaviour
   """
-  def adopters_of_behaviour(behaviour \\ __MODULE__, app_modules_to_scan \\ app_modules_to_scan())
+  def adopters_of_behaviour(
+        behaviour \\ __MODULE__,
+        app_modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()
+      )
       when is_atom(behaviour) do
-    # [:bonfire, :bonfire_common]
     app_modules_to_scan
-    # |> debug()
     |> apps_with_behaviour(behaviour)
-  end
-
-  def apps_to_scan(opts \\ []) do
-    pattern =
-      Utils.maybe_apply(Bonfire.Mixer, :multirepo_prefixes, [], fallback_return: []) ++
-        ["bonfire"] ++ Config.get([:extensions_pattern], [])
-
-    Extend.loaded_applications_map(opts)
-    |> Enum.map(fn
-      {app, {_version, description}} ->
-        if String.starts_with?(to_string(app), pattern) or
-             String.starts_with?(description, pattern) do
-          # TODO: exclude any disabled extensions?
-          app
-        else
-          nil
-        end
-    end)
-    |> Enum.reject(&is_nil/1)
-
-    # |> debug()
-  end
-
-  def app_modules_to_scan(opts \\ []) do
-    apps_to_scan(opts)
-    |> Enum.map(fn app ->
-      case Application.spec(app, :modules) do
-        [] ->
-          nil
-
-        modules when is_list(modules) ->
-          # TODO: exclude any disabled modules?
-          {app, modules}
-
-        _ ->
-          nil
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
-
-    # |> debug()
   end
 
   defp apps_with_behaviour(apps, behaviour) when is_list(apps) and is_atom(behaviour) do
@@ -113,8 +72,6 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         end
     end)
     |> Enum.reject(&is_nil/1)
-
-    # |> debug()
   end
 
   defp apps_with_behaviour(apps, behaviours) when is_list(apps) and is_list(behaviours) do
@@ -130,15 +87,12 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         acc
     end)
     |> Enum.reject(&is_nil/1)
-
-    # |> debug()
   end
 
   defp behaviours_with_app_modules(modules, behaviours, app)
        when is_list(modules) and is_list(behaviours) do
     behaviours
     |> Enum.reduce(%{}, fn
-      # {app2, behaviours2}, acc -> behaviours_with_app_modules(modules, behaviours2, app2) # dunno about this clause
       behaviour, acc ->
         case modules_with_behaviour(modules, behaviour) do
           modules when is_list(modules) and modules != [] ->
@@ -149,18 +103,14 @@ defmodule Bonfire.Common.ExtensionBehaviour do
         end
     end)
     |> Enum.reject(&is_nil/1)
-
-    # |> debug()
   end
 
+  # Now using ModuleAnalyzer
   defp modules_with_behaviour(modules, behaviour) when is_list(modules) and is_atom(behaviour) do
-    # filter out any modules that do not have the `behaviour` specified
     modules
     |> Enum.filter(fn module ->
       Extend.module_behaviour?(module, behaviour)
     end)
-
-    # |> debug()
   end
 
   def cached_behaviours(), do: :persistent_term.get(__MODULE__)
@@ -181,12 +131,7 @@ defmodule Bonfire.Common.ExtensionBehaviour do
 
   def behaviour_modules(behaviour, behaviours \\ nil) do
     behaviour_app_modules(behaviour, behaviours)
-    |> modules_only()
-  end
-
-  defp modules_only(app_modules) do
-    app_modules
-    |> Enum.flat_map(fn {_app, modules} -> modules end)
+    |> ModuleAnalyzer.modules_only()
   end
 
   @doc "Runs/applies a given function name on each of a list of given modules, returning a map (listing the modules with their result as value) and vice versa (listing the results as key with their calling module as value). It also caches the result on first run."
@@ -223,10 +168,10 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     end
   end
 
-  # GenServer callback
+  # GenServer callbacks
 
   @spec start_link(ignored :: term) :: GenServer.on_start()
-  @doc "Populates the global cache with config_module data via introspection."
+  @doc "Populates the global cache with behaviour data via introspection."
   def start_link(_), do: GenServer.start_link(__MODULE__, [])
 
   @doc false
@@ -236,18 +181,9 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   def populate() do
-    Logger.info(
-      "Analysing the app to prepare a list of extensions and their behaviour modules..."
-    )
-
-    indexed = prepare_data_for_cache()
-
-    Logger.info("Indexed the modules from #{Enum.count(indexed)} behaviours")
-
-    # IO.inspect(indexed)
-
-    :persistent_term.put(__MODULE__, indexed)
-
-    indexed
+    # Use the common populate_registry function
+    ModuleAnalyzer.populate_registry(__MODULE__, &prepare_data_for_cache/0)
   end
+
+  defdelegate apps_to_scan, to: ModuleAnalyzer
 end

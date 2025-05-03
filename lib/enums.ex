@@ -9,7 +9,7 @@ defmodule Bonfire.Common.Enums do
   alias Bonfire.Common.Extend
   alias Ecto.Changeset
   # alias Bonfire.Common
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
   # alias Bonfire.Common.Text
   alias Bonfire.Common.Types
   alias Bonfire.Common.Utils
@@ -550,7 +550,7 @@ defmodule Bonfire.Common.Enums do
     right
   end
 
-  @doc "Deep merges a list of maps into a single map."
+  @doc "Deep merges a list of maps or keyword lists into a single map."
   def deep_merge_reduce(list_or_map, opts \\ [])
   def deep_merge_reduce([], _opts), do: %{}
   def deep_merge_reduce(nil, _opts), do: %{}

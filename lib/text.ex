@@ -5,8 +5,8 @@ defmodule Bonfire.Common.Text do
   use Arrows
   use Bonfire.Common.E
   alias Bonfire.Common.Extend
-  alias Bonfire.Common.Config
-  alias Bonfire.Common.Settings
+  use Bonfire.Common.Config
+  use Bonfire.Common.Settings
 
   # @add_to_end "..."
   @sentence_seperator " "
@@ -361,8 +361,9 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_library(opts) do
-    default_library = MDEx
-    initial_library = opts[:markdown_library] || Config.get(:markdown_library) || default_library
+    initial_library = opts[:markdown_library] || Config.get(:markdown_library, MDEx)
+
+    # initial_library = opts[:markdown_library] || Config.get(:markdown_library, MDEx, name: "Markdown library", type: :radios, options: [MDEx, Earmark, :custom]) 
 
     cond do
       Extend.module_enabled?(initial_library, opts) ->

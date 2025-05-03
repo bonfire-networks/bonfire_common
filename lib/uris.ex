@@ -3,6 +3,7 @@ defmodule Bonfire.Common.URIs do
   import Untangle
   use Arrows
   use Bonfire.Common.E
+  use Bonfire.Common.Config
   import Bonfire.Common.Extend
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils

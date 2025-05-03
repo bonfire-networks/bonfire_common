@@ -3,7 +3,7 @@ defmodule Bonfire.Common.PubSub do
 
   import Untangle
   use Bonfire.Common.Utils
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   @doc """
   Subscribe to something for realtime updates, like a feed or thread

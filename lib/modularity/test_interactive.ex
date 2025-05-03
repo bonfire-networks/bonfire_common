@@ -28,6 +28,7 @@ defmodule Bonfire.Common.Test.Interactive do
   """
 
   use GenServer
+  use Bonfire.Common.Config
   import Bonfire.Common.Config, only: [repo: 0]
   import Untangle
 

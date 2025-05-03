@@ -1,6 +1,6 @@
 defmodule Bonfire.Common.Telemetry.SystemMonitor do
   import Untangle
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   # NOTE: see `config :os_mon` for what triggers this
 

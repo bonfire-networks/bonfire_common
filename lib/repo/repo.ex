@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Repo do
 
   Note: functions are defined in `Bonfire.Common.RepoTemplate`
   """
+  use Bonfire.Common.Config
   use Bonfire.Common.RepoTemplate
 
   defmacro __using__(_opts) do

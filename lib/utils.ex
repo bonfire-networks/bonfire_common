@@ -48,7 +48,7 @@ defmodule Bonfire.Common.Utils do
   use Gettext, backend: Bonfire.Common.Localise.Gettext
   import Bonfire.Common.Localise.Gettext.Helpers
 
-  defmacro common_utils(opts \\ []) do
+  defmacro __common_utils__(opts \\ []) do
     quote do
       import Untangle
       use Arrows
@@ -56,6 +56,7 @@ defmodule Bonfire.Common.Utils do
       alias Bonfire.Common
 
       use Common.E
+      use Common.Config
 
       # require Utils
       # can import specific functions with `only` or `except`
@@ -69,7 +70,6 @@ defmodule Bonfire.Common.Utils do
 
       alias Common.Utils
       alias Common.Cache
-      alias Common.Config
       alias Common.E
       alias Common.Errors
       alias Common.Extend
@@ -80,18 +80,24 @@ defmodule Bonfire.Common.Utils do
       alias Common.Media
       alias Common.URIs
       alias Common.HTTP
-      alias Common.Settings
       alias Bonfire.Boundaries
+    end
+  end
+
+  defmacro __localise__(opts \\ []) do
+    quote do
+      # localisation
+      use Gettext, backend: Bonfire.Common.Localise.Gettext
+      import Bonfire.Common.Localise.Gettext.Helpers
     end
   end
 
   defmacro __using__(opts) do
     quote do
-      # localisation
-      use Gettext, backend: Bonfire.Common.Localise.Gettext
-      import Bonfire.Common.Localise.Gettext.Helpers
+      Bonfire.Common.Utils.__localise__(unquote(opts))
+      Bonfire.Common.Utils.__common_utils__(unquote(opts))
 
-      Bonfire.Common.Utils.common_utils(unquote(opts))
+      use Bonfire.Common.Settings
     end
   end
 

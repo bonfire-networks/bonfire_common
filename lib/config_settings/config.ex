@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Config do
   @moduledoc "Helpers to get app/extension OTP config, or to override a config key. Basically a wrapper of `Application.get_env/3` and `Application.put_env/3`."
 
+  use Bonfire.Common.ConfigSettingsRegistration
   import Bonfire.Common.Extend
   import Untangle
   alias Bonfire.Common.E
@@ -9,7 +10,7 @@ defmodule Bonfire.Common.Config do
   alias Bonfire.Common.Enums
 
   def top_level_otp_app do
-    get!(:otp_app, :bonfire_common)
+    app_get_env(:bonfire_common, :otp_app, :bonfire_common)
   end
 
   defmodule Error do
@@ -44,6 +45,84 @@ defmodule Bonfire.Common.Config do
   end
 
   @doc """
+  Retrieves a configuration value for a key, optionally from a specific OTP app or extension.
+
+  This function can handle single keys or nested key trees and returns the configuration value associated with the key(s). It falls back to a default value if the key is not found.
+
+  ## Examples
+
+      iex> get(:test_key, "default")
+      "test_value"
+
+      iex> get([:nested, :key], "default", :bonfire)
+      "default"
+
+      iex> get(:missing_key, "default")
+      "default"
+
+  """
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get,
+    :__get__,
+    :config,
+    {:keys, :default, :app},
+    __MODULE__
+  )
+
+  def __get__(key_or_keys, default \\ nil, opts_or_otp_app \\ nil)
+
+  # if no extension is specified, use the top-level Bonfire app
+  def __get__(keys_tree, default, _otp_app = nil) do
+    {otp_app, keys_tree} = keys_tree(keys_tree) |> List.pop_at(0)
+
+    debug(keys_tree, "Get config for app #{otp_app}")
+
+    __get__(keys_tree, default, otp_app)
+  end
+
+  if Application.compile_env(:bonfire, :env) == :test do
+    # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
+    def __get__(keys, default, otp_app) when is_atom(otp_app) and is_list(keys),
+      do: get_for_process([otp_app] ++ keys) || get_config(keys, default, otp_app)
+
+    def __get__(key, default, otp_app) when is_atom(otp_app),
+      do: get_for_process([otp_app, key]) || get_config(key, default, otp_app)
+  else
+    def __get__(keys, default, otp_app) when is_atom(otp_app),
+      do: get_config(keys, default, otp_app)
+  end
+
+  @doc """
+  Retrieves the configuration value for a key and raises an error if the value is not found.
+
+  ## Examples
+
+      iex> get!(:test_key)
+      "test_value"
+
+      iex> get!(:missing_key, :bonfire_common)
+      ** (Bonfire.Common.Config.Error) Missing configuration value: [:bonfire_common, :missing_key]
+
+  """
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get!,
+    :__get__!,
+    :config,
+    {:keys, :app, :default},
+    __MODULE__
+  )
+
+  def __get__!(key, otp_app \\ top_level_otp_app(), _default \\ nil) do
+    case __get__(key, nil, otp_app || top_level_otp_app()) do
+      nil ->
+        compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
+
+      any ->
+        any
+    end
+  end
+
+  @doc """
   Retrieves a configuration value for a specific Bonfire extension or OTP app key.
 
   This function attempts to get the configuration value for the given key from the specified extension or OTP app. If the key is not found, it falls back to checking the top-level Bonfire app configuration.
@@ -57,15 +136,22 @@ defmodule Bonfire.Common.Config do
       "default"
 
   """
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get_ext,
+    :__get_ext__,
+    :config,
+    {:app, :keys, :default},
+    __MODULE__
+  )
 
-  def get_ext(module_or_otp_app, key, default \\ nil) do
+  def __get_ext__(module_or_otp_app, key, default \\ nil) do
     otp_app = maybe_extension_loaded(module_or_otp_app)
     top_level_otp_app = top_level_otp_app()
-    ret = get(key, default, otp_app)
+    ret = __get__(key, default, otp_app)
 
     if default == ret and otp_app != top_level_otp_app do
       # fallback to checking for the same config in top-level Bonfire app
-      get(key, nil, top_level_otp_app) || default
+      __get__(key, nil, top_level_otp_app) || default
     else
       ret
     end
@@ -85,8 +171,15 @@ defmodule Bonfire.Common.Config do
       ** (Bonfire.Common.Config.Error) Missing configuration value: [:my_extension, :missing_key]
 
   """
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get_ext!,
+    :__get_ext__!,
+    :config,
+    {:app, :keys, :default},
+    __MODULE__
+  )
 
-  def get_ext!(module_or_otp_app, key) do
+  def __get_ext__!(module_or_otp_app, key, _default \\ nil) do
     case get_ext(module_or_otp_app, key, nil) do
       nil ->
         compilation_error(
@@ -98,47 +191,10 @@ defmodule Bonfire.Common.Config do
     end
   end
 
-  @doc """
-  Retrieves a configuration value for a key, optionally from a specific OTP app or extension.
-
-  This function can handle single keys or nested key trees and returns the configuration value associated with the key(s). It falls back to a default value if the key is not found.
-
-  ## Examples
-
-      iex> get(:test_key, "default")
-      "test_value"
-
-      iex> get([:nested, :key], "default", :bonfire)
-      "default"
-
-      iex> get(:missing_key, "default")
-      "default"
-
-  """
-
-  def get(key_or_keys, default \\ nil, otp_app \\ nil)
-
-  # if no extension is specified, use the top-level Bonfire app
-  def get(keys_tree, default, nil) do
-    {otp_app, keys_tree} = keys_tree(keys_tree) |> List.pop_at(0)
-
-    # debug(keys_tree, "Get config for app #{otp_app}")
-
-    get(keys_tree, default, otp_app)
+  def get_for_process(keys) do
+    debug(keys, "Get process tree")
+    ProcessTree.get(keys)
   end
-
-  if Application.compile_env(:bonfire, :env) == :test do
-    # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
-    def get(keys, default, otp_app) when is_list(keys),
-      do: get_for_process([otp_app] ++ keys) || get_config(keys, default, otp_app)
-
-    def get(key, default, otp_app),
-      do: get_for_process([otp_app, key]) || get_config(key, default, otp_app)
-  else
-    def get(keys, default, otp_app), do: get_config(keys, default, otp_app)
-  end
-
-  def get_for_process(keys), do: ProcessTree.get(keys)
 
   defp get_config([key], default, otp_app), do: get_config(key, default, otp_app)
 
@@ -164,42 +220,19 @@ defmodule Bonfire.Common.Config do
   end
 
   @doc """
-  Retrieves the configuration value for a key and raises an error if the value is not found.
-
-  ## Examples
-
-      iex> get!(:test_key)
-      "test_value"
-
-      iex> get!(:missing_key, :bonfire_common)
-      ** (Bonfire.Common.Config.Error) Missing configuration value: [:bonfire_common, :missing_key]
-
-  """
-
-  def get!(key, otp_app \\ top_level_otp_app()) do
-    case get(key, nil, otp_app) do
-      nil ->
-        compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
-
-      any ->
-        any
-    end
-  end
-
-  @doc """
   Retrieves all configuration keys and values for a specific Bonfire extension or OTP app.
 
   ## Examples
 
-      > get_ext(:my_extension)
+      > get_all(:my_extension)
       [key1: "value1", key2: "value2"]
 
-      > get_ext(:another_extension)
+      > get_all(:another_extension)
       []
 
   """
 
-  def get_ext(module_or_otp_app) do
+  def get_all(module_or_otp_app) do
     otp_app = maybe_extension_loaded(module_or_otp_app)
     Application.get_all_env(otp_app)
   end
@@ -209,17 +242,17 @@ defmodule Bonfire.Common.Config do
 
   ## Examples
 
-      iex> config = get_ext!(:bonfire_common)
+      iex> config = get_all!(:bonfire_common)
       iex> is_list(config) and config !=[]
       true
 
-      iex> get_ext!(:non_existent_extension)
+      iex> get_all!(:non_existent_extension)
       ** (Bonfire.Common.Config.Error) Empty configuration for extension: non_existent_extension
 
   """
 
-  def get_ext!(module_or_otp_app) do
-    case get_ext(module_or_otp_app) do
+  def get_all!(module_or_otp_app) do
+    case get_all(module_or_otp_app) do
       nil ->
         compilation_error(
           "Missing configuration for extension: #{maybe_extension_loaded(module_or_otp_app)}"
@@ -300,7 +333,7 @@ defmodule Bonfire.Common.Config do
   def put([parent_key | keys], value, otp_app) do
     # handle nested config
     value =
-      get(parent_key, [], otp_app)
+      __get__(parent_key, [], otp_app)
       # |> debug("get existing")
       |> put_in(keys_with_fallback(keys), value)
 
@@ -388,7 +421,7 @@ defmodule Bonfire.Common.Config do
 
   def delete([parent_key | keys], otp_app) do
     {_, parent} =
-      get(parent_key, [], otp_app)
+      __get__(parent_key, [], otp_app)
       |> get_and_update_in(keys, fn _ -> :pop end)
 
     put_env(otp_app, parent_key, parent)
@@ -463,7 +496,7 @@ defmodule Bonfire.Common.Config do
   def repo,
     do:
       debug(
-        ProcessTree.get(:ecto_repo_module) || get(:repo_module, Bonfire.Common.Repo),
+        ProcessTree.get(:ecto_repo_module) || __get__(:repo_module, Bonfire.Common.Repo),
         "repo_module"
       )
 
@@ -481,7 +514,7 @@ defmodule Bonfire.Common.Config do
   def endpoint_module,
     do:
       Process.get(:phoenix_endpoint_module) ||
-        get(:endpoint_module, Bonfire.Web.Endpoint)
+        __get__(:endpoint_module, Bonfire.Web.Endpoint)
 
   @doc """
   Retrieves the environment configuration for the application.
@@ -493,7 +526,7 @@ defmodule Bonfire.Common.Config do
       iex> env()
       :test
   """
-  def env, do: get(:env)
+  def env, do: __get__(:env)
 end
 
 # finally, check that bonfire_common is configured, required so that this module can function

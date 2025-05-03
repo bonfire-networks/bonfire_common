@@ -67,7 +67,7 @@ defmodule Bonfire.Common.E do
 
   """
   #  in case Pathex was disabled in config, we use the runtime `ed` functions instead
-  if Config.get(:use_pathex, true) do
+  if Config.__get__(:use_pathex, true) do
     defmacro e(object, key1, fallback) do
       quote do
         key1 = unquote(key1)

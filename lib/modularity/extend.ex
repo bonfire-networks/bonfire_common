@@ -312,13 +312,13 @@ defmodule Bonfire.Common.Extend do
   defp get_modularity(module_or_extension, opts) do
     case Keyword.pop(opts, :otp_app) do
       {nil, []} ->
-        Config.get([module_or_extension, :modularity], nil)
+        Config.__get__([module_or_extension, :modularity], nil)
 
       {otp_app, []} ->
         if otp_app == module_or_extension do
-          Config.get(:modularity, nil, otp_app)
+          Config.__get__(:modularity, nil, otp_app)
         else
-          Config.get([module_or_extension, :modularity], nil, otp_app)
+          Config.__get__([module_or_extension, :modularity], nil, otp_app)
         end
 
       {otp_app, _opts_with_scope} ->
@@ -328,9 +328,9 @@ defmodule Bonfire.Common.Extend do
           end)
 
         if otp_app == module_or_extension do
-          Settings.get(:modularity, nil, opts)
+          Settings.__get__(:modularity, nil, opts)
         else
-          Settings.get([module_or_extension, :modularity], nil, opts)
+          Settings.__get__([module_or_extension, :modularity], nil, opts)
         end
     end
   end
@@ -769,9 +769,13 @@ defmodule Bonfire.Common.Extend do
       :ok
   """
   def generate_reverse_router!() do
-    Utils.maybe_apply(Config.get(:router_module, Bonfire.Web.Router), :generate_reverse_router!, [
-      Config.get(:otp_app)
-    ])
+    Utils.maybe_apply(
+      Config.__get__(:router_module, Bonfire.Web.Router),
+      :generate_reverse_router!,
+      [
+        Config.__get__(:otp_app)
+      ]
+    )
     |> debug("reverse_router generated?")
   end
 
@@ -855,7 +859,7 @@ defmodule Bonfire.Common.Extend do
       code_file_path ->
         rel_code_file =
           code_file_path
-          |> Path.relative_to(Config.get(:project_path) || "./")
+          |> Path.relative_to(Config.__get__(:project_path) || "./")
 
         # |> debug()
 
@@ -1337,4 +1341,63 @@ defmodule Bonfire.Common.Extend do
   end
 
   def deps_tree_flat(_), do: nil
+
+  @doc """
+  Prettify AST expressions for better readability.
+  When storing module references, converts them to a string representation.
+  """
+  def prettify_ast(value) when is_list(value) do
+    Enum.map(value, &prettify_ast/1)
+  end
+
+  def prettify_ast({:{}, _, [:__aliases__, meta, parts]}) do
+    module_name = Enum.join(parts, ".")
+    %{module: module_name, meta: meta}
+  end
+
+  def prettify_ast({:__aliases__, meta, parts}) do
+    module_name = Enum.join(parts, ".")
+    %{module: module_name, meta: meta}
+  end
+
+  def prettify_ast(value) when is_tuple(value) do
+    value |> Tuple.to_list() |> Enum.map(&prettify_ast/1) |> List.to_tuple()
+  end
+
+  def prettify_ast(value) when is_map(value) do
+    Map.new(value, fn {k, v} -> {k, prettify_ast(v)} end)
+  end
+
+  def prettify_ast(value), do: value
+
+  @doc """
+  Simplify info in AST to make them more human-readable.
+  Removes meta information and converts module AST to simple atoms.
+  """
+  def simplify_ast(value) when is_list(value) do
+    Enum.map(value, &simplify_ast/1)
+  end
+
+  def simplify_ast(%{module: module, meta: _meta}) do
+    # Convert module string to atom, removing all metadata
+    String.to_atom(module)
+  end
+
+  def simplify_ast(%{module: module}) do
+    # Convert simple module string to atom
+    String.to_atom(module)
+  end
+
+  def simplify_ast(value) when is_map(value) do
+    # Clean up any metadata keys in maps
+    value
+    |> Map.drop([:meta, :counter, :line, :column])
+    |> Map.new(fn {k, v} -> {simplify_ast(k), simplify_ast(v)} end)
+  end
+
+  def simplify_ast(value) when is_tuple(value) do
+    value |> Tuple.to_list() |> Enum.map(&simplify_ast/1) |> List.to_tuple()
+  end
+
+  def simplify_ast(value), do: value
 end

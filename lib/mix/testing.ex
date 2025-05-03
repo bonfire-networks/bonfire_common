@@ -1,4 +1,6 @@
 defmodule Bonfire.Common.Testing do
+  use Bonfire.Common.Config
+
   def configure_start_test(opts \\ [migrate: false]) do
     running_a_second_test_instance? = System.get_env("TEST_INSTANCE") == "yes"
 
@@ -17,7 +19,9 @@ defmodule Bonfire.Common.Testing do
       assert_receive_timeout: 1000,
       exclude: Bonfire.Common.RuntimeConfig.skip_test_tags(),
       # only show log for failed tests (Can be overridden for individual tests via `@tag capture_log: false`)
-      capture_log: !running_a_second_test_instance? and System.get_env("CAPTURE_LOG") != "no"
+      capture_log:
+        !running_a_second_test_instance? and System.get_env("CAPTURE_LOG") != "no" and
+          System.get_env("UNTANGLE_TO_IO") != "yes"
     )
 
     # ExUnit.configuration()

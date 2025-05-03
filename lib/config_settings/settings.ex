@@ -21,11 +21,14 @@ defmodule Bonfire.Common.Settings do
 
   """
 
-  use Bonfire.Common.Utils
+  import Bonfire.Common.Utils
+  Bonfire.Common.Utils.__common_utils__()
+  Bonfire.Common.Utils.__localise__()
+  use Bonfire.Common.ConfigSettingsRegistration
   use Bonfire.Common.Repo
   # import Bonfire.Me.Integration
   alias Bonfire.Common.Extend
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   @doc """
   Get settings value for a config key (optionally from a specific OTP app or Bonfire extension)
@@ -76,9 +79,17 @@ defmodule Bonfire.Common.Settings do
     * `:otp_app` - Optionally specifies the OTP application for which to fetch settings. If none is specified, it will look at the (first) key and check if it references a known OTP application (i.e. an extension) or a module, in which case it will fetch settings from that application. Otherwise it will look in the configured top-level OTP app (see `Config.top_level_otp_app/0`). 
     * `:scope` - Optionally defines the scope for settings retrieval (e.g., `:user`, `:account`, or `:instance`).
   """
-  def get(key, default \\ nil, opts \\ [])
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get,
+    :__get__,
+    :settings,
+    {:keys, :default, :opts},
+    __MODULE__
+  )
 
-  def get(keys, default, opts) when is_list(keys) do
+  def __get__(key, default \\ nil, opts \\ [])
+
+  def __get__(keys, default, opts) when is_list(keys) do
     opts = Utils.to_options(opts)
 
     {otp_app, keys_tree} =
@@ -96,19 +107,19 @@ defmodule Bonfire.Common.Settings do
     get_settings(keys_tree, default, otp_app, opts)
   end
 
-  def get(key, default, opts) do
-    get([key], default, opts)
+  def __get__(key, default, opts) do
+    __get__([key], default, opts)
   end
 
   if Application.compile_env(:bonfire, :env) == :test do
     # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
-    def get_settings(keys, default, otp_app, opts) when is_list(keys),
+    defp get_settings(keys, default, otp_app, opts) when is_list(keys),
       do: get_for_process([otp_app] ++ keys) || do_get_settings(keys, default, otp_app, opts)
 
-    def get_settings(key, default, otp_app, opts),
+    defp get_settings(key, default, otp_app, opts),
       do: get_for_process([otp_app, key]) || do_get_settings(key, default, otp_app, opts)
   else
-    def get_settings(keys, default, otp_app, opts),
+    defp get_settings(keys, default, otp_app, opts),
       do: do_get_settings(keys, default, otp_app, opts)
   end
 
@@ -144,8 +155,15 @@ defmodule Bonfire.Common.Settings do
       ** (RuntimeError) Missing setting or configuration value: :non_existing_key
 
   """
+  Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
+    :get!,
+    :__get__!,
+    :config,
+    {:keys, :opts, :default},
+    __MODULE__
+  )
 
-  def get!(key, opts \\ []) do
+  def __get__!(key, opts \\ [], _default \\ nil) do
     case get(key, nil, opts) do
       nil ->
         raise "Missing setting or configuration value: #{inspect(key, pretty: true)}"
@@ -238,7 +256,7 @@ defmodule Bonfire.Common.Settings do
 
     #  |> debug()
     ([
-       Config.get_ext(otp_app)
+       Config.get_all(otp_app)
      ] ++
        [
          if(current_account_id,
@@ -294,7 +312,7 @@ defmodule Bonfire.Common.Settings do
 
       true ->
         debug("for instance")
-        Config.get_ext(otp_app)
+        Config.get_all(otp_app)
     end
 
     # |> debug("config/settings for #{inspect(otp_app)}")

@@ -5,7 +5,7 @@ defmodule Bonfire.Common.Errors do
   require Logger
   import Bonfire.Common.Extend
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Config
+  use Bonfire.Common.Config
 
   @doc """
   Turns various kinds of errors into an error message string. Used to format errors in a way that can be easily read by the user.

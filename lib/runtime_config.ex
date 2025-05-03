@@ -2,6 +2,7 @@ defmodule Bonfire.Common.RuntimeConfig do
   @moduledoc "Config and helpers for this library"
 
   import Untangle
+  require Bonfire.Common.Config
 
   @behaviour Bonfire.Common.ConfigModule
   def config_module, do: true

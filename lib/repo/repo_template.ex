@@ -7,15 +7,17 @@ defmodule Bonfire.Common.RepoTemplate do
 
   defmacro __using__(_) do
     quote do
-      alias Bonfire.Common.Config
+      use Bonfire.Common.Config
       use Bonfire.Common.E
-      import Config, only: [repo: 0]
+      import Bonfire.Common.Config, only: [repo: 0]
       alias Bonfire.Common.Utils
       alias Bonfire.Common.Types
       alias Bonfire.Common.Errors
 
       use Ecto.Repo,
-        otp_app: Config.get(:umbrella_otp_app) || Config.get(:otp_app) || :bonfire_common,
+        otp_app:
+          Bonfire.Common.Config.__get__(:umbrella_otp_app) ||
+            Bonfire.Common.Config.__get__(:otp_app) || :bonfire_common,
         adapter: Ecto.Adapters.Postgres
 
       import Ecto.Query
@@ -30,7 +32,8 @@ defmodule Bonfire.Common.RepoTemplate do
       @default_cursor_fields [cursor_fields: [{:id, :desc}]]
 
       def default_repo_opts,
-        do: [timeout: Config.get([Bonfire.Common.Repo, :timeout], 20000)] |> debug()
+        do:
+          [timeout: Bonfire.Common.Config.get([Bonfire.Common.Repo, :timeout], 20000)] |> debug()
 
       # def default_options(:all) do
       #   [
@@ -411,7 +414,7 @@ defmodule Bonfire.Common.RepoTemplate do
           # sets the default limit 
           limit: Bonfire.Common.Config.get(:default_pagination_limit, 10),
           # sets the maximum limit 
-          maximum_limit: Config.get(:pagination_hard_max_limit, 500),
+          maximum_limit: Bonfire.Common.Config.get(:pagination_hard_max_limit, 500),
           # include total count by default?
           include_total_count: false,
           # sets the total_count_primary_key_field to uuid for calculating total_count

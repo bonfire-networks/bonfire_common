@@ -5,9 +5,9 @@ defmodule Bonfire.Common.TestInstanceRepo do
   Note: more generic functions are defined in `Bonfire.Common.RepoTemplate`
   """
 
+  use Bonfire.Common.Config
   use Bonfire.Common.RepoTemplate
   require Logger
-  alias Bonfire.Common.Config
 
   def default_repo, do: Config.get!(:repo_module)
   def default_endpoint, do: Config.get!(:endpoint_module)

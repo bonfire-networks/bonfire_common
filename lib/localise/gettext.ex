@@ -11,6 +11,7 @@ defmodule Bonfire.Common.Localise.Gettext do
   Default Gettext module
   It is recommended to use the more convenient macros in `Bonfire.Common.Localise.Gettext.Helpers` instead.
   """
+  use Bonfire.Common.Config
 
   # if Bonfire.Common.Config.env() == :dev do
   #   use PseudoGettext,
