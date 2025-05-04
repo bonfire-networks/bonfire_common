@@ -60,6 +60,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistration do
   Register a key at compile time.
   """
   def register_key(type, keys_order, a, b, c, caller) do
+    debug(type, "Registering key")
     # Create registration entry
     registration =
       create_registration_map(keys_order, a, b, c)

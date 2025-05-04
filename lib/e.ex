@@ -78,7 +78,7 @@ defmodule Bonfire.Common.E do
                Pathex.path(key1),
                nil
              ) do
-          nil -> Common.E.pathex_fallback(object, [key1], unquote(fallback))
+          nil -> Common.E.ed_okf(object, [key1], unquote(fallback))
           ret -> Common.maybe_fallback(ret, unquote(fallback))
         end
       end
@@ -94,7 +94,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.pathex_fallback(object, [unquote(key1), unquote(key2)], unquote(fallback))
+            Common.E.ed_okf(object, [unquote(key1), unquote(key2)], unquote(fallback))
 
           ret ->
             Common.maybe_fallback(ret, unquote(fallback))
@@ -112,7 +112,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.pathex_fallback(
+            Common.E.ed_okf(
               object,
               [unquote(key1), unquote(key2), unquote(key3)],
               unquote(fallback)
@@ -134,7 +134,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.pathex_fallback(
+            Common.E.ed_okf(
               object,
               [unquote(key1), unquote(key2), unquote(key3), unquote(key4)],
               unquote(fallback)
@@ -158,7 +158,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.pathex_fallback(
+            Common.E.ed_okf(
               object,
               [unquote(key1), unquote(key2), unquote(key3), unquote(key4), unquote(key5)],
               unquote(fallback)
@@ -183,7 +183,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.pathex_fallback(
+            Common.E.ed_okf(
               object,
               [
                 unquote(key1),
@@ -202,7 +202,7 @@ defmodule Bonfire.Common.E do
       end
     end
 
-    def pathex_fallback({:ok, object}, keys, fallback) do
+    def ed_okf({:ok, object}, keys, fallback) do
       # TODO: can we pattern match that before the first call to Pathex instead? 
       # apply(__MODULE__, :e, [object] ++ keys ++ [fallback])
       # e(object, unquote_splicing(keys), fallback)
@@ -212,11 +212,11 @@ defmodule Bonfire.Common.E do
       apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
     end
 
-    def pathex_fallback(%{__context__: object}, keys, fallback) do
+    def ed_okf(%{__context__: object}, keys, fallback) do
       apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
     end
 
-    def pathex_fallback(_object, _keys, fallback) do
+    def ed_okf(_object, _keys, fallback) do
       Common.maybe_fallback(nil, fallback)
     end
   else

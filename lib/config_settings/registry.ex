@@ -15,9 +15,10 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   @doc """
   Prepare data structure for the cache.
   """
-  def prepare_data_for_cache() do
+  def prepare_data_for_cache(modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()) do
     # Get compile-time collected keys
-    keys = find_registered_keys()
+    keys = find_registered_keys(modules_to_scan)
+    # |> debug("registered_keys")
 
     # Group by type and merge multiple occurrences of the same keys
     config_keys =
@@ -41,9 +42,10 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   Group keys by their occurrence, preserving all locations where they are defined.
   This ensures we don't lose information when the same key is defined in multiple places.
   """
-  def group_keys_by_occurrence(keys) do
+  defp group_keys_by_occurrence(keys) do
     keys
     |> Enum.group_by(& &1.keys)
+    # |> debug("Grouped keys")
     |> Enum.map(fn {keys, entries} ->
       env = List.first(entries)[:env]
       # |> debug("env")
@@ -52,6 +54,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
       # Process each entry to evaluate AST values
       processed_entries =
         Enum.map(entries, fn entry ->
+          # debug(keys, "keys")
           env = entry[:env]
           # |> debug("env_l")
 
@@ -107,32 +110,35 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
        }}
     end)
     |> Map.new()
+
+    # |> debug("processed")
   end
 
   @doc """
   Find all registered keys from modules.
   """
-  def find_registered_keys() do
-    modules = ModuleAnalyzer.app_modules_to_scan()
-
+  defp find_registered_keys(modules \\ ModuleAnalyzer.app_modules_to_scan()) do
     # Filter for modules that called get
     modules_with_keys =
       ModuleAnalyzer.filter_modules(
-        modules,
+        modules || ModuleAnalyzer.app_modules_to_scan(),
         fn module ->
           Code.ensure_loaded?(module) &&
             function_exported?(module, :__bonfire_config_keys__, 0)
         end
       )
-      |> debug("modules_with_keys")
+
+    # |> debug("modules_with_keys")
 
     # Collect all registered keys
-    Enum.flat_map(modules_with_keys, fn {_app, modules} ->
-      Enum.flat_map(modules, fn module ->
+    Enum.flat_map(modules_with_keys, fn {_app, k_modules} ->
+      Enum.flat_map(k_modules, fn module ->
         try do
           module.__bonfire_config_keys__()
         rescue
-          _ -> []
+          e ->
+            error(e)
+            []
         end
       end)
     end)
@@ -149,17 +155,17 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   end
 
   @doc "Access the cached data, or re-populate if not available"
-  def cached_data do
+  def cached_data(modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()) do
     :persistent_term.get(__MODULE__)
   rescue
     _ in ArgumentError ->
-      populate()
+      populate(modules_to_scan)
       :persistent_term.get(__MODULE__)
   end
 
   @doc "Rebuild the config/settings registry"
-  def populate do
-    ModuleAnalyzer.populate_registry(__MODULE__, &prepare_data_for_cache/0)
+  def populate(modules_to_scan \\ ModuleAnalyzer.app_modules_to_scan()) do
+    ModuleAnalyzer.populate_registry(__MODULE__, fn -> prepare_data_for_cache(modules_to_scan) end)
   end
 
   # API functions
@@ -237,14 +243,16 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
     on_error = opts[:on_error] || (&format_ast/1)
 
     try do
-      debug(ast, "processing")
+      # is_atom(ast) or is_number(ast) or is_binary(ast) or is_boolean(ast) or is_nil(ast) or ast == [] or ast == %{}
+      literal? = !(is_tuple(ast) or is_list(ast) or is_map(ast))
+
+      if !literal?, do: debug(ast, "processing from #{env.file}")
 
       case ast do
         # Skip literals that don't need processing
-        literal
-        when is_atom(literal) or is_number(literal) or is_binary(literal) or is_boolean(literal) or
-               is_nil(literal) or literal == [] or literal == %{} ->
-          literal
+        _
+        when literal? == true ->
+          ast
 
         # Handle l("text") functions - extract the string
         {:l, _, [text]} when is_binary(text) ->
@@ -255,34 +263,53 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
 
         # Handle assigns.__context__
         {{:., _, [{:assigns, _, _}, :__context__]}, _, _} ->
-          {:__context__, nil}
+          %{__context__: nil}
 
         {:assigns, _, [{:socket, _, nil}]} ->
-          {:assigns, nil}
+          %{assigns: %{}}
+
+        {:assigns, _, nil} ->
+          %{assigns: %{}}
 
         {:., _, [{:assigns, _, nil}, assign_name]} when is_atom(assign_name) ->
           #   "@#{assign_name}"
-          {assign_name, nil}
+          Map.new([{assign_name, nil}])
 
         {{:., _, [{:assigns, _, nil}, assign_name]}, _, []} when is_atom(assign_name) ->
           # "@#{assign_name}"
-          {assign_name, nil}
+          Map.new([{assign_name, nil}])
 
         {:current_user, _,
          [
-           {{:., _, [{:assigns, _, nil}, _]}, _, _}
+           _
          ]} ->
           {:current_user, nil}
 
         # Handle function calls like Keyword.merge
-        {{:., _, [:Keyword, :merge]}, _, [list1, list2]} = ast ->
+        {:||, _,
+         [
+           left,
+           right
+         ]} ->
           try do
-            processed_list1 = process_ast(list1, opts)
-            processed_list2 = process_ast(list2, opts)
+            left = process_ast(left, opts)
+            right = process_ast(right, opts)
+            left || right
+          rescue
+            e ->
+              warn(e, "Could not process args for ||")
+              debug(__STACKTRACE__, "failed trace")
+              on_error.(ast, env: env)
+          end
 
-            if is_list(processed_list1) and is_list(processed_list2) and
-                 Keyword.keyword?(processed_list1) and Keyword.keyword?(processed_list2) do
-              Keyword.merge(processed_list1, processed_list2)
+        {{:., _, [:Keyword, :merge]}, _, [left, right]} ->
+          try do
+            left = process_ast(left, opts)
+            right = process_ast(right, opts)
+
+            if is_list(left) and is_list(right) and
+                 Keyword.keyword?(left) and Keyword.keyword?(right) do
+              Keyword.merge(left, right)
             else
               warn("not valid keyword lists")
               on_error.(ast, env: env)
@@ -312,6 +339,11 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
                 Enum.map(args, &process_ast(&1, opts))
                 |> debug("processed_args")
 
+              # if module==Access and function==:get do
+              #   debug("Access.get called")
+              #   ed_okf(processed_args)
+              # else
+
               # Try to apply the function
               try do
                 apply(module, function, processed_args)
@@ -321,6 +353,8 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
                   debug(__STACKTRACE__, "failed trace")
                   on_error.(ast, env: env)
               end
+
+              # end
           end
 
         {{:., _, [mod, fun]}} when (is_atom(mod) or is_tuple(mod)) and is_atom(fun) ->
@@ -346,7 +380,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
               end
           end
 
-        {__MODULE__, _, nil} when not is_nil(env) ->
+        {:__MODULE__, _, nil} when not is_nil(env) ->
           env.module
 
         {:__aliases__, _, parts} ->
@@ -400,6 +434,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
           end
 
         {atom, _, nil} when is_atom(atom) ->
+          debug("atom")
           atom
 
         # For all other AST expressions in evaluate mode
@@ -411,7 +446,14 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
             {result, _} =
               Code.eval_quoted(
                 ast,
-                [assigns: %{}, socket: nil, conn: nil, __context__: %{}, socket_assigns: []],
+                [
+                  assigns: %{},
+                  socket: nil,
+                  socket_assigns: [],
+                  conn: nil,
+                  __context__: %{},
+                  scope: nil
+                ],
                 env
               )
 
@@ -447,9 +489,9 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   end
 
   # Helper to safely evaluate AST at compile time
-  defp evaluate_ast(nil, _), do: nil
+  def evaluate_ast(nil, _), do: nil
 
-  defp evaluate_ast(ast, opts) do
+  def evaluate_ast(ast, opts) do
     process_ast(
       ast,
       Keyword.put(opts, :on_error, fn failed_ast, opts ->
