@@ -4,10 +4,10 @@ defmodule Bonfire.Common.Media do
   use Arrows
   import Untangle
   use Bonfire.Common.E
-  alias Bonfire.Common
+  use Bonfire.Common.E
+  use Bonfire.Common.Config
   alias Common.Utils
   alias Common.Enums
-  alias Common.Config
   alias Common.Cache
 
   @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
