@@ -56,7 +56,6 @@ defmodule Bonfire.Common.Utils do
       alias Bonfire.Common
 
       use Common.E
-      use Common.Config
 
       # require Utils
       # can import specific functions with `only` or `except`
@@ -97,6 +96,7 @@ defmodule Bonfire.Common.Utils do
       Bonfire.Common.Utils.__localise__(unquote(opts))
       Bonfire.Common.Utils.__common_utils__(unquote(opts))
 
+      use Bonfire.Common.Config
       use Bonfire.Common.Settings
     end
   end

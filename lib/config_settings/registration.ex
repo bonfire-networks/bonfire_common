@@ -60,7 +60,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistration do
   Register a key at compile time.
   """
   def register_key(type, keys_order, a, b, c, caller) do
-    debug(type, "Registering key")
+    # debug(type, "Registering key")
     # Create registration entry
     registration =
       create_registration_map(keys_order, a, b, c)
@@ -114,16 +114,20 @@ defmodule Bonfire.Common.ConfigSettingsRegistration do
     quote do
       # NOTE: we nest the __using__ because this code should be included in the modules that use the Config or Settings modules
       defmacro __using__(_opts) do
+        called_in_module? = not is_nil(__CALLER__.module)
+
         quote do
           alias Bonfire.Common.Config
           alias Bonfire.Common.Settings
 
-          # Set up the module attribute to collect keys
-          Module.register_attribute(__MODULE__, :bonfire_config_keys, accumulate: true)
+          if unquote(called_in_module?) do
+            # Set up the module attribute to collect keys
+            Module.register_attribute(__MODULE__, :bonfire_config_keys, accumulate: true)
 
-          # Define a function to retrieve the keys at runtime
+            # Define a function to retrieve the keys at runtime
 
-          @before_compile Bonfire.Common.ConfigSettingsRegistration
+            @before_compile Bonfire.Common.ConfigSettingsRegistration
+          end
         end
       end
     end

@@ -355,7 +355,7 @@ defmodule Bonfire.Common.Extend do
       true
   """
   def disabled_value?(value) do
-    case value do
+    case value |> debug() do
       nil -> false
       false -> false
       :disable -> true

@@ -13,8 +13,9 @@ defmodule ConsoleHelpers do
 
       # use Common.Utils # FIXME: Gettext no longer seems to work in IEx?
       import Common.Utils
-      __common_utils__()
-      use Bonfire.Common.Settings
+      Common.Utils.__common_utils__()
+      import Bonfire.Common.Config
+      import Bonfire.Common.Settings
       import Bonfire.Me.Fake
       import Untangle
 
