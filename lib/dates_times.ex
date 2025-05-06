@@ -7,6 +7,9 @@ defmodule Bonfire.Common.DatesTimes do
   import Untangle
   alias Bonfire.Common.Types
 
+  # (2 ^ 48) - 1
+  @max_unix_time 281_474_976_710_655
+
   @doc """
   Takes a ULID ID (or an object with one) or a `DateTime` struct, and turns the date into a relative phrase, e.g. `2 days ago`.
 
@@ -451,13 +454,13 @@ defmodule Bonfire.Common.DatesTimes do
 
   ## Examples
 
-      > maybe_generate_ulid(%Date{year: 2024, month: 7, day: 25})
+      > generate_ulid_if_past(%Date{year: 2024, month: 7, day: 25})
       "01J3KJZZ00X1EXD6TZYD3PPDR6"  # Example output
 
-      > maybe_generate_ulid("2024-07-25")
+      > generate_ulid_if_past("2024-07-25")
       "01J3KJZZ00X1EXD6TZYD3PPDR6"  # Example output
   """
-  def maybe_generate_ulid(date_time_or_string) do
+  def generate_ulid_if_past(date_time_or_string) do
     with %DateTime{} = date_time <-
            to_date_time(date_time_or_string),
          # only if published in the past
@@ -465,13 +468,58 @@ defmodule Bonfire.Common.DatesTimes do
            DateTime.compare(date_time, DateTime.now!("Etc/UTC")) do
       date_time
       # |> debug("date_time")
-      |> DateTime.to_unix(:millisecond)
-      # |> debug("to_unix")
-      |> Needle.UID.generate()
+      |> generate_ulid()
     else
       other ->
         debug(other, "skip")
         nil
+    end
+  end
+
+  @doc """
+  Generates a ULID based on a `DateTime` or a string representation of a date/time.
+
+  ## Examples
+
+      > generate_ulid(%Date{year: 2024, month: 7, day: 25})
+      "01J3KJZZ00X1EXD6TZYD3PPDR6"  # Example output
+
+      > generate_ulid("2050-01-31")
+      "01J3KJZZ00X1EXD6TZYD3PPDR6"  # Example output
+  """
+  def generate_ulid(timestamp) when is_integer(timestamp) and timestamp > 281_474_976_710_655 do
+    warn(timestamp, "tried to go too far into the future, defaulting to the year 2038")
+    Needle.UID.generate(281_474_976_710_655)
+  end
+
+  def generate_ulid(timestamp) when is_integer(timestamp) and timestamp < 0 do
+    warn(timestamp, "tried to go too far into the past, defaulting to the year 1970")
+    Needle.UID.generate(0)
+  end
+
+  def generate_ulid(timestamp) when is_integer(timestamp) do
+    timestamp
+    |> Needle.UID.generate()
+  end
+
+  def generate_ulid(%DateTime{year: year} = date_time) when year > 2037 do
+    warn(date_time, "tried to go too far into the future, defaulting to the year 2038")
+    Needle.UID.generate(281_474_976_710_655)
+  end
+
+  def generate_ulid(%DateTime{} = date_time) do
+    date_time
+    |> DateTime.to_unix(:millisecond)
+    # |> debug("to_unix")
+    |> generate_ulid()
+  end
+
+  def generate_ulid(date_time_string) when is_binary(date_time_string) do
+    with %DateTime{} = date_time <-
+           to_date_time(date_time_string) do
+      date_time
+      # |> debug("date_time")
+      |> generate_ulid()
     end
   end
 
