@@ -721,7 +721,11 @@ defmodule Bonfire.Common.URIs do
     )
   end
 
-  def append_params_uri(url_or_uri, params) do
+  def append_params_uri(url_or_uri, params) when is_map(params) or is_list(params) do
+    append_params_uri(url_or_uri, params |> Enums.filter_empty_enum(true) |> URI.encode_query())
+  end
+
+  def append_params_uri(url_or_uri, params) when is_binary(params) do
     case url_or_uri do
       %URI{} = uri ->
         URI.append_query(uri, params)

@@ -364,8 +364,8 @@ defmodule Bonfire.Common.Enums do
   def filter_empty(%Needle.Pointer{deleted_at: del}, fallback) when not is_nil(del),
     do: fallback
 
-  def filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback
   def filter_empty([], fallback), do: fallback
+  def filter_empty(map, fallback) when map == %{}, do: fallback
   def filter_empty("", fallback), do: fallback
   def filter_empty(nil, fallback), do: fallback
   def filter_empty({:error, _}, fallback), do: fallback
@@ -386,7 +386,7 @@ defmodule Bonfire.Common.Enums do
 
   def filter_empty(val, _fallback), do: val
 
-  defp filter_empty_enum(enum, filter_keys? \\ false),
+  def filter_empty_enum(enum, filter_keys? \\ false),
     do:
       enum
       |> Enum.map(fn

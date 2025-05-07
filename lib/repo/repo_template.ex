@@ -466,8 +466,10 @@ defmodule Bonfire.Common.RepoTemplate do
         |> Keyword.update(:limit, 10, fn existing_value ->
           existing_value = Types.maybe_to_integer(existing_value)
 
-          if is_number(opts[:multiply_limit]),
-            do: ceil(existing_value * opts[:multiply_limit]),
+          multiply_limit = opts[:multiply_limit]
+
+          if is_number(multiply_limit) and multiply_limit <= 6,
+            do: ceil(existing_value * multiply_limit),
             else: existing_value
         end)
       end
