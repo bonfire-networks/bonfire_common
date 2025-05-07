@@ -720,4 +720,14 @@ defmodule Bonfire.Common.URIs do
       Keyword.put_new(opts, :fallback_return, nil)
     )
   end
+
+  def append_params_uri(url_or_uri, params) do
+    case url_or_uri do
+      %URI{} = uri ->
+        URI.append_query(uri, params)
+
+      url ->
+        URI.append_query(URI.parse(url || ""), params)
+    end
+  end
 end
