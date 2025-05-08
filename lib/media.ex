@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Media do
   use Arrows
   import Untangle
   use Bonfire.Common.E
-  use Bonfire.Common.E
+  use Bonfire.Common.Localise
   use Bonfire.Common.Config
   alias Common.Utils
   alias Common.Enums
@@ -243,8 +243,11 @@ defmodule Bonfire.Common.Media do
     avatar_fallback(Bonfire.Common.Enums.id(obj))
   end
 
-  # TODO: configurable
-  def avatar_fallback(_ \\ nil), do: "/images/avatar.png"
+  def avatar_fallback(_ \\ nil),
+    do:
+      Config.get([:ui, :default_images, :avatar], "/images/avatar.png",
+        name: l("Default avatar image")
+      )
 
   # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
@@ -394,8 +397,11 @@ defmodule Bonfire.Common.Media do
   def banner_url(%{profile: profile}), do: banner_url(profile)
   def banner_url(_obj), do: banner_fallback()
 
-  # TODO: configurable
-  def banner_fallback, do: "/images/bonfires.png"
+  def banner_fallback,
+    do:
+      Config.get([:ui, :default_images, :banner], "/images/bonfires.png",
+        name: l("Default banner image")
+      )
 
   @doc """
   Determines the dominant color for a given user’s avatar or banner.

@@ -117,6 +117,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistration do
         called_in_module? = not is_nil(__CALLER__.module)
 
         quote do
+          # use Bonfire.Common.Localise
           alias Bonfire.Common.Config
           alias Bonfire.Common.Settings
 

@@ -4,6 +4,7 @@ defmodule Bonfire.Common.URIs do
   use Arrows
   use Bonfire.Common.E
   use Bonfire.Common.Config
+  use Bonfire.Common.Localise
   import Bonfire.Common.Extend
   import Bonfire.Common.Config, only: [repo: 0]
   alias Bonfire.Common.Utils
@@ -279,9 +280,20 @@ defmodule Bonfire.Common.URIs do
     # debug(args, id_at)
     debug(args, "path_fallback")
 
-    # TODO: configurable
-    fallback_route = Needle.Pointer
-    fallback_character_route = Bonfire.Data.Identity.Character
+    fallback_route =
+      Config.get([:ui, :fallback_route_schemas, :default], Needle.Pointer,
+        name: l("Default fallback route"),
+        description: l("What route/view to use for data types that don't have one")
+      )
+
+    fallback_character_route =
+      Config.get([:ui, :fallback_route_schemas, :default], Bonfire.Data.Identity.Character,
+        name: l("Character fallback route"),
+        description:
+          l(
+            "What route/view to use for character types that don't have one (eg. topics or groups with related UI enabled)"
+          )
+      )
 
     case path_id(Enum.at(args, id_at)) do
       maybe_username_or_id
