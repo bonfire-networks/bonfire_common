@@ -357,7 +357,7 @@ defmodule Bonfire.Common.E do
     if Keyword.keyword?(list) do
       list |> Map.new() |> ed(key, fallback)
     else
-      debug(list, "trying to find #{key} in a list")
+      debug(list, "trying to find #{inspect(key)} in a list")
 
       Enum.find_value(list, &ed(&1, key, nil))
       |> Common.maybe_fallback(fallback)

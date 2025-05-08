@@ -26,11 +26,17 @@ defmodule Bonfire.Common.Types do
       iex> typeof(nil)
       :empty
 
+      iex> typeof(false)
+      :boolean
+
       iex> typeof(%Ecto.Changeset{})
       Ecto.Changeset
 
       iex> typeof([1, 2])
       List
+
+      iex> typeof([a: 1, b: 2])
+      Keyword
 
       iex> typeof([])
       :empty
@@ -71,14 +77,20 @@ defmodule Bonfire.Common.Types do
       iex> typeof(%{__struct__: Bonfire.Classify.Category})
       Bonfire.Classify.Category
   """
+  def typeof(boolean) when is_boolean(boolean), do: :boolean
+  def typeof(number) when is_integer(number), do: Integer
+  def typeof(float) when is_float(float), do: Float
+  def typeof(tuple) when is_tuple(tuple), do: Tuple
+  def typeof(function) when is_function(function), do: Function
+  def typeof(pid) when is_pid(pid), do: Process
+  def typeof(port) when is_port(port), do: Port
+  def typeof(reference) when is_reference(reference), do: :reference
+  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
+
   def typeof(%{__struct__: exception_struct}) when is_exception(exception_struct),
     do: exception_struct
 
   def typeof(exception) when is_exception(exception), do: Exception
-  def typeof(%{__context__: _, __changed__: _}), do: :assigns
-  def typeof(v) when is_nil(v) or v == %{} or v == [] or v == "", do: :empty
-  def typeof(%{__struct__: struct}), do: struct
-  def typeof(struct) when is_struct(struct), do: object_type(struct) || :struct
 
   def typeof(list) when is_list(list) do
     if Keyword.keyword?(list), do: Keyword, else: List
@@ -108,14 +120,10 @@ defmodule Bonfire.Common.Types do
     end
   end
 
-  def typeof(number) when is_integer(number), do: Integer
+  def typeof(%{__context__: _, __changed__: _}), do: :assigns
+  def typeof(%{__struct__: struct}), do: struct
+  def typeof(struct) when is_struct(struct), do: object_type(struct) || :struct
   def typeof(map) when is_map(map), do: object_type(map) || Map
-  def typeof(float) when is_float(float), do: Float
-  def typeof(tuple) when is_tuple(tuple), do: Tuple
-  def typeof(function) when is_function(function), do: Function
-  def typeof(pid) when is_pid(pid), do: Process
-  def typeof(port) when is_port(port), do: Port
-  def typeof(reference) when is_reference(reference), do: :reference
   def typeof(_), do: nil
 
   @doc """

@@ -173,21 +173,41 @@ defmodule Bonfire.Common.Settings do
     end
   end
 
-  def do_get_in(result, keys_tree, default) do
+  def do_get_in(result, keys_tree, default) when is_list(keys_tree) do
+    debug(keys_tree, "lookup settings", trace_skip: 2)
     #  Keyword.keyword?(result)
-    if is_list(result) or is_map(result) do
+    if is_list(result) and Keyword.keyword?(result) do
       # Enums.get_in_access_keys(result, keys_tree, :not_set)
       get_in(result, keys_tree)
       |> maybe_fallback(default)
       |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
     else
-      error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
-      default
+      if is_map(result) or is_list(result) do
+        ed(result, keys_tree, nil)
+        |> maybe_fallback(default)
+        |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
+      else
+        error(result, "Settings are in an invalid structure and can't be used", trace_skip: 2)
+        default
+      end
     end
   rescue
+    error in ArgumentError ->
+      error(error, "get_in failed, try with `ed`", trace_skip: 2)
+
+      ed(result, keys_tree, nil)
+      |> maybe_fallback(default)
+
     error in FunctionClauseError ->
-      error(error, "get_in failed, try with `e`", trace_skip: 2)
-      apply(E, :ed, debug([result] ++ keys_tree ++ [nil]))
+      error(error, "get_in failed, try with `ed`", trace_skip: 2)
+
+      ed(result, keys_tree, nil)
+      |> maybe_fallback(default)
+  end
+
+  def do_get_in(_result, keys_tree, default) do
+    error(keys_tree, "Invalid keys_tree, cannot lookup the setting")
+    default
   end
 
   defp maybe_fallback(val, fallback, fallback_value \\ nil)
