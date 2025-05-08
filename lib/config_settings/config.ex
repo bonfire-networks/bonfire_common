@@ -71,7 +71,11 @@ defmodule Bonfire.Common.Config do
 
   def __get__(key_or_keys, default \\ nil, opts_or_otp_app \\ nil)
 
-  # if no extension is specified, use the top-level Bonfire app
+  # if no extension is specified, use the top-level Bonfire app, or infer from keys
+  def __get__(keys_tree, default, opts) when is_list(opts) or is_map(opts) do
+    __get__(keys_tree, default, opts[:otp_app])
+  end
+
   def __get__(keys_tree, default, _otp_app = nil) do
     {otp_app, keys_tree} = keys_tree(keys_tree) |> List.pop_at(0)
 
