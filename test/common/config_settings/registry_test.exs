@@ -142,15 +142,15 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
       data = ConfigSettingsRegistry.cached_data()
 
       assert is_map(data)
-      assert Map.has_key?(data, :config_keys)
-      assert Map.has_key?(data, :settings_keys)
+      assert Map.has_key?(data, :config)
+      assert Map.has_key?(data, :settings)
     end
   end
 
   describe "config keys" do
     test "config_keys returns all config keys used at runtime" do
       config_keys =
-        ConfigSettingsRegistry.config_keys()
+        ConfigSettingsRegistry.config()
         |> debug("keys")
 
       assert is_map(config_keys)
@@ -164,7 +164,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
     @tag :todo
     test "config_keys returns all config keys used at compile-time" do
       config_keys =
-        ConfigSettingsRegistry.config_keys()
+        ConfigSettingsRegistry.config()
         |> debug("keys")
 
       assert is_map(config_keys)
@@ -173,7 +173,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
 
     test "verbs key has merged data from two modules" do
       config_keys =
-        ConfigSettingsRegistry.config_keys()
+        ConfigSettingsRegistry.config()
         |> debug("keys")
 
       assert verbs_data = config_keys[:untangle]
@@ -187,7 +187,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
 
     test "all_keys returns combined config and settings keys" do
       all_keys =
-        ConfigSettingsRegistry.all_keys()
+        ConfigSettingsRegistry.all()
         |> debug("keys")
 
       assert is_map(all_keys)
@@ -222,7 +222,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
   describe "settings keys" do
     test "settings_keys returns all settings keys" do
       settings_keys =
-        ConfigSettingsRegistry.settings_keys()
+        ConfigSettingsRegistry.settings()
         |> debug("keys")
 
       assert is_map(settings_keys)
@@ -233,7 +233,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
 
     test "settings keys contain the right metadata" do
       settings_keys =
-        ConfigSettingsRegistry.settings_keys()
+        ConfigSettingsRegistry.settings()
         |> debug("keys")
 
       assert date_format = settings_keys[[:ui, :date_time_format]]

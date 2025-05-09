@@ -20,43 +20,63 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
     keys = find_registered_keys(modules_to_scan)
     # |> debug("registered_keys")
 
-    # Group by type and merge multiple occurrences of the same keys
-    config_keys =
-      keys
-      |> Enum.filter(&(&1.type == :config))
-      |> group_keys_by_occurrence()
+    # Pre-evaluate all keys in a single pass
+    evaluated_keys = pre_evaluate_keys(keys)
 
-    settings_keys =
-      keys
-      |> Enum.filter(&(&1.type == :settings))
-      |> group_keys_by_occurrence()
+    # Separate settings and config keys
+    settings_evaluated_keys =
+      Enum.filter(evaluated_keys, fn {_eval_key, key_data} ->
+        key_data.type == :settings
+      end)
 
-    # Build the result structure
+    # Get a set of all settings key identifiers
+    settings_key_identifiers =
+      settings_evaluated_keys
+      |> Enum.map(fn {eval_key, _} -> eval_key end)
+      |> MapSet.new()
+
+    # Process config keys, excluding any that appear in settings_keys
+    config_evaluated_keys =
+      evaluated_keys
+      |> Enum.filter(fn {eval_key, key_data} ->
+        key_data.type == :config and not MapSet.member?(settings_key_identifiers, eval_key)
+      end)
+
+    # Process the entries for settings and config
     %{
-      config_keys: config_keys,
-      settings_keys: settings_keys
+      config: process_evaluated_entries(config_evaluated_keys),
+      settings: process_evaluated_entries(settings_evaluated_keys)
     }
   end
 
   @doc """
-  Group keys by their occurrence, preserving all locations where they are defined.
-  This ensures we don't lose information when the same key is defined in multiple places.
+  Pre-evaluate all keys in a single pass, returning a list of {evaluated_key, key_data} tuples.
+  This allows us to evaluate each key only once before filtering and grouping.
   """
-  defp group_keys_by_occurrence(keys) do
-    keys
-    |> Enum.group_by(& &1.keys)
-    # |> debug("Grouped keys")
-    |> Enum.map(fn {keys, entries} ->
-      env = List.first(entries)[:env]
-      # |> debug("env")
-      evaluated_keys = if env, do: evaluate_ast(keys, env: env), else: keys
+  defp pre_evaluate_keys(entries) do
+    entries
+    |> Enum.map(fn entry ->
+      env = entry[:env]
+      evaluated_key = if env, do: evaluate_ast(entry.keys, env: env), else: entry.keys
+      {evaluated_key, entry}
+    end)
+  end
+
+  @doc """
+  Process pre-evaluated keys to create the final data structure.
+  """
+  defp process_evaluated_entries(evaluated_entries) do
+    # Group by evaluated key
+    evaluated_entries
+    |> Enum.group_by(fn {evaluated_key, _} -> evaluated_key end)
+    |> Enum.map(fn {evaluated_key, key_entries} ->
+      # Extract original key data from evaluated key tuples
+      entries = Enum.map(key_entries, fn {_, entry} -> entry end)
 
       # Process each entry to evaluate AST values
       processed_entries =
         Enum.map(entries, fn entry ->
-          # debug(keys, "keys")
           env = entry[:env]
-          # |> debug("env_l")
 
           # Evaluate stored AST if we have an environment
           evaluated_default =
@@ -97,9 +117,9 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
         |> Enum.map(& &1[:opts])
         |> Bonfire.Common.Enums.deep_merge_reduce()
 
-      {evaluated_keys,
+      {evaluated_key,
        %{
-         keys: evaluated_keys,
+         keys: evaluated_key,
          locations: processed_entries,
          # Only set default if all entries have the same default
          default: common_default,
@@ -171,20 +191,20 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   # API functions
 
   @doc "Get all configuration keys and their metadata"
-  def config_keys do
-    cached_data().config_keys
+  def config do
+    cached_data().config
   end
 
   @doc "Get all settings keys and their metadata"
-  def settings_keys do
-    cached_data().settings_keys
+  def settings do
+    cached_data().settings
   end
 
   @doc "Get all keys (both config and settings)"
-  def all_keys do
+  def all do
     %{
-      config: config_keys(),
-      settings: settings_keys()
+      config: config(),
+      settings: settings()
     }
   end
 
@@ -192,7 +212,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
   def format_registry do
     %{
       config:
-        Enum.map(config_keys(), fn {keys, data} ->
+        Enum.map(config(), fn {keys, data} ->
           %{
             keys: keys,
             default: data.default,
@@ -211,7 +231,7 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
           }
         end),
       settings:
-        Enum.map(settings_keys(), fn {keys, data} ->
+        Enum.map(settings(), fn {keys, data} ->
           %{
             keys: keys,
             default: data.default,
