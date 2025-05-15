@@ -173,9 +173,41 @@ defmodule Bonfire.Common.Settings do
     end
   end
 
+  @doc """
+  Retrieves a value from nested data structures using a list of keys.
+
+  This function supports various data types and handles errors gracefully:
+  - For keyword lists, it uses Elixir's built-in `get_in/2` function
+  - For maps and lists, it uses a custom traversal function `ed/3`
+  - Falls back to the provided default value when the key path doesn't exist
+
+  ## Examples
+
+      iex> do_get_in([foo: [bar: "value"]], [:foo, :bar], "default")
+      "value"
+
+      iex> do_get_in(%{foo: %{bar: "value"}}, [:foo, :bar], "default")
+      "value"
+
+      iex> do_get_in([foo: %{bar: "value"}], [:foo, :bar], "default")
+      "value"
+
+      iex> do_get_in(%{foo: [bar: "value"]}, [:foo, :bar], "default")
+      "value"
+
+      iex> do_get_in([foo: [bar: "value"]], [:foo, :missing], "default")
+      "default"
+
+      iex> do_get_in(%{foo: %{bar: "value"}}, [:foo, :missing], "default")
+      "default"
+
+      iex> do_get_in("invalid", [:foo], "default")
+      "default"
+
+  """
   def do_get_in(result, keys_tree, default) when is_list(keys_tree) do
     debug(keys_tree, "lookup settings", trace_skip: 2)
-    #  Keyword.keyword?(result)
+
     if is_list(result) and Keyword.keyword?(result) do
       # Enums.get_in_access_keys(result, keys_tree, :not_set)
       get_in(result, keys_tree)
