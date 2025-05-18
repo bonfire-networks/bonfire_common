@@ -35,10 +35,13 @@ defmodule Bonfire.Common.E do
       iex> e(%{key: %Ecto.Association.NotLoaded{}}, :key, "fallback")
       "fallback"
 
-      iex> e({:ok, %{key: "value"}}, :key, "fallback") # FIXME
+      iex> e(%{key: %Ecto.Association.NotLoaded{}}, :key, :nil!)
+      ** (RuntimeError) Required value not found
+
+      iex> e({:ok, %{key: "value"}}, :key, "fallback") 
       "value"
 
-      iex> e(%{__context__: %{key: "context_value"}}, :key, "fallback") # FIXME
+      iex> e(%{__context__: %{key: "context_value"}}, :key, "fallback") 
       "context_value"
 
       iex> e(%{a: %{b: "value"}}, :a, :b, "fallback")
@@ -46,6 +49,12 @@ defmodule Bonfire.Common.E do
 
       iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, "fallback")
       "fallback"
+
+      iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :nil!)
+      ** (RuntimeError) Required value not found
+
+      iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :c, :nil!)
+      ** (RuntimeError) Required value not found
 
       iex> e(%{a: %{b: nil}}, :a, :b, "fallback")
       "fallback"
@@ -78,7 +87,7 @@ defmodule Bonfire.Common.E do
                Pathex.path(key1),
                nil
              ) do
-          nil -> Common.E.ed_okf(object, [key1], unquote(fallback))
+          nil -> Common.E.e_fallback_ed(object, [key1], unquote(fallback))
           ret -> Common.maybe_fallback(ret, unquote(fallback))
         end
       end
@@ -94,7 +103,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.ed_okf(object, [unquote(key1), unquote(key2)], unquote(fallback))
+            Common.E.e_fallback_ed(object, [unquote(key1), unquote(key2)], unquote(fallback))
 
           ret ->
             Common.maybe_fallback(ret, unquote(fallback))
@@ -112,7 +121,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.ed_okf(
+            Common.E.e_fallback_ed(
               object,
               [unquote(key1), unquote(key2), unquote(key3)],
               unquote(fallback)
@@ -134,7 +143,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.ed_okf(
+            Common.E.e_fallback_ed(
               object,
               [unquote(key1), unquote(key2), unquote(key3), unquote(key4)],
               unquote(fallback)
@@ -158,7 +167,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.ed_okf(
+            Common.E.e_fallback_ed(
               object,
               [unquote(key1), unquote(key2), unquote(key3), unquote(key4), unquote(key5)],
               unquote(fallback)
@@ -183,7 +192,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil ->
-            Common.E.ed_okf(
+            Common.E.e_fallback_ed(
               object,
               [
                 unquote(key1),
@@ -200,24 +209,6 @@ defmodule Bonfire.Common.E do
             Common.maybe_fallback(ret, unquote(fallback))
         end
       end
-    end
-
-    def ed_okf({:ok, object}, keys, fallback) do
-      # TODO: can we pattern match that before the first call to Pathex instead? 
-      # apply(__MODULE__, :e, [object] ++ keys ++ [fallback])
-      # e(object, unquote_splicing(keys), fallback)
-      # quote do
-      #   e(object, unquote_splicing(keys), fallback)
-      # end
-      apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
-    end
-
-    def ed_okf(%{__context__: object}, keys, fallback) do
-      apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
-    end
-
-    def ed_okf(_object, _keys, fallback) do
-      Common.maybe_fallback(nil, fallback)
     end
   else
     defdelegate e(object, key1, fallback), to: __MODULE__, as: :ed
@@ -273,6 +264,9 @@ defmodule Bonfire.Common.E do
       iex> ed(%{key: %Ecto.Association.NotLoaded{}}, :key, "fallback")
       "fallback"
 
+      iex> ed(%{key: %Ecto.Association.NotLoaded{}}, :key, :nil!)
+      ** (RuntimeError) Required value not found
+
       iex> ed({:ok, %{key: "value"}}, :key, "fallback")
       "value"
 
@@ -284,6 +278,12 @@ defmodule Bonfire.Common.E do
 
       iex> ed(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, "fallback")
       "fallback"
+
+      iex> ed(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :nil!)
+      ** (RuntimeError) Required value not found
+
+      iex> ed(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :c,  :nil!)
+      ** (RuntimeError) Required value not found
 
       iex> ed(%{a: %{b: "value"}}, [:a, :b], "fallback")
       "value"
@@ -381,36 +381,58 @@ defmodule Bonfire.Common.E do
     get_in_access_keys_or(object, [key1, key2], fallback, fn object ->
       # if get_in didn't work, revert to peeling one layer at a time
       ed(object, key1, %{})
-      |> ed(key2, nil)
+      |> ed(key2, %Ecto.Association.NotLoaded{})
     end)
   end
 
   def ed(object, key1, key2, key3, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3], fallback, fn object ->
       ed(object, key1, key2, %{})
-      |> ed(key3, nil)
+      |> ed(key3, %Ecto.Association.NotLoaded{})
     end)
   end
 
   def ed(object, key1, key2, key3, key4, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4], fallback, fn object ->
       ed(object, key1, key2, key3, %{})
-      |> ed(key4, nil)
+      |> ed(key4, %Ecto.Association.NotLoaded{})
     end)
   end
 
   def ed(object, key1, key2, key3, key4, key5, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4, key5], fallback, fn object ->
       ed(object, key1, key2, key3, key4, %{})
-      |> ed(key5, nil)
+      |> ed(key5, %Ecto.Association.NotLoaded{})
     end)
   end
 
   def ed(object, key1, key2, key3, key4, key5, key6, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3, key4, key5, key6], fallback, fn object ->
       ed(object, key1, key2, key3, key4, key5, %{})
-      |> ed(key6, nil)
+      |> ed(key6, %Ecto.Association.NotLoaded{})
     end)
+  end
+
+  def e_fallback_ed({:ok, object}, keys, fallback) do
+    # TODO: can we pattern match that before the first call to Pathex instead? 
+    # apply(__MODULE__, :e, [object] ++ keys ++ [fallback])
+    # e(object, unquote_splicing(keys), fallback)
+    # quote do
+    #   e(object, unquote_splicing(keys), fallback)
+    # end
+    apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
+  end
+
+  def e_fallback_ed(%{__context__: object}, keys, fallback) do
+    apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
+  end
+
+  def e_fallback_ed(_object, _keys, :nil!) do
+    Common.maybe_fallback(%Ecto.Association.NotLoaded{}, :nil!)
+  end
+
+  def e_fallback_ed(_object, _keys, fallback) do
+    Common.maybe_fallback(nil, fallback)
   end
 
   defp get_in_access_keys_or(map, keys, fallback, fallback_fun) when is_map(map) do

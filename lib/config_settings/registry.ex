@@ -359,11 +359,6 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
                 Enum.map(args, &process_ast(&1, opts))
                 |> debug("processed_args")
 
-              # if module==Access and function==:get do
-              #   debug("Access.get called")
-              #   ed_okf(processed_args)
-              # else
-
               # Try to apply the function
               try do
                 apply(module, function, processed_args)
