@@ -45,7 +45,7 @@ jobs:
     - id: setup
       name: Determine Elixir and OTP versions
       run: |
-        chmod +x tool-versions-to-env.sh
+        ls -la && chmod +x tool-versions-to-env.sh
         # Run the script to extract versions and save to output
         ./tool-versions-to-env.sh 2 
 
