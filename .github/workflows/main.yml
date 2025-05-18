@@ -63,10 +63,12 @@ jobs:
         elixir-version: ${{ env.ELIXIR_VERSION }}
         otp-version: ${{ env.ERLANG_VERSION }}
 
-    - name: Restore dependencies cache
+    - name: Restore cache
       uses: actions/cache@v3
       with:
-        path: deps
+        path: |
+          deps
+          _build
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
         restore-keys: ${{ runner.os }}-mix-
 
@@ -76,21 +78,37 @@ jobs:
       env:
         MIX_ENV: test
         
-    - name: Save cache
+    - name: Save deps cache
       uses: actions/cache/save@v4
       with:
         path: |
           deps
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
 
+    - name: Check if TX is configured
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (secrets.TX_TOKEN != '' || vars.TX_TOKEN != '') }}
+      run: |
+        if [ -d ".tx" ]; then
+          echo "tx_enabled=true" >> $GITHUB_OUTPUT
+        else
+          echo "tx_enabled=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Extract and push localisation strings
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: ${{ steps.check_tx_folder.outputs.tx_enabled == 'true' }}
       run: mix gettext.extract
       env:
         MIX_ENV: test
-      
+    
+    - name: Save build cache
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+
     - name: Push source file using transifex client
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: ${{ steps.check_tx_folder.outputs.tx_enabled == 'true' }}
       uses: transifex/cli-action@v2
       with:
         token: ${{ secrets.TX_TOKEN || vars.TX_TOKEN }}
