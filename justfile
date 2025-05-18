@@ -86,7 +86,7 @@ boilerplate-update:
     rm -rf .bonfire-extension-boilerplate
 
 _copy_boilerplate-update:
-    cd .bonfire-extension-boilerplate && ls -la && cp -Rfv * .. && cp -Rfv .github ..
+    cd .bonfire-extension-boilerplate && ls -la && cp -Rfv * .. && cp -Rfv .github .. && cp -Rfv .tool-versions ..
 
 deps-get:
     mix deps.get
