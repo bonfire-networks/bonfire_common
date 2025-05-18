@@ -373,32 +373,66 @@ defmodule Bonfire.Common.Enums do
   def filter_empty(enum, fallback) when is_list(enum),
     do:
       enum
-      |> filter_empty_enum()
+      |> filter_empty_enum(true)
       |> re_filter_empty(fallback)
 
   def filter_empty(enum, fallback) when is_map(enum) and not is_struct(enum),
     do:
       enum
       # |> debug()
-      |> filter_empty_enum(true)
+      |> filter_empty_enum(false)
       |> Enum.into(%{})
       |> re_filter_empty(fallback)
 
   def filter_empty(val, _fallback), do: val
 
-  def filter_empty_enum(enum, filter_keys? \\ false),
-    do:
-      enum
-      |> Enum.map(fn
-        {key, val} -> {filter_empty(key, nil), filter_empty(val, nil)}
-        val -> filter_empty(val, nil)
-      end)
-      |> Enum.filter(fn
-        {nil, nil} -> false
-        {_, nil} when filter_keys? == true -> false
-        nil -> false
-        _ -> true
-      end)
+  @doc """
+  Filters empty values from an enumerable. When given key-value pairs, it can either check keys as well, or only filter based on values.
+
+  ## Examples
+
+      iex> filter_empty_enum([1, nil, 2, "", 3, [], 4, %{}])
+      [1, 2, 3, 4]
+
+      iex> filter_empty_enum([{:a, 1}, {:b, nil}, {:c, ""}, {:d, 2}])
+      [a: 1, d: 2]
+
+      iex> filter_empty_enum([{:a, 1}, {:b, nil}, {:c, ""}, {:d, 2}], false)
+      [{:a, 1}, {:d, 2}]
+
+      iex> filter_empty_enum([{nil, 1}, {false, nil}, {:b, []}, {:c, 3}])
+      [c: 3]
+
+      iex> filter_empty_enum([{nil, 1}, {false, nil}, {:b, []}, {:c, 3}], false)
+      [{nil, 1}, {:c, 3}]
+
+  """
+  def filter_empty_enum(enum, check_keys? \\ true)
+
+  def filter_empty_enum(enum, check_keys?) when is_struct(enum),
+    do: struct_to_map(enum) |> filter_empty_enum(check_keys?)
+
+  def filter_empty_enum(enum, check_keys?) when is_map(enum) or is_list(enum) do
+    Enum.reduce(enum, [], fn
+      {key, val}, acc when check_keys? == false ->
+        filtered_val = filter_empty(val, nil)
+        if filtered_val == nil, do: acc, else: [{key, filtered_val} | acc]
+
+      {key, val}, acc ->
+        filtered_key = filter_empty(key, nil)
+        filtered_val = filter_empty(val, nil)
+
+        cond do
+          filtered_key == nil or filtered_val == nil -> acc
+          true -> [{filtered_key, filtered_val} | acc]
+        end
+
+      val, acc ->
+        filtered_val = filter_empty(val, nil)
+        if filtered_val == nil, do: acc, else: [filtered_val | acc]
+    end)
+    |> Enum.reverse()
+  end
 
   defp re_filter_empty([], fallback), do: fallback
   defp re_filter_empty(map, fallback) when is_map(map) and map == %{}, do: fallback

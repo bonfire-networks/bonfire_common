@@ -338,6 +338,7 @@ defmodule Bonfire.Common.Extend do
   defp is_disabled?(module_or_extension, opts) do
     get_modularity(module_or_extension, opts)
     |> disabled_value?()
+    |> debug(inspect(module_or_extension))
   end
 
   @doc """
@@ -355,7 +356,7 @@ defmodule Bonfire.Common.Extend do
       true
   """
   def disabled_value?(value) do
-    case value |> debug() do
+    case value do
       nil -> false
       false -> false
       :disable -> true
