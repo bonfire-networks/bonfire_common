@@ -22,7 +22,7 @@ config :bonfire_common, Bonfire.Common.Localise.Cldr,
   otp_app: :bonfire_common,
   default_locale: default_locale,
   # locales that will be made available on top of those for which gettext localisation files are available
-  locales: ["fr", "en"],
+  locales: ["en"],
   providers: [
     Cldr.Language,
     Cldr.DateTime,
