@@ -45,9 +45,9 @@ jobs:
     - id: setup
       name: Determine Elixir and OTP versions
       run: |
-        chmod +x .tool-versions-to-env.sh
+        chmod +x tool-versions-to-env.sh
         # Run the script to extract versions and save to output
-        .tool-versions-to-env.sh 2 
+        ./tool-versions-to-env.sh 2 
 
     - name: Add Prebuilt-MPR Repository
       run: |
