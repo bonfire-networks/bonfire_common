@@ -32,12 +32,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  setup:
-    name: Setup environment
+  build_and_test:
+    name: Build and Test
     runs-on: ubuntu-latest
-    outputs:
-      elixir_version: ${{ env.ELIXIR_VERSION }}
-      erlang_version: ${{ env.ERLANG_VERSION }}
     
     steps:
     - uses: actions/checkout@v4
@@ -70,111 +67,38 @@ jobs:
       uses: actions/cache@v3
       with:
         path: deps
-        key: ${{ runner.os }}-build-${{ github.sha }}
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
 
     - name: Setup deps
-      run: just deps-get && mix compile
+      run: just deps-get
       shell: bash
       env:
         MIX_ENV: test
-
-    # Cache deps and build for later jobs
-    - name: Cache build
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          _build
-          deps
-        key: ${{ runner.os }}-build-${{ github.sha }}
-
-  localisation:
-    # Only run on push to main branch (includes merges to main)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: localisation
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ needs.setup.outputs.elixir_version }}
-        otp-version: ${{ needs.setup.outputs.erlang_version }}
-
-    - name: Restore cache
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          _build
-          deps
-        key: ${{ runner.os }}-build-${{ github.sha }}
-
-    - name: Extract localisable strings
+        
+    - name: Extract and push localisation strings
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: mix gettext.extract
-
+      env:
+        MIX_ENV: test
+      
     - name: Push source file using transifex client
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: transifex/cli-action@v2
       with:
         token: ${{ secrets.TX_TOKEN || vars.TX_TOKEN }}
-
-  lint:
-    name: linting
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-    - uses: actions/checkout@v4
     
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ needs.setup.outputs.elixir_version }}
-        otp-version: ${{ needs.setup.outputs.erlang_version }}
-
-    - name: Restore cache
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          _build
-          deps
-        key: ${{ runner.os }}-build-${{ github.sha }}
-
-    - name: Check linting
-      run: just lint
-      env:
-        MIX_ENV: test
-
-
-  test:
-    name: Test 
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ needs.setup.outputs.elixir_version }}
-        otp-version: ${{ needs.setup.outputs.erlang_version }}
-
-    - name: Restore cache
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          _build
-          deps
-        key: ${{ runner.os }}-build-${{ github.sha }}
-
     - name: Run tests
-      run: DB_STARTUP_TIME=10 just test 
+      run: DB_STARTUP_TIME=10 just test
       shell: bash
       env:
         MIX_ENV: test
-
+              
+    - name: Run linting
+      run: just lint
+      env:
+        MIX_ENV: test
+        
     # - name: Run tests
     #   uses: bonfire-networks/bonfire-extension-ci-action@latest
     #   with:
