@@ -47,8 +47,7 @@ jobs:
       run: |
         chmod +x .github/workflows/tool-versions-to-env.sh
         # Run the script to extract versions and save to output
-        echo "$(pwd)"
-        .github/workflows/tool-versions-to-env.sh 2
+        .github/workflows/tool-versions-to-env.sh 2 ./.tool-versions
 
     - name: Add Prebuilt-MPR Repository
       run: |
