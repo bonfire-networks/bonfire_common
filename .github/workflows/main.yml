@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   build_and_test:
-    name: Build and Test
+    name: Build, Prepare Localise, Test, Lint
     runs-on: ubuntu-latest
     
     steps:
@@ -76,6 +76,13 @@ jobs:
       env:
         MIX_ENV: test
         
+    - name: Save cache
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+
     - name: Extract and push localisation strings
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: mix gettext.extract
