@@ -86,9 +86,12 @@ jobs:
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
 
     - name: Check if TX is configured
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (secrets.TX_TOKEN != '' || vars.TX_TOKEN != '') }}
+      id: check_tx_folder
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      env:
+        TX_TOKEN_EXISTS: ${{ secrets.TX_TOKEN != '' || vars.TX_TOKEN != '' }}
       run: |
-        if [ -d ".tx" ]; then
+        if [ -d ".tx" ] && [ "$TX_TOKEN_EXISTS" == "true" ]; then
           echo "tx_enabled=true" >> $GITHUB_OUTPUT
         else
           echo "tx_enabled=false" >> $GITHUB_OUTPUT
