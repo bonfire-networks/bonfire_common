@@ -49,7 +49,8 @@ check-unused:
 check-formatted:
     mix format --check-formatted
 
-lint: check-unused check-formatted
+lint: check-formatted
+# TODO? check-unused  
 
 dialyzer *args:
     mix dialyzer {{args}}

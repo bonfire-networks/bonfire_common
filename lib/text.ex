@@ -316,7 +316,7 @@ defmodule Bonfire.Common.Text do
       > Bonfire.Common.Text.maybe_markdown_to_html("Not markdown", [])
       "<p>Not markdown</p>"
   """
-  @decorate time_tree(10)
+  # @decorate time_tree(10)
   def maybe_markdown_to_html(nothing, opts \\ [])
 
   def maybe_markdown_to_html(nothing, _opts)
