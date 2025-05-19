@@ -43,6 +43,32 @@ help:
     @echo "Just commands:"
     @just --list
 
+
+# Update this project from the main boilerplate repository
+boilerplate-update repo="https://github.com/bonfire-networks/bonfire-extension-boilerplate.git" branch="main":
+    #!/usr/bin/env bash
+    set -eu
+    rm -rf .bonfire-extension-boilerplate
+    mkdir -p .bonfire-extension-boilerplate
+    echo "Cloning {{repo}} branch {{branch}}..."
+    git clone "{{repo}}" --branch "{{branch}}" --single-branch .bonfire-extension-boilerplate
+    just _copy_boilerplate_files .bonfire-extension-boilerplate .
+    rm -rf .bonfire-extension-boilerplate
+
+# Update all extensions using current directory as source
+boilerplate-copy-to-extensions:
+    #!/usr/bin/env bash
+    set -eu
+    for dir in ../../extensions/*/; do
+      if [ -d "$dir" ]; then
+        just _copy_boilerplate_files . "$dir"
+      fi
+    done
+
+# Copy boilerplate files from source to destination directory
+_copy_boilerplate_files src_dir dst_dir:
+    cd {{src_dir}} && ls -la && cp -Rfv * {{dst_dir}}/ && cp -Rfv .github {{dst_dir}}/ && cp -Rfv .tool-versions {{dst_dir}}/
+
 check-unused:
     mix deps.unlock --check-unused
 
@@ -77,16 +103,6 @@ clean: stop-test-db clean-symlinks
 clean-symlinks:
     find lib/ -type l -delete
 
-boilerplate-update:
-    rm -rf .bonfire-extension-boilerplate
-    mkdir -p .bonfire-extension-boilerplate .github/workflows
-    git clone https://github.com/bonfire-networks/bonfire-extension-boilerplate.git --branch main --single-branch .bonfire-extension-boilerplate
-    cp -f .bonfire-extension-boilerplate/justfile justfile
-    just _copy_boilerplate-update
-    rm -rf .bonfire-extension-boilerplate
-
-_copy_boilerplate-update:
-    cd .bonfire-extension-boilerplate && ls -la && cp -Rfv * .. && cp -Rfv .github .. && cp -Rfv .tool-versions ..
 
 deps-get:
     mix deps.get
