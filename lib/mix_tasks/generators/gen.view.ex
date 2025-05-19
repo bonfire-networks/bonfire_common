@@ -1,11 +1,13 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Gen.View do
   @moduledoc """
   `just mix bonfire.gen.view Bonfire.MyUIExtension MyView`
 
   will present you with a diff and create new files
   """
-  use Igniter.Mix.Task
-  alias Bonfire.Common.Mix.Tasks.Helpers
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
+     alias Bonfire.Common.Mix.Tasks.Helpers
 
   def igniter(igniter, [extension, module_name | _] = _argv) do
     # app_name = Bonfire.Application.name()

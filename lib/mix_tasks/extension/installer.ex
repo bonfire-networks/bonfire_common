@@ -1,5 +1,7 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Extension.Installer do
-  use Igniter.Mix.Task
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
   alias Bonfire.Common.Mix.Tasks.Helpers
 
   # TODO: turn into an escript so it can be run without compiling the whole app?

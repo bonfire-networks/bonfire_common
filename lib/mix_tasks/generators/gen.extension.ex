@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Gen.Extension do
   @moduledoc """
   `just mix bonfire.gen.extension Bonfire.MyExtension`
@@ -5,8 +6,9 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension do
   will present you with a diff of new files to create your new extension and create a repo for it in `extensions/`
   """
 
-  use Igniter.Mix.Task
-
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
+   
   @default_template "bonfire_extension_template"
 
   @impl Igniter.Mix.Task

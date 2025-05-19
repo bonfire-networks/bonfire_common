@@ -1,6 +1,8 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
-  use Igniter.Mix.Task
-  alias Bonfire.Common.Mix.Tasks.Helpers
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
+     alias Bonfire.Common.Mix.Tasks.Helpers
 
   @shortdoc "Copies migrations for the extension into the parent app"
   @doc """

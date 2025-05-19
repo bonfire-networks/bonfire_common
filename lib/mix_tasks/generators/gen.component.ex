@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Gen.Component do
   @moduledoc """
   `just mix bonfire.gen.component stateless Bonfire.MyUIExtension MyComponent`
@@ -6,8 +7,9 @@ defmodule Mix.Tasks.Bonfire.Gen.Component do
 
   will present you with a diff and create new files
   """
-  use Igniter.Mix.Task
-  alias Bonfire.Common.Mix.Tasks.Helpers
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
+    alias Bonfire.Common.Mix.Tasks.Helpers
 
   def igniter(igniter, [state, extension, module_name | _] = _argv) do
     gen_component(igniter, extension, module_name, state)

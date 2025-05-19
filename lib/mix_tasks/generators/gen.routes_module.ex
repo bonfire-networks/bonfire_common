@@ -1,10 +1,13 @@
+if Code.ensure_loaded?(Igniter.Mix.Task), do:
 defmodule Mix.Tasks.Bonfire.Gen.RoutesModule do
   @moduledoc """
   `just mix bonfire.gen.routes_module Bonfire.MyUIExtension`
 
   will present you with a diff and create new file(s)
   """
-  use Igniter.Mix.Task
+  import Bonfire.Common.Extend
+  use_if_enabled Igniter.Mix.Task
+   
   alias Bonfire.Common.Mix.Tasks.Helpers
 
   def igniter(igniter, [module_name | _] = _argv) do

@@ -1,7 +1,7 @@
 [main]
 host = https://app.transifex.com
 
-[o:bonfire:p:bonfire:r:priv-localisation-bonfire-common-po--main]
+[o:bonfire:p:bonfire:r:bonfire_common]
 file_filter            = priv/localisation/<lang>/LC_MESSAGES/bonfire_common.po
 source_file            = priv/localisation/bonfire_common.pot
 source_lang            = en
