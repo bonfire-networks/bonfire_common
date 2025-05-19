@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
   import Bonfire.Common.Extend
   use_if_enabled Igniter.Mix.Task
@@ -97,4 +97,5 @@ defmodule Mix.Tasks.Bonfire.Install.CopyMigrations do
       end
     end
   end
+end
 end

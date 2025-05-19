@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Gen.Extension.Ui do
   @moduledoc """
   `just mix bonfire.gen.extension.ui Bonfire.MyExtension`
@@ -37,4 +37,5 @@ defmodule Mix.Tasks.Bonfire.Gen.Extension.Ui do
     |> Igniter.compose_task(Mix.Tasks.Bonfire.Gen.Extension, [camel_name])
     |> Igniter.compose_task(Mix.Tasks.Bonfire.Gen.Ui, [camel_name])
   end
+end
 end

@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Gen.View do
   @moduledoc """
   `just mix bonfire.gen.view Bonfire.MyUIExtension MyView`
@@ -71,4 +71,5 @@ defmodule Mix.Tasks.Bonfire.Gen.View do
       """
     )
   end
+end
 end

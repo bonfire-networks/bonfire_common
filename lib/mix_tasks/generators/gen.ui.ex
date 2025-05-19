@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Gen.Ui do
   @moduledoc """
   `just mix bonfire.gen.ui Bonfire.MyExtension`
@@ -51,4 +51,5 @@ defmodule Mix.Tasks.Bonfire.Gen.Ui do
     |> Igniter.compose_task(Mix.Tasks.Bonfire.Gen.View, [camel_name, "Home"])
     |> Igniter.compose_task(Mix.Tasks.Bonfire.Gen.RoutesModule, [camel_name])
   end
+end
 end

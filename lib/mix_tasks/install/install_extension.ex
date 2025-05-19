@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Install.Extension do
   import Bonfire.Common.Extend
   use_if_enabled Igniter.Mix.Task
@@ -125,4 +125,5 @@ defmodule Mix.Tasks.Bonfire.Install.Extension do
     end)
     |> Igniter.do_or_dry_run(Keyword.put(options, :title, title))
   end
+end
 end

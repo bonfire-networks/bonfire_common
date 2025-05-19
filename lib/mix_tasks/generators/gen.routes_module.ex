@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(Igniter.Mix.Task), do:
+if Code.ensure_loaded?(Igniter.Mix.Task) do
 defmodule Mix.Tasks.Bonfire.Gen.RoutesModule do
   @moduledoc """
   `just mix bonfire.gen.routes_module Bonfire.MyUIExtension`
@@ -73,4 +73,5 @@ defmodule Mix.Tasks.Bonfire.Gen.RoutesModule do
       """
     )
   end
+end
 end
