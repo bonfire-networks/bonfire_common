@@ -41,5 +41,4 @@ jobs:
     - name: Run CI 
       uses: bonfire-networks/bonfire-extension-ci-action@latest
       with:
-        elixir-version: ${{ needs.setup.outputs.elixir-version }}
-        otp-version: ${{ needs.setup.outputs.otp-version }}
+        tx-token: ${{ secrets.TX_TOKEN || vars.TX_TOKEN }}
