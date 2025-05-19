@@ -1,3 +1,4 @@
+if ensure_loaded?(Bonfire.UI.Common) do
 defmodule Bonfire.Common.ConfigSettingsRegistryTest do
   use ExUnit.Case, async: true
   import Untangle
@@ -264,4 +265,5 @@ defmodule Bonfire.Common.ConfigSettingsRegistryTest do
       }
     ]
   end
+end
 end
