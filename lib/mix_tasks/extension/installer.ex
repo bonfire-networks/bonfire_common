@@ -7,6 +7,7 @@ defmodule Mix.Tasks.Bonfire.Extension.Installer do
   # TODO: turn into an escript so it can be run without compiling the whole app?
 
   @shortdoc "Install an extension into the parent app"
+  
   @doc """
   Usage:
   `just mix bonfire.install.extension my_extension`
