@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Bonfire.FullDocs do
     * `--exclude` - exclude dependencies which you do not want to see in docs.
     * any arguments supported by `mix docs` will be passed along
   """
-  
+
   @switches [only: :string, target: :string, exclude: :keep]
 
   @impl true
