@@ -33,115 +33,13 @@ concurrency:
 
 jobs:
   build_and_test:
-    name: Build, Prepare Localise, Test, Lint
+    name: Prepare Localisation, Test, Lint
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
 
-    - id: setup
-      name: Determine Elixir and OTP versions
-      run: |
-        ls -la && chmod +x tool-versions-to-env.sh
-        # Run the script to extract versions and save to output
-        ./tool-versions-to-env.sh 2 
-
-    - name: Add Prebuilt-MPR Repository
-      run: |
-        wget -qO - 'https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub' | gpg --dearmor | sudo tee /usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg 1> /dev/null
-        echo "deb [arch=all,$(dpkg --print-architecture) signed-by=/usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg] https://proget.makedeb.org prebuilt-mpr $(lsb_release -cs)" | sudo tee /etc/apt/sources.list.d/prebuilt-mpr.list
-        sudo apt update
-      shell: bash
-
-    - name: Install just
-      run: sudo apt install just
-      shell: bash
-
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
+    - name: Run CI 
+      uses: bonfire-networks/bonfire-extension-ci-action@latest
       with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.ERLANG_VERSION }}
-
-    - name: Restore cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-
-    - name: Setup deps
-      run: just deps-get && mkdir -p _build
-      shell: bash
-      env:
-        MIX_ENV: test
-        
-    - name: Save deps cache
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          deps
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-${{ github.run_id }}
-
-    - name: Check if TX is configured
-      id: check_tx_folder
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      env:
-        TX_TOKEN_EXISTS: ${{ secrets.TX_TOKEN != '' || vars.TX_TOKEN != '' }}
-      run: |
-        if [ -d ".tx" ] && [ "$TX_TOKEN_EXISTS" == "true" ]; then
-          echo "tx_enabled=true" >> $GITHUB_OUTPUT
-        else
-          echo "tx_enabled=false" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Extract and push localisation strings
-      if: ${{ steps.check_tx_folder.outputs.tx_enabled == 'true' }}
-      run: mix gettext.extract
-      env:
-        MIX_ENV: test
-    
-    - name: Save build cache
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-${{ github.run_id }}
-
-    - name: Push source file using transifex client
-      if: ${{ steps.check_tx_folder.outputs.tx_enabled == 'true' }}
-      uses: transifex/cli-action@v2
-      with:
-        token: ${{ secrets.TX_TOKEN || vars.TX_TOKEN }}
- 
-    - name: Compile
-      run: mix compile
-      shell: bash
-      env:
-        MIX_ENV: test
-            
-    - name: Save build cache
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-${{ github.run_id }}
-          
-    - name: Run tests
-      run: DB_STARTUP_TIME=10 just test
-      shell: bash
-      env:
-        MIX_ENV: test
-              
-    - name: Run linting
-      run: just lint
-      env:
-        MIX_ENV: test
-        
-    # - name: Run tests
-    #   uses: bonfire-networks/bonfire-extension-ci-action@latest
-    #   with:
-    #     elixir-version: ${{ needs.setup.outputs.elixir-version }}
-    #     otp-version: ${{ needs.setup.outputs.otp-version }}
+        elixir-version: ${{ needs.setup.outputs.elixir-version }}
+        otp-version: ${{ needs.setup.outputs.otp-version }}
