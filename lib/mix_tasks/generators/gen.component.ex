@@ -7,6 +7,7 @@ defmodule Mix.Tasks.Bonfire.Gen.Component do
 
   will present you with a diff and create new files
   """
+  
   import Bonfire.Common.Extend
   use_if_enabled Igniter.Mix.Task
     alias Bonfire.Common.Mix.Tasks.Helpers
