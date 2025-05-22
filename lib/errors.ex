@@ -189,25 +189,37 @@ defmodule Bonfire.Common.Errors do
   defp debug_maybe_sentry(msg, exception, stacktrace)
        when not is_nil(stacktrace) and stacktrace != [] and
               is_exception(exception) do
-    if module_enabled?(Sentry) do
+    if Bonfire.Common.Errors.maybe_sentry_dsn() do
       Sentry.capture_exception(
         exception,
         stacktrace: stacktrace,
         extra: Bonfire.Common.Enums.map_new(msg, :error)
       )
-      |> debug()
+
+      # |> debug()
     end
   end
 
   defp debug_maybe_sentry(msg, error, stacktrace) do
-    if module_enabled?(Sentry) do
+    if Bonfire.Common.Errors.maybe_sentry_dsn() do
       Sentry.capture_message(
         inspect(error,
           stacktrace: stacktrace || [],
           extra: Bonfire.Common.Enums.map_new(msg, :error)
         )
       )
-      |> debug()
+
+      # |> debug()
+    end
+  end
+
+  def maybe_sentry_dsn do
+    case Bonfire.Common.Extend.extension_enabled?(:sentry) and Sentry.Config.dsn() do
+      dsn when is_binary(dsn) ->
+        dsn
+
+      _ ->
+        nil
     end
   end
 

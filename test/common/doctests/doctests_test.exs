@@ -1,10 +1,10 @@
 defmodule Bonfire.Common.DocsTest do
   use Bonfire.Common.DataCase, async: true
+  use Bonfire.Common.Utils
   alias Needle.Pointer
 
   Bonfire.Common.Config.put(:test_key, "test_value")
 
-  doctest Bonfire.Common, import: true
   doctest Bonfire.Common.Utils, import: true
 
   doctest Bonfire.Common.Localise, import: true

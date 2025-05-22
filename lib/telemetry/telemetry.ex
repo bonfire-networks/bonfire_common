@@ -25,6 +25,14 @@ defmodule Bonfire.Common.Telemetry do
     Corsica.Telemetry.attach_default_handler(log_levels: [rejected: :warning, invalid: :warning])
 
     IO.puts("Corsica telemetry is set up...")
+
+    if Bonfire.Common.Errors.maybe_sentry_dsn() do
+      :logger.add_handler(:bonfire_sentry_handler, Sentry.LoggerHandler, %{
+        config: %{metadata: [:file, :line]}
+      })
+
+      IO.puts("Sentry telemetry is set up...")
+    end
   end
 
   def setup_opentelemetry(_env, repo_module) do

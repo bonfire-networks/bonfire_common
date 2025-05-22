@@ -13,32 +13,25 @@ defmodule Bonfire.Common do
 
   ## Examples
 
-      iex> import Bonfire.Common
       iex> maybe_fallback("value", "fallback value")
       "value"
       
-      iex> import Bonfire.Common
       iex> maybe_fallback("", "fallback value")
       "fallback value"
 
-      iex> import Bonfire.Common
       iex> maybe_fallback(nil, nil)
       nil
 
-      iex> import Bonfire.Common
       iex> maybe_fallback(nil, fn -> 1+2 end)
       3
 
-      iex> import Bonfire.Common
       iex> maybe_fallback(nil, "fallback value")
       "fallback value"
 
-      iex> import Bonfire.Common
       iex> maybe_fallback(%Ecto.Association.NotLoaded{}, "fallback value")
       "fallback value"
 
-      iex> import Bonfire.Common
-      iex> Bonfire.Common.Config.put(:env, :dev)
+      iex> Process.put([:bonfire, :env], :dev)
       iex> try do
       ...>   maybe_fallback(%Ecto.Association.NotLoaded{}, :nil!)
       ...> rescue
@@ -73,26 +66,26 @@ defmodule Bonfire.Common do
       # With just a message
       iex> # When in dev/prod (not test), does not raise and returns nil
       iex> # Only testing return value here, not side effects
-      iex> Process.put(:env, :dev)
+      iex> Process.put([:bonfire, :env], :dev)
       iex> err("error message")
       # Prints: [warning] error message
       nil
 
       # With just data
-      iex> Process.put(:env, :dev)
+      iex> Process.put([:bonfire, :env], :dev)
       iex> err(%{key: "value"})
       # Prints: [warning] An error occurred: %{key: "value"}
       nil
 
       # With both data and message
-      iex> Process.put(:env, :dev)
+      iex> Process.put([:bonfire, :env], :dev)
       iex> err(%{key: "value"}, "Custom error message")
       # Prints: [warning] Custom error message: %{key: "value"}
       nil
 
   In test environment, it raises an exception:
 
-      iex> Process.put(:env, :test)
+      iex> Process.put([:bonfire, :env], :test)
       iex> err("test error")
       # ** (RuntimeError) test error
   """
@@ -110,6 +103,8 @@ defmodule Bonfire.Common do
         if data,
           do: IO.warn("#{msg}: #{inspect(data)}"),
           else: IO.warn(msg)
+
+        data
 
       _prod_etc ->
         warn(data, msg)

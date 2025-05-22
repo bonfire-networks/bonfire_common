@@ -2,6 +2,7 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
   defmodule Bonfire.Common.ConfigSettingsRegistryTest do
     use ExUnit.Case, async: true
     import Untangle
+    use Bonfire.Common.Utils
 
     alias Bonfire.Common.ConfigSettingsRegistry
 

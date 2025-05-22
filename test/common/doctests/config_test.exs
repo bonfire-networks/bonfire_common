@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.ConfigTest do
   use Bonfire.Common.DataCase, async: true
+  use Bonfire.Common.Utils
 
   Bonfire.Common.Config.put(:test_key, "test_value")
 
