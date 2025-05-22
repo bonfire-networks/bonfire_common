@@ -30,7 +30,7 @@ defmodule Bonfire.Common.Localise do
       )
 
   @doc """
-  Gets the known locales from the Cldr module.
+  Gets the known locales from both Cldr and Gettext.
 
   ## Examples
 
@@ -39,11 +39,32 @@ defmodule Bonfire.Common.Localise do
 
   """
   def known_locales do
-    Bonfire.Common.Localise.Cldr.known_locale_names()
-    # ([default_locale()]
-    # ++ Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :locales], [])
-    # ++ Gettext.known_locales(Bonfire.Common.Localise.Gettext))
-    # |> Enum.uniq()
+    # Add default locale to ensure it's always included
+    default = default_locale()
+
+    gettext_locales = Gettext.known_locales(Bonfire.Common.Localise.Gettext)
+
+    # cldr_locales = Bonfire.Common.Localise.Cldr.known_locale_names()
+
+    # Only include configured locales if specified
+    # config_locales = Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :locales], [])
+
+    ([default] ++ gettext_locales)
+    |> Enum.map(&normalize_locale/1)
+    |> Enum.uniq()
+  end
+
+  defp normalize_locale(locale) when is_binary(locale) do
+    locale
+    |> String.replace("_", "-")
+    |> String.to_atom()
+  end
+
+  defp normalize_locale(locale) when is_atom(locale) do
+    locale
+    # |> Atom.to_string()
+    # |> String.replace("_", "-")
+    # |> String.to_atom()
   end
 
   @doc """
