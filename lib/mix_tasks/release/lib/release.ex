@@ -5,7 +5,8 @@ defmodule Releaser.VersionUtils do
   Maybe the `bump_*` functions should be in the standard library?
   This script doesn't support pre-release versions or versions with build information.
   """
-  @version_line_regex ~r/(\n\s*version:\s+")([^\n]+)(")/
+  # Regex patterns defined as functions to comply with Erlang/OTP 28
+  defp version_line_regex, do: ~r/(\n\s*version:\s+")([^\n]+)(")/
 
   def bump_major(%Version{} = version) do
     %{version | major: version.major + 1, minor: 0, patch: 0}
@@ -53,7 +54,7 @@ defmodule Releaser.VersionUtils do
       else
         contents = File.read!(mix_path <> "/mix.exs")
         # |> IO.inspect
-        Regex.run(@version_line_regex, contents) |> Enum.fetch!(2)
+        Regex.run(version_line_regex(), contents) |> Enum.fetch!(2)
       end
       |> IO.inspect()
 
@@ -65,7 +66,7 @@ defmodule Releaser.VersionUtils do
     version_string = version_to_string(version)
 
     replaced =
-      Regex.replace(@version_line_regex, contents, fn _, pre, _version, post ->
+      Regex.replace(version_line_regex(), contents, fn _, pre, _version, post ->
         "#{pre}#{version_string}#{post}"
       end)
 

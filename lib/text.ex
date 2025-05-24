@@ -11,11 +11,12 @@ defmodule Bonfire.Common.Text do
   # @add_to_end "..."
   @sentence_seperator " "
 
-  @checkbox_regex_unchecked ~r/\s\[\s\]/
-  @checkbox_regex_unchecked_line ~r/\s\[\s\]\s(.*)$/mu
-  @checkbox_regex_checked ~r/\s\[[X,x]\]/
-  @checkbox_regex_checked_line ~r/\s\[[X,x]\]\s(.*)$/mu
-  @checkbox_regex_checkbox_line ~r/^(\s*)[-|<li>]\s\[([ |X|x])\]\s(.*)$/mu
+  # Regex patterns defined as functions to comply with Erlang/OTP 28
+  defp checkbox_regex_unchecked, do: ~r/\s\[\s\]/
+  defp checkbox_regex_unchecked_line, do: ~r/\s\[\s\]\s(.*)$/mu
+  defp checkbox_regex_checked, do: ~r/\s\[[X,x]\]/
+  defp checkbox_regex_checked_line, do: ~r/\s\[[X,x]\]\s(.*)$/mu
+  defp checkbox_regex_checkbox_line, do: ~r/^(\s*)[-|<li>]\s\[([ |X|x])\]\s(.*)$/mu
   @checked_box " <input type=\'checkbox\' checked=\'checked\'>"
   @unchecked_box " <input type=\'checkbox\'>"
 
@@ -168,7 +169,8 @@ defmodule Bonfire.Common.Text do
       iex> contains_html?("Just text")
       false
   """
-  def contains_html?(string), do: Regex.match?(~r/<\/?[a-z][\s\S]*>/i, string)
+  def contains_html?(string), do: Regex.match?(html_tag_regex(), string)
+  defp html_tag_regex, do: ~r/<\/?[a-z][\s\S]*>/i
 
   @doc """
   Truncates a string to a maximum length, optionally adding a suffix.
@@ -784,6 +786,9 @@ defmodule Bonfire.Common.Text do
       > make_local_links_live("<a href=\"/path\">Link</a>")
       "<a href=\"/path\" data-phx-link=\"redirect\" data-phx-link-state=\"push\">Link</a>"
   """
+  # Regex for local links that should be made "live"
+  defp local_links_regex, do: ~r/(<a [^>]*href=\")\/(.+\")/U
+
   def make_local_links_live(content)
       when is_binary(content) and byte_size(content) > 20 do
     # local_instance = Bonfire.Common.URIs.base_url()
@@ -791,7 +796,7 @@ defmodule Bonfire.Common.Text do
     content
     # handle internal links
     |> Regex.replace(
-      ~r/(<a [^>]*href=\")\/(.+\")/U,
+      local_links_regex(),
       ...,
       " \\1/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
     )
@@ -809,6 +814,11 @@ defmodule Bonfire.Common.Text do
       > normalise_links("<a href=\"/pub/actors/foo\">Actor</a>", :markdown)
       "<a href=\"/character/foo\">Actor</a>"
   """
+  # Regex patterns for normalizing links
+  defp md_ap_actors_regex(local_instance), do: ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U
+  defp md_ap_objects_regex(local_instance), do: ~r/(\()#{local_instance}\/pub\/objects\/(.+\))/U
+  defp md_local_links_regex(local_instance), do: ~r/(\]\()#{local_instance}(.+\))/U
+
   def normalise_links(content, format \\ :markdown)
 
   def normalise_links(content, :markdown)
@@ -818,25 +828,35 @@ defmodule Bonfire.Common.Text do
     content
     # handle AP actors
     |> Regex.replace(
-      ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U,
+      md_ap_actors_regex(local_instance),
       ...,
       "\\1/character/\\2"
     )
     # handle AP objects
     |> Regex.replace(
-      ~r/(\()#{local_instance}\/pub\/objects\/(.+\))/U,
+      md_ap_objects_regex(local_instance),
       ...,
       "\\1/discussion/\\2"
     )
     # handle local links
     |> Regex.replace(
-      ~r/(\]\()#{local_instance}(.+\))/U,
+      md_local_links_regex(local_instance),
       ...,
       "\\1\\2"
     )
 
     # |> debug(content)
   end
+
+  # Regex patterns for HTML link normalization 
+  defp html_ap_actors_regex(local_instance),
+    do: ~r/(<a [^>]*href=")#{local_instance}\/pub\/actors\/([^"]+)/U
+
+  defp html_ap_objects_regex(local_instance),
+    do: ~r/(<a [^>]*href=")#{local_instance}\/pub\/objects\/([^"]+)/U
+
+  defp html_local_links_regex(local_instance), do: ~r/(<a [^>]*href=")#{local_instance}([^"]+)/U
+  defp html_external_links_regex, do: ~r/<a ([^>]*href="http[^"]+)/U
 
   def normalise_links(content, _html)
       when is_binary(content) and byte_size(content) > 20 do
@@ -847,24 +867,24 @@ defmodule Bonfire.Common.Text do
     # |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
     # handle AP actors
     |> Regex.replace(
-      ~r/(<a [^>]*href=")#{local_instance}\/pub\/actors\/([^"]+)/U,
+      html_ap_actors_regex(local_instance),
       ...,
       " \\1/character/\\2"
     )
     # handle AP objects
     |> Regex.replace(
-      ~r/(<a [^>]*href=")#{local_instance}\/pub\/objects\/([^"]+)/U,
+      html_ap_objects_regex(local_instance),
       ...,
       " \\1/discussion/\\2"
     )
     # handle local links
     |> Regex.replace(
-      ~r/(<a [^>]*href=")#{local_instance}([^"]+)/U,
+      html_local_links_regex(local_instance),
       ...,
       " \\1\\2"
     )
     # handle external links (in new tab)
-    |> Regex.replace(~r/<a ([^>]*href="http[^"]+)/U, ..., " <a target=\"_blank\" \\1")
+    |> Regex.replace(html_external_links_regex(), ..., " <a target=\"_blank\" \\1")
 
     # |> debug(content)
   end
@@ -886,16 +906,16 @@ defmodule Bonfire.Common.Text do
   end
 
   defp replace_checked_boxes(text) do
-    if String.match?(text, @checkbox_regex_checked) do
-      String.replace(text, @checkbox_regex_checked, @checked_box)
+    if String.match?(text, checkbox_regex_checked()) do
+      String.replace(text, checkbox_regex_checked(), @checked_box)
     else
       text
     end
   end
 
   defp replace_unchecked_boxes(text) do
-    if String.match?(text, @checkbox_regex_unchecked) do
-      String.replace(text, @checkbox_regex_unchecked, @unchecked_box)
+    if String.match?(text, checkbox_regex_unchecked()) do
+      String.replace(text, checkbox_regex_unchecked(), @unchecked_box)
     else
       text
     end
@@ -910,7 +930,7 @@ defmodule Bonfire.Common.Text do
       [["done"]]
   """
   def list_checked_boxes(text) do
-    regex_list(@checkbox_regex_checked_line, text)
+    regex_list(checkbox_regex_checked_line(), text)
   end
 
   @doc """
@@ -922,7 +942,7 @@ defmodule Bonfire.Common.Text do
       [["task"]]
   """
   def list_unchecked_boxes(text) do
-    regex_list(@checkbox_regex_unchecked_line, text)
+    regex_list(checkbox_regex_unchecked_line(), text)
   end
 
   @doc """
@@ -934,7 +954,7 @@ defmodule Bonfire.Common.Text do
       [[" ", "task"], [" ", "done"]]
   """
   def list_checkboxes(text) do
-    regex_list(@checkbox_regex_checkbox_line, text)
+    regex_list(checkbox_regex_checkbox_line(), text)
   end
 
   def regex_list(regex, text) when is_binary(text) and text != "" do
@@ -977,10 +997,12 @@ defmodule Bonfire.Common.Text do
       > maybe_render_templated("Hello {{name}}", %{name: "World"})
       "Hello World"
   """
+  defp template_quote_regex, do: ~r/&quot;/
+
   def maybe_render_templated(templated_content, data)
       when is_binary(templated_content) and is_map(data) do
     if Extend.module_enabled?(Solid) and String.contains?(templated_content, "{{") do
-      templated_content = templated_content |> String.replace("&quot;", "\"")
+      templated_content = templated_content |> String.replace(template_quote_regex(), "\"")
 
       with {:ok, template} <- Solid.parse(templated_content),
            {:ok, rendered} <- Solid.render(template, data) do

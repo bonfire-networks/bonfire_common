@@ -49,21 +49,23 @@ defmodule Mix.Tasks.Bonfire.Secrets do
     raise "Expected a length as integer or no argument at all, got #{inspect(args)}"
   end
 
-  @secret_regexes [
-    ~r/^(SECRET_KEY_BASE=)(.*)$/m,
-    ~r/^(SIGNING_SALT=)(.*)$/m,
-    ~r/^(ENCRYPTION_SALT=)(.*)$/m
-  ]
+  defp secret_regexes,
+    do: [
+      ~r/^(SECRET_KEY_BASE=)(.*)$/m,
+      ~r/^(SIGNING_SALT=)(.*)$/m,
+      ~r/^(ENCRYPTION_SALT=)(.*)$/m
+    ]
 
-  @pw_regexes [
-    {"Postgres DB password", ~r/^(POSTGRES_PASSWORD=)(.*)$/m},
-    {"MeiliSearch password", ~r/^(MEILI_MASTER_KEY=)(.*)$/m}
-  ]
+  defp pw_regexes,
+    do: [
+      {"Postgres DB password", ~r/^(POSTGRES_PASSWORD=)(.*)$/m},
+      {"MeiliSearch password", ~r/^(MEILI_MASTER_KEY=)(.*)$/m}
+    ]
 
   defp update_env_secrets(file_path) do
     with {:ok, content} <- File.read(file_path) do
       new_content =
-        Enum.reduce(@secret_regexes, content, fn regex, acc ->
+        Enum.reduce(secret_regexes(), content, fn regex, acc ->
           secret = random_string(64)
           print(secret)
           String.replace(acc, regex, "\\1#{secret}")
@@ -79,7 +81,7 @@ defmodule Mix.Tasks.Bonfire.Secrets do
         end
 
       content =
-        Enum.reduce(@pw_regexes, content, fn {detail, regex}, acc ->
+        Enum.reduce(pw_regexes(), content, fn {detail, regex}, acc ->
           secret = random_string(32)
           print(secret)
 
