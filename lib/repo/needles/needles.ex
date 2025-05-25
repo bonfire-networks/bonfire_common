@@ -238,9 +238,9 @@ defmodule Bonfire.Common.Needles do
     else
       Queries.query(Pointer)
     end
-    |> debug()
+    # |> debug()
     |> Queries.query(filters)
-    |> debug()
+    # |> debug()
     |> pointer_query_boundarise(opts)
   end
 

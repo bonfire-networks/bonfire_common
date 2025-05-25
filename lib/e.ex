@@ -4,6 +4,7 @@ defmodule Bonfire.Common.E do
 
   require Pathex
   import Untangle
+  use Arrows
 
   alias Bonfire.Common
   alias Bonfire.Common.Config
@@ -88,7 +89,7 @@ defmodule Bonfire.Common.E do
                nil
              ) do
           nil -> Common.E.e_fallback_ed(object, [key1], unquote(fallback))
-          ret -> Common.maybe_fallback(ret, unquote(fallback))
+          ret -> handle_fallback(object, unquote(key1), ret, unquote(fallback))
         end
       end
     end
@@ -106,7 +107,15 @@ defmodule Bonfire.Common.E do
             Common.E.e_fallback_ed(object, [unquote(key1), unquote(key2)], unquote(fallback))
 
           ret ->
-            Common.maybe_fallback(ret, unquote(fallback))
+            handle_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2)
+              ],
+              ret,
+              unquote(fallback)
+            )
         end
       end
     end
@@ -128,7 +137,16 @@ defmodule Bonfire.Common.E do
             )
 
           ret ->
-            Common.maybe_fallback(ret, unquote(fallback))
+            handle_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2),
+                unquote(key3)
+              ],
+              ret,
+              unquote(fallback)
+            )
         end
       end
     end
@@ -150,7 +168,17 @@ defmodule Bonfire.Common.E do
             )
 
           ret ->
-            Common.maybe_fallback(ret, unquote(fallback))
+            handle_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2),
+                unquote(key3),
+                unquote(key4)
+              ],
+              ret,
+              unquote(fallback)
+            )
         end
       end
     end
@@ -174,7 +202,18 @@ defmodule Bonfire.Common.E do
             )
 
           ret ->
-            Common.maybe_fallback(ret, unquote(fallback))
+            handle_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2),
+                unquote(key3),
+                unquote(key4),
+                unquote(key5)
+              ],
+              ret,
+              unquote(fallback)
+            )
         end
       end
     end
@@ -206,7 +245,19 @@ defmodule Bonfire.Common.E do
             )
 
           ret ->
-            Common.maybe_fallback(ret, unquote(fallback))
+            handle_fallback(
+              object,
+              [
+                unquote(key1),
+                unquote(key2),
+                unquote(key3),
+                unquote(key4),
+                unquote(key5),
+                unquote(key6)
+              ],
+              ret,
+              unquote(fallback)
+            )
         end
       end
     end
@@ -322,7 +373,7 @@ defmodule Bonfire.Common.E do
     case Enums.enum_get(object, key, nil) do
       result when is_nil(result) or result == fallback ->
         Enums.enum_get(context, key, nil)
-        |> Common.maybe_fallback(fallback)
+        |> handle_fallback(object, key, ..., fallback)
 
       result ->
         result
@@ -333,23 +384,24 @@ defmodule Bonfire.Common.E do
     get_in_access_keys_or(map, key, fallback, fn map ->
       # if get_in didn't work, try using key as atom or string, and return fallback if doesn't exist or is nil
       Enums.enum_get(map, key, nil)
+      |> handle_fallback(map, key, ..., fallback)
     end)
   end
 
   def ed({key, v}, key, fallback) do
-    Common.maybe_fallback(v, fallback)
+    handle_fallback(v, key, v, fallback)
   end
 
   def ed([{key, v}], key, fallback) do
-    Common.maybe_fallback(v, fallback)
+    handle_fallback(v, key, v, fallback)
   end
 
-  def ed({_, _}, _key, fallback) do
-    Common.maybe_fallback(nil, fallback)
+  def ed({_, _} = object, key, fallback) do
+    handle_fallback(object, key, nil, fallback)
   end
 
-  def ed([{_, _}], _key, fallback) do
-    Common.maybe_fallback(nil, fallback)
+  def ed([{_, _}] = object, key, fallback) do
+    handle_fallback(object, key, nil, fallback)
   end
 
   def ed(list, key, fallback) when is_list(list) do
@@ -360,7 +412,7 @@ defmodule Bonfire.Common.E do
       debug(list, "trying to find #{inspect(key)} in a list")
 
       Enum.find_value(list, &ed(&1, key, nil))
-      |> Common.maybe_fallback(fallback)
+      |> handle_fallback(list, key, ..., fallback)
     end
   end
 
@@ -372,8 +424,8 @@ defmodule Bonfire.Common.E do
   #   end
   # end
   def ed(object, key, fallback) do
-    debug(object, "did not know how to find #{key} in")
-    Common.maybe_fallback(nil, fallback)
+    warn(object, "did not know how to find #{key} in")
+    handle_fallback(object, key, nil, fallback)
   end
 
   @doc "Returns a value from a nested map, or a fallback if not present"
@@ -427,12 +479,12 @@ defmodule Bonfire.Common.E do
     apply(__MODULE__, :ed, [object] ++ keys ++ [fallback])
   end
 
-  def e_fallback_ed(_object, _keys, :nil!) do
-    Common.maybe_fallback(%Ecto.Association.NotLoaded{}, :nil!)
+  def e_fallback_ed(object, keys, :nil!) do
+    handle_fallback(object, keys, %Ecto.Association.NotLoaded{}, :nil!)
   end
 
-  def e_fallback_ed(_object, _keys, fallback) do
-    Common.maybe_fallback(nil, fallback)
+  def e_fallback_ed(object, keys, fallback) do
+    handle_fallback(object, keys, nil, fallback)
   end
 
   defp get_in_access_keys_or(map, keys, fallback, fallback_fun) when is_map(map) do
@@ -443,11 +495,29 @@ defmodule Bonfire.Common.E do
       val ->
         val
     end
-    |> Common.maybe_fallback(fallback)
+    |> handle_fallback(map, keys, ..., fallback)
   end
 
-  defp get_in_access_keys_or(map, _keys, fallback, fallback_fun) do
+  defp get_in_access_keys_or(map, keys, fallback, fallback_fun) do
     fallback_fun.(map)
-    |> Common.maybe_fallback(fallback)
+    |> handle_fallback(map, keys, ..., fallback)
   end
+
+  def handle_fallback(_object, _keys, nil, nil), do: nil
+
+  def handle_fallback(object, keys, "", fallback),
+    do: handle_fallback(object, keys, nil, fallback)
+
+  def handle_fallback(object, keys, %Ecto.Association.NotLoaded{}, :nil!) do
+    Common.err(object, "Required value not found for keys #{inspect(keys)} in object")
+    nil
+  end
+
+  def handle_fallback(object, keys, %Ecto.Association.NotLoaded{}, fallback),
+    do: handle_fallback(object, keys, nil, fallback)
+
+  def handle_fallback(_object, _keys, nil, fun) when is_function(fun, 0), do: fun.()
+  def handle_fallback(object, keys, nil, fun) when is_function(fun, 2), do: fun.(object, keys)
+  def handle_fallback(_object, _keys, nil, fallback), do: fallback
+  def handle_fallback(_object, _keys, val, _), do: val
 end

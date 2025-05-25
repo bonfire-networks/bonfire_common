@@ -87,7 +87,7 @@ defmodule Bonfire.Common do
 
       iex> Process.put([:bonfire, :env], :test)
       iex> err("test error")
-      # ** (RuntimeError) test error
+      ** (RuntimeError) test error
   """
   def err(msg) when is_binary(msg), do: err(nil, msg)
   def err(data) when not is_binary(data), do: err(data, "An error occurred")
@@ -109,5 +109,12 @@ defmodule Bonfire.Common do
       _prod_etc ->
         warn(data, msg)
     end
+  end
+
+  def flood(msg) when is_binary(msg), do: flood(nil, msg)
+  def flood(data) when not is_binary(data), do: flood(data, "Inspect")
+
+  def flood(data, msg) when is_binary(msg) do
+    IO.inspect(data, label: msg, limit: :infinity)
   end
 end
