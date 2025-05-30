@@ -252,16 +252,25 @@ defmodule Bonfire.Common.Repo.Preload do
     object_schema = Bonfire.Common.Types.object_type(object)
 
     if object_schema == preload_schema do
-      debug(
-        preload_schema,
-        "preloading schema for Pointer: #{inspect(table_id)}"
-      )
+      if Needle.is_needle?(object_schema, [:virtual]) do
+        debug("no need to follow virtuals, just applying preloads")
 
-      object
-      |> Needles.follow!()
-      |> try_repo_preload(preloads, opts)
+        try_repo_preload(object, preloads, opts)
+        |> debug("preloads done")
+      else
+        debug(
+          preload_schema,
+          "preloading schema for Pointer: #{inspect(table_id)}"
+        )
 
-      # TODO: make one preload per type to avoid n+1
+        object
+        |> Needles.follow!()
+        |> debug("followed")
+        |> try_repo_preload(preloads, opts)
+        |> debug("preloads done")
+
+        # TODO: make one preload per type to avoid n+1
+      end
     else
       object
     end
