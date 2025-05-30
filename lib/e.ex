@@ -37,7 +37,7 @@ defmodule Bonfire.Common.E do
       "fallback"
 
       iex> e(%{key: %Ecto.Association.NotLoaded{}}, :key, :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys :key in object
 
       iex> e({:ok, %{key: "value"}}, :key, "fallback") 
       "value"
@@ -52,10 +52,10 @@ defmodule Bonfire.Common.E do
       "fallback"
 
       iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys [:a, :b] in object
 
       iex> e(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :c, :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys [:a, :b, :c] in object
 
       iex> e(%{a: %{b: nil}}, :a, :b, "fallback")
       "fallback"
@@ -316,7 +316,7 @@ defmodule Bonfire.Common.E do
       "fallback"
 
       iex> ed(%{key: %Ecto.Association.NotLoaded{}}, :key, :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys :key in object
 
       iex> ed({:ok, %{key: "value"}}, :key, "fallback")
       "value"
@@ -331,10 +331,10 @@ defmodule Bonfire.Common.E do
       "fallback"
 
       iex> ed(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys [:a, :b] in object
 
       iex> ed(%{a: %{b: %Ecto.Association.NotLoaded{}}}, :a, :b, :c,  :nil!)
-      ** (RuntimeError) Required value not found
+      ** (RuntimeError) Required value not found for keys [:a, :b, :c] in object
 
       iex> ed(%{a: %{b: "value"}}, [:a, :b], "fallback")
       "value"

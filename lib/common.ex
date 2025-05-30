@@ -31,7 +31,6 @@ defmodule Bonfire.Common do
       iex> maybe_fallback(%Ecto.Association.NotLoaded{}, "fallback value")
       "fallback value"
 
-      iex> Process.put([:bonfire, :env], :dev)
       iex> try do
       ...>   maybe_fallback(%Ecto.Association.NotLoaded{}, :nil!)
       ...> rescue
@@ -64,8 +63,8 @@ defmodule Bonfire.Common do
   ## Examples
 
       # With just a message
-      iex> # When in dev/prod (not test), does not raise and returns nil
-      iex> # Only testing return value here, not side effects
+      iex> # When in dev/prod (not test), prints a warning and does not raise
+      iex> # Note: Only testing return value here, not side effects
       iex> Process.put([:bonfire, :env], :dev)
       iex> err("error message")
       # Prints: [warning] error message
@@ -75,13 +74,13 @@ defmodule Bonfire.Common do
       iex> Process.put([:bonfire, :env], :dev)
       iex> err(%{key: "value"})
       # Prints: [warning] An error occurred: %{key: "value"}
-      nil
+      %{key: "value"}
 
       # With both data and message
       iex> Process.put([:bonfire, :env], :dev)
       iex> err(%{key: "value"}, "Custom error message")
       # Prints: [warning] Custom error message: %{key: "value"}
-      nil
+      %{key: "value"}
 
   In test environment, it raises an exception:
 

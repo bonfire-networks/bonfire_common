@@ -24,6 +24,7 @@ defmodule Bonfire.Common.DataCase do
       import Ecto.Query
       # import Bonfire.Me.DataCase
       # use Bonfire.Common.Utils
+      alias Bonfire.Common.Extend
 
       # import Bonfire.Common.Fake.Helpers
 
