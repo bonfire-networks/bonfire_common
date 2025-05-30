@@ -373,7 +373,7 @@ defmodule Bonfire.Common.Enums do
   def filter_empty(enum, fallback) when is_list(enum),
     do:
       enum
-      |> filter_empty_enum(true)
+      |> filter_empty_enum(false)
       |> re_filter_empty(fallback)
 
   def filter_empty(enum, fallback) when is_map(enum) and not is_struct(enum),
@@ -391,23 +391,23 @@ defmodule Bonfire.Common.Enums do
 
   ## Examples
 
-      iex> filter_empty_enum([1, nil, 2, "", 3, [], 4, %{}])
+      iex> filter_empty_enum([1, nil, 2, "", 3, [], 4, %{}], true)
       [1, 2, 3, 4]
 
-      iex> filter_empty_enum([{:a, 1}, {:b, nil}, {:c, ""}, {:d, 2}])
+      iex> filter_empty_enum([{:a, 1}, {:b, nil}, {:c, ""}, {:d, 2}], true)
       [a: 1, d: 2]
 
       iex> filter_empty_enum([{:a, 1}, {:b, nil}, {:c, ""}, {:d, 2}], false)
       [{:a, 1}, {:d, 2}]
 
-      iex> filter_empty_enum([{nil, 1}, {false, nil}, {:b, []}, {:c, 3}])
+      iex> filter_empty_enum([{nil, 1}, {false, nil}, {:b, []}, {:c, 3}], true)
       [c: 3]
 
       iex> filter_empty_enum([{nil, 1}, {false, nil}, {:b, []}, {:c, 3}], false)
       [{nil, 1}, {:c, 3}]
 
   """
-  def filter_empty_enum(enum, check_keys? \\ true)
+  def filter_empty_enum(enum, check_keys? \\ false)
 
   def filter_empty_enum(enum, check_keys?) when is_struct(enum),
     do: struct_to_map(enum) |> filter_empty_enum(check_keys?)
