@@ -248,6 +248,8 @@ defmodule Bonfire.Common.Test.Interactive do
     repo = repo()
 
     if GenServer.whereis(repo) do
+      Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Fake, :clear_caches, [])
+
       wrap_test_in_transaction_and_rollback =
         Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false
 
