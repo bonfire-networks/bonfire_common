@@ -83,9 +83,10 @@ defmodule Bonfire.Common.RuntimeConfig do
         pool when is_binary(pool) and pool not in ["", "0"] ->
           String.to_integer(pool)
 
-        # default to twice the number of CPU cores
+        # default to twice the number of CPU cores, but use more for tests
         _ ->
-          System.schedulers_online() * 2
+          base_size = System.schedulers_online() * 2
+          if config_env() == :test, do: max(base_size, 20), else: base_size
       end
 
     IO.puts("Note: Starting database connection pool of #{pool_size}")
@@ -133,7 +134,8 @@ defmodule Bonfire.Common.RuntimeConfig do
         timeout: 50_000,
         connect_timeout: 10_000,
         ownership_timeout: 100_000,
-        # log: :info,
+        # Increase pool size for CI to handle concurrent tests - force minimum of 20 for tests
+        pool_size: max(pool_size, 20),
         log: false,
         stacktrace: true
 
