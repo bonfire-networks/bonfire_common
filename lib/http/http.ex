@@ -7,6 +7,9 @@ defmodule Bonfire.Common.HTTP do
   alias Bonfire.Common.HTTP.RequestBuilder
   alias Bonfire.Common.Cache
 
+  # 1 hours
+  @hms 1_000 * 60 * 60
+
   @type t :: __MODULE__
 
   @doc """
@@ -79,8 +82,45 @@ defmodule Bonfire.Common.HTTP do
   def get(url, headers \\ [], options \\ []),
     do: request(:get, url, "", headers, options)
 
-  def get_cached(url) do
-    Cache.maybe_apply_cached(&get/1, [url])
+  def get_body(url, headers \\ [], options \\ []) do
+    with {:ok, %{body: body}} when is_binary(body) <-
+           get(url, headers, options) do
+      body
+    else
+      e ->
+        warn(e, "Could not fetch remote content for #{url}")
+        nil
+    end
+  end
+
+  def get_cached(url, opts \\ []) do
+    Cache.maybe_apply_cached(
+      &get/1,
+      [url],
+      opts
+      |> Keyword.put_new_lazy(:cache_key, fn ->
+        "fetched:#{url}"
+      end)
+      |> Keyword.put_new_lazy(:expire, fn ->
+        # 12 hours by default
+        @hms * (opts[:expire_hr] || 12)
+      end)
+    )
+  end
+
+  def get_cached_body(url, opts \\ []) do
+    Cache.maybe_apply_cached(
+      &get_body/1,
+      [url],
+      opts
+      |> Keyword.put_new_lazy(:cache_key, fn ->
+        "fetched_body:#{url}"
+      end)
+      |> Keyword.put_new_lazy(:expire, fn ->
+        # 12 hours by default
+        @hms * (opts[:expire_hr] || 12)
+      end)
+    )
   end
 
   @doc """
