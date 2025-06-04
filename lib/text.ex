@@ -440,10 +440,10 @@ defmodule Bonfire.Common.Text do
                      "xmpp"
                    ],
                    url_relative:
-                     if opts[:url_base] do
-                       {:rewrite_with_base, opts[:url_base]}
-                     else
-                       :deny
+                     case opts[:url_base] do
+                       false -> :deny
+                       nil -> :passthrough
+                       url_base -> {:rewrite_with_base, url_base}
                      end
                  ]
                end,
