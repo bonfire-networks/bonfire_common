@@ -196,17 +196,17 @@ defmodule Bonfire.Common.Repo.Preload do
     )
   end
 
-  def maybe_preloads_per_nested_schema(objects, path, {schema, preloads}, opts)
+  def maybe_preloads_per_nested_schema(objects, path, schema_and_or_preloads, opts)
       when is_list(objects) do
-    debug(
-      "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
-    )
+    # debug(
+    #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
+    # )
 
     with {_old, loaded} <-
            get_and_update_in(
              objects,
              [Access.all()] ++ Enum.map(path, &Access.key!(&1)),
-             &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)}
+             &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
            ) do
       loaded
 
@@ -214,16 +214,16 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
-  def maybe_preloads_per_nested_schema(%{} = object, path, {schema, preloads}, opts) do
-    debug(
-      "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
-    )
+  def maybe_preloads_per_nested_schema(%{} = object, path, schema_and_or_preloads, opts) do
+    # debug(
+    #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
+    # )
 
     with {_old, loaded} <-
            get_and_update_in(
              object,
              Enum.map(path, &Access.key!(&1)),
-             &{&1, maybe_preloads_per_schema(&1, {schema, preloads}, opts)}
+             &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
            ) do
       loaded
 
@@ -242,7 +242,7 @@ defmodule Bonfire.Common.Repo.Preload do
 
       iex> maybe_preloads_per_schema(pointer_struct, {PointerSchema, [:assoc1, :assoc2]})
   """
-  def maybe_preloads_per_schema(object, schema_preloads, opts \\ [])
+  def maybe_preloads_per_schema(object, schema_and_or_preloads, opts \\ [])
 
   def maybe_preloads_per_schema(
         %Pointer{table_id: table_id} = object,
@@ -298,6 +298,29 @@ defmodule Bonfire.Common.Repo.Preload do
       object,
       &maybe_preloads_per_schema(&2, &1, opts)
     )
+  end
+
+  def maybe_preloads_per_schema(
+        %Pointer{table_id: table_id} = object,
+        preload_schema,
+        opts
+      )
+      when is_atom(preload_schema) do
+    object_schema = Bonfire.Common.Types.object_type(object)
+
+    if object_schema == preload_schema do
+      if Needle.is_needle?(object_schema, [:virtual]) do
+        debug("no need to follow virtuals")
+
+        object
+      else
+        object
+        |> Needles.follow!()
+        |> debug("followed")
+      end
+    else
+      object
+    end
   end
 
   def maybe_preloads_per_schema(object, other, _opts) do
