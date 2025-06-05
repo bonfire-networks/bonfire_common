@@ -123,6 +123,7 @@ defmodule Bonfire.Common.Repo.Preload do
   end
 
   defp try_repo_preload(%Ecto.Association.NotLoaded{}, _, _), do: nil
+  defp try_repo_preload(%Ecto.Changeset{} = object, _, _), do: object
 
   defp try_repo_preload(objects, preloads, opts)
        when is_struct(objects) or is_list(objects) do
