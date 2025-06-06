@@ -156,28 +156,6 @@ defmodule Bonfire.Common.Media do
 
   ## Examples
 
-      iex> avatar_media(%{profile: %{icon: "http://example.com/avatar.png"}})
-      %Media{...}
-
-      iex> avatar_media(%{icon: "http://example.com/icon.png"})
-      %Media{...}
-
-      iex> avatar_media(%{profile: %{icon: %{path: "http://example.com/path.png"}}})
-      %Media{...}
-
-      iex> avatar_media(%{nonexistent_key: "value"})
-      nil
-  """
-  def avatar_media(%{profile: %{icon: media}}), do: media
-  def avatar_media(%{icon: media}), do: media
-  def avatar_media(%{} = maybe_media), do: maybe_media
-  def avatar_media(_), do: nil
-
-  @doc """
-  Takes a Media map (or an object containing one) and returns the avatar's URL.
-
-  ## Examples
-
       iex> avatar_url(%{profile: %{icon: %{url: "http://example.com/avatar.png"}}})
       "http://example.com/avatar.png"
 
@@ -449,13 +427,13 @@ defmodule Bonfire.Common.Media do
 
   ## Examples
 
-      iex> extract_tar("path/to/archive.tar.gz")
+      > extract_tar("path/to/archive.tar.gz")
       %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
 
-      iex> extract_tar("path/to/archive.tar", [:memory])
+      > extract_tar("path/to/archive.tar", [:memory])
       %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
 
-      iex> extract_tar("path/to/archive.tar", [:compressed, :memory])
+      > extract_tar("path/to/archive.tar", [:compressed, :memory])
       %{"file1.txt" => <<...>> , "file2.txt" => <<...>>}
   """
   def extract_tar(archive, opts \\ [:compressed, :memory]) do

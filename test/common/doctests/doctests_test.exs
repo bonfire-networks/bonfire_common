@@ -21,6 +21,7 @@ defmodule Bonfire.Common.DocsTest do
   doctest Bonfire.Common.Text, import: true
   doctest Bonfire.Common.Types, import: true
   doctest Bonfire.Common.URIs, import: true
+  # doctest Bonfire.Common.Media, import: true
 
   # doctest Bonfire.Common.Needles, import: true
   doctest Bonfire.Common.Needles.Tables, import: true
