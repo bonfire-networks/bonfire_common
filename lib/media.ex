@@ -42,9 +42,6 @@ defmodule Bonfire.Common.Media do
       iex> media_url(%{nonexistent_key: "value"})
       nil
   """
-  def media_url(%{path: "http" <> _ = url} = _media) do
-    url
-  end
 
   def media_url(%{metadata: %{"module" => module}} = media) do
     case Common.Types.maybe_to_module(module) do
@@ -56,6 +53,10 @@ defmodule Bonfire.Common.Media do
   def media_url(%{metadata: %{module: module}} = media) when is_atom(module) do
     # || Map.drop(media, [:metadata]) |> media_url()
     Utils.maybe_apply(module, :remote_url, media, fallback_return: nil)
+  end
+
+  def media_url(%{path: "http" <> _ = url} = _media) do
+    url
   end
 
   def media_url(%{media_type: media_type, path: url} = _media)
@@ -380,6 +381,9 @@ defmodule Bonfire.Common.Media do
       Config.get([:ui, :default_images, :banner], "/images/bonfires.png",
         name: l("Default banner image")
       )
+
+  def emoji_url(media),
+    do: Utils.maybe_apply(Bonfire.Files.EmojiUploader, :remote_url, [media], fallback_return: nil)
 
   @doc """
   Determines the dominant color for a given user’s avatar or banner.

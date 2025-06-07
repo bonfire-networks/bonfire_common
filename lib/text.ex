@@ -7,6 +7,7 @@ defmodule Bonfire.Common.Text do
   alias Bonfire.Common.Extend
   use Bonfire.Common.Config
   use Bonfire.Common.Settings
+  alias Bonfire.Common.Media
 
   # @add_to_end "..."
   @sentence_seperator " "
@@ -764,7 +765,7 @@ defmodule Bonfire.Common.Text do
           emoji ->
             label = e(emoji, :label, nil) || text
 
-            " <img alt='#{label}' title='#{label}' class='emoji' data-emoji='#{text}' src='#{e(emoji, :url, nil) || emoji}' /> "
+            " <img alt='#{label}' title='#{label}' class='emoji' data-emoji='#{text}' src='#{e(emoji, :url, nil) || Media.emoji_url(emoji)}' /> "
         end
 
       ["", family, icon, ""] ->
