@@ -509,7 +509,7 @@ defmodule Bonfire.Common.E do
     do: handle_fallback(object, keys, nil, fallback)
 
   def handle_fallback(object, keys, %Ecto.Association.NotLoaded{}, :nil!) do
-    Common.err(object, "Required value not found for keys #{inspect(keys)} in object")
+    Untangle.err(object, "Required value not found for keys #{inspect(keys)} in object")
     nil
   end
 
