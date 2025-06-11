@@ -975,6 +975,8 @@ defmodule Bonfire.Common.Text do
   def upcase_first(<<first::utf8, rest::binary>>),
     do: String.upcase(<<first::utf8>>) <> rest
 
+  def upcase_first(_), do: nil
+
   @doc """
   Converts a string to CamelCase.
 
