@@ -465,7 +465,7 @@ defmodule Bonfire.Common.Text do
              ]
            ]
            # |> Keyword.merge(opts)
-           |> flood("md_opts")
+           #  |> debug("md_opts")
            |> MDEx.to_html(content, ...) do
       html
     else
