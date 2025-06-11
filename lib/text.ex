@@ -384,7 +384,8 @@ defmodule Bonfire.Common.Text do
   end
 
   defp markdown_as_html(MDEx, content, opts) do
-    with {:ok, html} <-
+    with {sanitize?, opts} <- Keyword.pop(opts, :sanitize, true),
+         {:ok, html} <-
            [
              parse: [
                smart: false,
@@ -404,49 +405,56 @@ defmodule Bonfire.Common.Text do
              render: [
                hardbreaks: true,
                # unsafe_: opts[:__unsafe__],
-               # Allow rendering of raw HTML and potentially dangerous links
-               unsafe_: opts[:__unsafe__] || opts[:sanitize] != false,
+               # Allow rendering of raw HTML and potentially dangerous links?
+               unsafe_: opts[:__unsafe__] || sanitize? != false,
                # Escape raw HTML instead of clobbering it.
-               escape: opts[:sanitize] == false or !opts[:__unsafe__]
+               escape: sanitize? == false and !opts[:__unsafe__]
              ],
              sanitize:
-               if opts[:sanitize] != false do
-                 [
-                   # TODO: add `noreferrer` as well for non-public content?
-                   link_rel: "nofollow noopener",
-                   # needed for MFM?
-                   generic_attribute_prefixes: ["data-"],
-                   # class needed for MFM?
-                   generic_attributes: ["class"],
-                   url_schemes: [
-                     "ftp",
-                     "ftps",
-                     "geo",
-                     "http",
-                     "https",
-                     "irc",
-                     "ircs",
-                     "magnet",
-                     "mailto",
-                     "news",
-                     "nntp",
-                     "openpgp4fpr",
-                     "sip",
-                     "sms",
-                     "smsto",
-                     "tel",
-                     "url",
-                     "webcal",
-                     "wtai",
-                     "xmpp"
-                   ],
-                   url_relative:
-                     case opts[:url_base] do
-                       false -> :deny
-                       nil -> :passthrough
-                       url_base -> {:rewrite_with_base, url_base}
-                     end
-                 ]
+               cond do
+                 is_list(sanitize?) ->
+                   sanitize?
+
+                 sanitize? ->
+                   [
+                     # TODO: add `noreferrer` as well for non-public content?
+                     link_rel: "nofollow noopener",
+                     # needed for MFM?
+                     generic_attribute_prefixes: ["data-"],
+                     # class needed for MFM?
+                     generic_attributes: ["class"],
+                     url_schemes: [
+                       "ftp",
+                       "ftps",
+                       "geo",
+                       "http",
+                       "https",
+                       "irc",
+                       "ircs",
+                       "magnet",
+                       "mailto",
+                       "news",
+                       "nntp",
+                       "openpgp4fpr",
+                       "sip",
+                       "sms",
+                       "smsto",
+                       "tel",
+                       "url",
+                       "webcal",
+                       "wtai",
+                       "xmpp"
+                     ],
+                     url_relative:
+                       case opts[:url_base] do
+                         false -> :deny
+                         nil -> :passthrough
+                         url_base -> {:rewrite_with_base, url_base}
+                       end
+                   ]
+
+                 true ->
+                   nil
                end,
              # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
 
@@ -457,12 +465,13 @@ defmodule Bonfire.Common.Text do
              ]
            ]
            # |> Keyword.merge(opts)
+           |> flood("md_opts")
            |> MDEx.to_html(content, ...) do
       html
     else
       e ->
         error(e)
-        nil
+        content
     end
   end
 

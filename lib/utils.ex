@@ -107,11 +107,6 @@ defmodule Bonfire.Common.Utils do
     description: l("Common utilities and functionality used by most other extensions.")
   )
 
-  defdelegate err(data_or_msg), to: Bonfire.Common
-  defdelegate err(data, msg), to: Bonfire.Common
-  defdelegate flood(data_or_msg), to: Bonfire.Common
-  defdelegate flood(data, msg), to: Bonfire.Common
-
   @doc """
   Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
   """
