@@ -5,7 +5,12 @@ defmodule Bonfire.Common.Repo do
   Note: functions are defined in `Bonfire.Common.RepoTemplate`
   """
   use Bonfire.Common.Config
-  use Bonfire.Common.RepoTemplate
+
+  use Bonfire.Common.RepoTemplate,
+    otp_app:
+      Bonfire.Common.Config.__get__(:umbrella_otp_app) ||
+        Bonfire.Common.Config.__get__(:otp_app) || :bonfire_common,
+    adapter: Ecto.Adapters.Postgres
 
   defmacro __using__(_opts) do
     quote do

@@ -6,7 +6,13 @@ defmodule Bonfire.Common.TestInstanceRepo do
   """
 
   use Bonfire.Common.Config
-  use Bonfire.Common.RepoTemplate
+
+  use Bonfire.Common.RepoTemplate,
+    otp_app:
+      Bonfire.Common.Config.__get__(:umbrella_otp_app) ||
+        Bonfire.Common.Config.__get__(:otp_app) || :bonfire_common,
+    adapter: Ecto.Adapters.Postgres
+
   require Logger
 
   def default_repo, do: Config.get!(:repo_module)

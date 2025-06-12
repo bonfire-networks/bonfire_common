@@ -5,7 +5,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
   use Arrows
 
-  defmacro __using__(_) do
+  defmacro __using__(opts) do
     quote do
       use Bonfire.Common.Config
       use Bonfire.Common.E
@@ -14,11 +14,7 @@ defmodule Bonfire.Common.RepoTemplate do
       alias Bonfire.Common.Types
       alias Bonfire.Common.Errors
 
-      use Ecto.Repo,
-        otp_app:
-          Bonfire.Common.Config.__get__(:umbrella_otp_app) ||
-            Bonfire.Common.Config.__get__(:otp_app) || :bonfire_common,
-        adapter: Ecto.Adapters.Postgres
+      use Ecto.Repo, unquote(opts)
 
       import Ecto.Query
       import Untangle
@@ -90,186 +86,197 @@ defmodule Bonfire.Common.RepoTemplate do
       #   end, opts)
       # end
 
-      @doc """
-      Like `insert/1`, but understands remapping changeset errors to attr
-      names from config (and only config, no overrides at present!)
+      if unquote(!opts[:read_only]) do
+        @doc """
+        Like `insert/1`, but understands remapping changeset errors to attr
+        names from config (and only config, no overrides at present!)
 
-      ## Examples
+        ## Examples
 
-          iex> changeset = %Ecto.Changeset{valid?: false}
-          iex> put(changeset)
-          {:error, %Ecto.Changeset{}}
-      """
-      def put(%Changeset{} = changeset) do
-        with {:error, changeset} <- insert(changeset) do
-          Changesets.rewrite_constraint_errors(changeset)
-        end
-      rescue
-        exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__)
-      end
-
-      @doc """
-      Like `put/1` but for multiple `changesets`
-
-      ## Examples
-
-          iex> changesets = [%{valid?: true}, %{valid?: false}]
-          iex> put_many(changesets)
-          {:error, [%{valid?: false}]}
-
-          iex> changesets = [%{valid?: true}, %{valid?: true}]
-          iex> put_many(changesets)
-          {:ok, _result}
-      """
-      def put_many(things) do
-        case Enum.filter(things, fn {_, %Changeset{valid?: v}} -> not v end) do
-          [] -> transact_with(fn -> put_many(things, %{}) end)
-          failed -> {:error, failed}
-        end
-      end
-
-      defp put_many([], acc), do: {:ok, acc}
-
-      defp put_many([{k, v} | is], acc) do
-        case insert(v) do
-          {:ok, v} -> put_many(is, Map.put(acc, k, v))
-          {:error, other} -> {:error, {k, other}}
-        end
-      end
-
-      @doc """
-      Inserts or updates data in the database with upsert semantics.
-
-      * `cs` - The changeset or schema to insert or update.
-      * `keys_or_attrs_to_update` - A list of keys or a map of attributes to update.
-      * `conflict_target` - The column(s) or constraint to check for conflicts, defaults to `[:id]`.
-
-      ## Examples
-
-          iex> upsert(%Ecto.Changeset{}, [:field1, :field2])
-          {:ok, _result}
-
-          iex> upsert(%Ecto.Changeset{}, %{field1: "value"})
-          {:ok, _result}
-      """
-      def upsert(cs, keys_or_attrs_to_update \\ nil, conflict_target \\ [:id])
-
-      def upsert(cs, attrs, conflict_target)
-          when is_map(attrs) do
-        upsert(cs, Map.to_list(attrs), conflict_target)
-      end
-
-      def upsert(cs, keys, conflict_target)
-          when (is_list(keys) and is_struct(cs)) or is_atom(cs) do
-        debug(keys, "update keys")
-
-        keys =
-          if not Keyword.keyword?(keys) do
-            Enum.map(keys, &{&1, Needle.Changesets.get_field(cs, &1)})
-          else
-            keys
+            iex> changeset = %Ecto.Changeset{valid?: false}
+            iex> put(changeset)
+            {:error, %Ecto.Changeset{}}
+        """
+        def put(%Changeset{} = changeset) do
+          with {:error, changeset} <- insert(changeset) do
+            Changesets.rewrite_constraint_errors(changeset)
           end
+        rescue
+          exception in Postgrex.Error ->
+            handle_postgrex_exception(exception, __STACKTRACE__)
+        end
 
-        insert_or_update(
-          cs,
-          # on_conflict: {:replace_all_except, conflict_target},
-          on_conflict: [set: keys],
-          conflict_target: conflict_target
-        )
-      end
+        @doc """
+        Like `put/1` but for multiple `changesets`
 
-      def upsert(cs, nil, conflict_target) do
-        insert_or_update(
-          cs,
-          on_conflict: :nothing
-          # conflict_target: conflict_target
-        )
-      end
+        ## Examples
 
-      @doc """
-      Insert or update all entries with upsert semantics.
+            iex> changesets = [%{valid?: true}, %{valid?: false}]
+            iex> put_many(changesets)
+            {:error, [%{valid?: false}]}
 
-      * `schema` - The schema or table name to insert or update.
-      * `data` - A list of maps containing the data to insert or update.
-      * `conflict_target` - The column(s) or constraint to check for conflicts, defaults to `[:id]`.
+            iex> changesets = [%{valid?: true}, %{valid?: true}]
+            iex> put_many(changesets)
+            {:ok, _result}
+        """
+        def put_many(things) do
+          case Enum.filter(things, fn {_, %Changeset{valid?: v}} -> not v end) do
+            [] -> transact_with(fn -> put_many(things, %{}) end)
+            failed -> {:error, failed}
+          end
+        end
 
-      ## Examples
+        defp put_many([], acc), do: {:ok, acc}
 
-          iex> upsert_all(User, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}])
-          {:ok, _result}
+        defp put_many([{k, v} | is], acc) do
+          case insert(v) do
+            {:ok, v} -> put_many(is, Map.put(acc, k, v))
+            {:error, other} -> {:error, {k, other}}
+          end
+        end
 
-          iex> upsert_all(User, [%{id: 1, name: "Alice Updated"}], [:id])
-          {:ok, _result}
-      """
-      def upsert_all(schema, data, conflict_target \\ [:id]) when is_atom(schema) do
-        insert_all(
-          schema,
-          data,
-          on_conflict: {:replace_all_except, conflict_target},
-          conflict_target: conflict_target
-        )
-      end
+        @doc """
+        Inserts or updates data in the database with upsert semantics.
 
-      @doc """
-      Insert or ignore a changeset or struct into a schema.
+        * `cs` - The changeset or schema to insert or update.
+        * `keys_or_attrs_to_update` - A list of keys or a map of attributes to update.
+        * `conflict_target` - The column(s) or constraint to check for conflicts, defaults to `[:id]`.
 
-      ## Examples
+        ## Examples
 
-          iex> insert_or_ignore(%Ecto.Changeset{})
-          {:ok, _result}
+            iex> upsert(%Ecto.Changeset{}, [:field1, :field2])
+            {:ok, _result}
 
-          iex> insert_or_ignore(%MySchema{field: "value"})
-          {:ok, _result}
+            iex> upsert(%Ecto.Changeset{}, %{field1: "value"})
+            {:ok, _result}
+        """
+        def upsert(cs, keys_or_attrs_to_update \\ nil, conflict_target \\ [:id])
 
-      """
-      def insert_or_ignore(cs_or_struct) when is_struct(cs_or_struct) or is_atom(cs_or_struct) do
-        cs_or_struct
-        # FIXME?
-        |> Map.put(:repo_opts, on_conflict: :ignore)
-        # |> debug()
-        |> insert(on_conflict: :nothing)
-      rescue
-        exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__, exception)
+        def upsert(cs, attrs, conflict_target)
+            when is_map(attrs) do
+          upsert(cs, Map.to_list(attrs), conflict_target)
+        end
 
-        exception in Ecto.ConstraintError ->
-          handle_postgrex_exception(exception, __STACKTRACE__, exception)
-      end
+        def upsert(cs, keys, conflict_target)
+            when (is_list(keys) and is_struct(cs)) or is_atom(cs) do
+          debug(keys, "update keys")
 
-      @doc """
-      Insert or ignore a map (or iterate over a list of maps) into a schema.
+          keys =
+            if not Keyword.keyword?(keys) do
+              Enum.map(keys, &{&1, Needle.Changesets.get_field(cs, &1)})
+            else
+              keys
+            end
 
-      ## Examples
+          insert_or_update(
+            cs,
+            # on_conflict: {:replace_all_except, conflict_target},
+            on_conflict: [set: keys],
+            conflict_target: conflict_target
+          )
+        end
 
-          iex> insert_or_ignore(MySchema, %{field: "value"})
-          [{:ok, _result}]
+        def upsert(cs, nil, conflict_target) do
+          insert_or_update(
+            cs,
+            on_conflict: :nothing
+            # conflict_target: conflict_target
+          )
+        end
 
-          iex> insert_or_ignore(MySchema, [%{field: "value1"}, %{field: "value2"}])
-          [{:ok, _result}]
-      """
-      def insert_or_ignore(schema, object) when is_map(object) do
-        struct(schema, object)
-        |> insert_or_ignore()
-      end
+        @doc """
+        Insert or update all entries with upsert semantics.
 
-      def insert_or_ignore(schema, objects) when is_list(objects) do
-        Enum.map(objects, &insert_or_ignore(schema, &1))
-      end
+        * `schema` - The schema or table name to insert or update.
+        * `data` - A list of maps containing the data to insert or update.
+        * `conflict_target` - The column(s) or constraint to check for conflicts, defaults to `[:id]`.
 
-      @doc """
-      Insert all or ignore a list of maps into a schema.
+        ## Examples
 
-      ## Examples
+            iex> upsert_all(User, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}])
+            {:ok, _result}
 
-          iex> insert_all_or_ignore(MySchema, [%{field: "value1"}, %{field: "value2"}])
-          {:ok, _result}
-      """
-      def insert_all_or_ignore(schema, data) when is_atom(schema) do
-        insert_all(schema, data, on_conflict: :nothing)
-      rescue
-        exception in Postgrex.Error ->
-          handle_postgrex_exception(exception, __STACKTRACE__, exception)
+            iex> upsert_all(User, [%{id: 1, name: "Alice Updated"}], [:id])
+            {:ok, _result}
+        """
+        def upsert_all(schema, data, conflict_target \\ [:id]) when is_atom(schema) do
+          insert_all(
+            schema,
+            data,
+            on_conflict: {:replace_all_except, conflict_target},
+            conflict_target: conflict_target
+          )
+        end
+
+        @doc """
+        Insert or ignore a changeset or struct into a schema.
+
+        ## Examples
+
+            iex> insert_or_ignore(%Ecto.Changeset{})
+            {:ok, _result}
+
+            iex> insert_or_ignore(%MySchema{field: "value"})
+            {:ok, _result}
+
+        """
+        def insert_or_ignore(cs_or_struct)
+            when is_struct(cs_or_struct) or is_atom(cs_or_struct) do
+          cs_or_struct
+          # FIXME?
+          |> Map.put(:repo_opts, on_conflict: :ignore)
+          # |> debug()
+          |> insert(on_conflict: :nothing)
+        rescue
+          exception in Postgrex.Error ->
+            handle_postgrex_exception(exception, __STACKTRACE__, exception)
+
+          exception in Ecto.ConstraintError ->
+            handle_postgrex_exception(exception, __STACKTRACE__, exception)
+        end
+
+        @doc """
+        Insert or ignore a map (or iterate over a list of maps) into a schema.
+
+        ## Examples
+
+            iex> insert_or_ignore(MySchema, %{field: "value"})
+            [{:ok, _result}]
+
+            iex> insert_or_ignore(MySchema, [%{field: "value1"}, %{field: "value2"}])
+            [{:ok, _result}]
+        """
+        def insert_or_ignore(schema, object) when is_map(object) do
+          struct(schema, object)
+          |> insert_or_ignore()
+        end
+
+        def insert_or_ignore(schema, objects) when is_list(objects) do
+          Enum.map(objects, &insert_or_ignore(schema, &1))
+        end
+
+        @doc """
+        Insert all or ignore a list of maps into a schema.
+
+        ## Examples
+
+            iex> insert_all_or_ignore(MySchema, [%{field: "value1"}, %{field: "value2"}])
+            {:ok, _result}
+        """
+        def insert_all_or_ignore(schema, data) when is_atom(schema) do
+          insert_all(schema, data, on_conflict: :nothing)
+        rescue
+          exception in Postgrex.Error ->
+            handle_postgrex_exception(exception, __STACKTRACE__, exception)
+        end
+
+        def delete_many(queryable, opts \\ []) do
+          queryable
+          |> Ecto.Query.exclude(:order_by)
+          |> delete_all(opts)
+        end
+
+        # end of mutation functions
       end
 
       @doc """
@@ -556,20 +563,6 @@ defmodule Bonfire.Common.RepoTemplate do
 
       def pluck(query, fields, opts) when is_list(fields) do
         query |> select(^fields) |> many(opts) |> Enum.map(&Map.take(&1, fields))
-      end
-
-      @doc """
-      Execute a query to delete all matching records.
-
-      ## Examples
-
-          iex> delete_many(from u in User, where: u.id < 100)
-          {:ok, _count}
-      """
-      def delete_many(query) do
-        query
-        |> Ecto.Query.exclude(:order_by)
-        |> delete_all()
       end
 
       defp handle_postgrex_exception(exception, stacktrace, fallback \\ false, changeset \\ nil)

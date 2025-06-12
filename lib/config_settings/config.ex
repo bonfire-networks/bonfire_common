@@ -500,9 +500,39 @@ defmodule Bonfire.Common.Config do
   def repo,
     do:
       debug(
-        ProcessTree.get(:ecto_repo_module) || __get__(:repo_module, Bonfire.Common.Repo),
+        ProcessTree.get(:ecto_repo_module) || default_repo_module(),
         "repo_module"
       )
+
+  defp default_repo_module(read_only? \\ repo_read_only?()) do
+    module =
+      if read_only? do
+        Bonfire.Common.ReadOnlyRepo
+      else
+        __get__(:repo_module, Bonfire.Common.Repo)
+      end
+
+    Process.put(:ecto_repo_module, module)
+
+    module
+  end
+
+  def repo_read_only? do
+    # WIP: still need to add config on ReadOnlyRepo
+    __get__(:repo_read_only, false)
+  end
+
+  def repo_read_only_put!(_, enable? \\ true)
+
+  def repo_read_only_put!(:process, enable?) do
+    Process.put(:repo_read_only, enable?)
+    default_repo_module(enable?)
+  end
+
+  def repo_read_only_put!(:global, enable?) do
+    put(:repo_read_only, enable?)
+    repo_read_only_put!(:process, enable?)
+  end
 
   @doc """
   Retrieves the Phoenix endpoint module for the application.

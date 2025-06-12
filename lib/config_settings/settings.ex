@@ -619,7 +619,7 @@ defmodule Bonfire.Common.Settings do
   """
   def reset_all() do
     reset_instance()
-    repo().delete_all(Bonfire.Data.Identity.Settings)
+    repo().delete_many(Bonfire.Data.Identity.Settings)
   end
 
   # TODO: find a better, more pluggable way to add hooks to settings
