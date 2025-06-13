@@ -10,7 +10,11 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
 
     alias Bonfire.Common.Mix.Tasks.Helpers
 
-    def igniter(igniter, [module_name | _] = _argv) do
+    def igniter(igniter) do
+      igniter_with_argv(igniter, igniter.args.argv)
+    end
+
+    def igniter_with_argv(igniter, [module_name | _] = _argv) do
       # app_name = Bonfire.Application.name()
 
       snake_name = Macro.underscore(module_name)

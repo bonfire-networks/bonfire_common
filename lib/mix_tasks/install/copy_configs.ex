@@ -27,7 +27,11 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
     @switches [from: :string, to: :string, force: :boolean]
     @default_config_path "config"
 
-    def igniter(igniter, args) do
+    def igniter(igniter) do
+      igniter_with_argv(igniter, igniter.args.argv)
+    end
+
+    def igniter_with_argv(igniter, args) do
       # IO.inspect(args, label: "Args")
 
       case OptionParser.parse(args, switches: @switches) do

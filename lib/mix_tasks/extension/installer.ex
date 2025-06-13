@@ -15,10 +15,8 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
 
     @default_config_path "config"
 
-    def igniter(igniter, args) do
-      # IO.inspect(args, label: "Args")
-
-      install(igniter, args)
+    def igniter(igniter) do
+      install(igniter, igniter.args.argv)
     end
 
     def install(igniter, args) do

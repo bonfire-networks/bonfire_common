@@ -26,7 +26,11 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
     @default_repo_path "priv/repo"
     @default_mig_path @default_repo_path <> "/migrations"
 
-    def igniter(igniter, args) do
+    def igniter(igniter) do
+      igniter_with_argv(igniter, igniter.args.argv)
+    end
+
+    def igniter_with_argv(igniter, args) do
       IO.inspect(args, label: "Args")
 
       case OptionParser.parse(args, switches: @switches) do
