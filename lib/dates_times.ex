@@ -40,12 +40,21 @@ defmodule Bonfire.Common.DatesTimes do
       "now"  # Example output
   """
   def relative_date(date_time, opts \\ []) do
-    with {:ok, relative} <-
-           Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(date_time, opts) do
-      relative
-    else
-      other ->
+    case Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(date_time, opts) do
+      {:ok, "-" <> relative_date} ->
+        # Cldr narrow format uses minus for past dates, convert to "ago" format
+        l("%{relative_date} ago", relative_date: relative_date)
+
+      {:ok, relative} ->
+        relative
+
+      {:error, other} ->
+        # Fallback to Timex if Cldr fails
         error(date_time, inspect(other))
+        timex_date_from_now(date_time)
+
+      other ->
+        error(other, inspect(date_time))
         timex_date_from_now(date_time)
     end
   end
