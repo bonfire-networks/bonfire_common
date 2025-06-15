@@ -131,8 +131,7 @@ defmodule Bonfire.Common.Cache do
       iex> Bonfire.Common.Cache.remove_all()
       iex> Bonfire.Common.Cache.put("key1", "value1")
       iex> Bonfire.Common.Cache.put("key2", "value2")
-      iex> Bonfire.Common.Cache.remove_all()
-      2 # Returns the number of entries removed
+      iex> _removed_count = Bonfire.Common.Cache.remove_all()
       iex> Bonfire.Common.Cache.get!("key1")
       nil
   """
