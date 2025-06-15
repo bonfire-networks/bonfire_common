@@ -238,6 +238,15 @@ defmodule Bonfire.Common.Repo.Preload do
     end)
   end
 
+  def maybe_preloads_per_nested_schema(%{edges: edges} = page, path, schema_and_or_preloads, opts) do
+    %{
+      page
+      | edges:
+          edges
+          |> maybe_preloads_per_nested_schema(path, schema_and_or_preloads, opts)
+    }
+  end
+
   def maybe_preloads_per_nested_schema(%{} = object, path, schema_and_or_preloads, opts)
       when is_list(path) do
     path_depth = calculate_path_depth(object, path)
