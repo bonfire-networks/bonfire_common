@@ -186,6 +186,8 @@ defmodule Bonfire.Common.Repo.Preload do
   """
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts \\ [])
 
+  def maybe_preloads_per_nested_schema(object, _, [], _opts), do: object
+
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts)
       when is_list(path) and is_list(preloads) do
     debug("iterate list of preloads")
@@ -198,7 +200,7 @@ defmodule Bonfire.Common.Repo.Preload do
   end
 
   def maybe_preloads_per_nested_schema(objects, path, schema_and_or_preloads, opts)
-      when is_list(objects) do
+      when is_list(path) and is_list(objects) do
     # debug(
     #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
     # )
@@ -215,7 +217,8 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
-  def maybe_preloads_per_nested_schema(%{} = object, path, schema_and_or_preloads, opts) do
+  def maybe_preloads_per_nested_schema(%{} = object, path, schema_and_or_preloads, opts)
+      when is_list(path) do
     # debug(
     #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
     # )
