@@ -190,10 +190,9 @@ defmodule Bonfire.Common.Repo.Preload do
 
   def maybe_preloads_per_nested_schema(objects, path, preloads, opts)
       when is_list(path) and is_list(preloads) do
-    debug("iterate list of preloads")
-
-    Enum.reduce(
-      preloads,
+    preloads
+    |> debug("iterate list of preloads")
+    |> Enum.reduce(
       objects,
       &maybe_preloads_per_nested_schema(&2, path, &1, opts)
     )
@@ -201,9 +200,10 @@ defmodule Bonfire.Common.Repo.Preload do
 
   def maybe_preloads_per_nested_schema(objects, path, schema_and_or_preloads, opts)
       when is_list(path) and is_list(objects) do
-    # debug(
-    #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
-    # )
+    debug(
+      path,
+      "trying #{inspect(schema_and_or_preloads)} in path"
+    )
 
     with {_old, loaded} <-
            get_and_update_in(
