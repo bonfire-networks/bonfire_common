@@ -205,37 +205,84 @@ defmodule Bonfire.Common.Repo.Preload do
       "trying #{inspect(schema_and_or_preloads)} in path"
     )
 
-    with {_old, loaded} <-
-           get_and_update_in(
-             objects,
-             [Access.all()] ++ Enum.map(path, &Access.key!(&1)),
-             &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
-           ) do
-      loaded
+    # Group objects by how much of the path they have
+    grouped_objects = group_objects_by_path_depth(objects, path)
 
-      # |> debug("preloaded")
-    end
+    # Process each group with a single preload operation per group
+    processed_objects =
+      Enum.flat_map(grouped_objects, fn {path_depth, group_objects} ->
+        if path_depth == 0 do
+          # No path available, return as-is
+          group_objects
+        else
+          partial_path = Enum.take(path, path_depth)
+
+          with {_old, loaded} <-
+                 get_and_update_in(
+                   group_objects,
+                   [Access.all()] ++ Enum.map(partial_path, &Access.key(&1, %{})),
+                   &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
+                 ) do
+            loaded
+          end
+        end
+      end)
+      |> Map.new(fn obj -> {Map.get(obj, :id), obj} end)
+
+    # Reconstruct original order and include any objects that were not processed 
+    Enum.map(objects, fn obj ->
+      case Map.get(obj, :id) do
+        nil -> obj
+        id -> Map.get(processed_objects, id) || obj
+      end
+    end)
   end
 
   def maybe_preloads_per_nested_schema(%{} = object, path, schema_and_or_preloads, opts)
       when is_list(path) do
-    # debug(
-    #   "try schema: #{inspect(schema)} in path: #{inspect(path)} with preload: #{inspect(preloads)}"
-    # )
+    path_depth = calculate_path_depth(object, path)
 
-    with {_old, loaded} <-
-           get_and_update_in(
-             object,
-             Enum.map(path, &Access.key!(&1)),
-             &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
-           ) do
-      loaded
+    if path_depth == 0 do
+      object
+    else
+      partial_path = Enum.take(path, path_depth)
 
-      # |> debug("preloaded")
+      with {_old, loaded} <-
+             get_and_update_in(
+               object,
+               Enum.map(partial_path, &Access.key(&1, %{})),
+               &{&1, maybe_preloads_per_schema(&1, schema_and_or_preloads, opts)}
+             ) do
+        loaded
+      end
     end
   end
 
   def maybe_preloads_per_nested_schema(object, _, _, _opts), do: object
+
+  # Group objects by how much of the path they have
+  defp group_objects_by_path_depth(objects, path) do
+    objects
+    |> Enum.group_by(&calculate_path_depth(&1, path))
+    |> Enum.sort_by(fn {depth, _} -> -depth end)
+    |> debug()
+  end
+
+  # Calculate how deep into the path an object can go
+  defp calculate_path_depth(object, path) do
+    path
+    |> Enum.with_index()
+    |> Enum.reduce_while(0, fn {key, index}, acc ->
+      partial_path = Enum.take(path, index + 1)
+
+      case get_in(object, partial_path) do
+        nil -> {:halt, acc}
+        %Ecto.Association.NotLoaded{} -> {:halt, acc}
+        _ -> {:cont, index + 1}
+      end
+    end)
+    |> debug()
+  end
 
   @doc """
   Conditionally preloads associations for a schema.
