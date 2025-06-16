@@ -116,10 +116,12 @@ defmodule Bonfire.Common.Config do
     __MODULE__
   )
 
-  def __get__!(key, otp_app \\ nil, _default \\ nil) do
-    case __get__(key, nil, otp_app) do
+  def __get__!(key, opts \\ [], _nothing \\ nil) do
+    case __get__(key, nil, opts) do
       nil ->
-        compilation_error("Missing configuration value: #{inspect([otp_app, key], pretty: true)}")
+        compilation_error(
+          "Missing configuration value: #{inspect(key, pretty: true)} with opts: #{inspect(opts, pretty: true)}"
+        )
 
       any ->
         any
