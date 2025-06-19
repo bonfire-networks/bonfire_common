@@ -438,13 +438,15 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def elixirc_paths(config, :test) do
       paths_to_test = cli_args_paths_to_test()
 
-      testable_deps =
+      all_testable_deps =
         test_deps(config)
         |> Enum.flat_map(&dep_paths/1)
 
+      # |> log("all_testable_deps")
+
       testable_paths =
-        case find_matching_paths(paths_to_test, testable_deps) do
-          [] -> testable_deps
+        case find_matching_paths(paths_to_test, all_testable_deps) do
+          [] -> all_testable_deps
           testable_paths -> testable_paths
         end
 
@@ -452,7 +454,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
         "lib",
         "test/support"
         | dep_paths(testable_paths, "test/support")
-        # |> IO.inspect(label: "elixirc_paths")
+        # |> log("elixirc_paths")
       ]
     end
 
@@ -517,14 +519,22 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
     def find_matching_paths(paths_to_test, testable_deps) do
       testable_deps_set = MapSet.new(testable_deps)
 
-      Enum.flat_map(paths_to_test, fn filter_path ->
-        Enum.filter(testable_deps_set, fn dep_path ->
-          filter_path == dep_path or String.starts_with?(filter_path, dep_path) or
-            String.starts_with?(dep_path, filter_path)
+      result =
+        Enum.flat_map(paths_to_test, fn filter_path ->
+          # Check for wildcard and throw immediately if found
+          if String.contains?(filter_path, "*"), do: throw(:wildcard_found)
+
+          Enum.filter(testable_deps_set, fn dep_path ->
+            filter_path == dep_path or String.starts_with?(filter_path, dep_path) or
+              String.starts_with?(dep_path, filter_path)
+          end)
         end)
-      end)
-      |> Enum.uniq()
-      |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+        |> Enum.reject(&is_nil/1)
+
+      result
+    catch
+      :wildcard_found -> []
     end
 
     def include_dep?(:update, dep, prefixes) when is_tuple(dep),
@@ -586,6 +596,9 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
       if force?, do: path, else: path_if_exists(path)
     end
+
+    def dep_path(dep, force?) when is_list(dep) and length(dep) == 1,
+      do: Enum.map(dep, &dep_path(&1, force?)) |> List.first()
 
     defp path_if_exists(path), do: if(File.exists?(path), do: path)
 

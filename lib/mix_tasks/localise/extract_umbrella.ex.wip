@@ -1,0 +1,142 @@
+defmodule Mix.Tasks.Bonfire.Localise.Extract.Wip do
+  use Mix.Task
+  @recursive false
+
+  def run(args) do
+    unless Mix.Project.umbrella?() do
+      msg =
+        "Cannot run task gettext.extract.umbrella from place " <>
+          "other than umbrella application root dir."
+
+      Mix.raise(msg)
+    end
+
+    _ = Application.ensure_all_started(:gettext)
+    force_recompile_and_extract()
+
+    Mix.Task.run("gettext.extract", args)
+  end
+
+  defp force_recompile_and_extract do
+    Gettext.Extractor.enable()
+    Mix.Task.run("compile", ["--force"])
+  after
+    Gettext.Extractor.disable()
+  end
+end
+
+#   use Mix.Task
+#   @recursive false
+
+#   @shortdoc "Extracts messages from source code"
+
+#   @switches [merge: :boolean, check_up_to_date: :boolean, backend: :string, for: :keep]
+
+#   @impl true
+#   def run(args) do
+#     unless Mix.Project.umbrella?() do
+#       msg =
+#         "The task dcp.gettext.extract can be ran " <>
+#           "only in umbrella application root."
+
+#       Mix.raise(msg)
+#     end
+
+#     Application.ensure_all_started(:gettext)
+#     _ = Mix.Project.get!()
+
+#     {opts, _} = OptionParser.parse!(args, switches: @switches)
+
+#     apps_target = Keyword.get_values(opts, :for)
+#     apps_path = Mix.Project.apps_paths()
+
+#     backend_app_name = opts |> Keyword.fetch!(:backend) |> String.to_existing_atom()
+
+#     backend_app =
+#       {backend_app_name, Map.fetch!(apps_path, backend_app_name)}
+
+#     for {app_name, app_path} = current_app <- apps_path, "#{app_name}" in apps_target do
+#       pot_files = extract(current_app, backend_app)
+
+#       Mix.Project.in_project(app_name, app_path, fn _module ->
+#         if opts[:check_up_to_date] do
+#           run_up_to_date_check(pot_files)
+#         else
+#           run_message_extraction(pot_files, opts, args)
+#         end
+#       end)
+#     end
+
+#   end
+
+#   defp run_message_extraction(pot_files, opts, args) do
+#     for {path, contents} <- pot_files do
+#       File.mkdir_p!(Path.dirname(path))
+#       File.write!(path, contents)
+#       Mix.shell().info("Extracted #{Path.relative_to_cwd(path)}")
+#     end
+
+#     if opts[:merge] do
+#       run_merge(pot_files, args)
+#     end
+
+#     :ok
+#   end
+
+#   defp run_up_to_date_check(pot_files) do
+#     not_extracted_paths = for {path, _contents} <- pot_files, do: path
+
+#     if pot_files == [] do
+#       :ok
+#     else
+#       Mix.raise("""
+#       mix gettext.extract failed due to --check-up-to-date.
+#       The following POT files were not extracted or are out of date:
+
+#       #{Enum.map_join(not_extracted_paths, "\n", &"  * #{&1 |> Path.relative_to_cwd()}")}
+#       """)
+#     end
+#   end
+
+#   defp extract(current_app, backend_app) do
+#     Gettext.Extractor.enable()
+
+#     {current_app_name, current_app_path} = current_app
+#     {backend_app_name, backend_app_path} = backend_app
+
+#     Mix.Project.in_project(backend_app_name, backend_app_path, fn _module ->
+#       force_compile()
+#     end)
+
+#     Mix.Project.in_project(current_app_name, current_app_path, fn _module ->
+#       force_compile()
+
+#       mix_config = Mix.Project.config()
+#       Gettext.Extractor.pot_files(backend_app_name, mix_config[:gettext] || [])
+#     end)
+#   after
+#     Gettext.Extractor.disable()
+#   end
+
+#   defp force_compile() do
+#     Mix.Tasks.Compile.Elixir.clean()
+#     Enum.each(Mix.Tasks.Compile.Elixir.manifests(), &File.rm/1)
+
+#     # If "compile" was never called, the reenabling is a no-op and
+#     # "compile.elixir" is a no-op as well (because it wasn't reenabled after
+#     # running "compile"). If "compile" was already called, then running
+#     # "compile" is a no-op and running "compile.elixir" will work because we
+#     # manually reenabled it.
+#     Mix.Task.reenable("compile.elixir")
+#     Mix.Task.run("compile")
+#     Mix.Task.run("compile.elixir", ["--force"])
+#   end
+
+#   defp run_merge(pot_files, argv) do
+#     pot_files
+#     |> Enum.map(fn {path, _} -> Path.dirname(path) end)
+#     |> Enum.uniq()
+#     |> Task.async_stream(&Mix.Tasks.Gettext.Merge.run([&1 | argv]), ordered: false)
+#     |> Stream.run()
+#   end
+# end
