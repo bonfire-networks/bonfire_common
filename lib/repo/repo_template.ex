@@ -617,14 +617,14 @@ defmodule Bonfire.Common.RepoTemplate do
       def transact_many([]), do: {:ok, []}
 
       def transact_many(queries) when is_list(queries) do
-        transaction(fn -> Enum.map(queries, &transact/1) end)
+        transaction(fn -> Enum.map(queries, &do_transact/1) end)
       end
 
-      defp transact({:all, q}), do: many(q)
-      defp transact({:count, q}), do: aggregate(q, :count)
-      defp transact({:one, q}), do: one(q)
+      defp do_transact({:all, q}), do: many(q)
+      defp do_transact({:count, q}), do: aggregate(q, :count)
+      defp do_transact({:one, q}), do: one(q)
 
-      defp transact({:one!, q}) do
+      defp do_transact({:one!, q}) do
         {:ok, ret} = single(q)
         ret
       end
