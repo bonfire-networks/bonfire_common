@@ -91,7 +91,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   defmacro l(msgid, bindings, nil, nil)
            when is_list(bindings) or (is_map(bindings) and is_binary(msgid)) do
-    case caller_app(__CALLER__.module) do
+    case extension_name(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         # debug(msgid, "domain based on caller module: #{inspect otp_app}")
 
@@ -112,7 +112,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro l(msgid, bindings, context, nil)
            when (is_binary(context) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    case caller_app(__CALLER__.module) do
+    case extension_name(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         # debug(msgid, "custom context #{context} + domain based on module #{inspect otp_app}")
 
@@ -185,7 +185,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lp(msgid, msgid_plural, n, bindings, nil, nil)
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or is_map(bindings) do
-    case caller_app(__CALLER__.module) do
+    case extension_name(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         # debug(msgid, "plural: domain based on module #{inspect mod}: #{inspect otp_app}")
 
@@ -215,7 +215,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
                   (is_map(bindings) and is_binary(context)) do
-    case caller_app(__CALLER__.module) do
+    case extension_name(__CALLER__.module) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         # debug(msgid, "plural: custom context #{context} + domain based on module #{inspect otp_app}")
 
@@ -291,8 +291,8 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     * `caller_module` - (Optional) The module from which the call originates.
   """
   # @decorate time()
-  def localise_dynamic(msgid, caller_module \\ nil) do
-    otp_app = caller_app(caller_module) || :bonfire
+  def localise_dynamic(msgid, module \\ nil) do
+    otp_app = extension_name(module) || :bonfire
 
     Gettext.dgettext(
       Bonfire.Common.Localise.Gettext,
@@ -321,7 +321,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro localise_strings(strings, caller_module \\ nil) do
     {strings, _} = Code.eval_quoted(strings)
     {caller_module, _} = Code.eval_quoted(caller_module)
-    domain = Atom.to_string(caller_app(caller_module || __CALLER__.module))
+    domain = Atom.to_string(extension_name(caller_module || __CALLER__.module))
 
     for msg <- strings do
       quote do
@@ -331,18 +331,26 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     end
   end
 
-  defp caller_app(caller_module) when is_atom(caller_module) do
-    case Application.get_application(caller_module) do
+  defp extension_name(nil), do: :bonfire
+
+  defp extension_name(module_or_app) when is_atom(module_or_app) do
+    case Application.get_application(module_or_app) do
       # ^ can't use cached result at compile time
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         otp_app
 
-      _ ->
-        mix =
-          if Code.ensure_loaded?(Mix.Project),
-            do: Mix.Project.get()
+      _not_a_known_module ->
+        case Application.spec(module_or_app) do
+          nil ->
+            mix =
+              if Code.ensure_loaded?(Mix.Project),
+                do: Mix.Project.get()
 
-        if mix, do: mix.project()[:app]
+            if mix, do: mix.project()[:app]
+
+          _known_app_spec ->
+            module_or_app
+        end
     end
   end
 end

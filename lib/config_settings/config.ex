@@ -105,7 +105,7 @@ defmodule Bonfire.Common.Config do
       "test_value"
 
       iex> get!(:missing_key, :bonfire_common)
-      ** (Bonfire.Common.Config.Error) Missing configuration value: [:bonfire_common, :missing_key]
+      ** (Bonfire.Common.Config.Error) Missing configuration value: :missing_key with opts: :bonfire_common
 
   """
   Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
