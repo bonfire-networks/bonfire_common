@@ -92,12 +92,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro l(msgid, bindings, nil, nil)
            when is_list(bindings) or (is_map(bindings) and is_binary(msgid)) do
     case extension_name(__CALLER__.module) do
-      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+      otp_app when is_binary(otp_app) ->
         # debug(msgid, "domain based on caller module: #{inspect otp_app}")
 
         quote do:
                 dgettext(
-                  unquote(Atom.to_string(otp_app)),
+                  unquote(otp_app),
                   unquote(msgid),
                   unquote(bindings)
                 )
@@ -113,12 +113,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
            when (is_binary(context) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
     case extension_name(__CALLER__.module) do
-      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+      otp_app when is_binary(otp_app) ->
         # debug(msgid, "custom context #{context} + domain based on module #{inspect otp_app}")
 
         quote do:
                 dpgettext(
-                  unquote(Atom.to_string(otp_app)),
+                  unquote(otp_app),
                   unquote(context),
                   unquote(msgid),
                   unquote(bindings)
@@ -186,12 +186,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or is_map(bindings) do
     case extension_name(__CALLER__.module) do
-      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+      otp_app when is_binary(otp_app) ->
         # debug(msgid, "plural: domain based on module #{inspect mod}: #{inspect otp_app}")
 
         quote do:
                 dngettext(
-                  unquote(Atom.to_string(otp_app)),
+                  unquote(otp_app),
                   unquote(msgid),
                   unquote(msgid_plural),
                   unquote(n),
@@ -216,12 +216,12 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
                    is_list(bindings)) or
                   (is_map(bindings) and is_binary(context)) do
     case extension_name(__CALLER__.module) do
-      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+      otp_app when is_binary(otp_app) ->
         # debug(msgid, "plural: custom context #{context} + domain based on module #{inspect otp_app}")
 
         quote do:
                 dpngettext(
-                  unquote(Atom.to_string(otp_app)),
+                  unquote(otp_app),
                   unquote(context),
                   unquote(msgid),
                   unquote(msgid_plural),
@@ -296,7 +296,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
     Gettext.dgettext(
       Bonfire.Common.Localise.Gettext,
-      Atom.to_string(otp_app),
+      otp_app,
       "#{msgid}"
     )
   end
@@ -321,7 +321,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro localise_strings(strings, caller_module \\ nil) do
     {strings, _} = Code.eval_quoted(strings)
     {caller_module, _} = Code.eval_quoted(caller_module)
-    domain = Atom.to_string(extension_name(caller_module || __CALLER__.module))
+    domain = extension_name(caller_module || __CALLER__.module)
 
     for msg <- strings do
       quote do
@@ -337,7 +337,7 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     case Application.get_application(module_or_app) do
       # ^ can't use cached result at compile time
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
-        otp_app
+        to_string(otp_app)
 
       _not_a_known_module ->
         case Application.spec(module_or_app) do
@@ -346,10 +346,10 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
               if Code.ensure_loaded?(Mix.Project),
                 do: Mix.Project.get()
 
-            if mix, do: mix.project()[:app]
+            if mix, do: to_string(mix.project()[:app])
 
           _known_app_spec ->
-            module_or_app
+            to_string(module_or_app)
         end
     end
   end
