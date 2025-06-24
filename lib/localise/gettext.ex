@@ -91,66 +91,121 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   defmacro l(msgid, bindings, nil, nil)
            when is_list(bindings) or (is_map(bindings) and is_binary(msgid)) do
-    case extension_name(__CALLER__.module) do
-      otp_app when is_binary(otp_app) ->
-        # debug(msgid, "domain based on caller module: #{inspect otp_app}")
+    # Calculate domain based on current extension
+    domain = extension_name(__CALLER__.module)
 
-        quote do:
-                dgettext(
-                  unquote(otp_app),
-                  unquote(msgid),
-                  unquote(bindings)
-                )
+    # Generate POT patching code using the domain
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
 
-      _ ->
-        # debug(msgid, "no domain or context")
+    translation_ast =
+      case domain do
+        otp_app when is_binary(otp_app) ->
+          quote do:
+                  dgettext(
+                    unquote(otp_app),
+                    unquote(msgid),
+                    unquote(bindings)
+                  )
 
-        quote do: gettext(unquote(msgid), unquote(bindings))
+        _ ->
+          quote do: gettext(unquote(msgid), unquote(bindings))
+      end
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
     end
   end
 
   defmacro l(msgid, bindings, context, nil)
            when (is_binary(context) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    case extension_name(__CALLER__.module) do
-      otp_app when is_binary(otp_app) ->
-        # debug(msgid, "custom context #{context} + domain based on module #{inspect otp_app}")
+    # Use the explicitly provided context 
 
-        quote do:
-                dpgettext(
-                  unquote(otp_app),
-                  unquote(context),
-                  unquote(msgid),
-                  unquote(bindings)
-                )
+    domain = extension_name(__CALLER__.module)
 
-      _ ->
-        # debug(msgid, "custom context #{context} - no domain")
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
 
-        quote do: pgettext(unquote(context), unquote(msgid), unquote(bindings))
+    translation_ast =
+      case domain do
+        otp_app when is_binary(otp_app) ->
+          quote do:
+                  dpgettext(
+                    unquote(otp_app),
+                    unquote(context),
+                    unquote(msgid),
+                    unquote(bindings)
+                  )
+
+        _ ->
+          quote do: pgettext(unquote(context), unquote(msgid), unquote(bindings))
+      end
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
     end
   end
 
   defmacro l(msgid, bindings, nil, domain)
            when (is_binary(domain) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    # debug(msgid, "custom domain #{domain}")
+    # Use the explicitly provided domain 
 
-    quote do: dgettext(unquote(domain), unquote(msgid), unquote(bindings))
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
+
+    translation_ast = quote do: dgettext(unquote(domain), unquote(msgid), unquote(bindings))
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
+    end
   end
 
   defmacro l(msgid, bindings, context, domain)
            when (is_binary(domain) and is_binary(context) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    # debug(msgid, "custom context #{context} + domain #{domain}")
+    # Use the explicitly provided context and domain 
 
-    quote do:
-            dpgettext(
-              unquote(domain),
-              unquote(context),
-              unquote(msgid),
-              unquote(bindings)
-            )
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
+
+    translation_ast =
+      quote do:
+              dpgettext(
+                unquote(domain),
+                unquote(context),
+                unquote(msgid),
+                unquote(bindings)
+              )
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
+    end
   end
 
   @doc """
@@ -185,29 +240,41 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lp(msgid, msgid_plural, n, bindings, nil, nil)
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or is_map(bindings) do
-    case extension_name(__CALLER__.module) do
-      otp_app when is_binary(otp_app) ->
-        # debug(msgid, "plural: domain based on module #{inspect mod}: #{inspect otp_app}")
+    domain = extension_name(__CALLER__.module)
 
-        quote do:
-                dngettext(
-                  unquote(otp_app),
-                  unquote(msgid),
-                  unquote(msgid_plural),
-                  unquote(n),
-                  unquote(bindings)
-                )
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
 
-      _ ->
-        # debug(msgid, "plural: no domain or context / #{inspect mod}")
+    translation_ast =
+      case domain do
+        otp_app when is_binary(otp_app) ->
+          quote do:
+                  dngettext(
+                    unquote(otp_app),
+                    unquote(msgid),
+                    unquote(msgid_plural),
+                    unquote(n),
+                    unquote(bindings)
+                  )
 
-        quote do:
-                ngettext(
-                  unquote(msgid),
-                  unquote(msgid_plural),
-                  unquote(n),
-                  unquote(bindings)
-                )
+        _ ->
+          quote do:
+                  ngettext(
+                    unquote(msgid),
+                    unquote(msgid_plural),
+                    unquote(n),
+                    unquote(bindings)
+                  )
+      end
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
     end
   end
 
@@ -215,31 +282,45 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
                   (is_map(bindings) and is_binary(context)) do
-    case extension_name(__CALLER__.module) do
-      otp_app when is_binary(otp_app) ->
-        # debug(msgid, "plural: custom context #{context} + domain based on module #{inspect otp_app}")
+    # Use the explicitly provided context 
 
-        quote do:
-                dpngettext(
-                  unquote(otp_app),
-                  unquote(context),
-                  unquote(msgid),
-                  unquote(msgid_plural),
-                  unquote(n),
-                  unquote(bindings)
-                )
+    domain = extension_name(__CALLER__.module)
 
-      _ ->
-        # debug(msgid, "plural: custom context #{context} - no domain")
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
 
-        quote do:
-                pngettext(
-                  unquote(context),
-                  unquote(msgid),
-                  unquote(msgid_plural),
-                  unquote(n),
-                  unquote(bindings)
-                )
+    translation_ast =
+      case domain do
+        otp_app when is_binary(otp_app) ->
+          quote do:
+                  dpngettext(
+                    unquote(otp_app),
+                    unquote(context),
+                    unquote(msgid),
+                    unquote(msgid_plural),
+                    unquote(n),
+                    unquote(bindings)
+                  )
+
+        _ ->
+          quote do:
+                  pngettext(
+                    unquote(context),
+                    unquote(msgid),
+                    unquote(msgid_plural),
+                    unquote(n),
+                    unquote(bindings)
+                  )
+      end
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
     end
   end
 
@@ -247,33 +328,61 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
                   (is_map(bindings) and is_binary(domain)) do
-    # debug(msgid, "plural: custom domain #{domain}")
+    # Use the explicitly provided domain 
 
-    quote do:
-            dngettext(
-              unquote(domain),
-              unquote(msgid),
-              unquote(msgid_plural),
-              unquote(n),
-              unquote(bindings)
-            )
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
+
+    translation_ast =
+      quote do:
+              dngettext(
+                unquote(domain),
+                unquote(msgid),
+                unquote(msgid_plural),
+                unquote(n),
+                unquote(bindings)
+              )
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
+    end
   end
 
   defmacro lp(msgid, msgid_plural, n, bindings, context, domain)
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
                   (is_map(bindings) and is_binary(context) and is_binary(domain)) do
-    # debug(msgid, "plural: custom context #{context} + domain #{domain}")
+    # Use the explicitly provided context and domain 
 
-    quote do:
-            dpngettext(
-              unquote(domain),
-              unquote(context),
-              unquote(msgid),
-              unquote(msgid_plural),
-              unquote(n),
-              unquote(bindings)
-            )
+    pot_patch_ast =
+      Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
+        msgid,
+        domain,
+        __CALLER__.file,
+        __CALLER__.line
+      )
+
+    translation_ast =
+      quote do:
+              dpngettext(
+                unquote(domain),
+                unquote(context),
+                unquote(msgid),
+                unquote(msgid_plural),
+                unquote(n),
+                unquote(bindings)
+              )
+
+    quote do
+      unquote(pot_patch_ast)
+      unquote(translation_ast)
+    end
   end
 
   @doc """
