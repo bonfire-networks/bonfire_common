@@ -6,6 +6,7 @@ defmodule Bonfire.Common.Media do
   use Bonfire.Common.E
   use Bonfire.Common.Localise
   use Bonfire.Common.Config
+  use Bonfire.Common.Settings
   alias Common.Utils
   alias Common.Enums
   alias Common.Cache
@@ -485,5 +486,14 @@ defmodule Bonfire.Common.Media do
       _ ->
         error("File not found")
     end
+  end
+
+  def hide_avatars?(context, showing_within \\ nil) do
+    showing_within == :search or
+      Settings.get([Bonfire.UI.Common.AvatarLive, :hide_avatars], false,
+        context: context,
+        name: l("Hide Avatars"),
+        description: l("Hide user avatars throughout the interface.")
+      )
   end
 end
