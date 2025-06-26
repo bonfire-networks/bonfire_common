@@ -320,7 +320,7 @@ defmodule Bonfire.Common.Text do
       "<p>Not markdown</p>"
   """
   # @decorate time_tree(10)
-  def maybe_markdown_to_html(nothing, opts \\ [])
+  def maybe_markdown_to_html(content, opts \\ [])
 
   def maybe_markdown_to_html(nothing, _opts)
       when not is_binary(nothing) or nothing == "" do
