@@ -273,25 +273,27 @@ defmodule Bonfire.Common.Media do
       iex> image_url(%{nonexistent_key: "value"})
       nil
   """
+  @image_exts [".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"]
+
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
 
   def image_url(%{icon: %{path: "http" <> _ = url}}) do
-    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if String.ends_with?(url, @image_exts), do: url, else: nil
   end
 
   def image_url(%{image: %{id: _} = media}),
     do: Utils.maybe_apply(Bonfire.Files.ImageUploader, :remote_url, [media], fallback_return: nil)
 
   def image_url(%{path: "http" <> _ = url} = _media) do
-    if String.ends_with?(url || "", [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if String.ends_with?(url, @image_exts), do: url, else: nil
   end
 
   def image_url(%{path: _} = media) do
     url =
       Utils.maybe_apply(Bonfire.Files.ImageUploader, :remote_url, [media], fallback_return: nil)
 
-    if String.ends_with?(url || "", [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if String.ends_with?(url || "", @image_exts), do: url, else: nil
   end
 
   def image_url(%{image_id: image_id}) when is_binary(image_id),
