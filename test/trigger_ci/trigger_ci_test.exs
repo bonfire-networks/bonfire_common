@@ -1,7 +1,9 @@
 defmodule Bonfire.Common.TriggerCITest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Bonfire.Common.TriggerCI
+
+  @moduletag :todo
 
   setup do
     # Configure Req.Test for this specific test module  

@@ -246,6 +246,7 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
 
         # Check default is evaluated
         assert date_format.default == :relative
+        # FIXME
         assert "Date format" = Keyword.get(date_format.opts, :name)
         assert Keyword.get(date_format.opts, :type) == :select
 
