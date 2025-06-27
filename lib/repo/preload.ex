@@ -274,7 +274,8 @@ defmodule Bonfire.Common.Repo.Preload do
     objects
     |> Enum.group_by(&calculate_path_depth(&1, path))
     |> Enum.sort_by(fn {depth, _} -> -depth end)
-    |> debug()
+
+    # |> debug()
   end
 
   # Calculate how deep into the path an object can go

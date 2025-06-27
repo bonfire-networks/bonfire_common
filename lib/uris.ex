@@ -115,7 +115,7 @@ defmodule Bonfire.Common.URIs do
               Bonfire.Web.Router.Reverse,
               :path,
               ...,
-              fn error, details ->
+              fallback_fun: fn error, details ->
                 if opts[:fallback] == false do
                   debug(details, inspect(error))
                 else

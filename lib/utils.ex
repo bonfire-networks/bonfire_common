@@ -674,37 +674,51 @@ defmodule Bonfire.Common.Utils do
             # |> debug("ran")
           rescue
             e in FunctionClauseError ->
-              {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
+              exception = Errors.debug_banner(:error, e, __STACKTRACE__)
 
-              error(stacktrace, exception)
+              msg =
+                "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}"
+
+              if opts[:ignore_errors] || opts[:fallback_fun] do
+                debug(exception, msg, stacktrace: __STACKTRACE__)
+              else
+                err(exception, msg, stacktrace: __STACKTRACE__)
+              end
 
               maybe_apply_fallback(
-                "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                msg,
                 args,
                 opts
               )
 
             e in ArgumentError ->
-              {exception, stacktrace} = Errors.debug_banner_with_trace(:error, e, __STACKTRACE__)
+              exception = Errors.debug_banner(:error, e, __STACKTRACE__)
 
-              error(stacktrace, exception)
+              msg =
+                "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}"
+
+              if opts[:ignore_errors] || opts[:fallback_fun] do
+                debug(exception, msg, stacktrace: __STACKTRACE__)
+              else
+                err(exception, msg, stacktrace: __STACKTRACE__)
+              end
 
               maybe_apply_fallback(
-                "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}",
+                msg,
                 args,
                 opts
               )
           end
         end
       else
-        maybe_apply_fallback(
+        maybe_apply_error(
           "None of the functions #{inspect(funs)} are defined at #{module} with arity #{arity}",
           args,
           opts
         )
       end
     else
-      maybe_apply_fallback("No such module (#{module}) could be loaded.", args, opts)
+      maybe_apply_error("No such module (#{module}) could be loaded.", args, opts)
     end
   end
 
@@ -745,17 +759,21 @@ defmodule Bonfire.Common.Utils do
         opts
       ),
       do:
-        maybe_apply_fallback(
+        maybe_apply_error(
           "invalid function call for #{inspect(fun)} on #{inspect(module)}",
           args,
           opts
         )
 
-  def maybe_apply_fallback(error, args, opts) do
-    warn(error)
+  def maybe_apply_error(error, args, opts) do
+    error(error)
     # debug(args, "maybe_apply args")
     # debug(opts, "maybe_apply opts")
 
+    maybe_apply_fallback(error, args, opts)
+  end
+
+  def maybe_apply_fallback(error, args, opts) do
     do_maybe_apply_fallback(
       Keyword.get(
         opts,

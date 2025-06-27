@@ -229,33 +229,33 @@ defmodule Bonfire.Common.Errors do
     {exception, stacktrace}
   end
 
-  defp debug_banner(kind, errors, stacktrace, opts)
+  def debug_banner(kind, errors, stacktrace, opts \\ [])
 
-  defp debug_banner(kind, errors, stacktrace, opts) when is_list(errors) do
+  def debug_banner(kind, errors, stacktrace, opts) when is_list(errors) do
     errors
     |> Enum.map(&debug_banner(kind, &1, stacktrace, opts))
     |> Enum.join("\n")
   end
 
-  defp debug_banner(kind, {:error, error}, stacktrace, opts) do
+  def debug_banner(kind, {:error, error}, stacktrace, opts) do
     debug_banner(kind, error, stacktrace, opts)
   end
 
-  # defp debug_banner(_kind, %Ecto.Changeset{} = _cs, _, _opts) do
+  # def debug_banner(_kind, %Ecto.Changeset{} = _cs, _, _opts) do
   #   # TODO?
   #   EctoSparkles.Changesets.Errors.changeset_errors_string(cs)
   # end
 
-  defp debug_banner(kind, %_{} = exception, stacktrace, opts)
-       when not is_nil(stacktrace) and stacktrace != [] do
+  def debug_banner(kind, %_{} = exception, stacktrace, opts)
+      when not is_nil(stacktrace) and stacktrace != [] do
     format_banner(kind, exception, stacktrace, opts)
   end
 
-  defp debug_banner(_kind, exception, _stacktrace, _opts) when is_binary(exception) do
+  def debug_banner(_kind, exception, _stacktrace, _opts) when is_binary(exception) do
     exception
   end
 
-  defp debug_banner(_kind, exception, _stacktrace, _opts) do
+  def debug_banner(_kind, exception, _stacktrace, _opts) do
     inspect(exception)
   end
 
