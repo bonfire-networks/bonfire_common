@@ -10,7 +10,9 @@ defmodule Bonfire.Common.Media do
   alias Common.Utils
   alias Common.Enums
   alias Common.Cache
+  alias Bonfire.Files
 
+  @image_exts [".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"]
   @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
 
   @doc """
@@ -76,9 +78,7 @@ defmodule Bonfire.Common.Media do
       debug(media, "non-image url")
 
       e(media, :metadata, :canonical_url, nil) ||
-        Utils.maybe_apply(Bonfire.Files.DocumentUploader, :remote_url, [media],
-          fallback_return: nil
-        )
+        Utils.maybe_apply(Files.DocumentUploader, :remote_url, [media], fallback_return: nil)
     end
   end
 
@@ -107,11 +107,11 @@ defmodule Bonfire.Common.Media do
       "http://thumbnail.jpg"
 
       iex> thumbnail_url(%{media_type: "video/mp4", path: "video.mpeg"})
-      # Assume Bonfire.Files.VideoUploader.remote_url/2 with :thumbnail returns "http://video-thumbnail.jpg"
+      # Assume Files.VideoUploader.remote_url/2 with :thumbnail returns "http://video-thumbnail.jpg"
       "http://video-thumbnail.jpg"
 
       iex> thumbnail_url(%{path: "document.pdf", media_type: "document"})
-      # Assume Bonfire.Files.DocumentUploader.remote_url/2 with :thumbnail returns "http://document-thumbnail.jpg"
+      # Assume Files.DocumentUploader.remote_url/2 with :thumbnail returns "http://document-thumbnail.jpg"
       "http://document-thumbnail.jpg"
 
       iex> thumbnail_url(%{nonexistent_key: "value"})
@@ -137,12 +137,12 @@ defmodule Bonfire.Common.Media do
         image_url(media) |> debug("imggg2")
 
       String.starts_with?(media_type || "", "video") ->
-        Utils.maybe_apply(Bonfire.Files.VideoUploader, :remote_url, [media, :thumbnail],
+        Utils.maybe_apply(Files.VideoUploader, :remote_url, [media, :thumbnail],
           fallback_return: nil
         )
 
       true ->
-        Utils.maybe_apply(Bonfire.Files.DocumentUploader, :remote_url, [media, :thumbnail],
+        Utils.maybe_apply(Files.DocumentUploader, :remote_url, [media, :thumbnail],
           fallback_return: nil
         )
     end
@@ -165,11 +165,11 @@ defmodule Bonfire.Common.Media do
       "http://example.com/path.png"
 
       iex> avatar_url(%{icon_id: "icon123"})
-      # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/icon123.png"
+      # Assume Files.IconUploader.remote_url/1 returns "http://example.com/icon123.png"
       "http://example.com/icon123.png"
 
       iex> avatar_url(%{path: "image.jpg"})
-      # Assume Bonfire.Files.IconUploader.remote_url/1 returns "http://example.com/image.jpg"
+      # Assume Files.IconUploader.remote_url/1 returns "http://example.com/image.jpg"
       "http://example.com/image.jpg"
 
       iex> avatar_url(%{icon: "http://example.com/icon.png"})
@@ -194,17 +194,16 @@ defmodule Bonfire.Common.Media do
   def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
 
   def avatar_url(%{icon: %{id: _} = media}),
-    do: Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
 
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id),
-    do:
-      Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [icon_id], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [icon_id], fallback_return: nil)
 
   def avatar_url(%{path: _} = media),
-    do: Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
 
   def avatar_url(%{file: _} = media),
-    do: Utils.maybe_apply(Bonfire.Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
 
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   # handle VF API
@@ -231,12 +230,6 @@ defmodule Bonfire.Common.Media do
 
   # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
-  def image_url(url) when is_binary(url), do: url
-
-  def image_url(%{media_type: media_type} = _media) when media_type in @external do
-    nil
-  end
-
   @doc """
   Takes a Media map (or an object containing one) and returns the image's URL.
 
@@ -261,7 +254,7 @@ defmodule Bonfire.Common.Media do
       "http://example.com/image.png"
 
       iex> image_url(%{image_id: "image123"})
-      # Assume Bonfire.Files.ImageUploader.remote_url/1 returns "http://example.com/image123.png"
+      # Assume Files.ImageUploader.remote_url/1 returns "http://example.com/image123.png"
       "http://example.com/image123.png"
 
       iex> image_url(%{image: "http://example.com/image.png"})
@@ -273,34 +266,36 @@ defmodule Bonfire.Common.Media do
       iex> image_url(%{nonexistent_key: "value"})
       nil
   """
-  @image_exts [".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"]
+
+  def image_url(url) when is_binary(url), do: url
+
+  def image_url(%{media_type: media_type} = _media) when media_type in @external do
+    nil
+  end
 
   def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
   def image_url(%{image: %{url: url}}) when is_binary(url), do: url
 
   def image_url(%{icon: %{path: "http" <> _ = url}}) do
-    if String.ends_with?(url, @image_exts), do: url, else: nil
+    if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
   def image_url(%{image: %{id: _} = media}),
-    do: Utils.maybe_apply(Bonfire.Files.ImageUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.ImageUploader, :remote_url, [media], fallback_return: nil)
 
   def image_url(%{path: "http" <> _ = url} = _media) do
-    if String.ends_with?(url, @image_exts), do: url, else: nil
+    if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
   def image_url(%{path: _} = media) do
     url =
-      Utils.maybe_apply(Bonfire.Files.ImageUploader, :remote_url, [media], fallback_return: nil)
+      Utils.maybe_apply(Files.ImageUploader, :remote_url, [media], fallback_return: nil)
 
-    if String.ends_with?(url || "", @image_exts), do: url, else: nil
+    if Files.has_extension?(url || "", @image_exts), do: url, else: nil
   end
 
   def image_url(%{image_id: image_id}) when is_binary(image_id),
-    do:
-      Utils.maybe_apply(Bonfire.Files.ImageUploader, :remote_url, [image_id],
-        fallback_return: nil
-      )
+    do: Utils.maybe_apply(Files.ImageUploader, :remote_url, [image_id], fallback_return: nil)
 
   def image_url(%{image: url}) when is_binary(url), do: url
   def image_url(%{profile: profile}), do: image_url(profile)
@@ -323,7 +318,7 @@ defmodule Bonfire.Common.Media do
   ## Examples
 
       iex> banner_url(%{profile: %{image: %{id: "banner123"}}})
-      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner123.png"
+      # Assume Files.BannerUploader.remote_url/1 returns "http://example.com/banner123.png"
       "http://example.com/banner123.png"
 
       iex> banner_url(%{image: %{url: "http://example.com/banner.png"}})
@@ -336,14 +331,14 @@ defmodule Bonfire.Common.Media do
       "http://example.com/banner.png"
 
       iex> banner_url(%{image_id: "banner456"})
-      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner456.png"
+      # Assume Files.BannerUploader.remote_url/1 returns "http://example.com/banner456.png"
       "http://example.com/banner456.png"
 
       iex> banner_url(%{image: "http://example.com/banner.png"})
       "http://example.com/banner.png"
 
       iex> banner_url(%{profile: %{image: %{id: "banner789"}}})
-      # Assume Bonfire.Files.BannerUploader.remote_url/1 returns "http://example.com/banner789.png"
+      # Assume Files.BannerUploader.remote_url/1 returns "http://example.com/banner789.png"
       "http://example.com/banner789.png"
 
       iex> banner_url(%{nonexistent_key: "value"})
@@ -354,26 +349,21 @@ defmodule Bonfire.Common.Media do
   def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
 
   def banner_url(%{image: %{path: "http" <> _ = url}}) do
-    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
   def banner_url(%{path: "http" <> _ = url} = _media) do
-    if String.ends_with?(url, [".gif", ".jpg", ".jpeg", ".png"]), do: url, else: nil
+    if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
   def banner_url(%{image: %{id: _} = media}),
-    do:
-      Utils.maybe_apply(Bonfire.Files.BannerUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [media], fallback_return: nil)
 
   def banner_url(%{path: path} = media) when is_binary(path),
-    do:
-      Utils.maybe_apply(Bonfire.Files.BannerUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [media], fallback_return: nil)
 
   def banner_url(%{image_id: image_id}) when is_binary(image_id),
-    do:
-      Utils.maybe_apply(Bonfire.Files.BannerUploader, :remote_url, [image_id],
-        fallback_return: nil
-      )
+    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [image_id], fallback_return: nil)
 
   def banner_url(%{image: url}) when is_binary(url), do: url
   def banner_url(%{profile: profile}), do: banner_url(profile)
@@ -386,7 +376,7 @@ defmodule Bonfire.Common.Media do
       )
 
   def emoji_url(media),
-    do: Utils.maybe_apply(Bonfire.Files.EmojiUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.EmojiUploader, :remote_url, [media], fallback_return: nil)
 
   @doc """
   Determines the dominant color for a given user’s avatar or banner.
@@ -421,7 +411,7 @@ defmodule Bonfire.Common.Media do
 
            _ ->
              avatar_url != avatar_fallback(Enums.id(user)) &&
-               Cache.maybe_apply_cached({Bonfire.Files.MediaEdit, :dominant_color}, [
+               Cache.maybe_apply_cached({Files.MediaEdit, :dominant_color}, [
                  Path.join(Config.get(:project_path), avatar_url),
                  15,
                  nil
