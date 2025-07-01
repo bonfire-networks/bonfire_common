@@ -30,6 +30,7 @@ defmodule Bonfire.Common.Testing do
     # Code.put_compiler_option(:nowarn_unused_vars, true)
 
     ExUnit.start()
+    Repatch.setup()
 
     if System.get_env("TEST_WITH_MNEME") != "no",
       do: Mneme.start(),
