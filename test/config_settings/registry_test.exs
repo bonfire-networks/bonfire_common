@@ -246,15 +246,16 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
 
         # Check default is evaluated
         assert date_format.default == :relative
-        # FIXME
-        assert "Date format" = Keyword.get(date_format.opts, :name)
+        # assert "Date format" = Keyword.get(date_format.opts, :name)
+        assert {:l, _, ["Date format"]} = Keyword.get(date_format.opts, :name)
+
         assert Keyword.get(date_format.opts, :type) == :select
 
         # Check options are preserved + evaluated
         assert options = Keyword.get(date_format.opts, :options)
         assert is_list(options)
-        assert Keyword.get(options, :relative) == "Relative"
-        assert Keyword.get(options, :long) == "Long"
+        assert {:l, _, ["Relative"]} = Keyword.get(options, :relative)
+        assert {:l, _, ["Long"]} = Keyword.get(options, :long)
       end
     end
 
