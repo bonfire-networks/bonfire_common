@@ -11,24 +11,24 @@ defmodule Bonfire.Common.PubSub do
 
   # def subscribe(topics, socket \\ nil)
 
-  def subscribe(topics, socket) when is_list(topics) do
-    Enum.each(topics, &subscribe(&1, socket))
+  def subscribe(topics, opts) when is_list(topics) do
+    Enum.each(topics, &subscribe(&1, opts))
   end
 
-  def subscribe(topic, socket_etc) when is_binary(topic) do
+  def subscribe(topic, opts) when is_binary(topic) do
     # debug(socket)
     # FIXME: should we only subscribe if socket is actually connected?
-    if socket_connected_or_user?(socket_etc) do
+    if socket_connected_or_user?(opts) do
       do_subscribe(topic)
     else
       debug(topic, "LiveView is not connected so we skip subscribing to")
     end
   end
 
-  def subscribe(topic, socket) do
+  def subscribe(topic, opts) do
     with topic when is_binary(topic) and topic != "" <- Types.maybe_to_string(topic) do
       debug(topic, "transformed the topic into a string we can subscribe to")
-      subscribe(topic, socket)
+      subscribe(topic, opts)
     else
       _ ->
         warn(
@@ -64,7 +64,7 @@ defmodule Bonfire.Common.PubSub do
   def broadcast(topic, data)
       when (is_atom(topic) or is_binary(topic)) and topic != "" and
              not is_nil(data) do
-    debug(topic)
+    debug(topic, "Broadcasting to")
     do_broadcast(topic, data)
   end
 
