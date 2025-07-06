@@ -28,7 +28,7 @@ defmodule Bonfire.Common.Cache do
 
   ## Options
     * `:cache_store` - The cache store to use (defaults to #{inspect(@default_store)})
-    * `:expire` - Time in milliseconds until the cache entry expires (defaults to #{@default_cache_ttl}ms / 6 hours)
+    * `:expire` - Time in milliseconds until the cache entry expires (defaults to #{@default_cache_ttl}ms meaning 6 hours)
 
   ## Examples
 
