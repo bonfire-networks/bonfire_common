@@ -194,16 +194,16 @@ defmodule Bonfire.Common.Media do
   def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
 
   def avatar_url(%{icon: %{id: _} = media}),
-    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
 
   def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id),
-    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [icon_id], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [icon_id], fallback_return: nil)
 
   def avatar_url(%{path: _} = media),
-    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
 
   def avatar_url(%{file: _} = media),
-    do: Utils.maybe_apply(Files.IconUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
 
   def avatar_url(%{icon: url}) when is_binary(url), do: url
   # handle VF API
@@ -357,13 +357,13 @@ defmodule Bonfire.Common.Media do
   end
 
   def banner_url(%{image: %{id: _} = media}),
-    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media], fallback_return: nil)
 
   def banner_url(%{path: path} = media) when is_binary(path),
-    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media], fallback_return: nil)
 
   def banner_url(%{image_id: image_id}) when is_binary(image_id),
-    do: Utils.maybe_apply(Files.BannerUploader, :remote_url, [image_id], fallback_return: nil)
+    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [image_id], fallback_return: nil)
 
   def banner_url(%{image: url}) when is_binary(url), do: url
   def banner_url(%{profile: profile}), do: banner_url(profile)
@@ -376,7 +376,7 @@ defmodule Bonfire.Common.Media do
       )
 
   def emoji_url(media),
-    do: Utils.maybe_apply(Files.EmojiUploader, :remote_url, [media], fallback_return: nil)
+    do: Utils.maybe_apply(Files.EmojiUploader, :permanent_url, [media], fallback_return: nil)
 
   @doc """
   Determines the dominant color for a given user’s avatar or banner.
