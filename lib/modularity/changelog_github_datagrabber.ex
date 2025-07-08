@@ -1512,22 +1512,22 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
         # Work in progress takes precedence - commit references open issue
         is_work_in_progress ->
           debug("matched: work in progress", "categorization_match")
-          ["Work in progress"]
+          ["🚧"]
 
         # GitHub native issue types (should match before title-based)
         issue_type_lower == "bug" ->
           debug("matched: issue_type bug", "categorization_match")
-          ["Bug"]
+          ["🐛"]
 
         issue_type_lower in ["feature", "enhancement"] ->
           debug("matched: issue_type feature/enhancement", "categorization_match")
-          ["Feature"]
+          ["✨"]
 
         issue_type_lower in ["task", "improvement", "documentation", "docs"] ->
           debug("matched: issue_type task/improvement/docs", "categorization_match")
-          ["Improvement"]
+          ["🚀"]
 
-        # Label-based categorization (O(1) lookups)
+        # Label-based categorization (O(1) lookups) - now returns emojis directly
         by_label = categorize_by_labels(label_set) ->
           by_label
           |> debug("label_result")
@@ -1537,7 +1537,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
           categorize_by_title(title_lower, item_type, label_set) |> debug("title_result") ||
             (milestone_lower &&
                categorize_by_milestone(milestone_lower) |> debug("milestone_result"))
-      end || ["Other"]
+      end || ["📝"]
 
     debug(
       %{
@@ -1551,30 +1551,30 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     result
   end
 
-  # Milestone categorization helper
+  # Milestone categorization helper - now returns emojis
   defp categorize_by_milestone(milestone_lower) when is_binary(milestone_lower) do
     cond do
       String.contains?(milestone_lower, "feature") ->
-        ["Feature"]
+        ["✨"]
 
       String.contains?(milestone_lower, "bug") or String.contains?(milestone_lower, "fix") ->
-        ["Bug"]
+        ["🐛"]
 
       String.contains?(milestone_lower, "improvement") ->
-        ["Improvement"]
+        ["🚀"]
 
       String.contains?(milestone_lower, "security") ->
-        ["Security"]
+        ["🚨"]
 
       String.contains?(milestone_lower, "breaking") ->
-        ["[REM]"]
+        ["⚰️"]
 
       String.contains?(milestone_lower, "deprecat") ->
-        ["[DEP]"]
+        ["♻️"]
 
       # Release milestones go to Other
       String.contains?(milestone_lower, "release") ->
-        ["Other"]
+        ["📝"]
 
       true ->
         false
@@ -1585,14 +1585,14 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     false
   end
 
-  # Label categorization helper using MapSet for O(1) lookups
+  # Label categorization helper using MapSet for O(1) lookups - now returns emojis directly
   defp categorize_by_labels(label_set) do
     cond do
       # Security & Safety (maps to security section)
       MapSet.member?(label_set, "Security") or
         MapSet.member?(label_set, "Abuse Mitigation") or
           MapSet.member?(label_set, "Compliance") ->
-        ["Security"]
+        ["🚨"]
 
       # Features & Enhancements (maps to added section)
       MapSet.member?(label_set, "Feature") or
@@ -1600,70 +1600,105 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
         MapSet.member?(label_set, "1st Priority") or
         MapSet.member?(label_set, "2nd Priority") or
           MapSet.member?(label_set, "Good first issue") ->
-        ["Feature"]
+        ["✨"]
 
-      # Improvements & Changes (maps to changed section)
-      MapSet.member?(label_set, "Improvement") or
-        MapSet.member?(label_set, "UI/UX") or
-        MapSet.member?(label_set, "Refactor") or
-        MapSet.member?(label_set, "Performance") or
-        MapSet.member?(label_set, "opptimisation") or
-        MapSet.member?(label_set, "Accessibility") or
-        MapSet.member?(label_set, "Config / Settings") or
-        MapSet.member?(label_set, "Developer Experience") or
-        MapSet.member?(label_set, "Extensiblity / Modularity") or
-        MapSet.member?(label_set, "Progressive Enhancement") or
-        MapSet.member?(label_set, "Reliability") or
-        MapSet.member?(label_set, "Scalability") or
-        MapSet.member?(label_set, "Resource Use") or
-          MapSet.member?(label_set, "Care work") ->
-        ["Improvement"]
+      # UI/UX specific improvements
+      MapSet.member?(label_set, "UI/UX") ->
+        ["💅"]
 
-      # Federation (maps to changed section)
+      # Performance & Optimization
+      MapSet.member?(label_set, "Performance") or
+          MapSet.member?(label_set, "opptimisation") ->
+        ["⚡"]
+
+      # Accessibility
+      MapSet.member?(label_set, "Accessibility") ->
+        ["👶"]
+
+      # Federation & ActivityPub
       MapSet.member?(label_set, "ActivityPub") or
           MapSet.member?(label_set, "Needs Federation Testing") ->
-        ["Federation"]
+        ["🌏"]
+
+      # Config & Settings
+      MapSet.member?(label_set, "Config / Settings") ->
+        ["🔧"]
+
+      # Developer Experience & Modularity
+      MapSet.member?(label_set, "Developer Experience") or
+        MapSet.member?(label_set, "Extensiblity / Modularity") or
+          MapSet.member?(label_set, "Progressive Enhancement") ->
+        ["👷"]
+
+      # Testing
+      MapSet.member?(label_set, "Testing") or
+        MapSet.member?(label_set, "Has unit test") or
+        MapSet.member?(label_set, "Needs unit test") or
+          MapSet.member?(label_set, "Needs manual testing") ->
+        ["✅"]
+
+      # Documentation
+      MapSet.member?(label_set, "Documentation") or
+          MapSet.member?(label_set, "documentation") ->
+        ["📝"]
+
+      # Database & Core
+      MapSet.member?(label_set, "Database") or
+          MapSet.member?(label_set, "Core") ->
+        ["🗄️"]
+
+      # Dependencies & External
+      MapSet.member?(label_set, "dependencies") or
+          MapSet.member?(label_set, "github_actions") ->
+        ["📦"]
+
+      # Languages
+      MapSet.member?(label_set, "Elixir") ->
+        ["💜"]
+
+      MapSet.member?(label_set, "JS") ->
+        ["💛"]
 
       # Bug fixes (maps to fixed section)
       MapSet.member?(label_set, "Bug") or
           MapSet.member?(label_set, "bug") ->
-        ["Bug"]
+        ["🐛"]
 
       # Deprecated items
       MapSet.member?(label_set, "[DEP]") or
           MapSet.member?(label_set, "Deprecated") ->
-        ["[DEP]"]
+        ["♻️"]
 
       # Removed/Breaking changes
       MapSet.member?(label_set, "[REM]") or
         MapSet.member?(label_set, "Breaking Change") or
           MapSet.member?(label_set, "Canceled") ->
-        ["[REM]"]
+        ["⚰️"]
 
-      # Development & Testing related (maps to changed/improvement)
-      MapSet.member?(label_set, "Testing") or
-        MapSet.member?(label_set, "Has unit test") or
-        MapSet.member?(label_set, "Needs unit test") or
-        MapSet.member?(label_set, "Needs manual testing") or
-        MapSet.member?(label_set, "Core") or
-        MapSet.member?(label_set, "Database") or
-        MapSet.member?(label_set, "dependencies") or
-        MapSet.member?(label_set, "Elixir") or
-        MapSet.member?(label_set, "JS") or
-          MapSet.member?(label_set, "github_actions") ->
-        ["Improvement"]
+      # Reliability & Scalability
+      MapSet.member?(label_set, "Reliability") or
+        MapSet.member?(label_set, "Scalability") or
+          MapSet.member?(label_set, "Resource Use") ->
+        ["🔧"]
 
-      # Documentation
-      MapSet.member?(label_set, "Documentation") ->
-        ["Improvement"]
+      # Care work & Community
+      MapSet.member?(label_set, "Care work") ->
+        ["❤️"]
 
-      # Specific features by area (could be features or improvements)
-      MapSet.member?(label_set, "Feed") or
-        MapSet.member?(label_set, "Search") or
-        MapSet.member?(label_set, "Moderation") or
-          MapSet.member?(label_set, "Discussion") ->
-        ["Feature"]
+      # Specific features by area
+      MapSet.member?(label_set, "Feed") ->
+        ["📰"]
 
+      MapSet.member?(label_set, "Search") ->
+        ["🔍"]
+
+      MapSet.member?(label_set, "Moderation") ->
+        ["🛡️"]
+
+      MapSet.member?(label_set, "Discussion") ->
+        ["💬"]
+
+      # Work in progress states
       MapSet.member?(label_set, "Help needed") or
         MapSet.member?(label_set, "help wanted") or
         MapSet.member?(label_set, "In Progress") or
@@ -1671,117 +1706,124 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
         MapSet.member?(label_set, "Beta Feedback") or
         MapSet.member?(label_set, "Blocked") or
           MapSet.member?(label_set, "Contains multiple todos") ->
-        ["Work in progress"]
+        ["🚧"]
+
+      # General improvements (catch-all for Improvement and Refactor)
+      MapSet.member?(label_set, "Improvement") or
+          MapSet.member?(label_set, "Refactor") ->
+        ["🚀"]
 
       # Org-wide enhancement/feature labels
       MapSet.member?(label_set, "good first issue") ->
-        ["Feature"]
-
-      # Org-wide documentation label  
-      MapSet.member?(label_set, "documentation") ->
-        ["Improvement"]
+        ["✨"]
 
       true ->
         false
     end
   end
 
-  # Title categorization using pattern matching where possible
+  # Title categorization using pattern matching where possible - now returns emojis
   defp categorize_by_title(title_lower, item_type, label_set) do
     case title_lower do
       # Direct pattern matching for common prefixes
       "bug" <> _ ->
-        ["Bug"]
+        ["🐛"]
 
       "bug:" <> _ ->
-        ["Bug"]
+        ["🐛"]
 
       "fix " <> _ ->
-        ["Bug"]
+        ["🐛"]
 
       "fixes " <> _ ->
-        ["Bug"]
+        ["🐛"]
 
       "fixed " <> _ ->
-        ["Bug"]
+        ["🐛"]
 
       "add " <> _ ->
-        ["Feature"]
+        ["✨"]
 
       "create " <> _ ->
-        ["Feature"]
+        ["✨"]
 
       "implement " <> _ ->
-        ["Feature"]
+        ["✨"]
 
       "update " <> _ ->
-        ["Improvement"]
+        ["🚀"]
 
       "bump " <> _ ->
-        ["Improvement"]
+        ["📦"]
 
       "improve " <> _ ->
-        ["Improvement"]
+        ["🚀"]
 
       "remove " <> _ ->
-        ["[REM]"]
+        ["⚰️"]
 
       "delete " <> _ ->
-        ["[REM]"]
+        ["⚰️"]
 
       "deprecate " <> _ ->
-        ["[DEP]"]
+        ["♻️"]
 
       # Fallback to contains checks for complex patterns
       _ ->
         cond do
           # Bug patterns
-          String.starts_with?(title_lower, "bug: ") -> ["Bug"]
-          String.contains?(title_lower, "bug:") -> ["Bug"]
-          String.contains?(title_lower, " bug ") -> ["Bug"]
-          String.contains?(title_lower, "error") -> ["Bug"]
-          String.contains?(title_lower, "issue") -> ["Bug"]
-          String.contains?(title_lower, "problem") -> ["Bug"]
-          String.contains?(title_lower, "doesn't work") -> ["Bug"]
-          String.contains?(title_lower, "not working") -> ["Bug"]
-          String.contains?(title_lower, "broken") -> ["Bug"]
-          String.contains?(title_lower, "fails") -> ["Bug"]
-          String.contains?(title_lower, "missing") -> ["Bug"]
-          String.contains?(title_lower, "can't") -> ["Bug"]
-          String.contains?(title_lower, "cannot") -> ["Bug"]
+          String.starts_with?(title_lower, "bug: ") -> ["🐛"]
+          String.contains?(title_lower, "bug:") -> ["🐛"]
+          String.contains?(title_lower, " bug ") -> ["🐛"]
+          String.contains?(title_lower, "error") -> ["🐛"]
+          String.contains?(title_lower, "issue") -> ["🐛"]
+          String.contains?(title_lower, "problem") -> ["🐛"]
+          String.contains?(title_lower, "doesn't work") -> ["🐛"]
+          String.contains?(title_lower, "not working") -> ["🐛"]
+          String.contains?(title_lower, "broken") -> ["🐛"]
+          String.contains?(title_lower, "fails") -> ["🐛"]
+          String.contains?(title_lower, "missing") -> ["🐛"]
+          String.contains?(title_lower, "can't") -> ["🐛"]
+          String.contains?(title_lower, "cannot") -> ["🐛"]
           # Feature patterns
-          String.contains?(title_lower, "add ") -> ["Feature"]
-          String.contains?(title_lower, "new ") -> ["Feature"]
-          String.contains?(title_lower, "enable") -> ["Feature"]
-          String.contains?(title_lower, "support") -> ["Feature"]
-          String.contains?(title_lower, "allow") -> ["Feature"]
-          String.contains?(title_lower, "let users") -> ["Feature"]
-          # Improvement patterns
-          String.contains?(title_lower, "better") -> ["Improvement"]
-          String.contains?(title_lower, "improve") -> ["Improvement"]
-          String.contains?(title_lower, "enhance") -> ["Improvement"]
-          String.contains?(title_lower, "update") -> ["Improvement"]
-          String.contains?(title_lower, "refactor") -> ["Improvement"]
-          String.contains?(title_lower, "optimize") -> ["Improvement"]
-          String.contains?(title_lower, "test") -> ["Improvement"]
-          String.contains?(title_lower, "doc") -> ["Improvement"]
-          String.contains?(title_lower, "make sure") -> ["Improvement"]
-          String.contains?(title_lower, "ensure") -> ["Improvement"]
-          String.contains?(title_lower, "check") -> ["Improvement"]
-          String.contains?(title_lower, "pagination") -> ["Improvement"]
-          String.contains?(title_lower, "ui") -> ["Improvement"]
-          String.contains?(title_lower, "tooltip") -> ["Improvement"]
-          String.contains?(title_lower, "preview") -> ["Improvement"]
-          String.contains?(title_lower, "handle") -> ["Improvement"]
-          String.contains?(title_lower, "display") -> ["Improvement"]
-          String.contains?(title_lower, "show") -> ["Improvement"]
+          String.contains?(title_lower, "add ") -> ["✨"]
+          String.contains?(title_lower, "new ") -> ["✨"]
+          String.contains?(title_lower, "enable") -> ["✨"]
+          String.contains?(title_lower, "support") -> ["✨"]
+          String.contains?(title_lower, "allow") -> ["✨"]
+          String.contains?(title_lower, "let users") -> ["✨"]
+          # UI/UX patterns
+          String.contains?(title_lower, "ui") -> ["💅"]
+          String.contains?(title_lower, "tooltip") -> ["💅"]
+          String.contains?(title_lower, "preview") -> ["💅"]
+          String.contains?(title_lower, "display") -> ["💅"]
+          String.contains?(title_lower, "show") -> ["💅"]
+          # Performance patterns
+          String.contains?(title_lower, "optimize") -> ["⚡"]
+          String.contains?(title_lower, "performance") -> ["⚡"]
+          String.contains?(title_lower, "speed") -> ["⚡"]
+          # Testing patterns
+          String.contains?(title_lower, "test") -> ["✅"]
+          # Documentation patterns
+          String.contains?(title_lower, "doc") -> ["📝"]
           # Security patterns
-          String.contains?(title_lower, "security") -> ["Security"]
-          String.contains?(title_lower, "auth") -> ["Security"]
-          String.contains?(title_lower, "login") -> ["Security"]
-          String.contains?(title_lower, "permission") -> ["Security"]
+          String.contains?(title_lower, "security") -> ["🚨"]
+          String.contains?(title_lower, "auth") -> ["🚨"]
+          String.contains?(title_lower, "login") -> ["🚨"]
+          String.contains?(title_lower, "permission") -> ["🚨"]
+          # General improvement patterns
+          String.contains?(title_lower, "better") -> ["🚀"]
+          String.contains?(title_lower, "improve") -> ["🚀"]
+          String.contains?(title_lower, "enhance") -> ["🚀"]
+          String.contains?(title_lower, "update") -> ["🚀"]
+          String.contains?(title_lower, "refactor") -> ["🚀"]
+          String.contains?(title_lower, "make sure") -> ["🚀"]
+          String.contains?(title_lower, "ensure") -> ["🚀"]
+          String.contains?(title_lower, "check") -> ["🚀"]
+          String.contains?(title_lower, "pagination") -> ["🚀"]
+          String.contains?(title_lower, "handle") -> ["🚀"]
           # Default for PRs without other categorization
-          item_type == "pr" and String.contains?(title_lower, "bump") -> ["Improvement"]
+          item_type == "pr" and String.contains?(title_lower, "bump") -> ["📦"]
           # Default categorization
           true -> nil
         end
@@ -2150,73 +2192,13 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   end
 
   defp format_labels_for_display(labels, item_type, computed_category \\ nil) do
-    # Map categories to emojis
-    emoji_map = %{
-      "Feature" => "✨",
-      "Bug" => "🐛",
-      "Improvement" => "🚀",
-      "UI/UX" => "💅",
-      "Security" => "🚨",
-      "Documentation" => "📝",
-      "Work in progress" => "🚧",
-      "In Progress" => "🚧",
-      "Help needed" => "📝",
-      "ActivityPub" => "🌏",
-      "Federation" => "🌏",
-      "Refactor" => "🚀"
-    }
+    # Since computed_category now contains emojis directly, just use the first one
+    case computed_category do
+      [emoji] when is_binary(emoji) ->
+        "#{emoji} "
 
-    cond do
-      # If we have meaningful labels, show the first few important ones with emojis
-      length(labels) > 0 ->
-        important_labels =
-          labels
-          |> Enum.reject(fn label ->
-            # Filter out process/meta labels that don't add much value to changelog
-            label in [
-              "Todo",
-              "Blocked",
-              "1st Priority",
-              "2nd Priority",
-              "Done",
-              "Contains multiple todos",
-              "governance",
-              "question",
-              "invalid",
-              "duplicate",
-              "wontfix",
-              "Needs unit test",
-              "Has unit test"
-            ]
-          end)
-          # Show max 2 labels to avoid clutter
-          |> Enum.take(2)
-
-        if length(important_labels) > 0 do
-          emoji = Map.get(emoji_map, List.first(important_labels), "📝")
-          "#{emoji} "
-        else
-          # No important labels, show computed category emoji if available
-          case computed_category do
-            [category] when category not in ["Other"] ->
-              emoji = Map.get(emoji_map, category, "📝")
-              "#{emoji} "
-
-            _ ->
-              ""
-          end
-        end
-
-      # No labels - show computed category emoji
-      true ->
-        case computed_category do
-          [category] when category not in ["Other"] ->
-            emoji = Map.get(emoji_map, category, "📝")
-            "#{emoji} "
-
-          _ ->
-            ""
-        end
+      _ ->
+        ""
     end
   end
 
