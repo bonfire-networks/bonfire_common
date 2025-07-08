@@ -3,6 +3,7 @@ defmodule Bonfire.Common.HTTP do
   Module for building and performing HTTP requests.
   """
   import Untangle
+  import Bonfire.Common.Opts
   alias Bonfire.Common.HTTP.Connection
   alias Bonfire.Common.HTTP.RequestBuilder
   alias Bonfire.Common.Cache
@@ -28,29 +29,39 @@ defmodule Bonfire.Common.HTTP do
   """
   def request(method, url, body \\ "", headers \\ [], options \\ []) do
     try do
-      options =
-        process_request_options(options)
-        |> process_sni_options(url)
+      processed_options =
+        try do
+          process_request_options(options)
+        rescue
+          e ->
+            error(e, "Error in process_request_options call")
+            to_options(options)
+        end
 
-      # |> info("options")
+      final_options = process_sni_options(processed_options, url)
 
-      params = Keyword.get(options, :params, [])
+      # Remove url and headers from final_options since they're handled separately
+      adapter_options =
+        final_options
+        |> Keyword.drop([:url, :headers])
+
+      params = Keyword.get(adapter_options, :params, [])
 
       %{}
       |> RequestBuilder.method(method)
       |> RequestBuilder.headers(headers)
-      |> RequestBuilder.opts(options)
+      |> RequestBuilder.opts(adapter_options)
       |> RequestBuilder.url(url)
       |> RequestBuilder.add_param(:body, :body, body)
       |> RequestBuilder.add_param(:query, :query, params)
       |> Enum.into([])
-      |> (&Tesla.request(Connection.new(options), &1)).()
+      |> (&Tesla.request(Connection.new(adapter_options), &1)).()
     rescue
       e in Tesla.Mock.Error ->
         error(e, "Test mock HTTP error")
 
-      e ->
-        error(e, "HTTP request failed")
+        # e ->
+        #   error(e, "HTTP request failed")
     catch
       :exit, e ->
         error(e, "HTTP request exited")
@@ -58,8 +69,21 @@ defmodule Bonfire.Common.HTTP do
   end
 
   defp process_request_options(options) do
-    {_adapter, opts} = Connection.adapter_options([])
-    Keyword.merge(opts, options)
+    try do
+      {_adapter, opts} = Connection.adapter_options([])
+
+      # opts is already a keyword list from Connection.adapter_options
+      # options should be converted to a keyword list
+      options_kw = to_options(options)
+
+      # Now we can safely merge two keyword lists
+      Keyword.merge(opts, options_kw)
+    rescue
+      e ->
+        error(e, "Error in process_request_options")
+        # Return a safe default
+        to_options(options)
+    end
   end
 
   defp process_sni_options(options, nil), do: options
@@ -69,8 +93,13 @@ defmodule Bonfire.Common.HTTP do
     host = to_charlist(uri.host)
 
     case uri.scheme do
-      "https" -> options ++ [ssl: [server_name_indication: host]]
-      _ -> options
+      "https" ->
+        # Ensure options is a keyword list before concatenating
+        options = to_options(options)
+        options ++ [ssl: [server_name_indication: host]]
+
+      _ ->
+        options
     end
   end
 
@@ -155,9 +184,38 @@ defmodule Bonfire.Common.HTTP do
   def delete(url, body \\ "", headers \\ [], options \\ []),
     do: request(:delete, url, body, headers, options)
 
+  def ensure_ready do
+    case Application.ensure_all_started(:finch) do
+      {:ok, _} ->
+        debug("Finch started successfully")
+        # Also start the specific Finch pool if needed
+        case Finch.start_link(name: Bonfire.Finch, pools: %{:default => [size: 10]}) do
+          {:ok, _} -> debug("Bonfire.Finch pool started")
+          {:error, {:already_started, _}} -> debug("Bonfire.Finch pool already started")
+          {:error, reason} -> debug(reason, "Failed to start Bonfire.Finch pool")
+        end
+
+      {:error, reason} ->
+        debug(reason, "Failed to start Finch")
+    end
+  end
+
   @behaviour Neuron.Connection
   @impl Neuron.Connection
-  def call(_body, _options) do
-    raise "TODO"
+  def call(body, options) do
+    # Ensure options is a keyword list
+    options = to_options(options)
+
+    method = Keyword.get(options, :method, :post)
+    url = Keyword.get(options, :url, "")
+    headers = Keyword.get(options, :headers, [])
+
+    case request(method, url, body, headers, options) do
+      {:ok, %Tesla.Env{status: status, body: response_body, headers: response_headers}} ->
+        {:ok, %{status: status, body: response_body, headers: response_headers}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 end

@@ -29,11 +29,12 @@ defmodule Bonfire.Common.MixProject do
             {:sentry, "~> 10.0", optional: true},
             {:dataloader, "~> 2.0", optional: true},
             {:floki, "~> 0.37", optional: true},
-          {:repatch, "~> 1.5", only: :test},
+            {:versioce, "~> 2.0.0", only: :dev},
+            {:repatch, "~> 1.5", only: :test},
             {:emote,
-            "~> 0.1",
-            #  git: "https://github.com/bonfire-networks/emote", 
-             optional: true},
+              "~> 0.1",
+              # git: "https://github.com/bonfire-networks/emote", 
+              optional: true},
             {:text, "~> 0.2.0", optional: true},
             {:text_corpus_udhr, "~> 0.1.0", optional: true},
             {:bumblebee, "~> 0.6.0", optional: true},
@@ -43,13 +44,12 @@ defmodule Bonfire.Common.MixProject do
             # for extension install + mix tasks that do patching 
             {:igniter, "~> 0.5", optional: true},
             # for encryption
-            {:cloak, "~> 1.1.4", optional: true},
-            
+            {:cloak, "~> 1.1.4", optional: true}
           ])
       ]
   end
 
-    defp elixirc_paths(:test), do: ["test/support" | elixirc_paths(:dev)]
+  defp elixirc_paths(:test), do: ["test/support" | elixirc_paths(:dev)]
   defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
