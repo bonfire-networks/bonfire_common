@@ -13,7 +13,7 @@ defmodule Bonfire.Common.Media do
   alias Bonfire.Files
 
   @image_exts [".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"]
-  @external ["link", "remote", "website", "article", "book", "profile", "url", "URL"]
+  @external ["link", "remote", "website", "article", "book", "profile", "url", "URL", "object"]
 
   @doc """
   Takes a Media map (or an object containing one) and returns a URL for the media.
@@ -133,6 +133,9 @@ defmodule Bonfire.Common.Media do
 
   def thumbnail_url(%{media_type: media_type} = media) do
     cond do
+      media_type in @external ->
+        nil
+        
       String.starts_with?(media_type || "", "image") ->
         image_url(media) |> debug("imggg2")
 
