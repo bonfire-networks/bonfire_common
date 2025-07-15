@@ -135,7 +135,7 @@ defmodule Bonfire.Common.Media do
     cond do
       media_type in @external ->
         nil
-        
+
       String.starts_with?(media_type || "", "image") ->
         image_url(media) |> debug("imggg2")
 
