@@ -169,8 +169,15 @@ defmodule Bonfire.Common.Needles do
       > Bonfire.Common.Needles.list_by_type!(:my_table, [filter: value])
       [%Pointer{...}, %Pointer{...}]
   """
-  def list_by_type!(table_id_or_schema, filters \\ [], opts \\ []) do
+  def list_by_type!(table_id_or_schema, filters \\ [], opts \\ [])
+
+  def list_by_type!(table_id_or_schema, filters, opts) when is_atom(table_id_or_schema) do
     loader(table_id_or_schema, filters, opts)
+  end
+
+  def list_by_type!(table_id_or_schema, filters, opts) do
+    Types.maybe_to_atom(table_id_or_schema)
+    |> loader(filters, opts)
   end
 
   @doc """
@@ -544,6 +551,7 @@ defmodule Bonfire.Common.Needles do
 
   defp loader(table_id, id_filters, opts) do
     Cache.maybe_apply_cached(&Bonfire.Common.Needles.Tables.schema_or_table!/1, [table_id])
+    |> debug("Needle: schema")
     |> loader_query(id_filters, opts)
   end
 
