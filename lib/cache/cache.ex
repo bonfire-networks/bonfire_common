@@ -117,7 +117,7 @@ defmodule Bonfire.Common.Cache do
   """
   def remove(key, opts \\ []) do
     Cachex.del(opts[:cache_store] || default_cache_store(), key)
-    ~> debug("Removed from cache: #{key}")
+    # ~> debug("Removed from cache: #{inspect key}")
   end
 
   @doc """
