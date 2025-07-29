@@ -97,6 +97,21 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     version_struct
   end
 
+  def get_first_changelog_date() do
+    # should be running from root, use relative path
+    changelog_path = "docs/CHANGELOG.md"
+
+    with {:ok, content} <- File.read(changelog_path) do
+      # Regex to match date in format (YYYY-MM-DD)
+      case Regex.run(~r/\((\d{4}-\d{2}-\d{2})\)/, content, capture: :all_but_first) do
+        [date_str] -> date_str
+        _ -> nil
+      end
+    else
+      _ -> nil
+    end
+  end
+
   def fetch_issues(opts \\ []) do
     # Ensure Finch is started
     Bonfire.Common.HTTP.ensure_ready()
@@ -107,21 +122,23 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     org = Keyword.get(opts, :org, "bonfire-networks")
 
     # Debug the date resolution process
-    config_date = Bonfire.Common.Config.get_ext(:versioce, [:changelog, :closed_after])
-    env_date = System.get_env("CHANGES_CLOSED_AFTER")
+    # Bonfire.Common.Config.get_ext(:versioce, [:changelog, :closed_after])
+    # date_after_env = 
+    date_after_config =
+      System.get_env("CHANGES_CLOSED_AFTER")
 
-    debug(
-      %{
-        config_date: config_date,
-        env_date: env_date,
-        opts_date: Keyword.get(opts, :closed_after)
-      },
-      "Date resolution debug"
-    )
+    # debug(
+    #   %{
+    #     config_date: date_after_config,
+    #     env_date: date_after_env,
+    #     opts_date: Keyword.get(opts, :closed_after)
+    #   },
+    #   "Date resolution debug"
+    # )
 
     closed_after =
       Keyword.get(opts, :closed_after) ||
-        config_date ||
+        date_after_config || get_first_changelog_date() ||
         Date.add(
           Date.utc_today(),
           -Keyword.get(opts, :closed_in_last_days, 30)
@@ -880,8 +897,22 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
       String.starts_with?(message, "Bump ") or
       String.starts_with?(message, "Update ") or
       String.contains?(String.downcase(message), "dependabot") or
+      String.contains?(String.downcase(message), "release") or
       String.contains?(String.downcase(message), "automated") or
-      title in ["up", "rel", "release", "log", "clean", "f", "d", "locales"] or
+      title in [
+        "up",
+        "rel",
+        "log",
+        "clean",
+        "f",
+        "d",
+        "locales",
+        "misc",
+        "icons",
+        "changelog",
+        "tools",
+        "changelog [skip ci]"
+      ] or
       String.starts_with?(title, "rc") or
       (String.starts_with?(title, "v") and String.contains?(title, ".")) or
       String.match?(title, ~r/^rc?\d+\.\d+/) or
