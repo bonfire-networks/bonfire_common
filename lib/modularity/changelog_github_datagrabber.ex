@@ -2295,18 +2295,26 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
 
   defp is_bot?(_), do: false
 
-  # Filter out automated items (issues/PRs) by author or title patterns
+  # Filter out automated items (issues/PRs) by author, title patterns, or exclusion labels
   defp is_automated_item?(item) do
     author = e(item, "author", "login", "")
     title = e(item, "title", "")
 
-    # Check if author is a bot
-    # Check for common automated title patterns
+    labels =
+      e(item, "labels", "edges", [])
+      |> Enum.map(&e(&1, "node", "name", nil))
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.map(&String.downcase/1)
+
     is_bot?(author) or
       String.starts_with?(title, "Bump ") or
       (String.starts_with?(title, "Update ") and String.contains?(title, " to ")) or
       String.contains?(String.downcase(title), "dependabot") or
-      String.contains?(String.downcase(title), "automated")
+      String.contains?(String.downcase(title), "automated") or
+      Enum.any?(labels, fn label ->
+        # Exclude issues/PRs these labels
+        label in ["duplicate", "wontfix"]
+      end)
   end
 end
 
