@@ -145,7 +145,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
         )
 
     debug(closed_after, "Get issues closed after the ")
-    |> flood("closed_after")
+    |> debug("closed_after")
 
     # Fetch issues first
     issues = fetch_github_issues(org, closed_after)

@@ -118,12 +118,12 @@ defmodule Bonfire.Common.Errors do
         end
       end
 
-    debug_log(msg, exception, stacktrace, kind, error_msg)
-
     if Config.env() == :dev and
          Config.get(:show_debug_errors_in_dev) != false do
-      {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace, opts)
+      {exception_banner, formatted_stacktrace} =
+        debug_banner_with_trace(kind, exception, stacktrace, opts)
 
+      debug_log_with_banner(msg, exception, exception_banner, stacktrace, error_msg)
       # error(stacktrace, inspect exception_banner)
 
       {:error,
@@ -134,7 +134,7 @@ defmodule Bonfire.Common.Errors do
              "",
              to_string(exception_banner) |> String.slice(0..1000),
              "\n",
-             to_string(stacktrace) |> String.slice(0..1000),
+             to_string(formatted_stacktrace) |> String.slice(0..1000),
              ""
            ],
            []
@@ -143,6 +143,7 @@ defmodule Bonfire.Common.Errors do
        )
        |> String.slice(0..3000)}
     else
+      debug_log(msg, exception, stacktrace, kind, error_msg)
       {:error, error_msg}
     end
   end
@@ -164,20 +165,42 @@ defmodule Bonfire.Common.Errors do
       > debug_log("A debug message", nil, nil, :info)
       # Output: A debug message: nil
   """
-  def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, msg_text \\ nil)
-
-  def debug_log(msg, exception, stacktrace, kind, msg_text) do
+  def debug_log(msg, exception \\ nil, stacktrace \\ nil, kind \\ :error, msg_text \\ nil) do
     msg_text = msg_text || error_msg(msg)
 
     if exception && stacktrace do
-      {exception_banner, stacktrace} = debug_banner_with_trace(kind, exception, stacktrace)
+      {exception_banner, formatted_stacktrace} =
+        debug_banner_with_trace(kind, exception, stacktrace)
 
-      error(exception_banner, msg_text)
-      Logger.info(stacktrace, limit: :infinity, printable_limit: :infinity)
+      # exception_banner = debug_banner(kind, exception, stacktrace)
+
+      Logger.error("#{msg_text} - #{exception_banner}\n#{formatted_stacktrace}",
+        limit: :infinity,
+        printable_limit: :infinity
+      )
+
       # Logger.warning(stacktrace, truncate: :infinity)
     else
-      error(exception, msg_text)
+      Logger.error("#{msg_text} - #{inspect(exception)}")
     end
+
+    debug_maybe_sentry(msg, exception, stacktrace)
+  end
+
+  defp debug_log_with_banner(
+         msg,
+         exception,
+         exception_banner \\ nil,
+         stacktrace \\ nil,
+         msg_text \\ nil
+       ) do
+    msg_text = msg_text || error_msg(msg)
+
+    Logger.error(
+      "#{msg_text} - #{exception_banner || exception}\n#{format_stacktrace(stacktrace, [])}",
+      limit: :infinity,
+      printable_limit: :infinity
+    )
 
     debug_maybe_sentry(msg, exception, stacktrace)
   end
