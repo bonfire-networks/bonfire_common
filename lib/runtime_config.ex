@@ -7,14 +7,14 @@ defmodule Bonfire.Common.RuntimeConfig do
   @behaviour Bonfire.Common.ConfigModule
   def config_module, do: true
 
+  @yes? ~w(true yes 1)
+  @no? ~w(false no 0)
+
   def config do
     import Config
 
     config :bonfire_common,
       root_path: File.cwd!()
-
-    yes? = ~w(true yes 1)
-    no? = ~w(false no 0)
 
     test_instance = System.get_env("TEST_INSTANCE")
 
@@ -28,7 +28,7 @@ defmodule Bonfire.Common.RuntimeConfig do
         else: [Bonfire.Common.Repo]
 
     repos =
-      if test_instance in yes?,
+      if test_instance in @yes?,
         do: repos ++ [Bonfire.Common.TestInstanceRepo],
         else: repos
 
@@ -44,7 +44,7 @@ defmodule Bonfire.Common.RuntimeConfig do
       and POSTGRES_USER (default: postgres) and POSTGRES_HOST (default: localhost)
       """)
 
-    maybe_repo_ipv6 = if System.get_env("ECTO_IPV6") in yes?, do: [:inet6], else: []
+    maybe_repo_ipv6 = if System.get_env("ECTO_IPV6") in @yes?, do: [:inet6], else: []
 
     repo_connection_config =
       if db_url do
@@ -181,14 +181,15 @@ defmodule Bonfire.Common.RuntimeConfig do
         do: skip,
         else: [:test_instance] ++ skip
 
+    ci? = System.get_env("CI") in @yes?
     # tests to skip in CI env
-    skip = if System.get_env("CI"), do: [:skip_ci] ++ skip, else: skip
+    skip = if ci?, do: [:skip_ci] ++ skip, else: skip
 
     skip = if System.get_env("TEST_WITH_MNEME") == "no", do: [:mneme] ++ skip, else: skip
 
     # skip browser automation tests in CI
     skip =
-      if System.get_env("CI") || is_nil(chromedriver_path),
+      if ci? || is_nil(chromedriver_path),
         do: [:browser] ++ skip,
         else: skip
 
