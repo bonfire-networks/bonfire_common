@@ -6,6 +6,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   """
 
   use Bonfire.Common.Config
+  # use Patch
 
   use Bonfire.Common.RepoTemplate,
     otp_app:
@@ -29,26 +30,47 @@ defmodule Bonfire.Common.TestInstanceRepo do
       ecto_repo_module: repo
     )
 
-    repo.put_dynamic_repo(repo)
-    # Logger.metadata(instance: :primary)
+    maybe_declare_test_instance(false)
   end
 
   def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
     declare_test_instance()
+
+    Boruta.Config.repo() |> flood("boruta repo")
   end
 
   def maybe_declare_test_instance(_) do
     # Logger.metadata(instance: :primary)
+
+    repo = default_repo()
+
+    if Config.env() == :test do
+      if Config.repo() != repo, do: err(Config.repo(), "wrong repo")
+      if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
+      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong repo")
+    end
+
+    Boruta.Config.repo() |> flood("boruta repo")
+
+    repo.put_dynamic_repo(repo)
+
     nil
   end
 
   defp declare_test_instance do
+    repo = Bonfire.Common.TestInstanceRepo
+
     process_put(
       phoenix_endpoint_module: Bonfire.Web.FakeRemoteEndpoint,
-      ecto_repo_module: Bonfire.Common.TestInstanceRepo
+      ecto_repo_module: repo
     )
 
-    default_repo().put_dynamic_repo(Bonfire.Common.TestInstanceRepo)
+    # if Config.env() ==:test, do: 
+    #   Patch.patch(Boruta.Config, :repo, repo)
+
+    Config.put([Boruta.Oauth, :repo], repo)
+
+    default_repo().put_dynamic_repo(repo)
     # Logger.metadata(instance: :test)
   end
 

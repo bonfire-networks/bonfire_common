@@ -148,7 +148,8 @@ defmodule Bonfire.Common.RuntimeConfig do
       # use Ecto sandbox?
       config :bonfire_common,
         sql_sandbox:
-          System.get_env("PHX_SERVER") != "yes" and System.get_env("TEST_INSTANCE") != "yes"
+          System.get_env("PHX_SERVER") not in @yes? and
+            System.get_env("TEST_INSTANCE") not in @yes?
     end
 
     config :bonfire, :http,

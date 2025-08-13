@@ -694,6 +694,10 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     unreferenced =
       all_commits
       |> Enum.reject(fn commit -> e(commit, "oid", nil) in referenced_commit_shas end)
+      # Add this line
+      |> Enum.reject(&is_automated_commit?/1)
+      # Add this line too if not already there
+      |> Enum.reject(&is_merge_commit?/1)
       |> merge_similar_commits()
       |> try_match_commits_to_issues(issues)
       # Mark as commit
