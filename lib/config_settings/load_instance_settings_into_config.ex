@@ -28,7 +28,7 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
     if settings do
       Logger.info("Loading instance Settings from DB into the app's Config")
 
-      put = Bonfire.Common.Config.put(settings)
+      put = Bonfire.Common.Config.put_tree(settings)
 
       # generate an updated reverse router based on extensions that are enabled/disabled
       Bonfire.Common.Extend.generate_reverse_router!()

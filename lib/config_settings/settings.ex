@@ -774,7 +774,7 @@ defmodule Bonfire.Common.Settings do
       if delete_key = opts[:delete_key] do
         Config.delete(delete_key, opts[:otp_app])
       else
-        Config.put(new_data)
+        Config.put_tree(new_data, already_prepared: true)
         |> debug("put in config")
       end
 

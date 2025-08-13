@@ -290,15 +290,17 @@ defmodule Bonfire.Common.Config do
       true
 
   """
-  def put(tree) when is_list(tree) or is_map(tree) do
-    Enum.each(tree, &put/1)
+  def put_tree(tree, opts \\ [])
+
+  def put_tree(tree, opts) when is_list(tree) or is_map(tree) do
+    Enum.each(tree, &put_tree(&1, opts))
   end
 
-  def put({otp_app, tree}) when is_atom(otp_app) and (is_list(tree) or is_map(tree)) do
-    Enum.each(tree, fn {k, v} -> put_tree([k], v, otp_app) end)
+  def put_tree({otp_app, tree}, opts) when is_atom(otp_app) and (is_list(tree) or is_map(tree)) do
+    Enum.each(tree, fn {k, v} -> do_put_tree([k], v, otp_app, opts) end)
   end
 
-  def put(other) do
+  def put_tree(other, _opts) do
     error(other, "Nothing to put")
   end
 
@@ -350,30 +352,37 @@ defmodule Bonfire.Common.Config do
     put_env(otp_app, key, value)
   end
 
-  defp put_tree(parent_keys, tree, otp_app) when is_list(tree) do
+  defp do_put_tree(k, v, otp_app, opts \\ [])
+
+  defp do_put_tree(parent_keys, tree, otp_app, opts) when is_list(tree) do
     if Keyword.keyword?(tree) do
       Enum.each(tree, fn
-        {k, v} -> put_tree(parent_keys ++ [k], v, otp_app)
+        {k, v} -> do_put_tree(parent_keys ++ [k], v, otp_app, opts)
       end)
     else
       put(parent_keys, tree, otp_app)
     end
   end
 
-  defp put_tree(parent_keys, tree, otp_app) when is_map(tree) do
-    case tree
-         |> Enums.input_to_atoms(
-           discard_unknown_keys: true,
-           also_discard_unknown_nested_keys: false
-         )
-         |> Enums.maybe_to_keyword_list(false, false)
-         |> debug() do
-      tree when is_list(tree) -> put_tree(parent_keys, tree, otp_app)
+  defp do_put_tree(parent_keys, tree, otp_app, opts) when is_map(tree) do
+    if !opts[:already_prepared] do
+      tree
+      |> Enums.input_to_atoms(
+        discard_unknown_keys: true,
+        also_discard_unknown_nested_keys: false
+      )
+      |> Enums.maybe_to_keyword_list(false, false)
+    else
+      tree
+    end
+    |> debug("map to put")
+    |> case do
+      tree when is_list(tree) -> do_put_tree(parent_keys, tree, otp_app)
       tree -> put(parent_keys, tree, otp_app)
     end
   end
 
-  defp put_tree(k, v, otp_app) do
+  defp do_put_tree(k, v, otp_app, _opts) do
     # debug(v, inspect k)
     put(k, v, otp_app)
   end
