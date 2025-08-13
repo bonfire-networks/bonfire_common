@@ -902,6 +902,8 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
       title in [
         "up",
         "rel",
+        "release",
+        "ci",
         "log",
         "clean",
         "f",
