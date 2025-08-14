@@ -36,7 +36,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
     declare_test_instance()
 
-    Boruta.Config.repo() |> flood("boruta repo")
+    Boruta.Config.repo() |> debug("boruta repo")
   end
 
   def maybe_declare_test_instance(_) do
@@ -50,7 +50,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
       if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong repo")
     end
 
-    Boruta.Config.repo() |> flood("boruta repo")
+    Boruta.Config.repo() |> debug("boruta repo")
 
     repo.put_dynamic_repo(repo)
 

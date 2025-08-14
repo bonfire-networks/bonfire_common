@@ -279,12 +279,12 @@ defmodule Bonfire.Common.Config do
 
   ## Examples
 
-      iex> put([bonfire_common: [my_test_key: "test_value"]])
+      iex> put_tree([bonfire_common: [my_test_key: "test_value"]])
       :ok
       iex> get(:my_test_key, nil, :bonfire_common)
       "test_value"
 
-      > put({:bonfire_common, {Bonfire.Common.Config, %{my_test_key: true}}})
+      > put_tree({:bonfire_common, {Bonfire.Common.Config, %{my_test_key: true}}})
       :ok
       > get([Bonfire.Common.Config, :my_test_key])
       true

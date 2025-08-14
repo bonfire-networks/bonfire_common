@@ -255,7 +255,9 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
         assert options = Keyword.get(date_format.opts, :options)
         assert is_list(options)
         assert {:l, _, ["Relative"]} = Keyword.get(options, :relative)
-        assert {:l, _, ["Long"]} = Keyword.get(options, :long)
+        long = Keyword.get(options, :long)
+        # || {:l, _, ["Long"]} = long 
+        assert long == "Long"
       end
     end
 

@@ -13,6 +13,18 @@ defmodule Bonfire.Common.Localise.Gettext do
   """
   use Bonfire.Common.Config
 
+  # Limit locales in non-prod environments  
+  allowed_locales =
+    if Config.env() == :prod or System.get_env("COMPILE_ALL_LOCALES") in ["true", "1"] do
+      # In prod, allow all locales discovered in priv directory (default behavior)
+      nil
+    else
+      # In dev/test, only compile specified locales from CLDR config
+      Bonfire.Common.Config.get_ext(:bonfire_common, [Bonfire.Common.Localise.Cldr, :locales], [
+        "en"
+      ])
+    end
+
   # if Bonfire.Common.Config.env() == :dev do
   #   use PseudoGettext,
   #     otp_app: :bonfire_common,
@@ -28,8 +40,10 @@ defmodule Bonfire.Common.Localise.Gettext do
         [Bonfire.Common.Localise.Cldr, :default_locale],
         "en"
       ),
+    allowed_locales: allowed_locales,
     plural_forms: Bonfire.Common.Localise.Gettext.Plural,
-    priv: Application.compile_env!(:bonfire_common, :localisation_path)
+    priv: Application.compile_env!(:bonfire_common, :localisation_path),
+    split_module_by: [:locale, :domain]
 
   # end
 end
