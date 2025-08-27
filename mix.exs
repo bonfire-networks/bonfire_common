@@ -28,7 +28,7 @@ defmodule Bonfire.Common.MixProject do
             {:zest, "~> 0.1", optional: true},
             {:sentry, "~> 10.0", optional: true},
             {:dataloader, "~> 2.0", optional: true},
-            {:floki, "~> 0.37", optional: true},
+            {:floki, ">= 0.0.0", optional: true},
             {:versioce, "~> 2.0.0", only: :dev},
             {:repatch, "~> 1.5", only: :test},
             {:emote,
