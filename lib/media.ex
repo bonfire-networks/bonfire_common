@@ -484,11 +484,11 @@ defmodule Bonfire.Common.Media do
   end
 
   def hide_avatars?(context, showing_within \\ nil) do
-    showing_within == :search or
-      Settings.get([Bonfire.UI.Common.AvatarLive, :hide_avatars], false,
-        context: context,
-        name: l("Hide Avatars"),
-        description: l("Hide user avatars throughout the interface.")
-      )
+    # showing_within == :search or
+    Settings.get([Bonfire.UI.Common.AvatarLive, :hide_avatars], false,
+      context: context,
+      name: l("Hide Avatars"),
+      description: l("Hide user avatars throughout the interface.")
+    )
   end
 end

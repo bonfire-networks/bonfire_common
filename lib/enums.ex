@@ -1438,16 +1438,16 @@ defmodule Bonfire.Common.Enums do
   """
   defp maybe_add_mixin(%{} = data, {parent_type, parent_id, assoc_key})
        when not is_nil(parent_type) do
-    debug(assoc_key, inspect(parent_type))
+    # debug(assoc_key, inspect(parent_type))
 
-    if module =
-         Bonfire.Common.Needles.Tables.maybe_assoc_mixin_module(assoc_key, parent_type) |> debug() do
-      data
-      |> Map.put(:__typename, module)
-      |> maybe_put(:id, parent_id)
-    else
-      data
-    end
+    if function_exported?(parent_type, :__schema__, 1) do
+      if module =
+           Bonfire.Common.Needles.Tables.maybe_assoc_mixin_module(assoc_key, parent_type) do
+        data
+        |> Map.put(:__typename, module)
+        |> maybe_put(:id, parent_id)
+      end
+    end || data
   end
 
   defp maybe_add_mixin(data, _parent_schema_throuple), do: data

@@ -20,6 +20,9 @@ defmodule Bonfire.Common.Telemetry do
       IO.puts("Oban logging is set up...")
     end
 
+    setup_liveview_debugging()
+    IO.puts("LiveView logging is set up...")
+
     setup_wobserver()
 
     Corsica.Telemetry.attach_default_handler(log_levels: [rejected: :warning, invalid: :warning])
@@ -67,11 +70,28 @@ defmodule Bonfire.Common.Telemetry do
     end
   end
 
+  def setup_liveview_debugging do
+    :telemetry.attach_many(
+      "bonfire-liveview-debug",
+      [
+        [:phoenix, :live_view, :mount, :exception],
+        [:phoenix, :live_view, :handle_params, :exception],
+        [:phoenix, :live_view, :handle_event, :exception],
+        [:phoenix, :live_view, :handle_info, :exception],
+        [:phoenix, :template, :render, :exception]
+      ],
+      &handle_event/4,
+      []
+    )
+
+    IO.puts("LiveView crash telemetry is set up...")
+  end
+
   def setup_oban do
     :telemetry.attach(
       "bonfire-oban-errors",
       [:oban, :job, :exception],
-      &Bonfire.Common.Telemetry.handle_event/4,
+      &handle_event/4,
       []
     )
 
@@ -85,13 +105,37 @@ defmodule Bonfire.Common.Telemetry do
     # end
   end
 
-  def handle_event([:oban, :job, :exception], measure, meta, _) do
+  def handle_event([:oban, :job, :exception], measure, metadata, _) do
     # TODO: check if still necessary now that Sentry SDK has Oban integration
     extra =
-      meta.job
+      metadata.job
       |> Map.take([:id, :args, :meta, :queue, :worker])
       |> Map.merge(measure)
 
-    Bonfire.Common.Errors.debug_log(extra, meta.error, meta.stacktrace, :error)
+    Bonfire.Common.Errors.debug_log(extra, metadata.error, metadata.stacktrace, :error)
+    :ok
+  end
+
+  def handle_event([:phoenix | _rest] = event, _measurements, metadata, _config) do
+    Bonfire.Common.Errors.debug_log(
+      %{
+        event: event,
+        liveview_module: metadata.socket.view,
+        event: metadata[:event],
+        params: metadata[:params],
+        uri: metadata[:uri],
+        message: metadata[:message]
+      },
+      metadata.reason,
+      metadata.stacktrace,
+      metadata.kind
+    )
+
+    :ok
+  end
+
+  def handle_event(event, _measurements, _metadata, _config) do
+    Logger.warn("Telemetry: unhandled event #{inspect(event)}")
+    :ok
   end
 end
