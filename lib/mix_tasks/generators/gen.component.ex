@@ -33,13 +33,14 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
         |> Kernel.<>("Live")
         |> Igniter.Project.Module.parse()
 
-      # |> IO.inspect()
+      IO.puts("Adding UI component #{module_name}...")
 
       lib_path_prefix = "lib/web/components"
 
       igniter
       |> Igniter.create_new_file(
-        Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix),
+        Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix)
+        |> IO.inspect(label: "Component path"),
         """
         defmodule #{inspect(module_name)} do
           use Bonfire.UI.Common.Web, :#{state}_component
@@ -49,7 +50,8 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
         """
       )
       |> Igniter.create_new_file(
-        Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix, "sface"),
+        Helpers.igniter_path_for_module(igniter, module_name, lib_path_prefix, "sface")
+        |> IO.inspect(label: "Template path"),
         """
         <div>
           Hello, This is a new #{state} component for #{ext_module}.

@@ -36,6 +36,10 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
 
       template = opts[:template] || @default_template
 
+      IO.puts(
+        "Creating new extension #{extension_name} / #{snake_name} from template #{template}..."
+      )
+
       igniter
       |> clone_template(snake_name, template)
       |> rename_modules(snake_name, camel_name, template)
@@ -48,10 +52,9 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
     end
 
     defp ext_camel(extension_name) do
-      camel_name =
-        extension_name
-        |> String.replace("bonfire_", "bonfire/")
-        |> Macro.camelize()
+      extension_name
+      |> String.replace("bonfire_", "bonfire/")
+      |> Macro.camelize()
     end
 
     defp clone_template(igniter, snake_name, template) do

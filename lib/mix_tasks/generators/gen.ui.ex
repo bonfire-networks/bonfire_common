@@ -33,8 +33,9 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
         |> String.replace("bonfire_", "bonfire/")
         |> Macro.camelize()
 
+      IO.puts("Adding UI to extension #{camel_name}...")
+
       igniter
-      # TODO: include first component in this one
       |> Igniter.compose_task(Mix.Tasks.Bonfire.Gen.Component, [
         "stateless",
         camel_name,

@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
         |> Kernel.<>(".Web.Routes")
         |> Igniter.Project.Module.parse()
 
-      # |> IO.inspect()
+      IO.puts("Adding UI routes at #{module_name}...")
 
       lib_path_prefix = "lib/web"
 

@@ -21,7 +21,7 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
         |> Kernel.<>("Live")
         |> Igniter.Project.Module.parse()
 
-      # |> IO.inspect()
+      IO.puts("Adding UI widget #{module_name}...")
 
       lib_path_prefix = "lib/web/widgets"
 
