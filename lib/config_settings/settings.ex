@@ -375,7 +375,7 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp settings_data(_) do
-    %{}
+    []
   end
 
   defp settings_data_for_app(settings, otp_app) do

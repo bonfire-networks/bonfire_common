@@ -6,6 +6,10 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
   """
   use GenServer, restart: :transient
   require Logger
+  alias Bonfire.Common.Enums
+  alias Bonfire.Common.Extend
+  alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings
 
   @spec start_link(ignored :: term) :: GenServer.on_start()
   @doc "Populates the global cache with table data via introspection."
@@ -23,15 +27,17 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
   end
 
   def load_config() do
-    settings = Bonfire.Common.Settings.load_instance_settings()
+    settings =
+      Settings.load_instance_settings()
+      |> Enums.maybe_to_keyword_list(true, false)
 
     if settings do
       Logger.info("Loading instance Settings from DB into the app's Config")
 
-      put = Bonfire.Common.Config.put_tree(settings)
+      put = Config.put_tree(settings, already_prepared: true)
 
       # generate an updated reverse router based on extensions that are enabled/disabled
-      Bonfire.Common.Extend.generate_reverse_router!()
+      Extend.generate_reverse_router!()
 
       {put, Map.new(settings)}
     else

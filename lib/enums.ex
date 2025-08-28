@@ -834,27 +834,29 @@ defmodule Bonfire.Common.Enums do
     maybe_keyword_new(object, force_top_level)
   end
 
-  def maybe_to_keyword_list(obj, recursive, force_top_level)
+  def maybe_to_keyword_list(obj, recursive_mode, force_top_level)
       when is_map(obj) or is_list(obj) do
-    maybe_to_keyword_list_recurse(obj, recursive, force_top_level)
+    maybe_to_keyword_list_recurse(obj, recursive_mode, force_top_level)
   end
 
   def maybe_to_keyword_list(obj, _, _), do: obj
 
-  defp maybe_to_keyword_list_recurse(object, recursive, force_top_level) do
-    force_recursive_levels = recursive == :force
+  defp maybe_to_keyword_list_recurse(object, recursive_mode, force_top_level) do
+    force_recursive_levels? = recursive_mode == :force
 
     case maybe_keyword_new(object, force_top_level) do
       object when is_map(object) ->
-        Map.filter(object, fn
-          {k, v} -> {k, maybe_to_keyword_list(v, true, force_recursive_levels)}
-          v -> maybe_to_keyword_list(v, true, force_recursive_levels)
+        debug(object, "not able to turn into keyword list, but still try with the children")
+
+        Map.new(object, fn
+          {k, v} -> {k, maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)}
+          v -> maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)
         end)
 
       object when is_list(object) ->
-        Enum.filter(object, fn
-          {k, v} -> {k, maybe_to_keyword_list(v, true, force_recursive_levels)}
-          v -> maybe_to_keyword_list(v, true, force_recursive_levels)
+        Keyword.new(object, fn
+          {k, v} -> {k, maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)}
+          v -> maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)
         end)
 
       object ->
@@ -862,31 +864,40 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  defp maybe_keyword_new(object, force) do
-    if Enumerable.impl_for(object),
-      do:
-        Keyword.new(object, fn
-          {key, val} when is_atom(key) ->
-            {key, val}
+  defp maybe_keyword_new(object, force?) do
+    if Enumerable.impl_for(object) do
+      Keyword.new(object, fn
+        {key, val} when is_atom(key) ->
+          {key, val}
 
-          {key, val} when is_binary(key) ->
-            case Types.maybe_to_atom!(key) do
-              nil ->
-                warn(key, "item with non-atom key")
-                if force, do: {:__item_discarded__, true}, else: throw(:__item_discarded__)
+        {key, val} when is_binary(key) ->
+          case Types.maybe_to_atom!(key) do
+            nil ->
+              if force? do
+                warn(val, "discarding item with non-atom key #{inspect(key)}")
+                {:__item_discarded__, true}
+              else
+                warn(val, "will use a map due to an item with non-atom key #{inspect(key)}")
+                throw(:__item_discarded__)
+              end
 
-              # {:__item_discarded__, true}
+            key ->
+              {key, val}
+          end
 
-              key ->
-                {key, val}
-            end
-
-          other ->
-            warn(other, "item that isn't a key/value pair")
-            if force, do: {:__not_kv__, true}, else: throw(:__not_kv__)
-            # {:__not_kv__, true}
-        end),
-      else: object
+        other ->
+          if force? do
+            warn(other, "discarding item that isn't a key/value pair")
+            {:__not_kv__, true}
+          else
+            warn(other, "will return item as-is because it isn't a key/value pair")
+            throw(:__not_kv__)
+          end
+      end)
+    else
+      object
+      |> debug("will return item as-is because it isn't an enumerable")
+    end
   rescue
     e ->
       warn(e)
