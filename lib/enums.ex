@@ -40,11 +40,11 @@ defmodule Bonfire.Common.Enums do
       iex> Bonfire.Common.Enums.fun({1, 2}, :last)
       # runs `List.last/1` after converting the tuple to a list
       2
-      
+
       iex> Bonfire.Common.Enums.fun([1, 2, 3], :sum)
       # runs `Enum.sum/1` because there's no `List.sum/1`
       6
-      
+
   """
   def fun(map, fun, args \\ [])
 
@@ -830,16 +830,17 @@ defmodule Bonfire.Common.Enums do
   """
   def maybe_to_keyword_list(obj, recursive \\ false, force_top_level \\ true)
 
+  def maybe_to_keyword_list(obj, _, _)
+      when not is_map(obj) and not is_list(obj),
+      do: obj
+
   def maybe_to_keyword_list(object, false = _not_recursive, force_top_level) do
     maybe_keyword_new(object, force_top_level)
   end
 
-  def maybe_to_keyword_list(obj, recursive_mode, force_top_level)
-      when is_map(obj) or is_list(obj) do
+  def maybe_to_keyword_list(obj, recursive_mode, force_top_level) do
     maybe_to_keyword_list_recurse(obj, recursive_mode, force_top_level)
   end
-
-  def maybe_to_keyword_list(obj, _, _), do: obj
 
   defp maybe_to_keyword_list_recurse(object, recursive_mode, force_top_level) do
     force_recursive_levels? = recursive_mode == :force
@@ -849,15 +850,23 @@ defmodule Bonfire.Common.Enums do
         debug(object, "not able to turn into keyword list, but still try with the children")
 
         Map.new(object, fn
-          {k, v} -> {k, maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)}
-          v -> maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)
+          {k, v} -> {k, maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)}
+          v -> maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)
         end)
 
       object when is_list(object) ->
-        Keyword.new(object, fn
-          {k, v} -> {k, maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)}
-          v -> maybe_to_keyword_list_recurse(v, recursive_mode, force_recursive_levels?)
-        end)
+        if Keyword.keyword?(object) do
+          Keyword.new(object, fn
+            {k, v} -> {k, maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)}
+            v -> maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)
+          end)
+        else
+          object
+          |> debug("is a list but not a keyword list, will try to convert elements")
+          |> Enum.map(fn v ->
+            maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)
+          end)
+        end
 
       object ->
         object
@@ -1306,7 +1315,7 @@ defmodule Bonfire.Common.Enums do
   def input_to_value(v, _, _, _, _, _, _), do: v
 
   @doc """
-  Takes a data structure and recursively converts any known keys to atoms and then tries to 
+  Takes a data structure and recursively converts any known keys to atoms and then tries to
   recursively convert any maps to structs, using hints in the data (eg. `__type` or `index_type` fields) or related schemas (eg. mixins).
 
   NOTE: you may want to call `input_to_atoms/2` on the data first if it contains string keys instead of atoms.
@@ -1381,7 +1390,7 @@ defmodule Bonfire.Common.Enums do
         }
       }
 
-      iex> # Nested maps with type override for the top level 
+      iex> # Nested maps with type override for the top level
       iex> maybe_to_structs(%{
       ...>   index_type: "Bonfire.Data.Identity.User",
       ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8",
@@ -1426,7 +1435,7 @@ defmodule Bonfire.Common.Enums do
 
   # Handle maps (including those with type hints)
   def maybe_to_structs(%{} = data, top_level_type, parent_schema_throuple) do
-    # infer mixins when recursing 
+    # infer mixins when recursing
     data = maybe_add_mixin(data, parent_schema_throuple)
     type = top_level_type || Types.maybe_to_module(schema_type(data))
     id = id(data)
