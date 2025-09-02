@@ -12,12 +12,16 @@ defmodule Bonfire.Common.ObanHelpers do
   """
   def list_jobs_queue_for_user(repo, queue, user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    offset = Keyword.get(opts, :offset, 0)
+    filters = Keyword.get(opts, :filters, %{})
 
     from(j in Oban.Job,
       where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
       order_by: [desc: j.id],
-      limit: ^limit
+      limit: ^limit,
+      offset: ^offset
     )
+    |> apply_job_filters(filters)
     |> repo.all()
   end
 
@@ -123,4 +127,46 @@ defmodule Bonfire.Common.ObanHelpers do
     |> Map.take(keys)
     |> Enum.map(fn {key, value} -> {key, value, Keyword.get(field_opts, key, [])} end)
   end
+
+  defp apply_job_filters(query, %{type: nil, status: nil}), do: query
+
+  defp apply_job_filters(query, filters) do
+    query
+    |> apply_type_filter(Map.get(filters, :type))
+    |> apply_status_filter(Map.get(filters, :status))
+  end
+
+  defp apply_type_filter(query, nil), do: query
+
+  defp apply_type_filter(query, type) do
+    op_code = type_to_op_code(type)
+    where(query, [j], fragment("?->>'op' = ?", j.args, ^op_code))
+  end
+
+  defp apply_status_filter(query, nil), do: query
+
+  defp apply_status_filter(query, "done") do
+    where(query, [j], j.state in ["completed", "discarded", "cancelled"])
+  end
+
+  defp apply_status_filter(query, "successful") do
+    where(query, [j], j.state == "completed")
+  end
+
+  defp apply_status_filter(query, "active") do
+    where(query, [j], j.state in ["executing", "available", "scheduled", "retryable"])
+  end
+
+  defp apply_status_filter(query, "failed") do
+    where(query, [j], j.state in ["discarded", "cancelled"])
+  end
+
+  defp type_to_op_code("Follow"), do: "follows_import"
+  defp type_to_op_code("Block"), do: "blocks_import"
+  defp type_to_op_code("Silence"), do: "silences_import"
+  defp type_to_op_code("Ghost"), do: "ghosts_import"
+  defp type_to_op_code("Bookmark"), do: "bookmarks_import"
+  defp type_to_op_code("Circle"), do: "circles_import"
+  defp type_to_op_code("Posts & boosts"), do: "outbox_import"
+  defp type_to_op_code(other), do: other
 end

@@ -523,6 +523,12 @@ defmodule Bonfire.Common.DatesTimes do
     |> generate_ulid()
   end
 
+  def generate_ulid(%Date{} = date) do
+    date
+    |> to_date_time()
+    |> generate_ulid()
+  end
+
   def generate_ulid(date_time_string) when is_binary(date_time_string) do
     with %DateTime{} = date_time <-
            to_date_time(date_time_string) do
