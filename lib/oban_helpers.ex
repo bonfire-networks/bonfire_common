@@ -8,6 +8,24 @@ defmodule Bonfire.Common.ObanHelpers do
   end
 
   @doc """
+  List all jobs for a specific user 
+  """
+  def list_jobs_for_user(repo, user_id, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+    offset = Keyword.get(opts, :offset, 0)
+    filters = Keyword.get(opts, :filters, %{})
+
+    from(j in Oban.Job,
+      where: fragment("?->>'user_id' = ?", j.args, ^user_id),
+      order_by: [desc: j.id],
+      limit: ^limit,
+      offset: ^offset
+    )
+    |> apply_job_filters(filters)
+    |> repo.all()
+  end
+
+  @doc """
   List jobs for a specific user and queue
   """
   def list_jobs_queue_for_user(repo, queue, user_id, opts \\ []) do
@@ -42,9 +60,19 @@ defmodule Bonfire.Common.ObanHelpers do
   @doc """
   Get job statistics for a user and queue
   """
-  def job_stats_for_user(repo, queue, user_id) do
+  def job_stats_by_queue_for_user(repo, queue, user_id) do
     from(j in Oban.Job,
       where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
+      group_by: j.state,
+      select: {j.state, count(j.id)}
+    )
+    |> repo.all()
+    |> Enum.into(%{})
+  end
+
+  def job_stats_for_user(repo, user_id) do
+    from(j in Oban.Job,
+      where: fragment("?->>'user_id' = ?", j.args, ^user_id),
       group_by: j.state,
       select: {j.state, count(j.id)}
     )
@@ -63,6 +91,19 @@ defmodule Bonfire.Common.ObanHelpers do
     )
     |> repo.all()
     |> Enum.into(%{})
+  end
+
+  @doc """
+  Cancel all active jobs of a specific operation type for a user
+  """
+  def cancel_jobs_by_type_for_user(repo, user_id, op_code) do
+    from(j in Oban.Job,
+      where:
+        fragment("?->>'user_id' = ?", j.args, ^user_id) and
+          fragment("?->>'op' = ?", j.args, ^op_code) and
+          j.state in ["available", "scheduled", "retryable"]
+    )
+    |> repo.update_all(set: [state: "cancelled", cancelled_at: DateTime.utc_now()])
   end
 
   defp base_query(opts) do
