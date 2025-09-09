@@ -730,10 +730,53 @@ defmodule Bonfire.Common.RepoTemplate do
         end
       end
 
+      @doc """
+      Creates a custom preload function that excludes specific IDs from being loaded.
+
+      This is useful when you want to preload associations but skip loading certain records, for example to avoid loading already-preloaded users or or unnecessary data. 
+
+      ## Parameters
+      - `exclude_ids` - A list of IDs to exclude from preloading
+
+      ## Examples
+
+          # Skip loading specific user IDs when preloading creators
+          skip_loading_user_ids = ["user1", "user2"]
+          
+          Repo.preload(objects, [
+            object: [
+              created: [
+                creator: {repo().reject_preload_ids(skip_loading_user_ids), [:character, profile: :icon]}
+              ]
+            ]
+          ])
+
+          # This will preload all creators except those with IDs in skip_loading_user_ids
+      """
       def reject_preload_ids(exclude_ids) do
         custom_preload_fun(fn ids -> Enum.reject(ids, &(&1 in exclude_ids)) end)
       end
 
+      @doc """
+      Creates a custom preload function with arbitrary filtering logic.
+
+      This allows you to define custom logic for filtering which records get preloaded in associations. The function you provide will receive the list of IDs that would normally be preloaded and should return a filtered list.
+
+      ## Parameters
+      - `fun` - A function that takes a list of IDs and returns a filtered list of IDs
+
+      ## Returns
+      A function that can be used as a custom preloader in Ecto preload operations.
+
+      ## Examples
+
+          # Only preload IDs that are even numbers
+          even_ids_only_fn = custom_preload_fun(fn ids -> 
+            Enum.filter(ids, &(rem(&1, 2) == 0)) 
+          end)
+          
+          Repo.preload(posts, [author: {even_ids_only_fn, [:profile]}])
+      """
       def custom_preload_fun(fun) do
         fn ids, assoc ->
           #  debug(ids)
