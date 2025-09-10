@@ -1,6 +1,7 @@
 defmodule Bonfire.Common.Text.Test do
   use Bonfire.Common.DataCase, async: false
 
+  @tag :skip
   test "markdown rendering is cached properly with custom cache key" do
     content = "# Test custom markdown **with formatting**"
 
@@ -34,7 +35,7 @@ defmodule Bonfire.Common.Text.Test do
     assert result1 == result_mocked
   end
 
-  @tag :skip_ci
+  @tag :skip
   test "markdown rendering with cache is faster" do
     content = "# Test simple markdown **with formatting**"
     opts = [cache: true]

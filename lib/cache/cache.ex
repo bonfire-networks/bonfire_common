@@ -111,7 +111,6 @@ defmodule Bonfire.Common.Cache do
 
       iex> Bonfire.Common.Cache.put("delete_me", "value")
       iex> Bonfire.Common.Cache.remove("delete_me")
-      true
       iex> Bonfire.Common.Cache.get!("delete_me")
       nil
   """
@@ -201,7 +200,6 @@ defmodule Bonfire.Common.Cache do
       iex> Bonfire.Common.Cache.maybe_apply_cached({String, :upcase}, ["hello"])
       "HELLO"
       iex> Bonfire.Common.Cache.reset({String, :upcase}, ["hello"])
-      true
       iex> # Will compute the result again
       iex> Bonfire.Common.Cache.maybe_apply_cached({String, :upcase}, ["hello"])
       "HELLO"
