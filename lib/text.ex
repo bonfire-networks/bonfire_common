@@ -743,14 +743,18 @@ defmodule Bonfire.Common.Text do
       iex> maybe_emote(":smile:", nil, [])
       "😄"
   """
-  def maybe_emote(content, user \\ nil, custom_emoji \\ []) do
+  def maybe_emote(content, user \\ nil, opts \\ []) do
     if Extend.module_enabled?(Emote, user) do
       # debug(custom_emoji)
 
-      Emote.convert_text(content,
-        custom_fn: fn text -> maybe_other_custom_emoji(text, user) end,
-        custom_emoji: custom_emoji
-      )
+      if opts[:parse_custom_emoji] != false do
+        Emote.convert_text(content,
+          custom_fn: fn text -> maybe_other_custom_emoji(text, user) end,
+          custom_emoji: opts[:emoji] || []
+        )
+      else
+        Emote.convert_text(content)
+      end
 
       # |> debug()
     else
@@ -758,7 +762,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  def maybe_other_custom_emoji(text, user) do
+  defp maybe_other_custom_emoji(text, user) do
     # debug(user)
     #  |> debug()
     case text

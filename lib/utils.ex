@@ -945,7 +945,7 @@ defmodule Bonfire.Common.Utils do
       # Fallback to regular Task if LiveView not available
       task = do_apply_task(opts[:module] || Task, :async, fun, [], opts)
       result = Task.await(task)
-      Phoenix.Socket.assign(socket, ok_unwrap(result))
+      Phoenix.Socket.assign(socket, from_ok(result))
     end
   end
 
@@ -1076,41 +1076,6 @@ defmodule Bonfire.Common.Utils do
   def maybe(val, change_fn) do
     change_fn.(val)
   end
-
-  @doc """
-
-  Unwraps an `{:ok, val}` tuple, returning the value. If not OK, returns a fallback value (default is `nil`).
-
-  ## Parameters
-
-    - `val`: The value or tuple to unwrap.
-    - `fallback`: The fallback value if the tuple is an error.
-
-  ## Examples
-
-      iex> ok_unwrap({:ok, 42})
-      42
-
-      iex> ok_unwrap({:error, "something went wrong"}, "default")
-      "default"
-
-      iex> ok_unwrap(:error, "default")
-      "default"
-
-      iex> ok_unwrap(nil, "default")
-      "default"
-  """
-  def ok_unwrap(val, fallback \\ nil)
-  def ok_unwrap({:ok, val}, _fallback), do: val
-
-  def ok_unwrap({:error, val}, fallback) do
-    error(val)
-    fallback
-  end
-
-  def ok_unwrap(:ok, fallback), do: fallback
-  def ok_unwrap(:error, fallback), do: fallback
-  def ok_unwrap(val, fallback), do: val || fallback
 
   @doc """
   Rounds a number and uses `Bonfire.Common.Localise.Cldr.Number.to_string/2` function to format into a human readable string.
