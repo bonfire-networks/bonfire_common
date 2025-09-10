@@ -766,7 +766,7 @@ defmodule Bonfire.Common.Utils do
         )
 
   def maybe_apply_error(error, args, opts) do
-    error(error)
+    warn(error)
     # debug(args, "maybe_apply args")
     # debug(opts, "maybe_apply opts")
 
