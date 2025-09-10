@@ -8,12 +8,12 @@ postgrex = "~> 0.21"
 paginator = "~> 1.1" # paginate queries
 
 gettext = "~> 0.24" # localisation 
-ex_cldr = "~> 2.42.0" # internationalisation
-ex_cldr_languages = "~> 0.3.3" # localise language names
+ex_cldr = "~> 2.43.1" # internationalisation
+ex_cldr_languages = "~> 0.3" # localise language names
 ex_cldr_plugs = "~> 1.2"
-ex_cldr_dates_times = "~> 2.22.0"
+ex_cldr_dates_times = "~> 2.22"
 ex_cldr_units = "~> 3.0"
-ex_cldr_numbers = "~> 2.35.0"
+ex_cldr_numbers = "~> 2.35"
 ex_cldr_locale_display = "~> 1.1"
 ex_cldr_territories = "~> 2.9"
 timex = "~> 3.7.8" # date/times
