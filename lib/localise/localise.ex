@@ -152,9 +152,10 @@ defmodule Bonfire.Common.Localise do
   @doc "Config for the `Cldr.Plug.SetLocale` plug"
   def set_locale_config() do
     [
-      default: Bonfire.Common.Localise.default_locale(),
+      default: Bonfire.Common.Localise.Cldr.default_locale(),
       apps: [gettext: :global, cldr: :global],
-      from: [:session, :cookie, :accept_language, :query],
+      from: [:session, :cookie, :query, :accept_language],
+      param: "locale",
       gettext: Bonfire.Common.Localise.Gettext,
       cldr: Bonfire.Common.Localise.Cldr
     ]
