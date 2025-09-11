@@ -38,13 +38,16 @@ defmodule Bonfire.Common.TestInstanceRepo do
   end
 
   def maybe_declare_test_instance(_) do
-    # Logger.metadata(instance: :primary)
+    Logger.metadata(instance: :primary)
 
     repo = default_repo()
 
     if Config.env() == :test do
       configured_repo = Config.repo()
-      if configured_repo != repo, do: io_inspect(configured_repo, "wrong repo")
+
+      if configured_repo != repo,
+        do: io_inspect("switching from repo #{configured_repo} to #{repo}")
+
       if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
       # if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
     end
@@ -67,6 +70,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   end
 
   defp declare_test_instance do
+    Logger.metadata(instance: :test)
     repo = Bonfire.Common.TestInstanceRepo
 
     process_put(
@@ -74,13 +78,17 @@ defmodule Bonfire.Common.TestInstanceRepo do
       ecto_repo_module: repo
     )
 
+    configured_repo = Config.repo()
+
+    if configured_repo != repo,
+      do: io_inspect("switching from repo #{configured_repo} to #{repo}")
+
     # if Config.env() ==:test, do: 
     #   Patch.patch(Boruta.Config, :repo, repo)
 
     Config.put([Boruta.Oauth, :repo], repo)
 
     default_repo().put_dynamic_repo(repo)
-    # Logger.metadata(instance: :test)
   end
 
   # todo: put somewhere reusable
