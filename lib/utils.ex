@@ -888,6 +888,7 @@ defmodule Bonfire.Common.Utils do
            raise ArgumentError, "`:id` is required in opts for LiveView start_async operations")
 
     pid = socket.transport_pid
+    current_endpoint = Process.get(:phoenix_endpoint_module)
 
     if socket && function_exported?(Phoenix.LiveView, :start_async, 4) do
       Phoenix.LiveView.start_async(
@@ -895,10 +896,7 @@ defmodule Bonfire.Common.Utils do
         id,
         fn ->
           # Preserve multi-tenancy/context in spawned process
-          current_endpoint = Process.get(:phoenix_endpoint_module)
-
-          Process.put(:task_parent_pid, pid)
-          Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
 
           # Execute the function
           fun.()
@@ -924,6 +922,7 @@ defmodule Bonfire.Common.Utils do
            raise ArgumentError, "`:keys` is required in opts for LiveView assign_async operations")
 
     pid = socket.transport_pid
+    current_endpoint = Process.get(:phoenix_endpoint_module)
 
     if socket && function_exported?(Phoenix.LiveView, :assign_async, 4) do
       Phoenix.LiveView.assign_async(
@@ -931,10 +930,7 @@ defmodule Bonfire.Common.Utils do
         keys,
         fn ->
           # Preserve multi-tenancy/context in spawned process
-          current_endpoint = Process.get(:phoenix_endpoint_module)
-
-          Process.put(:task_parent_pid, pid)
-          Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
 
           # Execute the function
           fun.()
@@ -964,8 +960,8 @@ defmodule Bonfire.Common.Utils do
       args ++
         [
           fn ->
-            Process.put(:task_parent_pid, pid)
-            Bonfire.Common.TestInstanceRepo.maybe_declare_test_instance(current_endpoint)
+            # Preserve multi-tenancy/context in spawned process
+            Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
             fun.()
           end
         ]

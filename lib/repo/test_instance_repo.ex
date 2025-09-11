@@ -23,14 +23,12 @@ defmodule Bonfire.Common.TestInstanceRepo do
     declare_test_instance()
     fun.()
   after
-    repo = default_repo()
-
-    process_put(
-      phoenix_endpoint_module: default_endpoint(),
-      ecto_repo_module: repo
-    )
-
     maybe_declare_test_instance(false)
+  end
+
+  def set_child_instance(parent_pid, parent_endpoint) do
+    Process.put(:task_parent_pid, parent_pid)
+    maybe_declare_test_instance(parent_endpoint)
   end
 
   def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
@@ -45,14 +43,25 @@ defmodule Bonfire.Common.TestInstanceRepo do
     repo = default_repo()
 
     if Config.env() == :test do
-      if Config.repo() != repo, do: err(Config.repo(), "wrong repo")
+      configured_repo = Config.repo()
+      if configured_repo != repo, do: io_inspect(configured_repo, "wrong repo")
       if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
-      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong repo")
+      # if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
     end
 
-    Boruta.Config.repo() |> debug("boruta repo")
+    # Boruta.Config.repo() |> debug("boruta repo")
+
+    process_put(
+      phoenix_endpoint_module: default_endpoint(),
+      ecto_repo_module: repo
+    )
 
     repo.put_dynamic_repo(repo)
+
+    if Config.env() == :test do
+      configured_repo = Config.repo()
+      if configured_repo != repo, do: err(configured_repo, "wrong repo")
+    end
 
     nil
   end
