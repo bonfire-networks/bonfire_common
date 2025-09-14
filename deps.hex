@@ -26,6 +26,7 @@ json_serde = "~> 1.1" # json [de]serialization for elixir data structures
 jason = "~> 1.4.0" # json parsing
 # earmark = "~> 1.4.46" # handle markdown (deprecated)
 mdex ="~> 0.8.2" # handle markdown 
+lazy_html = "~> 0.1" # for parsing html (and used by Phoenix tests)
 #earmark_parser = "~> 1.4.37" # parse markdown (we can let earmark specify the version)
 html_sanitize_ex = "~> 1.4" # html sanitation
 sizeable = "~> 1.0"
@@ -43,3 +44,4 @@ faker = "~> 0.17" # fake data generation, mostly for tests
 process_tree = "~> 0.2.1"
 
 nebulex = "~> 2.6.1"
+

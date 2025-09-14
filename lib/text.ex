@@ -663,12 +663,21 @@ defmodule Bonfire.Common.Text do
 
   It is recommended to call this before storing any that data is coming in from the user or from a remote instance
 
+  Uses HtmlSanitizeEx if enabled, otherwise returns input.
+
   ## Examples
 
-      > maybe_sane_html("<script>alert('XSS')</script>")
-      #=> "alert('XSS')" (if HtmlSanitizeEx is enabled)
+      iex> Bonfire.Common.Text.maybe_sane_html("<script>alert('XSS')</script>")
+      "alert('XSS')"
+
+      iex> Bonfire.Common.Text.maybe_sane_html("<p>Safe</p>")
+      "<p>Safe</p>"
+
+      iex> Bonfire.Common.Text.maybe_sane_html("<div class='test'>Safe</div>")
+      "Safe"
   """
   def maybe_sane_html(content) do
+    # TODO: can we use MDEx's sanitizer here when dealing with markdown content, and LazyHTML for raw HTML content?
     if Extend.module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.markdown_html(content)
     else
@@ -689,6 +698,10 @@ defmodule Bonfire.Common.Text do
   """
   def text_only({:safe, content}), do: text_only(content)
 
+  def text_only(%LazyHTML{} = content) do
+    LazyHTML.text(content)
+  end
+
   def text_only(content) when is_binary(content) do
     if Extend.module_enabled?(HtmlSanitizeEx) do
       HtmlSanitizeEx.strip_tags(content)
@@ -700,40 +713,6 @@ defmodule Bonfire.Common.Text do
   end
 
   def text_only(_content), do: nil
-
-  @doc """
-  Normalizes HTML content, handling various edge cases.
-
-  ## Examples
-
-      iex> maybe_normalize_html("<p>Test</p>")
-      "Test"
-
-      iex> maybe_normalize_html("<p><br/></p>")
-      ""
-  """
-  def maybe_normalize_html("<p>" <> content) do
-    # workaround for weirdness with Earmark's parsing of markdown within html
-    maybe_normalize_html(content)
-  end
-
-  def maybe_normalize_html(html_string) when is_binary(html_string) do
-    if Extend.module_enabled?(Floki) do
-      with {:ok, fragment} <- Floki.parse_fragment(html_string) do
-        Floki.raw_html(fragment)
-      else
-        e ->
-          warn(e, "seems to be invalid HTML, converting to text-only instead")
-          text_only(html_string)
-      end
-    else
-      html_string
-    end
-    |> String.trim("<p><br/></p>")
-    |> String.trim("<br/>")
-
-    # |> debug(html_string)
-  end
 
   @doc """
   Converts text to emotes if the Emote module is enabled.
@@ -793,6 +772,54 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
+  Replaces the href attribute of <a> tags in HTML input using a replacements map.
+
+  Accepts a string, tree, or LazyHTML struct as input.
+  Returns the updated tree.
+
+  ## Examples
+
+    iex> Bonfire.Common.Text.replace_links("<a href='/foo'>test</a>", %{"/foo" => "/bar"})
+    [{"a", [{"href", "/bar"}], ["test"]}]
+
+    iex> Bonfire.Common.Text.replace_links([{"a", [{"href", "/foo"}], ["test"]}], %{"/foo" => "/bar"})
+    [{"a", [{"href", "/bar"}], ["test"]}]
+
+    iex> Bonfire.Common.Text.replace_links("<a href='/foo'>test</a>", %{"/baz" => "/qux"})
+    [{"a", [{"href", "/foo"}], ["test"]}]
+  """
+  def replace_links(nil, _), do: nil
+
+  def replace_links(input, replacements_map)
+      when is_map(replacements_map) and replacements_map != %{} do
+    input
+    |> as_html_tree()
+    |> LazyHTML.Tree.postwalk(fn
+      {"a", attrs, children} = node ->
+        case List.keyfind(attrs, "href", 0) do
+          {"href", href} ->
+            case Map.get(replacements_map, href) do
+              nil ->
+                node
+
+              new_href ->
+                # Only rewrite if there's a match
+                new_attrs = List.keyreplace(attrs, "href", 0, {"href", new_href})
+                {"a", new_attrs, children}
+            end
+
+          nil ->
+            node
+        end
+
+      node ->
+        node
+    end)
+  end
+
+  def replace_links(input, _), do: input
+
+  @doc """
   Makes local links within content live.
 
   ## Examples
@@ -800,8 +827,8 @@ defmodule Bonfire.Common.Text do
       > make_local_links_live("<a href=\"/path\">Link</a>")
       "<a href=\"/path\" data-phx-link=\"redirect\" data-phx-link-state=\"push\">Link</a>"
   """
+
   # Regex for local links that should be made "live"
-  defp local_links_regex, do: ~r/(<a [^>]*href=\")\/(.+\")/U
 
   def make_local_links_live(content)
       when is_binary(content) and byte_size(content) > 20 do
@@ -820,90 +847,60 @@ defmodule Bonfire.Common.Text do
 
   def make_local_links_live(content), do: content
 
+  defp local_links_regex, do: ~r/(<a [^>]*href=\")\/(.+\")/U
+
   @doc """
-  Normalizes links in the content based on format.
+  Extracts URLs from HTML content using LazyHTML.
+
+  Accepts string, LazyHTML struct, or tree as input.
+  Returns {:ok, %{html: LazyHTML struct, urls: [url, ...]}} or nil for blank input.
+
+  Filters out mention and hashtag URLs.
 
   ## Examples
 
-      > normalise_links("<a href=\"/pub/actors/foo\">Actor</a>", :markdown)
-      "<a href=\"/character/foo\">Actor</a>"
+      iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["http://foo.com"]}} = Bonfire.Common.Text.extract_urls_from_html("<a href='http://foo.com'>foo</a>")
+
+      iex> {:ok, %{html: %LazyHTML{resource: _}, urls: []}} = Bonfire.Common.Text.extract_urls_from_html("<div>no valid links</div><a href='/'>test</a><a href='mailto:test@example.com'>test</a>")
+      
+      iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["/"]}} = Bonfire.Common.Text.extract_urls_from_html("<div>including relative links</div><a href='/'>test</a>", allow_relative: true)
+
+      iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["mailto:test@example.com"]}} = Bonfire.Common.Text.extract_urls_from_html("<div>no non-HTTP links</div><a href='/'>test</a><a href='mailto:test@example.com'>test</a>", allow_non_http: true)
+
+      iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["ftp://test@example.com"]}} = Bonfire.Common.Text.extract_urls_from_html("<div>no non-HTTP links</div><a href='/'>test</a><a href='ftp://test@example.com'>test</a>", allow_non_http: true)
+
+      iex> Bonfire.Common.Text.extract_urls_from_html(nil)
+      nil
+
+      iex> Bonfire.Common.Text.extract_urls_from_html("")
+      nil
   """
-  # Regex patterns for normalizing links
-  defp md_ap_actors_regex(local_instance), do: ~r/(\()#{local_instance}\/pub\/actors\/(.+\))/U
-  defp md_ap_objects_regex(local_instance), do: ~r/(\()#{local_instance}\/pub\/objects\/(.+\))/U
-  defp md_local_links_regex(local_instance), do: ~r/(\]\()#{local_instance}(.+\))/U
+  def extract_urls_from_html(html_content, opts \\ [])
+  def extract_urls_from_html(nil, _opts), do: nil
+  def extract_urls_from_html("", _opts), do: nil
 
-  def normalise_links(content, format \\ :markdown)
+  def extract_urls_from_html(input, opts) do
+    html =
+      input
+      |> as_lazy_html()
 
-  def normalise_links(content, :markdown)
-      when is_binary(content) and byte_size(content) > 20 do
-    local_instance = Bonfire.Common.URIs.base_url()
+    urls =
+      html
+      |> LazyHTML.query("a[href]")
+      |> LazyHTML.attribute("href")
+      |> Enum.filter(fn url ->
+        String.starts_with?(url, ["http://", "https://"]) or
+          (opts[:allow_non_http] == true and
+             (String.starts_with?(url, "mailto:") or String.contains?(url, "://"))) or
+          (opts[:allow_relative] == true and String.starts_with?(url, "/"))
+      end)
 
-    content
-    # handle AP actors
-    |> Regex.replace(
-      md_ap_actors_regex(local_instance),
-      ...,
-      "\\1/character/\\2"
-    )
-    # handle AP objects
-    |> Regex.replace(
-      md_ap_objects_regex(local_instance),
-      ...,
-      "\\1/discussion/\\2"
-    )
-    # handle local links
-    |> Regex.replace(
-      md_local_links_regex(local_instance),
-      ...,
-      "\\1\\2"
-    )
-
-    # |> debug(content)
+    {:ok,
+     %{
+       html: html,
+       urls: urls
+     }}
   end
-
-  # Regex patterns for HTML link normalization 
-  defp html_ap_actors_regex(local_instance),
-    do: ~r/(<a [^>]*href=")#{local_instance}\/pub\/actors\/([^"]+)/U
-
-  defp html_ap_objects_regex(local_instance),
-    do: ~r/(<a [^>]*href=")#{local_instance}\/pub\/objects\/([^"]+)/U
-
-  defp html_local_links_regex(local_instance), do: ~r/(<a [^>]*href=")#{local_instance}([^"]+)/U
-  defp html_external_links_regex, do: ~r/<a ([^>]*href="http[^"]+)/U
-
-  def normalise_links(content, _html)
-      when is_binary(content) and byte_size(content) > 20 do
-    local_instance = Bonfire.Common.URIs.base_url()
-
-    content
-    # special for MD links coming from milkdown
-    # |> Regex.replace(~r/<(http.+)>/U, ..., " \\1 ")
-    # handle AP actors
-    |> Regex.replace(
-      html_ap_actors_regex(local_instance),
-      ...,
-      " \\1/character/\\2"
-    )
-    # handle AP objects
-    |> Regex.replace(
-      html_ap_objects_regex(local_instance),
-      ...,
-      " \\1/discussion/\\2"
-    )
-    # handle local links
-    |> Regex.replace(
-      html_local_links_regex(local_instance),
-      ...,
-      " \\1\\2"
-    )
-    # handle external links (in new tab)
-    |> Regex.replace(html_external_links_regex(), ..., " <a target=\"_blank\" \\1")
-
-    # |> debug(content)
-  end
-
-  def normalise_links(content, _format), do: content
 
   @doc """
   Converts markdown checkboxes to HTML checkboxes.
@@ -1063,5 +1060,160 @@ defmodule Bonfire.Common.Text do
       _ ->
         nil
     end
+  end
+
+  @doc """
+  Converts input to a LazyHTML struct.
+
+  Accepts string, tree, or LazyHTML struct.
+
+  ## Examples
+
+      iex> %LazyHTML{resource: _} = as_lazy_html("<b>hi</b>")
+      
+      iex> %LazyHTML{resource: _} = as_lazy_html([{"b", [], ["hi"]}])
+      
+      iex> %LazyHTML{resource: _} = as_lazy_html(%LazyHTML{resource: nil}) 
+  """
+  def as_lazy_html(nil), do: nil
+  def as_lazy_html(%LazyHTML{} = html), do: html
+  def as_lazy_html(text) when is_binary(text), do: LazyHTML.from_fragment(text)
+  def as_lazy_html(tree) when is_list(tree), do: LazyHTML.from_tree(tree)
+
+  @doc """
+  Converts input to a LazyHTML tree.
+
+  Accepts string, LazyHTML struct, or tree.
+
+  ## Examples
+
+      iex> as_html_tree("<b>hi</b>")
+      [{"b", [], ["hi"]}]
+
+      iex> as_html_tree([{"b", [], ["hi"]}])
+      [{"b", [], ["hi"]}]
+
+      iex> as_html_tree(LazyHTML.from_fragment("<b>hi</b>"))
+      [{"b", [], ["hi"]}]
+
+  Accepts string, LazyHTML struct, or tree.
+
+  ## Examples
+
+      iex> as_html_tree("<b>hi</b>")
+      [{"b", [], ["hi"]}]
+
+      iex> as_html_tree([{"b", [], ["hi"]}])
+      [{"b", [], ["hi"]}]
+
+      iex> as_html_tree(LazyHTML.from_fragment("<b>hi</b>"))
+      [{"b", [], ["hi"]}]
+  """
+  def as_html_tree(nil), do: nil
+  def as_html_tree(tree) when is_list(tree), do: tree
+  def as_html_tree(input), do: as_lazy_html(input) |> LazyHTML.to_tree()
+
+  @doc """
+  Normalizes HTML content and returns a string.
+  Accepts string, LazyHTML struct, or HTML syntax tree as input.
+
+  Trims all leading and trailing `<p><br/></p>`, `<br/>`, and empty `<p></p>` tags.
+
+  ## Examples
+
+      iex> as_html("<p>Test</p>")
+      "<p>Test</p>"
+
+      iex> as_html("<p><br/></p><p></p><br/>")
+      ""
+
+      iex> as_html("<p><br/></p><p></p><p><br/></p><br/>")
+      ""
+
+      iex> as_html("<p><br/></p><br/>")
+      ""
+
+      iex> as_html("<p></p>")
+      ""
+
+      iex> as_html("<br/>")
+      ""
+
+      iex> as_html("<p><br/></p>Hello<br/>")
+      "Hello"
+
+      iex> as_html("<p><br/></p><p>Test</p><br/>")
+      "<p>Test</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p></p><br/>")
+      "<p>Test</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p>More</p><br/>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p>More</p><p></p><br/>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p><br/></p><p></p><p>Test</p><p>More</p><p></p><br/>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p>More</p><p>Even</p><br/>")
+      "<p>Test</p><p>More</p><p>Even</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p>More</p><p>Even</p><p></p><br/>")
+      "<p>Test</p><p>More</p><p>Even</p>"
+
+      iex> as_html("<p><br/></p><p>Test</p><p>More</p><p>Even</p><p><br/></p><br/>")
+      "<p>Test</p><p>More</p><p>Even</p>"
+
+      iex> as_html("<p>Test</p><p>More</p>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p>Test</p><p></p>")
+      "<p>Test</p>"
+
+      iex> as_html("Test<br/>")
+      "Test"
+
+      iex> as_html("<p>Test</p>More<br/>")
+      "<p>Test</p>More"
+
+      iex> as_html("<p>Test</p><p>More</p><p></p>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p>Test</p><p>More</p><p><br/></p>")
+      "<p>Test</p><p>More</p>"
+
+      iex> as_html("<p>Test</p><p>More</p><p>Even</p>")
+      "<p>Test</p><p>More</p><p>Even</p>"
+
+      iex> as_html("<p>Test</p><p>More</p><p>Even</p><p></p>")
+      "<p>Test</p><p>More</p><p>Even</p>"
+
+      iex> as_html("Test<p>More</p><p>Even</p><p><br/></p>")
+      "Test<p>More</p><p>Even</p>"
+
+      iex> as_html("")
+      ""
+  """
+  def as_html(nil), do: nil
+
+  def as_html(input) do
+    # Helper to detect empty paragraph node
+    br_or_empty_paragraph? = fn
+      {"br", _, _} -> true
+      {"p", _, [{"br", _, _}]} -> true
+      {"p", _, []} -> true
+      {"p", _, [""]} -> true
+      _ -> false
+    end
+
+    # Trim all leading/trailing <p><br/></p>, <br/>, and empty <p></p> nodes
+    as_html_tree(input)
+    |> Enum.drop_while(fn node -> br_or_empty_paragraph?.(node) end)
+    |> Enum.reverse()
+    |> Enum.drop_while(fn node -> br_or_empty_paragraph?.(node) end)
+    |> Enum.reverse()
+    |> LazyHTML.Tree.to_html()
   end
 end
