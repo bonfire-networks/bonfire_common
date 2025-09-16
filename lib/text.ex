@@ -8,6 +8,7 @@ defmodule Bonfire.Common.Text do
   use Bonfire.Common.Config
   use Bonfire.Common.Settings
   alias Bonfire.Common.Media
+  alias Bonfire.Common.URIs
 
   # @add_to_end "..."
   @sentence_seperator " "
@@ -848,6 +849,20 @@ defmodule Bonfire.Common.Text do
   def make_local_links_live(content), do: content
 
   defp local_links_regex, do: ~r/(<a [^>]*href=\")\/(.+\")/U
+
+  def make_links_absolute(content, format, base_url \\ nil)
+
+  def make_links_absolute(content, :markdown, base_url)
+      when is_binary(content) and byte_size(content) > 10 do
+    base_url = base_url || URIs.base_url()
+
+    Regex.replace(~r/(\]\()\/([^)]+)\)/, content, "\\1#{base_url}/\\2)")
+    |> Regex.replace(~r/(!\[.*?\]\()\/([^)]+)\)/, ..., "\\1#{base_url}/\\2)")
+  end
+
+  def make_links_absolute(content, _, _) do
+    content
+  end
 
   @doc """
   Extracts URLs from HTML content using LazyHTML.
