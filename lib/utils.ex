@@ -679,8 +679,12 @@ defmodule Bonfire.Common.Utils do
               msg =
                 "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}"
 
-              if opts[:ignore_errors] || opts[:fallback_fun] do
-                debug(exception, msg, stacktrace: __STACKTRACE__)
+              if opts[:on_error] == :ignore || opts[:fallback_fun] do
+                if opts[:on_error] == :err do
+                  err(exception, msg, stacktrace: __STACKTRACE__)
+                else
+                  debug(exception, msg, stacktrace: __STACKTRACE__)
+                end
               else
                 err(exception, msg, stacktrace: __STACKTRACE__)
               end

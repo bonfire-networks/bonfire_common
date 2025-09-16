@@ -10,13 +10,15 @@ defmodule Bonfire.Common.ObanHelpers do
   @doc """
   List all jobs for a specific user 
   """
-  def list_jobs_for_user(repo, user_id, opts \\ []) do
+  def list_jobs_for_user(repo, user_id, username, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)
     filters = Keyword.get(opts, :filters, %{})
 
     from(j in Oban.Job,
-      where: fragment("?->>'user_id' = ?", j.args, ^user_id),
+      where:
+        fragment("?->>'user_id' = ?", j.args, ^user_id) or
+          fragment("?->>'username' = ?", j.args, ^username),
       order_by: [desc: j.id],
       limit: ^limit,
       offset: ^offset
