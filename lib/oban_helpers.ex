@@ -25,7 +25,7 @@ defmodule Bonfire.Common.ObanHelpers do
       offset: ^offset
     )
     |> apply_job_filters(filters)
-    |> flood("query for jobs")
+    |> debug("query for jobs")
     |> repo.all()
   end
 
