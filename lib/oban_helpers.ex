@@ -1,5 +1,6 @@
 defmodule Bonfire.Common.ObanHelpers do
   import Ecto.Query
+  use Untangle
 
   def list(repo, opts) when is_list(opts) do
     {conf, opts} = extract_conf(repo, opts)
@@ -24,26 +25,27 @@ defmodule Bonfire.Common.ObanHelpers do
       offset: ^offset
     )
     |> apply_job_filters(filters)
+    |> flood("query for jobs")
     |> repo.all()
   end
 
-  @doc """
-  List jobs for a specific user and queue
-  """
-  def list_jobs_queue_for_user(repo, queue, user_id, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 50)
-    offset = Keyword.get(opts, :offset, 0)
-    filters = Keyword.get(opts, :filters, %{})
+  # @doc """
+  # List jobs for a specific user and queue
+  # """
+  # def list_jobs_queue_for_user(repo, queue, user_id, opts \\ []) do
+  #   limit = Keyword.get(opts, :limit, 50)
+  #   offset = Keyword.get(opts, :offset, 0)
+  #   filters = Keyword.get(opts, :filters, %{})
 
-    from(j in Oban.Job,
-      where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
-      order_by: [desc: j.id],
-      limit: ^limit,
-      offset: ^offset
-    )
-    |> apply_job_filters(filters)
-    |> repo.all()
-  end
+  #   from(j in Oban.Job,
+  #     where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
+  #     order_by: [desc: j.id],
+  #     limit: ^limit,
+  #     offset: ^offset
+  #   )
+  #   |> apply_job_filters(filters)
+  #   |> repo.all()
+  # end
 
   @doc """
   List all jobs for a specific queue
@@ -59,25 +61,28 @@ defmodule Bonfire.Common.ObanHelpers do
     |> repo.all()
   end
 
-  @doc """
-  Get job statistics for a user and queue
-  """
-  def job_stats_by_queue_for_user(repo, queue, user_id) do
-    from(j in Oban.Job,
-      where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
-      group_by: j.state,
-      select: {j.state, count(j.id)}
-    )
-    |> repo.all()
-    |> Enum.into(%{})
-  end
+  # @doc """
+  # Get job statistics for a user and queue
+  # """
+  # def job_stats_by_queue_for_user(repo, queue, user_id) do
+  #   from(j in Oban.Job,
+  #     where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
+  #     group_by: j.state,
+  #     select: {j.state, count(j.id)}
+  #   )
+  #   |> repo.all()
+  #   |> Enum.into(%{})
+  # end
 
-  def job_stats_for_user(repo, user_id) do
+  def job_stats_for_user(repo, user_id, username, filters \\ %{}) do
     from(j in Oban.Job,
-      where: fragment("?->>'user_id' = ?", j.args, ^user_id),
+      where:
+        fragment("?->>'user_id' = ?", j.args, ^user_id) or
+          fragment("?->>'username' = ?", j.args, ^username),
       group_by: j.state,
       select: {j.state, count(j.id)}
     )
+    |> apply_job_filters(filters)
     |> repo.all()
     |> Enum.into(%{})
   end
@@ -98,10 +103,11 @@ defmodule Bonfire.Common.ObanHelpers do
   @doc """
   Cancel all active jobs of a specific operation type for a user
   """
-  def cancel_jobs_by_type_for_user(repo, user_id, op_code) do
+  def cancel_jobs_by_type_for_user(repo, user_id, username, op_code) do
     from(j in Oban.Job,
       where:
-        fragment("?->>'user_id' = ?", j.args, ^user_id) and
+        (fragment("?->>'user_id' = ?", j.args, ^user_id) or
+           fragment("?->>'username' = ?", j.args, ^username)) and
           fragment("?->>'op' = ?", j.args, ^op_code) and
           j.state in ["available", "scheduled", "retryable"]
     )
@@ -171,6 +177,7 @@ defmodule Bonfire.Common.ObanHelpers do
     |> Enum.map(fn {key, value} -> {key, value, Keyword.get(field_opts, key, [])} end)
   end
 
+  defp apply_job_filters(query, empty) when empty == %{}, do: query
   defp apply_job_filters(query, %{type: nil, status: nil}), do: query
 
   defp apply_job_filters(query, filters) do
@@ -179,12 +186,18 @@ defmodule Bonfire.Common.ObanHelpers do
     |> apply_status_filter(Map.get(filters, :status))
   end
 
-  defp apply_type_filter(query, nil), do: query
+  # Accepts a string or a list of types
+  defp apply_type_filter(query, []), do: query
 
-  defp apply_type_filter(query, type) do
-    op_code = type_to_op_code(type)
-    where(query, [j], fragment("?->>'op' = ?", j.args, ^op_code))
+  defp apply_type_filter(query, types) when is_list(types) do
+    where(query, [j], fragment("?->>'op' = ANY(?)", j.args, ^types))
   end
+
+  defp apply_type_filter(query, type) when is_binary(type) do
+    where(query, [j], fragment("?->>'op' = ?", j.args, ^type))
+  end
+
+  defp apply_type_filter(query, _), do: query
 
   defp apply_status_filter(query, nil), do: query
 
@@ -203,13 +216,4 @@ defmodule Bonfire.Common.ObanHelpers do
   defp apply_status_filter(query, "failed") do
     where(query, [j], j.state in ["discarded", "cancelled"])
   end
-
-  defp type_to_op_code("Follow"), do: "follows_import"
-  defp type_to_op_code("Block"), do: "blocks_import"
-  defp type_to_op_code("Silence"), do: "silences_import"
-  defp type_to_op_code("Ghost"), do: "ghosts_import"
-  defp type_to_op_code("Bookmark"), do: "bookmarks_import"
-  defp type_to_op_code("Circle"), do: "circles_import"
-  defp type_to_op_code("Posts & boosts"), do: "outbox_import"
-  defp type_to_op_code(other), do: other
 end
