@@ -146,25 +146,25 @@ defmodule Bonfire.Common.Repo.Preload do
         "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
       )
 
-      e in ArgumentError ->
-        error(
-          e.message,
-          "skipped preload due to wrong function clause: #{inspect(preloads)}"
-        )
+    e in ArgumentError ->
+      error(
+        e.message,
+        "skipped preload due to wrong function clause: #{inspect(preloads)}"
+      )
 
-        # TODO
-        debug(
-          objects,
-          "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-        )
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
+      )
 
-      e ->
-        error(e, "skipped preload with rescue: #{inspect(preloads)}")
-        # TODO
-        debug(
-          objects,
-          "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-        )
+    e ->
+      error(e, "skipped preload with rescue: #{inspect(preloads)}")
+      # TODO
+      debug(
+        objects,
+        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
+      )
   catch
     :exit, e ->
       error(e, "skipped with exit: #{inspect(preloads)}")
