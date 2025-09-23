@@ -34,7 +34,7 @@ e(data, [:deeply, :nested, :value], nil)
 # Works with maps, structs, tuples, and Access behavior
 settings = e(socket, :assigns, :current_user, :settings, %{})
 
-# Use :nil! to raise on missing required values
+# Use :nil! to raise on missing required associations
 name = e(user, :profile, :name, :nil!)
 ```
 
@@ -66,10 +66,6 @@ Use Enums module for advanced operations:
 # Filter with multiple conditions
 Enums.filter_empty(list, :skip_false)
 Enums.filter_empty_enum(map, true) # For enumerables
-
-# Safe operations
-Enums.maybe_get(map, key, fallback)
-Enums.maybe_put(map, key, value)
 
 # Advanced operations
 Enums.map_tree(nested_data, &transform/1)

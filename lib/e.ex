@@ -370,9 +370,9 @@ defmodule Bonfire.Common.E do
   # @decorate time()
   def ed(%{__context__: context} = object, key, fallback) do
     # try searching in Surface's context (when object is assigns), if present
-    case Enums.enum_get(object, key, nil) do
+    case Enums.get_eager(object, key, nil) do
       result when is_nil(result) or result == fallback ->
-        Enums.enum_get(context, key, nil)
+        Enums.get_eager(context, key, nil)
         |> handle_fallback(object, key, ..., fallback)
 
       result ->
@@ -383,7 +383,7 @@ defmodule Bonfire.Common.E do
   def ed(map, key, fallback) when is_map(map) do
     get_in_access_keys_or(map, key, fallback, fn map ->
       # if get_in didn't work, try using key as atom or string, and return fallback if doesn't exist or is nil
-      Enums.enum_get(map, key, nil)
+      Enums.get_eager(map, key, nil)
       |> handle_fallback(map, key, ..., fallback)
     end)
   end

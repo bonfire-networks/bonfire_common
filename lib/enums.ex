@@ -206,55 +206,153 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  Attempt getting a value out of a map by atom key, or try with string key, or return a fallback
-  """
-  def enum_get(map, key, fallback \\ nil)
+  Attempts to retrieve a value from a data structure (map, keyword list, or list) by key, with flexible matching and fallback support.
 
-  def enum_get(map, key, fallback) when is_map(map) and is_atom(key) do
+  - For maps: If given an atom key, tries the atom, then stringified versions.
+  For string keys, tries the string, then camelCase, then an atomized version (if the atom exists).
+  - For keyword lists: Only atom keys are supported.
+  - For lists of maps/structs: Returns a list of values for each element, applying the same logic to each.
+  - For a list of keys: Returns a list of values for each key, applying the same logic to each.
+
+  Returns the fallback if no value is found or if the value is considered empty (nil, empty list, empty map, etc).
+
+  ## Examples
+
+      iex> get_eager(%{foo: 1}, :foo, :none)
+      1
+      iex> get_eager(%{foo: 1}, "foo", :none)
+      1
+      iex> get_eager(%{"bar" => 2, foo: 1}, "bar", :none)
+      2
+      iex> get_eager(%{"bar" => 2, foo: 1}, :bar, :none)
+      2
+      iex> get_eager(%{"barBaz" => 3, foo: 1}, :bar_baz, :none)
+      3
+      iex> get_eager(%{"barBaz" => 3, foo: 1}, "bar_baz", :none)
+      3
+      iex> get_eager(%{"foo" => 1}, :foo, :none)
+      1
+      iex> get_eager(%{"foo" => 1}, :bar, :none)
+      :none
+      iex> get_eager([a: 1, b: 2], :b, :none)
+      2
+      iex> get_eager([%{id: 1, foo: 2}, %{id: 2, foo: 3}], :foo, :none)
+      [2, 3]
+      iex> get_eager([%{id: 1, foo: 2}, %{id: 2}], :foo, :none)
+      [2]
+      iex> get_eager([%{foo: 1}, %{bar: 2}], :foo, :none)
+      [1]
+      iex> get_eager([%{foo: 1}, %{bar: 2}], :baz, :fallback)
+      :fallback
+      iex> get_eager(%{foo: 1, bar: 2}, [:foo, :bar], :none)
+      [1, 2]
+      iex> get_eager([%{foo: 1}, %{bar: 2}], [:foo, :bar], :none) |> List.flatten()
+      [1, 2]
+      iex> get_eager(%{}, :foo, :fallback)
+      :fallback
+      iex> get_eager(nil, :foo, :fallback)
+      :fallback
+      iex> get_eager([a: 1, b: nil], :b, :fallback)
+      :fallback
+
+  """
+  def get_eager(map, key, fallback \\ nil)
+
+  def get_eager(map, key, fallback) when is_map(map) and is_atom(key) do
     case maybe_get(map, key, :empty) do
-      :empty -> maybe_get(map, Atom.to_string(key), fallback)
-      %Needle.Pointer{deleted_at: del} when not is_nil(del) -> fallback
+      :empty -> do_get_eager_with_strings(map, Atom.to_string(key), fallback)
       val -> val
+    end
+    |> magic_filter_empty(map, key, fallback)
+  end
+
+  def get_eager(map, key, fallback) when is_map(map) and is_binary(key) do
+    # Attempt getting a value out of a map by stringified key, or try with atom key (if it's an existing atom), or return a fallback
+    case do_get_eager_with_strings(map, key, :empty) do
+      :empty ->
+        maybe_get(map, Types.maybe_to_atom(key), fallback)
+
+      val ->
+        val
+    end
+    |> magic_filter_empty(map, key, fallback)
+  end
+
+  def get_eager(enum, keys, fallback) when is_list(keys) do
+    # Get one or more matches for each key in list
+    Enum.map(keys, &get_eager(enum, &1, nil))
+    |> filter_empty(fallback)
+  end
+
+  def get_eager(enum, key, fallback) when is_list(enum) do
+    if Keyword.keyword?(enum) do
+      # keyword can't have string keys, so do a normal get
+      maybe_get(enum, key, fallback)
+      |> magic_filter_empty(enum, key, fallback)
+    else
+      # Get one or more matches for each element in list
+      Enum.map(enum, &get_eager(&1, key, nil))
+      |> filter_empty(fallback)
     end
   end
 
-  # doc """ Attempt getting a value out of a map by string key, or try with atom key (if it's an existing atom), or return a fallback """
-  def enum_get(map, key, fallback) when is_map(map) and is_binary(key) do
+  def get_eager(enum, key, fallback) do
+    # any other enumerable, try a normal get
+    maybe_get(enum, key, fallback)
+    |> magic_filter_empty(enum, key, fallback)
+  end
+
+  defp do_get_eager_with_strings(map, key, fallback) when is_map(map) and is_binary(key) do
+    # Attempt getting a value out of a map by string key, or try with key in camelCase 
     case maybe_get(map, key, :empty) do
       :empty ->
-        case maybe_get(map, Recase.to_camel(key), :empty) do
-          :empty ->
-            maybe_get(map, Types.maybe_to_atom(key), fallback)
-
-          %Needle.Pointer{deleted_at: del} when not is_nil(del) ->
-            fallback
-
-          val ->
-            val
-        end
+        maybe_get(map, Recase.to_camel(key), fallback)
 
       val ->
         val
     end
   end
 
-  # doc "Try with each key in list"
-  def enum_get(map, keys, fallback) when is_list(keys) do
-    Enum.map(keys, &enum_get(map, &1, nil))
-    |> filter_empty(fallback)
-  end
-
-  def enum_get(map, key, fallback), do: maybe_get(map, key, fallback)
-
   @doc """
-  Attempts to retrieve a value from a map by its key, and otherwise returns the provided fallback value.
+  Attempts to retrieve a value from a map or keyword list by key, returning the fallback if not found.
+
+  - For maps: Uses `Map.get/3`.
+  - For keyword lists: Uses `Keyword.get/3`.
+  - For other lists: Returns the fallback and logs a warning.
+  - For all other types: Always returns the fallback.
+
+  ## Examples
+
+      iex> import Bonfire.Common.Enums
+      iex> maybe_get(%{foo: 1}, :foo, :none)
+      1
+      iex> maybe_get(%{"foo" => 2}, "foo", :none)
+      2
+      iex> maybe_get([a: 1, b: 2], :b, :none)
+      2
+      iex> maybe_get([{:a, 1}, {:b, nil}], :b, :none)
+      nil
+      iex> maybe_get([1, 2, 3], :foo, :fallback)
+      :fallback
+      iex> maybe_get(nil, :foo, :fallback)
+      :fallback
+      iex> maybe_get(%{}, :foo, :fallback)
+      :fallback
+
   """
   def maybe_get(_, _, fallback \\ nil)
 
   def maybe_get(%{} = map, key, fallback),
-    do:
-      Map.get(map, key, fallback)
-      |> magic_filter_empty(map, key, fallback)
+    do: Map.get(map, key, fallback)
+
+  def maybe_get(enum, key, fallback) when is_list(enum) do
+    if Keyword.keyword?(enum) do
+      Keyword.get(enum, key, fallback)
+    else
+      warn(enum, "maybe_get expects a map or keyword list")
+      fallback
+    end
+  end
 
   def maybe_get(_, _, fallback), do: fallback
 
@@ -445,7 +543,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   def filter_empty(enum, fallback, key) when is_atom(key) or is_binary(key) do
-    case enum_get(enum, key) do
+    case get_eager(enum, key) do
       nil -> fallback
       _ -> filter_empty(enum, fallback)
     end
