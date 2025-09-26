@@ -18,24 +18,11 @@ defmodule Bonfire.Common.ObanHelpers do
     filters = Keyword.get(opts, :filters, %{})
 
     base_query =
-      cond do
-        not is_nil(user_id) or not is_nil(username) ->
-          from(j in Oban.Job,
-            where:
-              (not is_nil(^user_id) and fragment("?->>'user_id' = ?", j.args, ^user_id)) or
-                (not is_nil(^username) and fragment("?->>'username' = ?", j.args, ^username)),
-            order_by: [desc: j.id],
-            limit: ^limit,
-            offset: ^offset
-          )
-
-        true ->
-          from(j in Oban.Job,
-            order_by: [desc: j.id],
-            limit: ^limit,
-            offset: ^offset
-          )
-      end
+      Oban.Job
+      |> maybe_user_filter(user_id, username)
+      |> order_by([j], desc: j.id)
+      |> limit(^limit)
+      |> offset(^offset)
 
     base_query
     |> apply_job_filters(filters)
@@ -48,22 +35,10 @@ defmodule Bonfire.Common.ObanHelpers do
   """
   def job_stats(repo, user_id \\ nil, username \\ nil, filters \\ %{}) do
     base_query =
-      cond do
-        not is_nil(user_id) or not is_nil(username) ->
-          from(j in Oban.Job,
-            where:
-              (not is_nil(^user_id) and fragment("?->>'user_id' = ?", j.args, ^user_id)) or
-                (not is_nil(^username) and fragment("?->>'username' = ?", j.args, ^username)),
-            group_by: j.state,
-            select: {j.state, count(j.id)}
-          )
-
-        true ->
-          from(j in Oban.Job,
-            group_by: j.state,
-            select: {j.state, count(j.id)}
-          )
-      end
+      Oban.Job
+      |> maybe_user_filter(user_id, username)
+      |> group_by([j], j.state)
+      |> select([j], {j.state, count(j.id)})
 
     base_query
     |> apply_job_filters(filters)
@@ -186,5 +161,25 @@ defmodule Bonfire.Common.ObanHelpers do
 
   defp apply_status_filter(query, "failed") do
     where(query, [j], j.state in ["discarded", "cancelled"])
+  end
+
+  defp maybe_user_filter(query, nil, nil), do: query
+
+  defp maybe_user_filter(query, user_id, username) do
+    cond do
+      user_id && username ->
+        where(
+          query,
+          [j],
+          fragment("?->>'user_id' = ?", j.args, ^user_id) or
+            fragment("?->>'username' = ?", j.args, ^username)
+        )
+
+      user_id ->
+        where(query, [j], fragment("?->>'user_id' = ?", j.args, ^user_id))
+
+      username ->
+        where(query, [j], fragment("?->>'username' = ?", j.args, ^username))
+    end
   end
 end
