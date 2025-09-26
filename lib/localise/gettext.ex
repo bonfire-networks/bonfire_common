@@ -414,15 +414,19 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     * `caller_module` - (Optional) The module from which the call originates.
   """
   # @decorate time()
-  def localise_dynamic(msgid, module \\ nil) do
+  def localise_dynamic(msgid, module \\ nil)
+
+  def localise_dynamic(msgid, module) when is_binary(msgid) do
     otp_app = extension_name(module) || :bonfire
 
     Gettext.dgettext(
       Bonfire.Common.Localise.Gettext,
       otp_app,
-      "#{msgid}"
+      msgid
     )
   end
+
+  def localise_dynamic(msgid, _module), do: msgid
 
   @doc """
   Localizes a list of strings at compile time.
