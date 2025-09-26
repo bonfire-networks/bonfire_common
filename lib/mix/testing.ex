@@ -43,7 +43,7 @@ defmodule Bonfire.Common.Testing do
         if opts[:migrate] do
           Mix.Task.run("ecto.create")
           Mix.Task.run("ecto.migrate")
-          EctoSparkles.Migrator.migrate(repo)
+          EctoSparkles.Migrator.migrate_repo(repo, continue_on_error: false)
         end
 
         # Ecto.Adapters.SQL.Sandbox.mode(repo, :manual)
@@ -57,7 +57,8 @@ defmodule Bonfire.Common.Testing do
           do:
             Bonfire.Common.TestInstanceRepo.apply(fn ->
               nil
-              # EctoSparkles.Migrator.migrate(Bonfire.Common.TestInstanceRepo)
+
+              # EctoSparkles.Migrator.migrate_repo(Bonfire.Common.TestInstanceRepo, [continue_on_error: true])
             end)
       rescue
         e in RuntimeError ->
