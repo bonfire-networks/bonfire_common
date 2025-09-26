@@ -9,99 +9,70 @@ defmodule Bonfire.Common.ObanHelpers do
   end
 
   @doc """
-  List all jobs for a specific user 
+  List jobs for a user (by user_id/username) or all jobs if user_id and username are nil.
   """
-  def list_jobs_for_user(repo, user_id, username, opts \\ []) do
+  def list_jobs(repo, user_id \\ nil, username \\ nil, opts \\ []) do
+    opts = if is_list(user_id) and is_nil(username) and opts == [], do: user_id, else: opts
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)
     filters = Keyword.get(opts, :filters, %{})
 
-    from(j in Oban.Job,
-      where:
-        fragment("?->>'user_id' = ?", j.args, ^user_id) or
-          fragment("?->>'username' = ?", j.args, ^username),
-      order_by: [desc: j.id],
-      limit: ^limit,
-      offset: ^offset
-    )
+    base_query =
+      cond do
+        not is_nil(user_id) or not is_nil(username) ->
+          from(j in Oban.Job,
+            where:
+              (not is_nil(^user_id) and fragment("?->>'user_id' = ?", j.args, ^user_id)) or
+                (not is_nil(^username) and fragment("?->>'username' = ?", j.args, ^username)),
+            order_by: [desc: j.id],
+            limit: ^limit,
+            offset: ^offset
+          )
+
+        true ->
+          from(j in Oban.Job,
+            order_by: [desc: j.id],
+            limit: ^limit,
+            offset: ^offset
+          )
+      end
+
+    base_query
     |> apply_job_filters(filters)
     |> debug("query for jobs")
     |> repo.all()
   end
 
-  # @doc """
-  # List jobs for a specific user and queue
-  # """
-  # def list_jobs_queue_for_user(repo, queue, user_id, opts \\ []) do
-  #   limit = Keyword.get(opts, :limit, 50)
-  #   offset = Keyword.get(opts, :offset, 0)
-  #   filters = Keyword.get(opts, :filters, %{})
-
-  #   from(j in Oban.Job,
-  #     where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
-  #     order_by: [desc: j.id],
-  #     limit: ^limit,
-  #     offset: ^offset
-  #   )
-  #   |> apply_job_filters(filters)
-  #   |> repo.all()
-  # end
-
   @doc """
-  List all jobs for a specific queue
+  Get job statistics for a user (by user_id/username) or all jobs if user_id and username are nil.
   """
-  def list_jobs_by_queue(repo, queue, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 100)
+  def job_stats(repo, user_id \\ nil, username \\ nil, filters \\ %{}) do
+    base_query =
+      cond do
+        not is_nil(user_id) or not is_nil(username) ->
+          from(j in Oban.Job,
+            where:
+              (not is_nil(^user_id) and fragment("?->>'user_id' = ?", j.args, ^user_id)) or
+                (not is_nil(^username) and fragment("?->>'username' = ?", j.args, ^username)),
+            group_by: j.state,
+            select: {j.state, count(j.id)}
+          )
 
-    from(j in Oban.Job,
-      where: j.queue == ^queue,
-      order_by: [desc: j.id],
-      limit: ^limit
-    )
-    |> repo.all()
-  end
+        true ->
+          from(j in Oban.Job,
+            group_by: j.state,
+            select: {j.state, count(j.id)}
+          )
+      end
 
-  # @doc """
-  # Get job statistics for a user and queue
-  # """
-  # def job_stats_by_queue_for_user(repo, queue, user_id) do
-  #   from(j in Oban.Job,
-  #     where: j.queue == ^queue and fragment("?->>'user_id' = ?", j.args, ^user_id),
-  #     group_by: j.state,
-  #     select: {j.state, count(j.id)}
-  #   )
-  #   |> repo.all()
-  #   |> Enum.into(%{})
-  # end
-
-  def job_stats_for_user(repo, user_id, username, filters \\ %{}) do
-    from(j in Oban.Job,
-      where:
-        fragment("?->>'user_id' = ?", j.args, ^user_id) or
-          fragment("?->>'username' = ?", j.args, ^username),
-      group_by: j.state,
-      select: {j.state, count(j.id)}
-    )
+    base_query
     |> apply_job_filters(filters)
     |> repo.all()
     |> Enum.into(%{})
   end
 
   @doc """
-  Get job statistics for a queue
-  """
-  def job_stats_by_queue(repo, queue) do
-    from(j in Oban.Job,
-      where: j.queue == ^queue,
-      group_by: j.state,
-      select: {j.state, count(j.id)}
-    )
-    |> repo.all()
-    |> Enum.into(%{})
-  end
-
-  @doc """
-  Cancel all active jobs of a specific operation type for a user
+  Cancel all active jobs of a specific operation type for a user.
   """
   def cancel_jobs_by_type_for_user(repo, user_id, username, op_code) do
     from(j in Oban.Job,
