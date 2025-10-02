@@ -799,7 +799,7 @@ defmodule Bonfire.Common.Text do
       {"a", attrs, children} = node ->
         case List.keyfind(attrs, "href", 0) do
           {"href", href} ->
-            case Map.get(replacements_map, href) do
+            case Map.get(replacements_map, String.downcase(href)) do
               nil ->
                 node
 
