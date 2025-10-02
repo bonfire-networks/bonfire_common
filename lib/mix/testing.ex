@@ -56,13 +56,15 @@ defmodule Bonfire.Common.Testing do
         if running_a_second_test_instance?,
           do:
             Bonfire.Common.TestInstanceRepo.apply(fn ->
-              nil
+              EctoSparkles.Migrator.migrate_repo(Bonfire.Common.TestInstanceRepo,
+                continue_on_error: true
+              )
 
-              # EctoSparkles.Migrator.migrate_repo(Bonfire.Common.TestInstanceRepo, [continue_on_error: true])
+              # nil
             end)
       rescue
         e in RuntimeError ->
-          IO.warn("Could not set up database")
+          IO.warn("Could not set up test database")
           IO.inspect(e)
       end
     end
