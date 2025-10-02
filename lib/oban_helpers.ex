@@ -124,12 +124,13 @@ defmodule Bonfire.Common.ObanHelpers do
   end
 
   defp apply_job_filters(query, empty) when empty == %{}, do: query
-  defp apply_job_filters(query, %{type: nil, status: nil}), do: query
+  defp apply_job_filters(query, %{type: nil, status: nil, queue: nil}), do: query
 
   defp apply_job_filters(query, filters) do
     query
     |> apply_type_filter(Map.get(filters, :type))
     |> apply_status_filter(Map.get(filters, :status))
+    |> apply_queue_filter(Map.get(filters, :queue))
   end
 
   # Accepts a string or a list of types
@@ -182,4 +183,19 @@ defmodule Bonfire.Common.ObanHelpers do
         where(query, [j], fragment("?->>'username' = ?", j.args, ^username))
     end
   end
+
+  # Accepts a string or a list of queues
+  defp apply_queue_filter(query, nil), do: query
+
+  defp apply_queue_filter(query, []), do: query
+
+  defp apply_queue_filter(query, queues) when is_list(queues) do
+    where(query, [j], j.queue in ^queues)
+  end
+
+  defp apply_queue_filter(query, queue) when is_binary(queue) do
+    where(query, [j], j.queue == ^queue)
+  end
+
+  defp apply_queue_filter(query, _), do: query
 end
