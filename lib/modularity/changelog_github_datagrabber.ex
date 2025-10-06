@@ -143,7 +143,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
           Date.utc_today(),
           -Keyword.get(opts, :closed_in_last_days, 30)
         )
-    |> info("Get issues closed after")
+        |> info("Get issues closed after")
 
     # Fetch issues first
     issues = fetch_github_issues(org, closed_after)
