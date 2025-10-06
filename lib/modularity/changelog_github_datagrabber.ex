@@ -102,8 +102,8 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     changelog_path = "docs/CHANGELOG.md"
 
     with {:ok, content} <- File.read(changelog_path) do
-      # Regex to match date in format (YYYY-MM-DD)
-      case Regex.run(~r/\((\d{4}-\d{2}-\d{2})\)/, content, capture: :all_but_first) do
+      # Regex to match date in format (YYYY-M-D), allowing single or double digit month/day
+      case Regex.run(~r/\((\d{4}-\d{1,2}-\d{1,2})\)/, content, capture: :all_but_first) do
         [date_str] -> date_str
         _ -> nil
       end
@@ -143,9 +143,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
           Date.utc_today(),
           -Keyword.get(opts, :closed_in_last_days, 30)
         )
-
-    debug(closed_after, "Get issues closed after the ")
-    |> debug("closed_after")
+    |> info("Get issues closed after")
 
     # Fetch issues first
     issues = fetch_github_issues(org, closed_after)
