@@ -84,6 +84,11 @@ defmodule Bonfire.Common.Telemetry do
       []
     )
 
+    if Extend.module_exists?(Appsignal.Phoenix.LiveView) &&
+         Application.get_env(:appsignal, :config, [])[:active],
+       # <--- attach the LiveView Telemetry handlers
+       do: Appsignal.Phoenix.LiveView.attach()
+
     IO.puts("LiveView crash telemetry is set up...")
   end
 

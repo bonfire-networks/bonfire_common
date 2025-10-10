@@ -14,7 +14,8 @@ defmodule Bonfire.Common.RepoTemplate do
       alias Bonfire.Common.Types
       alias Bonfire.Common.Errors
 
-      use Ecto.Repo, unquote(opts)
+      use Appsignal.Ecto.Repo, unquote(opts)
+      # ^ replace `use Ecto.Repo` with `use Appsignal.Ecto.Repo` for optional instrumentation
 
       import Ecto.Query
       import Untangle
