@@ -902,6 +902,8 @@ defmodule Bonfire.Common.Utils do
           # Preserve multi-tenancy/context in spawned process
           Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
 
+          maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)
+
           # Execute the function
           fun.()
         end,
@@ -936,6 +938,8 @@ defmodule Bonfire.Common.Utils do
           # Preserve multi-tenancy/context in spawned process
           Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
 
+          maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)
+
           # Execute the function
           fun.()
         end,
@@ -966,10 +970,26 @@ defmodule Bonfire.Common.Utils do
           fn ->
             # Preserve multi-tenancy/context in spawned process
             Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
+
+            # Allow spawned process to access parent's Ecto Sandbox connection (for tests)
+            maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)
+
             fun.()
           end
         ]
     )
+  end
+
+  defp maybe_allow_sandbox_access(repo, parent_pid) do
+    # Try to allow sandbox access - will silently fail if not in test mode
+    if Code.ensure_loaded?(Ecto.Adapters.SQL.Sandbox) do
+      try do
+        Ecto.Adapters.SQL.Sandbox.allow(repo, parent_pid, self())
+      rescue
+        # Ignore if sandbox is not active, already allowed, or any other error
+        _ -> :ok
+      end
+    end
   end
 
   @doc """

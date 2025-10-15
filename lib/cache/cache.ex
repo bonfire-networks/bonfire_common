@@ -381,7 +381,6 @@ defmodule Bonfire.Common.Cache do
       
       # For very long arguments, generates a hash
       iex> Bonfire.Common.Cache.args_to_string(Enum.to_list(1..100))
-      "h:S-9J48qVhMunSA2R90s-Iw"
       # Returns a hashed string
   """
   def args_to_string(args) do

@@ -37,7 +37,7 @@ defmodule Bonfire.Common.DatesTimes do
   ## Examples
 
       iex> relative_date(DateTime.now!("Etc/UTC"))
-      "now"  # Example output
+      # "now" or "1 second ago" 
   """
   def relative_date(date_time, opts \\ []) do
     case Bonfire.Common.Localise.Cldr.DateTime.Relative.to_string(date_time, opts) do
