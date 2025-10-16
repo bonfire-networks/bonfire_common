@@ -981,7 +981,13 @@ defmodule Bonfire.Common.Utils do
   end
 
   defp maybe_allow_sandbox_access(repo, parent_pid) do
-    # Try to allow sandbox access - will silently fail if not in test mode
+    # Debug sandbox allowance
+    # flood(%{
+    #   repo: repo,
+    #   parent_pid: parent_pid,
+    #   self_pid: self()
+    # }, "maybe_allow_sandbox_access called")
+
     if Code.ensure_loaded?(Ecto.Adapters.SQL.Sandbox) do
       try do
         Ecto.Adapters.SQL.Sandbox.allow(repo, parent_pid, self())

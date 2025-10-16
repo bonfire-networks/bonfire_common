@@ -17,6 +17,7 @@ defmodule Bonfire.Common.Testing do
       #  miliseconds
       timeout: 120_000,
       assert_receive_timeout: 1000,
+      # max_cases: 10,
       exclude: Bonfire.Common.RuntimeConfig.skip_test_tags(),
       # only show log for failed tests (Can be overridden for individual tests via `@tag capture_log: false`)
       capture_log:

@@ -89,7 +89,15 @@ defmodule Bonfire.Common.RuntimeConfig do
           if config_env() == :test, do: max(base_size, 20), else: base_size
       end
 
-    IO.puts("Note: Starting database connection pool of #{pool_size}")
+    #  use lighter advisory locks for migrations, allowing concurrent indexing?
+    migration_lock =
+      if System.get_env("DB_MIGRATION_LOCK") != "standard",
+        do: :pg_advisory_lock,
+        else: :table_lock
+
+    IO.puts(
+      "Note: Starting database connection pool of #{pool_size} with #{migration_lock} migration lock for #{database}"
+    )
 
     config repo_app, ecto_repos: repos
     config :paginator, ecto_repos: repos
@@ -102,6 +110,9 @@ defmodule Bonfire.Common.RuntimeConfig do
     config repo_app, Bonfire.Common.Repo, database: database
     config :beacon, Beacon.Repo, database: database
     config :paginator, Paginator.Repo, database: database
+
+    config repo_app, Bonfire.Common.Repo, migration_lock: migration_lock
+    config repo_app, Bonfire.Common.TestInstanceRepo, migration_lock: migration_lock
 
     config repo_app, Bonfire.Common.Repo, pool_size: pool_size
     config repo_app, Bonfire.Common.TestInstanceRepo, pool_size: pool_size
@@ -144,12 +155,6 @@ defmodule Bonfire.Common.RuntimeConfig do
         username: System.get_env("POSTGRES_USER", "postgres"),
         password: System.get_env("POSTGRES_PASSWORD", "postgres"),
         hostname: System.get_env("POSTGRES_HOST", "localhost")
-
-      # use Ecto sandbox?
-      config :bonfire_common,
-        sql_sandbox:
-          System.get_env("PHX_SERVER") not in @yes? and
-            System.get_env("TEST_INSTANCE") not in @yes?
     end
 
     config :bonfire, :http,

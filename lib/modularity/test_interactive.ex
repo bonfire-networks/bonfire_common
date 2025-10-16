@@ -251,7 +251,7 @@ defmodule Bonfire.Common.Test.Interactive do
       Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Fake, :clear_caches, [])
 
       wrap_test_in_transaction_and_rollback =
-        Bonfire.Common.Config.get(:sql_sandbox, true) && tags[:db_sandbox] != false
+        Bonfire.Common.Config.get(:sql_sandbox, false) && tags[:db_sandbox] != false
 
       # if wrap_test_in_transaction_and_rollback,
       #   do: info("Wrapping tests in DB transactions to be rolled back"),
