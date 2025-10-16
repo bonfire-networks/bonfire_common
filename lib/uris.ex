@@ -103,7 +103,7 @@ defmodule Bonfire.Common.URIs do
   # not sure what this one is for? ^
 
   def path(%{id: _id} = object, action, opts) when is_atom(action),
-    do: path(Types.object_type(object), [path_id(object), action], opts)
+    do: path(Types.object_type(object), [path_id(object, opts), action], opts)
 
   def path(view_module_or_path_name_or_object, args, opts)
       when is_atom(view_module_or_path_name_or_object) and
@@ -119,7 +119,7 @@ defmodule Bonfire.Common.URIs do
                 if opts[:fallback] == false do
                   debug(details, inspect(error))
                 else
-                  voodoo_fallback(error, details)
+                  voodoo_fallback(error, details, opts)
                 end
               end
             ) do
@@ -134,7 +134,7 @@ defmodule Bonfire.Common.URIs do
 
       other ->
         warn(other, "Router didn't return a valid path")
-        if opts[:fallback] != false, do: fallback(args)
+        if opts[:fallback] != false, do: fallback(args, opts)
     end
   rescue
     error in FunctionClauseError ->
@@ -173,7 +173,7 @@ defmodule Bonfire.Common.URIs do
 
   def path(%{id: _id} = object, args, opts) do
     args_with_id =
-      ([path_id(object)] ++ args)
+      ([path_id(object, opts)] ++ args)
       |> Enums.filter_empty([])
       |> debug("args_with_id")
 
@@ -193,8 +193,8 @@ defmodule Bonfire.Common.URIs do
     #     case object do
     #       %{character: %{username: username}} -> path(Bonfire.Data.Identity.User, [username] ++ args)
     #       %{username: username} -> path(Bonfire.Data.Identity.User, [username] ++ args)
-    #       %{id: id} -> if opts[:fallback] !=false, do: fallback(id, args)
-    #       _ -> if opts[:fallback] !=false, do: fallback(object, args)
+    #       %{id: id} -> if opts[:fallback] !=false, do: fallback(id, args, opts)
+    #       _ -> if opts[:fallback] !=false, do: fallback(object, args, opts)
     #     end
   end
 
@@ -209,7 +209,7 @@ defmodule Bonfire.Common.URIs do
   defp path_maybe_lookup_pointer(%Needle.Pointer{id: id} = object, args, opts) do
     warn(object, "path: could not figure out the type of this pointer")
 
-    if opts[:fallback] != false, do: fallback(id, args)
+    if opts[:fallback] != false, do: fallback(id, args, opts)
   end
 
   defp path_maybe_lookup_pointer(%{id: id} = object, args, opts) do
@@ -243,40 +243,40 @@ defmodule Bonfire.Common.URIs do
 
         _ ->
           error(id, "unexpected error trying to find find a Pointer for ID")
-          if opts[:fallback] != false, do: fallback(id, args)
+          if opts[:fallback] != false, do: fallback(id, args, opts)
       end
     else
       warn("could not find a matching route for #{id}, using fallback path")
-      if opts[:fallback] != false, do: fallback(id, args)
+      if opts[:fallback] != false, do: fallback(id, args, opts)
     end
   end
 
-  def fallback(id, type, args) do
-    do_fallback(List.wrap(type) ++ List.wrap(id) ++ List.wrap(args), 1)
+  def fallback(id, type, args, opts) do
+    do_fallback(List.wrap(type) ++ List.wrap(id) ++ List.wrap(args), 1, opts)
   end
 
-  def fallback(id, args) do
-    fallback(List.wrap(id) ++ List.wrap(args))
+  def fallback(id, args, opts) do
+    fallback(List.wrap(id) ++ List.wrap(args), opts)
   end
 
-  def fallback(nil) do
+  def fallback(nil, _) do
     nil
   end
 
-  def fallback([]) do
+  def fallback([], _) do
     nil
   end
 
-  def fallback([nil]) do
+  def fallback([nil], _) do
     nil
   end
 
-  def fallback(args) do
+  def fallback(args, opts) do
     List.wrap(args)
-    |> do_fallback(0)
+    |> do_fallback(0, opts)
   end
 
-  defp do_fallback(args, id_at \\ 0) do
+  defp do_fallback(args, id_at \\ 0, opts) do
     # debug(args, id_at)
     debug(args, "path_fallback")
 
@@ -295,7 +295,7 @@ defmodule Bonfire.Common.URIs do
           )
       )
 
-    case path_id(Enum.at(args, id_at)) do
+    case path_id(Enum.at(args, id_at), opts) do
       maybe_username_or_id
       when is_binary(maybe_username_or_id) and not is_nil(maybe_username_or_id) ->
         if Types.is_uid?(maybe_username_or_id) do
@@ -317,39 +317,43 @@ defmodule Bonfire.Common.URIs do
   #   path(object)
   # end
 
-  defp voodoo_fallback(_error, [_endpoint, type_module, args]) do
-    fallback([], type_module, args)
+  defp voodoo_fallback(_error, [_endpoint, type_module, args], opts) do
+    fallback([], type_module, args, opts)
   end
 
-  defp voodoo_fallback(_error, [_endpoint, args]) do
-    fallback(args)
+  defp voodoo_fallback(_error, [_endpoint, args], opts) do
+    fallback(args, opts)
   end
 
-  # defp path_id("@"<>username), do: username
-  defp path_id(%{username: username}) when is_binary(username), do: username
+  # defp path_id("@"<>username, _), do: username
+  defp path_id(%{username: username}, _opts) when is_binary(username), do: username
 
-  defp path_id(%{display_username: "@" <> display_username}),
+  defp path_id(%{display_username: "@" <> display_username}, _opts),
     do: display_username
 
-  defp path_id(%{display_username: display_username}) when is_binary(display_username),
+  defp path_id(%{display_username: display_username}, _opts) when is_binary(display_username),
     do: display_username
 
-  defp path_id(%{__struct__: schema, name: tag}) when schema == Bonfire.Tag.Hashtag,
+  defp path_id(%{__struct__: schema, name: tag}, _opts) when schema == Bonfire.Tag.Hashtag,
     do: tag
 
-  defp path_id(%{character: %{username: username}}) when is_binary(username), do: username
+  defp path_id(%{character: %{username: username}}, _opts) when is_binary(username), do: username
 
-  defp path_id(%{__struct__: schema, character: _character} = obj)
-       when schema != Needle.Pointer,
-       do:
-         obj
-         # |> debug("with character")
-         |> repo().maybe_preload(:character)
-         |> e(:character, obj.id)
-         |> path_id()
+  defp path_id(%{__struct__: %{id: id} = schema, character: _character} = obj, opts)
+       when schema != Needle.Pointer do
+    if opts[:preload_character] == false do
+      id
+    else
+      obj
+      # |> debug("with character")
+      |> repo().maybe_preload(:character)
+      |> e(:character, id)
+      |> path_id(preload_character: false)
+    end
+  end
 
-  defp path_id(%{id: id}), do: id
-  defp path_id(other), do: other
+  defp path_id(%{id: id}, _), do: id
+  defp path_id(other, _), do: other
 
   @doc """
   Returns the full URL (including domain and path) for a given object, module, or path name.

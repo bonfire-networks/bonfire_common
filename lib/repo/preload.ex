@@ -229,6 +229,7 @@ defmodule Bonfire.Common.Repo.Preload do
         else
           partial_path = Enum.take(path, path_depth)
 
+          # FIXME: this is causing n+1 queries for bonfire_data_social_apactivity
           with {_old, loaded} <-
                  get_and_update_in(
                    group_objects,
