@@ -341,14 +341,14 @@ defmodule Bonfire.Common.URIs do
 
   defp path_id(%{__struct__: %{id: id} = schema, character: _character} = obj, opts)
        when schema != Needle.Pointer do
-    if opts[:preload_character] == false do
+    if opts[:preload_if_needed] == false do
       id
     else
       obj
       # |> debug("with character")
       |> repo().maybe_preload(:character)
       |> e(:character, id)
-      |> path_id(preload_character: false)
+      |> path_id(preload_if_needed: false)
     end
   end
 

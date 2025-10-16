@@ -192,36 +192,83 @@ defmodule Bonfire.Common.Media do
       # Assume avatar_fallback/1 returns "/images/avatar.png"
       "/images/avatar.png"
   """
-  def avatar_url(%{profile: %{icon: _} = profile}), do: avatar_url(profile)
-  def avatar_url(%{icon: %{url: url}}) when is_binary(url), do: url
-  def avatar_url(%{icon: %{path: "http" <> _ = url}}), do: url
+  def avatar_url(url, opts \\ [])
 
-  def avatar_url(%{icon: %{id: _} = media}),
-    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
+  def avatar_url(%{profile: %{icon: _} = profile}, opts) do
+    debug(profile, "avatar_url: profile.icon")
+    avatar_url(profile, opts)
+  end
 
-  def avatar_url(%{icon_id: icon_id}) when is_binary(icon_id),
-    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [icon_id], fallback_return: nil)
+  def avatar_url(%{icon: %{url: url}}, _opts) when is_binary(url) do
+    debug(url, "avatar_url: icon.url")
+    url
+  end
 
-  def avatar_url(%{path: _} = media),
-    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
+  def avatar_url(%{icon: %{path: "http" <> _ = url}}, _opts) do
+    debug(url, "avatar_url: icon.path http")
+    url
+  end
 
-  def avatar_url(%{file: _} = media),
-    do: Utils.maybe_apply(Files.IconUploader, :permanent_url, [media], fallback_return: nil)
+  def avatar_url(%{icon: %{id: _} = media}, opts) do
+    debug(media, "avatar_url: icon.id struct")
 
-  def avatar_url(%{icon: url}) when is_binary(url), do: url
-  # handle VF API
-  def avatar_url(%{image: url}) when is_binary(url), do: url
-  def avatar_url(%{id: id, shared_user: nil}), do: avatar_fallback(id)
-  # for Teams/Orgs
-  def avatar_url(%{id: id, shared_user: %{id: _}} = _obj),
-    do: "https://picsum.photos/seed/#{id}/128/128?blur"
+    (Utils.maybe_apply(Files.IconUploader, :permanent_url, [media, nil, opts],
+       fallback_return: nil
+     ) || avatar_fallback())
+    |> debug("avatar_url: icon.id result")
+  end
 
-  # def avatar_url(%{id: id, shared_user: _} = user), do: repo().maybe_preload(user, :shared_user) |> avatar_url() # TODO: make sure this is preloaded in user queries when we need it
-  # def avatar_url(obj), do: image_url(obj)
-  def avatar_url(%{id: id}) when is_binary(id), do: avatar_fallback(id)
+  def avatar_url(%{icon_id: icon_id}, opts) when is_binary(icon_id) do
+    debug(icon_id, "avatar_url: icon_id")
 
-  def avatar_url(obj) do
-    debug(obj, "no avatar found")
+    Utils.maybe_apply(Files.IconUploader, :permanent_url, [icon_id, nil, opts],
+      fallback_return: nil
+    ) || avatar_fallback()
+  end
+
+  def avatar_url(%{path: _} = media, opts) do
+    debug(media, "avatar_url: path")
+
+    Utils.maybe_apply(Files.IconUploader, :permanent_url, [media, nil, opts],
+      fallback_return: nil
+    ) || avatar_fallback()
+  end
+
+  def avatar_url(%{file: _} = media, opts) do
+    debug(media, "avatar_url: file")
+
+    Utils.maybe_apply(Files.IconUploader, :permanent_url, [media, nil, opts],
+      fallback_return: nil
+    ) || avatar_fallback()
+  end
+
+  def avatar_url(%{icon: url}, _opts) when is_binary(url) do
+    debug(url, "avatar_url: icon (binary)")
+    url
+  end
+
+  def avatar_url(%{image: url}, _opts) when is_binary(url) do
+    debug(url, "avatar_url: image (binary)")
+    url
+  end
+
+  def avatar_url(%{id: id, shared_user: nil} = data, _opts) do
+    debug(data, "avatar_url: id, shared_user nil")
+    avatar_fallback(id)
+  end
+
+  def avatar_url(%{id: id, shared_user: %{id: _}} = obj, _opts) do
+    debug(obj, "avatar_url: id, shared_user present")
+    "https://picsum.photos/seed/#{id}/128/128?blur"
+  end
+
+  def avatar_url(%{id: id} = data, _opts) when is_binary(id) do
+    debug(data, "avatar_url: id only")
+    avatar_fallback(id)
+  end
+
+  def avatar_url(obj, _opts) do
+    debug(obj, "avatar_url: fallback")
     avatar_fallback(Bonfire.Common.Enums.id(obj))
   end
 
@@ -230,8 +277,6 @@ defmodule Bonfire.Common.Media do
       Config.get([:ui, :default_images, :avatar], "/images/avatar.png",
         name: l("Default avatar image")
       )
-
-  # def avatar_fallback(id \\ nil), do: Bonfire.Me.Fake.Helpers.avatar_url(id) # robohash
 
   @doc """
   Takes a Media map (or an object containing one) and returns the image's URL.
@@ -270,38 +315,45 @@ defmodule Bonfire.Common.Media do
       nil
   """
 
-  def image_url(url) when is_binary(url), do: url
+  def image_url(url, opts \\ [])
+  def image_url(url, _opts) when is_binary(url), do: url
 
-  def image_url(%{media_type: media_type} = _media) when media_type in @external do
-    nil
-  end
+  def image_url(%{media_type: media_type} = _media, _opts) when media_type in @external, do: nil
 
-  def image_url(%{profile: %{image: _} = profile}), do: image_url(profile)
-  def image_url(%{image: %{url: url}}) when is_binary(url), do: url
+  def image_url(%{profile: %{image: _} = profile}, opts), do: image_url(profile, opts)
+  def image_url(%{image: %{url: url}}, _opts) when is_binary(url), do: url
 
-  def image_url(%{icon: %{path: "http" <> _ = url}}) do
+  def image_url(%{icon: %{path: "http" <> _ = url}}, _opts) do
     if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
-  def image_url(%{image: %{id: _} = media}),
-    do: Utils.maybe_apply(Files.ImageUploader, :remote_url, [media], fallback_return: nil)
+  def image_url(%{image: %{id: _} = media}, opts),
+    do:
+      Utils.maybe_apply(Files.ImageUploader, :remote_url, [media, nil, opts],
+        fallback_return: nil
+      )
 
-  def image_url(%{path: "http" <> _ = url} = _media) do
+  def image_url(%{path: "http" <> _ = url} = _media, _opts) do
     if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
-  def image_url(%{path: _} = media) do
+  def image_url(%{path: _} = media, opts) do
     url =
-      Utils.maybe_apply(Files.ImageUploader, :remote_url, [media], fallback_return: nil)
+      Utils.maybe_apply(Files.ImageUploader, :remote_url, [media, nil, opts],
+        fallback_return: nil
+      )
 
     if Files.has_extension?(url || "", @image_exts), do: url, else: nil
   end
 
-  def image_url(%{image_id: image_id}) when is_binary(image_id),
-    do: Utils.maybe_apply(Files.ImageUploader, :remote_url, [image_id], fallback_return: nil)
+  def image_url(%{image_id: image_id}, opts) when is_binary(image_id),
+    do:
+      Utils.maybe_apply(Files.ImageUploader, :remote_url, [image_id, nil, opts],
+        fallback_return: nil
+      )
 
-  def image_url(%{image: url}) when is_binary(url), do: url
-  def image_url(%{profile: profile}), do: image_url(profile)
+  def image_url(%{image: url}, _opts) when is_binary(url), do: url
+  def image_url(%{profile: profile}, opts), do: image_url(profile, opts)
 
   # WIP: https://github.com/bonfire-networks/bonfire-app/issues/151#issuecomment-1060536119
 
@@ -313,13 +365,12 @@ defmodule Bonfire.Common.Media do
   # If no background image is provided, default to a default one (It can be included in configurations)
   # def image_url(_obj), do: Bonfire.Me.Fake.Helpers.image_url()
 
-  def image_url(_obj), do: nil
+  def image_url(_obj, _opts), do: nil
 
   @doc """
   Takes a Media map (or an object containing one) and returns the banner's URL.
 
   ## Examples
-
       iex> banner_url(%{profile: %{image: %{id: "banner123"}}})
       # Assume Files.BannerUploader.remote_url/1 returns "http://example.com/banner123.png"
       "http://example.com/banner123.png"
@@ -348,29 +399,42 @@ defmodule Bonfire.Common.Media do
       # Assume banner_fallback/0 returns "/images/bonfires.png"
       "/images/bonfires.png"
   """
-  def banner_url(%{profile: %{image: %{id: _} = media} = _profile}), do: banner_url(media)
-  def banner_url(%{image: %{url: url}}) when is_binary(url), do: url
+  def banner_url(media, opts \\ [])
 
-  def banner_url(%{image: %{path: "http" <> _ = url}}) do
+  def banner_url(%{profile: %{image: %{id: _} = media} = _profile}, opts),
+    do: banner_url(media, opts)
+
+  def banner_url(%{image: %{url: url}}, _opts) when is_binary(url), do: url
+
+  def banner_url(%{image: %{path: "http" <> _ = url}}, _opts) do
     if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
-  def banner_url(%{path: "http" <> _ = url} = _media) do
+  def banner_url(%{path: "http" <> _ = url} = _media, _opts) do
     if Files.has_extension?(url, @image_exts), do: url, else: nil
   end
 
-  def banner_url(%{image: %{id: _} = media}),
-    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media], fallback_return: nil)
+  def banner_url(%{image: %{id: _} = media}, opts),
+    do:
+      Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media, nil, opts],
+        fallback_return: nil
+      )
 
-  def banner_url(%{path: path} = media) when is_binary(path),
-    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media], fallback_return: nil)
+  def banner_url(%{path: path} = media, opts) when is_binary(path),
+    do:
+      Utils.maybe_apply(Files.BannerUploader, :permanent_url, [media, nil, opts],
+        fallback_return: nil
+      )
 
-  def banner_url(%{image_id: image_id}) when is_binary(image_id),
-    do: Utils.maybe_apply(Files.BannerUploader, :permanent_url, [image_id], fallback_return: nil)
+  def banner_url(%{image_id: image_id}, opts) when is_binary(image_id),
+    do:
+      Utils.maybe_apply(Files.BannerUploader, :permanent_url, [image_id, nil, opts],
+        fallback_return: nil
+      )
 
-  def banner_url(%{image: url}) when is_binary(url), do: url
-  def banner_url(%{profile: profile}), do: banner_url(profile)
-  def banner_url(_obj), do: banner_fallback()
+  def banner_url(%{image: url}, _opts) when is_binary(url), do: url
+  def banner_url(%{profile: profile}, opts), do: banner_url(profile, opts)
+  def banner_url(_obj, _opts), do: banner_fallback()
 
   def banner_fallback,
     do:
@@ -378,8 +442,11 @@ defmodule Bonfire.Common.Media do
         name: l("Default banner image")
       )
 
-  def emoji_url(media),
-    do: Utils.maybe_apply(Files.EmojiUploader, :permanent_url, [media], fallback_return: nil)
+  def emoji_url(media, opts \\ []),
+    do:
+      Utils.maybe_apply(Files.EmojiUploader, :permanent_url, [media, nil, opts],
+        fallback_return: nil
+      )
 
   @doc """
   Determines the dominant color for a given user’s avatar or banner.
