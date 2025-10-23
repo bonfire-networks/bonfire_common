@@ -161,9 +161,10 @@ defmodule Bonfire.Common.RuntimeConfig do
       proxy_url: System.get_env("HTTP_PROXY_URL"),
       adapter_options: [
         ssl_options: [
+          verify: :verify_peer,
           # Workaround for remote server certificate chain issues
           # partial_chain: &:hackney_connect.partial_chain/1,
-          # We don't support TLS v1.3 yet
+          # Some servers don't support TLS v1.3 yet so we disable it for compatibility
           versions: [:tlsv1, :"tlsv1.1", :"tlsv1.2"]
         ]
       ]
