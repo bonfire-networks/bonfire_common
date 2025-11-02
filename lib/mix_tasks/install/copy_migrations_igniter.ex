@@ -44,7 +44,7 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
     end
 
     def copy_all(igniter, opts) do
-      extensions = Helpers.list_extensions()
+      extensions = Helpers.list_extensions(:data)
 
       copy_for_extensions(igniter, extensions, opts)
     end

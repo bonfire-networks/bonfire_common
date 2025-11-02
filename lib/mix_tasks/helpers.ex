@@ -47,11 +47,13 @@ defmodule Bonfire.Common.Mix.Tasks.Helpers do
     end
   end
 
-  def list_extensions do
-    extensions_pattern =
-      Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :multirepo_prefixes, [],
-        fallback_return: []
-      ) ++ ["bonfire"] ++ Bonfire.Common.Config.get([:extensions_pattern], [])
+  def extensions_pattern(type \\ nil) do
+    Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :deps_prefixes, [type], fallback_return: []) ++
+      ["bonfire"] ++ Bonfire.Common.Config.get([:extensions_pattern], [])
+  end
+
+  def list_extensions(type \\ nil) do
+    extensions_pattern = extensions_pattern(type)
 
     (Bonfire.Common.Utils.maybe_apply(Bonfire.Mixer, :deps_tree_flat, [], fallback_return: nil) ||
        Bonfire.Common.Extensions.loaded_deps_names())

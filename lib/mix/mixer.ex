@@ -105,6 +105,14 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
       end
     end
 
+    def deps_prefixes(type \\ nil, config \\ mix_config())
+
+    def deps_prefixes(nil, config),
+      do: multirepo_prefixes(config)
+
+    def deps_prefixes(type, config),
+      do: (config[:deps_prefixes] || mix_config()[:deps_prefixes])[type] || []
+
     def multirepo_prefixes(config \\ mix_config()),
       do:
         List.wrap(config[:deps_prefixes] || mix_config()[:deps_prefixes])

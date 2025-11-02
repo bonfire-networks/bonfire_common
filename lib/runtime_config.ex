@@ -91,7 +91,7 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     #  use lighter advisory locks for migrations, allowing concurrent indexing?
     migration_lock =
-      if System.get_env("DB_MIGRATION_LOCK") != "standard",
+      if System.get_env("DB_MIGRATE_INDEXES_CONCURRENTLY") != "false",
         do: :pg_advisory_lock,
         else: :table_lock
 
