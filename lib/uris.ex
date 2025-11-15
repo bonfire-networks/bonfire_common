@@ -334,6 +334,8 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{display_username: display_username}, _opts) when is_binary(display_username),
     do: display_username
 
+  defp path_id(%{character: %{username: username}}, _opts) when is_binary(username), do: username
+
   defp path_id(%{__struct__: schema, name: tag}, _opts) when schema == Bonfire.Tag.Hashtag,
     do: tag
 
@@ -342,6 +344,7 @@ defmodule Bonfire.Common.URIs do
   defp path_id(%{__struct__: %{id: id} = schema, character: _character} = obj, opts)
        when schema != Needle.Pointer do
     if opts[:preload_if_needed] == false do
+      # debug(obj, "obj without preload_if_needed")
       id
     else
       obj
