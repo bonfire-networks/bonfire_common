@@ -982,7 +982,7 @@ defmodule Bonfire.Common.Utils do
 
   defp maybe_allow_sandbox_access(repo, parent_pid) do
     # Debug sandbox allowance
-    # flood(%{
+    # debug(%{
     #   repo: repo,
     #   parent_pid: parent_pid,
     #   self_pid: self()
