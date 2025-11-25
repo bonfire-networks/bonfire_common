@@ -112,6 +112,155 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     end
   end
 
+  # Normalizes a date string to "YYYY-MM-DD" format.
+  # Accepts Date structs or strings like "2025-10-2", "2025-1-9", "2025-10-02".
+  # Returns nil if input is nil or invalid.
+  @doc """
+  Normalize a date string or Date struct to "YYYY-MM-DD".
+
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.normalize_date("2025-10-2")
+      "2025-10-02"
+
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.normalize_date("2025-1-9")
+      "2025-01-09"
+
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.normalize_date("2025-10-02")
+      "2025-10-02"
+
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.normalize_date(~D[2025-10-2])
+      "2025-10-02"
+
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.normalize_date(nil)
+      nil
+  """
+  def normalize_date(nil), do: nil
+  def normalize_date(%Date{} = date), do: Date.to_iso8601(date)
+
+  def normalize_date(date_str) when is_binary(date_str) do
+    # Accepts "YYYY-M-D", "YYYY-MM-DD", etc.
+    case Regex.run(~r/^(\d{4})-(\d{1,2})-(\d{1,2})$/, String.trim(date_str)) do
+      [_, y, m, d] ->
+        ymd = "#{y}-#{String.pad_leading(m, 2, "0")}-#{String.pad_leading(d, 2, "0")}"
+
+        if ymd != date_str do
+          require Logger
+          Logger.debug("Normalized date '#{date_str}' to '#{ymd}'")
+        end
+
+        ymd
+
+      _ ->
+        # Try to parse as Date
+        case Date.from_iso8601(date_str) do
+          {:ok, date} -> Date.to_iso8601(date)
+          _ -> nil
+        end
+    end
+  end
+
+  @doc """
+  Filters a list of items (issues, PRs, or commits) to only include those with a relevant date field
+  (closedAt, mergedAt, etc) within the given date window. Items without a date field are always included.
+  Raises if any out-of-range items are found (for debugging).
+
+  The date field checked is, in order:
+    - "closedAt", "closed_at"
+    - "mergedAt", "merged_at"
+    - "matched_issue_closed_at"
+    - "matched_issue.mergedAt", "matched_issue.merged_at"
+    - "matched_issue.closedAt", "matched_issue.closed_at"
+
+  ## Examples
+
+      iex> items = [
+      ...>   %{"number" => 1, "closedAt" => "2025-10-10T12:00:00Z"},
+      ...>   %{"number" => 2, "mergedAt" => "2025-10-15T12:00:00Z"},
+      ...>   %{"number" => 3, "closedAt" => "2024-01-01T12:00:00Z"}
+      ...> ]
+      iex> Bonfire.Common.Changelog.Github.DataGrabber.filter_items_by_date!(items, "2025-10-01", "2025-10-31")
+      [%{"number" => 1, "closedAt" => "2025-10-10T12:00:00Z"}, %{"number" => 2, "mergedAt" => "2025-10-15T12:00:00Z"}]
+  """
+  def filter_items_by_date!(items, after_date, before_date) do
+    {in_range, out_of_range} = do_filter_items_by_date(items, after_date, before_date)
+
+    if out_of_range != [] do
+      require Logger
+
+      Logger.error("""
+      Out-of-range issues/PRs/items detected!
+      After: #{inspect(after_date)}, Before: #{inspect(before_date)}
+      Offending items:
+      #{inspect(Enum.map(out_of_range, fn item -> %{number: e(item, "number", nil) || e(item, "matched_issue_number", nil), closed_at: item_closed_date(item)} end),
+      pretty: true)}
+      """)
+
+      raise "Out-of-range issues/PRs/items detected! See logs for details."
+    end
+
+    in_range
+  end
+
+  def filter_items_by_date(items, after_date, before_date) do
+    {in_range, out_of_range} = do_filter_items_by_date(items, after_date, before_date)
+
+    if out_of_range != [] do
+      require Logger
+
+      Logger.error("""
+      Out-of-range issues/PRs/items detected!
+      After: #{inspect(after_date)}, Before: #{inspect(before_date)}
+      Offending items:
+      #{inspect(Enum.map(out_of_range, fn item -> %{number: e(item, "number", nil) || e(item, "matched_issue_number", nil), closed_at: item_closed_date(item)} end),
+      pretty: true)}
+      """)
+    end
+
+    in_range
+  end
+
+  defp do_filter_items_by_date(items, after_date, before_date) do
+    Enum.split_with(items, fn item ->
+      date_str = item_closed_date(item)
+
+      if is_nil(date_str) do
+        true
+      else
+        case Date.from_iso8601(String.slice(date_str, 0, 10)) do
+          {:ok, date} ->
+            after_ok =
+              case after_date do
+                nil -> true
+                _ -> Date.compare(date, Date.from_iso8601!(after_date)) != :lt
+              end
+
+            before_ok =
+              case before_date do
+                nil -> true
+                _ -> Date.compare(date, Date.from_iso8601!(before_date)) != :gt
+              end
+
+            after_ok and before_ok
+
+          _ ->
+            true
+        end
+      end
+    end)
+  end
+
+  defp item_closed_date(item) do
+    e(item, "closedAt", nil) ||
+      e(item, "closed_at", nil) ||
+      e(item, "matched_issue_closed_at", nil) ||
+      e(item, "matched_issue", "closedAt", nil) ||
+      e(item, "matched_issue", "closed_at", nil) ||
+      e(item, "matched_issue_merged_at", nil) ||
+      e(item, "matched_issue", "mergedAt", nil) ||
+      e(item, "matched_issue", "merged_at", nil) ||
+      e(item, "mergedAt", nil) ||
+      e(item, "merged_at", nil)
+  end
+
   def fetch_issues(opts \\ []) do
     # Ensure Finch is started
     Bonfire.Common.HTTP.ensure_ready()
@@ -121,45 +270,44 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
 
     org = Keyword.get(opts, :org, "bonfire-networks")
 
-    # Debug the date resolution process
-    # Bonfire.Common.Config.get_ext(:versioce, [:changelog, :closed_after])
-    # date_after_env = 
-    date_after_config =
-      System.get_env("CHANGES_CLOSED_AFTER")
-
-    # debug(
-    #   %{
-    #     config_date: date_after_config,
-    #     env_date: date_after_env,
-    #     opts_date: Keyword.get(opts, :closed_after)
-    #   },
-    #   "Date resolution debug"
-    # )
-
-    closed_after =
+    closed_after_raw =
       Keyword.get(opts, :closed_after) ||
-        date_after_config || get_first_changelog_date() ||
-        Date.add(
-          Date.utc_today(),
-          -Keyword.get(opts, :closed_in_last_days, 30)
-        )
-        |> info("Get issues closed after")
+        System.get_env("CHANGES_CLOSED_AFTER") || get_first_changelog_date() ||
+        Date.add(Date.utc_today(), -Keyword.get(opts, :closed_in_last_days, 30))
+
+    closed_before_raw =
+      Keyword.get(opts, :closed_before) ||
+        System.get_env("CHANGES_CLOSED_BEFORE")
+
+    closed_after = normalize_date(closed_after_raw)
+    closed_before = normalize_date(closed_before_raw)
+
+    debug(closed_after, "Normalized closed_after")
+    debug(closed_before, "Normalized closed_before")
 
     # Fetch issues first
-    issues = fetch_github_issues(org, closed_after)
+    issues =
+      fetch_github_issues(org, closed_after, closed_before)
+
+    # |> filter_items_by_date(closed_after, closed_before)
 
     # Get all commits and PRs that reference these issues
     issue_numbers = Enum.map(issues, &e(&1, "number", nil)) |> Enum.filter(&(&1 != nil))
 
     # Fetch PRs that reference issues and add them to the PR contributors
-    issues_with_pr_contributors = add_pr_contributors_to_issues(org, issues, issue_numbers)
+    issues_with_pr_contributors =
+      add_pr_contributors_to_issues(org, issues, issue_numbers)
+      |> filter_items_by_date(closed_after, closed_before)
 
     # Fetch unreferenced PRs (those not linked to issues)
     referenced_prs = get_referenced_pr_numbers(issues_with_pr_contributors)
-    unreferenced_prs = fetch_unreferenced_prs(org, closed_after, referenced_prs)
+
+    unreferenced_prs =
+      fetch_unreferenced_prs(org, closed_after, closed_before, referenced_prs)
+      |> filter_items_by_date(closed_after, closed_before)
 
     # Fetch unreferenced commits (those not linked to issues/PRs)
-    referenced_commits = get_referenced_commit_shas(issues_with_pr_contributors)
+    referenced_commits = prepare_referenced_commit_shas(issues_with_pr_contributors)
 
     # Get repository list from issues for commit fetching
     repo_list = get_repository_list(issues_with_pr_contributors)
@@ -168,10 +316,12 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
       fetch_unreferenced_commits(
         org,
         closed_after,
+        closed_before,
         referenced_commits,
         repo_list,
         issues_with_pr_contributors
       )
+      |> filter_items_by_date(closed_after, closed_before)
 
     debug(length(issues_with_pr_contributors), "Issues fetched")
     debug(length(unreferenced_prs), "Unreferenced PRs fetched")
@@ -180,11 +330,13 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     issues_with_pr_contributors ++ unreferenced_prs ++ unreferenced_commits
   end
 
-  defp fetch_github_issues(org, closed_after) do
+  defp fetch_github_issues(org, closed_after, closed_before \\ nil) do
     # Use explicit issue type in query with pagination
-    query_string = "org:#{org} is:issue state:closed closed:>#{closed_after}"
+    query_string =
+      "org:#{org} is:issue state:closed closed:>#{closed_after}" <>
+        if closed_before, do: " closed:<#{closed_before}", else: ""
 
-    debug(query_string, "GitHub Issues Query (original format)")
+    debug(query_string, "GitHub Issues Query (with closed_before)")
 
     fetch_github_issues_paginated(query_string, nil, [])
   end
@@ -313,10 +465,17 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                 stopping: true,
                 reason:
                   cond do
-                    not has_next_page -> "no more pages (#{length(raw_issues)})"
-                    not end_cursor -> "no cursor"
-                    length(all_issues) >= 500 -> "hit safety limit (#{length(all_issues)} >= 500)"
-                    true -> "unknown"
+                    !has_next_page ->
+                      "no more pages (#{length(raw_issues)})"
+
+                    !end_cursor ->
+                      "no cursor"
+
+                    length(all_issues) >= 1000 ->
+                      "hit safety limit (#{length(all_issues)} >= 1000)"
+
+                    true ->
+                      "unknown"
                   end,
                 final_count: length(all_issues)
               },
@@ -651,9 +810,9 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     |> Enum.uniq()
   end
 
-  defp fetch_unreferenced_prs(org, closed_after, referenced_pr_numbers) do
+  defp fetch_unreferenced_prs(org, closed_after, closed_before, referenced_pr_numbers) do
     # Fetch all merged PRs and filter out referenced ones
-    all_prs = fetch_all_merged_prs(org, closed_after)
+    all_prs = fetch_all_merged_prs(org, closed_after, closed_before)
     debug(length(all_prs), "Total PRs fetched from GitHub")
     debug(referenced_pr_numbers, "Referenced PR numbers to exclude")
 
@@ -683,42 +842,26 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     unreferenced
   end
 
-  defp fetch_unreferenced_commits(org, committed_after, referenced_commit_shas, repo_list, issues) do
+  defp fetch_unreferenced_commits(
+         org,
+         committed_after,
+         committed_before,
+         referenced_commit_shas,
+         repo_list,
+         issues
+       ) do
     # Fetch recent commits from all repositories found in issues and filter out referenced ones
-    all_commits = fetch_all_recent_commits(org, committed_after, repo_list)
+    all_commits = fetch_all_recent_commits(org, committed_after, committed_before, repo_list)
     debug(length(all_commits), "Total commits fetched from GitHub")
     debug(length(referenced_commit_shas), "Referenced commit SHAs to exclude")
 
-    unreferenced =
-      all_commits
-      |> Enum.reject(fn commit -> e(commit, "oid", nil) in referenced_commit_shas end)
-      # Add this line
-      |> Enum.reject(&is_automated_commit?/1)
-      # Add this line too if not already there
-      |> Enum.reject(&is_merge_commit?/1)
-      |> merge_similar_commits()
-      |> try_match_commits_to_issues(issues)
-      # Mark as commit
-      |> Enum.map(&Map.put(&1, "type", "commit"))
-
-    debug(length(unreferenced), "Unreferenced commits after filtering")
-
-    # Debug a few sample commits
-    if length(unreferenced) > 0 do
-      sample_commit = List.first(unreferenced)
-
-      debug(
-        %{
-          oid: e(sample_commit, "oid", nil),
-          message: e(sample_commit, "message", "") |> String.slice(0, 50),
-          type: e(sample_commit, "type", ""),
-          author: e(sample_commit, "author", "user", "login", "")
-        },
-        "Sample unreferenced commit"
-      )
-    end
-
-    unreferenced
+    all_commits
+    |> Enum.reject(fn commit -> e(commit, "oid", nil) in referenced_commit_shas end)
+    |> Enum.reject(&is_automated_commit?/1)
+    |> Enum.reject(&is_merge_commit?/1)
+    |> merge_similar_commits()
+    |> try_match_commits_to_issues(issues)
+    |> Enum.map(&Map.put(&1, "type", "commit"))
   end
 
   defp get_repository_list(issues) do
@@ -736,27 +879,34 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     unique_repos
   end
 
-  defp fetch_all_recent_commits(org, committed_after, repo_list) do
+  defp fetch_all_recent_commits(org, committed_after, committed_before, repo_list) do
     # Fetch commits from all discovered repositories
     repo_list
     |> Enum.flat_map(fn repo_name ->
-      fetch_commits_from_repo(org, repo_name, committed_after)
+      fetch_commits_from_repo(org, repo_name, committed_after, committed_before)
     end)
     |> Enum.uniq_by(&e(&1, "oid", nil))
   end
 
-  defp fetch_commits_from_repo(org, repo_name, committed_after) do
-    fetch_commits_from_repo_paginated(org, repo_name, committed_after, nil, [])
+  defp fetch_commits_from_repo(org, repo_name, committed_after, committed_before \\ nil) do
+    fetch_commits_from_repo_paginated(org, repo_name, committed_after, committed_before, nil, [])
   end
 
   defp fetch_commits_from_repo_paginated(
          org,
          repo_name,
          committed_after,
+         committed_before,
          cursor,
          accumulated_commits
        ) do
     cursor_param = if cursor, do: ", after: \"#{cursor}\"", else: ""
+    since_param = "since: \"#{committed_after}T00:00:00Z\""
+
+    until_param =
+      if committed_before,
+        do: ", until: \"#{committed_before}T23:59:59Z\"",
+        else: ""
 
     with token when is_binary(token) and token != "" <-
            System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
@@ -768,7 +918,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                  defaultBranchRef {
                    target {
                      ... on Commit {
-                       history(first: 50, since: "#{committed_after}T00:00:00Z"#{cursor_param}) {
+                       history(first: 50, #{since_param}#{until_param}#{cursor_param}) {
                          pageInfo {
                            hasNextPage
                            endCursor
@@ -845,6 +995,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
               org,
               repo_name,
               committed_after,
+              committed_before,
               end_cursor,
               all_commits
             )
@@ -854,10 +1005,10 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                 stopping: true,
                 reason:
                   cond do
-                    not has_next_page ->
+                    !has_next_page ->
                       "no more pages (#{length(commits)})"
 
-                    not end_cursor ->
+                    !end_cursor ->
                       "no cursor"
 
                     length(all_commits) >= 2000 ->
@@ -1261,7 +1412,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     _ -> []
   end
 
-  defp get_referenced_commit_shas(issues) do
+  defp prepare_referenced_commit_shas(issues) do
     issues
     |> Enum.flat_map(fn issue ->
       title = e(issue, "title", "")
@@ -1296,9 +1447,12 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     _ -> []
   end
 
-  defp fetch_all_merged_prs(org, merged_after) do
-    query_string = "org:#{org} type:pr is:merged merged:>#{merged_after}"
-    debug(query_string, "GitHub PRs Query (original format)")
+  defp fetch_all_merged_prs(org, merged_after, merged_before \\ nil) do
+    query_string =
+      "org:#{org} type:pr is:merged merged:>#{merged_after}" <>
+        if merged_before, do: " merged:<#{merged_before}", else: ""
+
+    debug(query_string, "GitHub PRs Query (with merged_before)")
 
     fetch_all_merged_prs_paginated(query_string, nil, [])
   end
@@ -1324,6 +1478,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                        number
                        title
                        url
+                       mergedAt
                        author {
                          login
                        }
@@ -1420,8 +1575,8 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                 stopping: true,
                 reason:
                   cond do
-                    not has_next_page -> "no more pages (#{length(raw_prs)})"
-                    not end_cursor -> "no cursor"
+                    !has_next_page -> "no more pages (#{length(raw_prs)})"
+                    !end_cursor -> "no cursor"
                     length(all_prs) >= 500 -> "hit safety limit (#{length(all_prs)} >= 500)"
                     true -> "unknown"
                   end,
