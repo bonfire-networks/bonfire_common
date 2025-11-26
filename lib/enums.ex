@@ -1858,4 +1858,25 @@ defmodule Bonfire.Common.Enums do
     |> Enum.uniq()
     |> filter_empty(nil)
   end
+
+  @doc """
+  Ensures that the given keys in the map are not nil, replacing nil values with their provided defaults.
+
+  ## Examples
+
+      iex> Bonfire.Me.API.GraphQLMasto.Adapter.set_default_values(%{"avatar" => nil, "locked" => nil}, %{"avatar" => "", "locked" => false})
+      %{"avatar" => "", "locked" => false}
+
+      iex> Bonfire.Me.API.GraphQLMasto.Adapter.set_default_values(%{"avatar" => "a.png"}, %{"avatar" => ""})
+      %{"avatar" => "a.png"}
+
+  """
+  defp set_default_values(map, defaults) when is_map(map) and is_map(defaults) do
+    Enum.reduce(defaults, map, fn {key, default}, acc ->
+      Map.update(acc, key, default, fn
+        nil -> default
+        val -> val
+      end)
+    end)
+  end
 end
