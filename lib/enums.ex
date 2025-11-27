@@ -1871,7 +1871,7 @@ defmodule Bonfire.Common.Enums do
       %{"avatar" => "a.png"}
 
   """
-  defp set_default_values(map, defaults) when is_map(map) and is_map(defaults) do
+  def set_default_values(map, defaults) when is_map(map) and is_map(defaults) do
     Enum.reduce(defaults, map, fn {key, default}, acc ->
       Map.update(acc, key, default, fn
         nil -> default
