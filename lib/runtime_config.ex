@@ -83,10 +83,15 @@ defmodule Bonfire.Common.RuntimeConfig do
         pool when is_binary(pool) and pool not in ["", "0"] ->
           String.to_integer(pool)
 
-        # default to twice the number of CPU cores, but use more for tests
+        # Default to twice the number of CPU cores, with minimum safe sizes.
+        # Minimum pool size should account for:
+        # - Oban workers (~18 by default for federation queues)
+        # - Web requests (varies)
+        # - LiveView connections (varies)
         _ ->
           base_size = System.schedulers_online() * 2
-          if config_env() == :test, do: max(base_size, 20), else: base_size
+          min_safe_size = 25
+          if config_env() == :test, do: max(base_size, 20), else: max(base_size, min_safe_size)
       end
 
     #  use lighter advisory locks for migrations, allowing concurrent indexing?
