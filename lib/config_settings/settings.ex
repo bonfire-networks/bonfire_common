@@ -636,12 +636,12 @@ defmodule Bonfire.Common.Settings do
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
-      :guests_may_see_read
+      :everyone_may_see_read
     )
 
     Bonfire.Boundaries.Controlleds.add_acls(
       current_user,
-      :guests_may_read
+      :everyone_may_read
     )
 
     do_set(attrs, opts)
@@ -655,12 +655,12 @@ defmodule Bonfire.Common.Settings do
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
-      :guests_may_read
+      :everyone_may_read
     )
 
     Bonfire.Boundaries.Controlleds.add_acls(
       current_user,
-      :guests_may_see_read
+      :everyone_may_see_read
     )
 
     do_set(attrs, opts)
