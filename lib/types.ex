@@ -915,7 +915,8 @@ defmodule Bonfire.Common.Types do
           Cache.maybe_apply_cached(&object_type_from_db/2, [string, opts])
         else
           object_type(
-            String.downcase(string),
+            string,
+            # |> String.downcase(),
             opts ++ [query_if_unknown: query_if_unknown != false]
           )
         end
