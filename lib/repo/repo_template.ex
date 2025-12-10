@@ -815,6 +815,22 @@ defmodule Bonfire.Common.RepoTemplate do
 
       defdelegate preload_mixins(obj, opts \\ []),
         to: Bonfire.Common.Repo.Preload
+
+      @doc """
+      Print the SQL generated for a given Ecto query.
+
+      ## Examples
+
+          iex> print_sql(from u in User)
+          SELECT ... FROM users ...
+      """
+      def print_sql(query, operation \\ :all) do
+        {sql, params} = Ecto.Adapters.SQL.to_sql(operation, __MODULE__, query)
+        IO.puts(sql)
+        IO.inspect(params)
+
+        query
+      end
     end
   end
 end

@@ -5,6 +5,7 @@ defmodule Bonfire.Common.Localise do
   use Bonfire.Common.E
   use Bonfire.Common.Config
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Types
 
   defmacro __using__(_opts) do
     quote do
@@ -40,14 +41,25 @@ defmodule Bonfire.Common.Localise do
   """
   def known_locales do
     # Add default locale to ensure it's always included
-    default = default_locale()
+    default =
+      default_locale()
+      |> normalize_locale()
 
-    gettext_locales = Gettext.known_locales(Bonfire.Common.Localise.Gettext)
-
-    # cldr_locales = Bonfire.Common.Localise.Cldr.known_locale_names()
+    cldr_locales = Bonfire.Common.Localise.Cldr.known_locale_names()
+    # |> Enum.map(&normalize_locale/1)
 
     # Only include configured locales if specified
     # config_locales = Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :locales], [])
+
+    ([default] ++ cldr_locales)
+    |> Enum.uniq()
+  end
+
+  def localisation_locales do
+    # Add default locale to ensure it's always included
+    default = default_locale()
+
+    gettext_locales = Gettext.known_locales(Bonfire.Common.Localise.Gettext)
 
     ([default] ++ gettext_locales)
     |> Enum.map(&normalize_locale/1)
@@ -57,14 +69,14 @@ defmodule Bonfire.Common.Localise do
   defp normalize_locale(locale) when is_binary(locale) do
     locale
     |> String.replace("_", "-")
-    |> String.to_atom()
+    |> Types.maybe_to_atom()
   end
 
   defp normalize_locale(locale) when is_atom(locale) do
     locale
     # |> Atom.to_string()
     # |> String.replace("_", "-")
-    # |> String.to_atom()
+    # |> Types.maybe_to_atom()
   end
 
   @doc """
@@ -135,17 +147,22 @@ defmodule Bonfire.Common.Localise do
     do: Atom.to_string(locale) |> locale_name()
 
   def locale_name(locale) do
-    # FIXME, not sure why the Cldr.Language provider is not being compiled in
-    with {:ok, name} <-
-           Utils.maybe_apply(
-             Bonfire.Common.Localise.Cldr.Language,
-             :to_string,
-             locale
-           ) do
-      name
+    with {:ok, lang_localized} <- Cldr.LocaleDisplay.display_name(locale, locale: locale) do
+      lang_localized
     else
       _ ->
-        locale
+        # FIXME, not sure why the Cldr.Language provider is not being compiled in
+        with {:ok, name} <-
+               Utils.maybe_apply(
+                 Bonfire.Common.Localise.Cldr.Language,
+                 :to_string,
+                 locale
+               ) do
+          name
+        else
+          _ ->
+            locale
+        end
     end
   end
 
