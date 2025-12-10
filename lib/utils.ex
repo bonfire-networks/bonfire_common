@@ -183,6 +183,9 @@ defmodule Bonfire.Common.Utils do
       %{context: %Bonfire.Data.Identity.User{} = user} ->
         user
 
+      %{context: %{__context__: %{current_user: _} = context}} = _assigns ->
+        current_user(context, true)
+
       %{context: %{table_id: "5EVSER1S0STENS1B1YHVMAN01D"} = user} ->
         user
 

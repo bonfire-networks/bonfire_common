@@ -4,6 +4,7 @@ defmodule Bonfire.Common.Localise do
   """
   use Bonfire.Common.E
   use Bonfire.Common.Config
+  import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Types
 
@@ -130,6 +131,56 @@ defmodule Bonfire.Common.Localise do
 
     # change Gettext locale of extra deps
     # Enum.each(Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :extra_gettext], []), & Gettext.put_locale(&1, to_string(locale)) )
+  end
+
+  defp valid_locale?(locale) do
+    case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  def put_best_locale_match(
+        desired,
+        default \\ default_locale(),
+        supported \\ localisation_locales()
+      )
+      when is_list(desired) do
+    filtered =
+      desired
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> Enum.map(&Bonfire.Common.Localise.Cldr.validate_locale(&1))
+      |> Enum.filter_map(
+        fn
+          {:ok, tag} -> true
+          _ -> false
+        end,
+        fn {:ok, tag} -> tag end
+      )
+
+    if filtered == [] do
+      error_or_set_default_locale("No valid preferred locales", default)
+    else
+      case Cldr.Locale.Match.best_match(filtered, supported: supported) do
+        {:ok, best, _score} ->
+          put_locale(best)
+          {:ok, best}
+
+        e ->
+          error_or_set_default_locale(e, default)
+      end
+    end
+  end
+
+  defp error_or_set_default_locale(e, default) do
+    if default do
+      warn(e, "No locale match found from preferred locales, setting a default")
+      put_locale(default)
+      {:ok, default}
+    else
+      error(e)
+    end
   end
 
   @doc """
