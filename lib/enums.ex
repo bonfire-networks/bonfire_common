@@ -1770,6 +1770,7 @@ defmodule Bonfire.Common.Enums do
          |> Enum.group_by(&elem(&1, 0), &elem(&1, 1)) do
       %{error: errors} -> {:error, errors}
       %{ok: results} -> {:ok, results}
+      empty when empty == %{} -> {:ok, nil}
     end
   end
 
