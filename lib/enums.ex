@@ -1879,4 +1879,14 @@ defmodule Bonfire.Common.Enums do
       end)
     end)
   end
+
+  # Check if all keys are atoms
+  def atom_keys?(map) when is_map(map) do
+    map |> Map.keys() |> Enum.all?(&is_atom/1)
+  end
+
+  # Check if all keys are strings
+  def string_keys?(map) when is_map(map) do
+    map |> Map.keys() |> Enum.all?(&is_binary/1)
+  end
 end
