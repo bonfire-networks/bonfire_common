@@ -635,4 +635,31 @@ defmodule Bonfire.Common.DatesTimes do
       true -> "#{Float.round(Types.maybe_to_float(remaining_seconds), 2)}s"
     end
   end
+
+  @doc """
+  Converts a date/time value to an ISO8601 string.
+  Accepts nil, DateTime, Date, integer, string, or struct with id.
+  Returns nil if conversion fails.
+
+  ## Examples
+
+      iex> to_iso8601(DateTime.utc_now())
+      "2024-07-25T12:34:56Z"
+
+      iex> to_iso8601(nil)
+      nil
+
+      iex> to_iso8601("2024-07-25T12:34:56Z")
+      "2024-07-25T12:34:56Z"
+  """
+  def to_iso8601(%DateTime{} = dt) do
+    DateTime.to_iso8601(dt)
+  end
+
+  def to_iso8601(value) do
+    case to_date_time(value) do
+      %DateTime{} = dt -> DateTime.to_iso8601(dt)
+      _ -> nil
+    end
+  end
 end
