@@ -1865,10 +1865,10 @@ defmodule Bonfire.Common.Enums do
 
   ## Examples
 
-      iex> Bonfire.Me.API.GraphQLMasto.Adapter.set_default_values(%{"avatar" => nil, "locked" => nil}, %{"avatar" => "", "locked" => false})
+      iex> set_default_values(%{"avatar" => nil, "locked" => nil}, %{"avatar" => "", "locked" => false})
       %{"avatar" => "", "locked" => false}
 
-      iex> Bonfire.Me.API.GraphQLMasto.Adapter.set_default_values(%{"avatar" => "a.png"}, %{"avatar" => ""})
+      iex> set_default_values(%{"avatar" => "a.png"}, %{"avatar" => ""})
       %{"avatar" => "a.png"}
 
   """

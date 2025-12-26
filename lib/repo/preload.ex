@@ -135,7 +135,7 @@ defmodule Bonfire.Common.Repo.Preload do
     repo().preload(objects, preloads, opts)
   rescue
     e in ArgumentError ->
-      error(
+      warn(
         e.message,
         "skipped preload due to wrong argument: #{inspect(preloads)}"
       )
@@ -147,7 +147,7 @@ defmodule Bonfire.Common.Repo.Preload do
       )
 
     e in ArgumentError ->
-      error(
+      warn(
         e.message,
         "skipped preload due to wrong function clause: #{inspect(preloads)}"
       )
