@@ -51,7 +51,6 @@ defmodule Bonfire.Common.Utils do
   defmacro __common_utils__(opts \\ []) do
     quote do
       import Untangle
-      use Arrows
 
       alias Bonfire.Common
 
@@ -96,6 +95,7 @@ defmodule Bonfire.Common.Utils do
       Bonfire.Common.Utils.__localise__(unquote(opts))
       Bonfire.Common.Utils.__common_utils__(unquote(opts))
 
+      use Arrows
       use Bonfire.Common.Config
       use Bonfire.Common.Settings
     end

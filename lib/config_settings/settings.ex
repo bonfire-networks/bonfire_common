@@ -22,6 +22,7 @@ defmodule Bonfire.Common.Settings do
   """
 
   import Bonfire.Common.Utils
+  use Arrows
   Bonfire.Common.Utils.__common_utils__()
   Bonfire.Common.Utils.__localise__()
   use Bonfire.Common.ConfigSettingsRegistration

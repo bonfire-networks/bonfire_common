@@ -95,6 +95,15 @@ defmodule Bonfire.Common.Extend do
   #   end
   # end
 
+  defmacro extend_struct(struct_module, keyword) do
+    quote do
+      defstruct Keyword.merge(
+                  Map.to_list(Map.from_struct(unquote(struct_module).__struct__)),
+                  unquote(keyword)
+                )
+    end
+  end
+
   @doc "Make the current module extend another module (i.e. declare `defdelegate` and `defoverridable` for all of that module's functions) "
   # defmacro __using__(opts) do
   #   extend_module()

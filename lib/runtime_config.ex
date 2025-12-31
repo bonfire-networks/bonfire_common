@@ -33,9 +33,18 @@ defmodule Bonfire.Common.RuntimeConfig do
         else: repos
 
     db_url = System.get_env("DATABASE_URL") || System.get_env("CLOUDRON_POSTGRESQL_URL")
-    db_pw = System.get_env("POSTGRES_PASSWORD") || System.get_env("CLOUDRON_POSTGRESQL_PASSWORD")
 
-    db_url || db_pw ||
+    pg_username =
+      System.get_env("POSTGRES_USER") ||
+        System.get_env("CLOUDRON_POSTGRESQL_USERNAME", "postgres")
+
+    pg_host =
+      System.get_env("POSTGRES_HOST") ||
+        System.get_env("CLOUDRON_POSTGRESQL_HOST", "localhost")
+
+    pg_pw = System.get_env("POSTGRES_PASSWORD") || System.get_env("CLOUDRON_POSTGRESQL_PASSWORD")
+
+    db_url || pg_pw ||
       System.get_env("MIX_QUIET") ||
       error("""
       Environment variables for database are missing.
@@ -54,13 +63,9 @@ defmodule Bonfire.Common.RuntimeConfig do
         ]
       else
         [
-          username:
-            System.get_env("POSTGRES_USER") ||
-              System.get_env("CLOUDRON_POSTGRESQL_USERNAME", "postgres"),
-          password: db_pw || "postgres",
-          hostname:
-            System.get_env("POSTGRES_HOST") ||
-              System.get_env("CLOUDRON_POSTGRESQL_HOST", "localhost"),
+          username: pg_username,
+          password: pg_pw || "postgres",
+          hostname: pg_host,
           socket_options: maybe_repo_ipv6
         ]
       end
@@ -157,10 +162,23 @@ defmodule Bonfire.Common.RuntimeConfig do
 
       config :paginator, Paginator.Repo,
         pool: Ecto.Adapters.SQL.Sandbox,
-        username: System.get_env("POSTGRES_USER", "postgres"),
-        password: System.get_env("POSTGRES_PASSWORD", "postgres"),
-        hostname: System.get_env("POSTGRES_HOST", "localhost")
+        username: pg_username,
+        password: pg_pw,
+        hostname: pg_host
     end
+
+    config :sql,
+      pools: [
+        default: %{
+          username: pg_username,
+          password: pg_pw,
+          hostname: pg_host,
+          database: database,
+          adapter: SQL.Adapters.Postgres,
+          repo: Bonfire.Common.Repo,
+          ssl: false
+        }
+      ]
 
     config :bonfire, :http,
       proxy_url: System.get_env("HTTP_PROXY_URL"),
