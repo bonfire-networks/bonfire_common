@@ -198,7 +198,7 @@ defmodule Bonfire.Common.Config do
   end
 
   def get_for_process(keys) do
-    debug(keys, "Get process tree")
+    # flood(keys, "Get process tree")
     ProcessTree.get(keys)
   end
 
@@ -509,11 +509,7 @@ defmodule Bonfire.Common.Config do
   """
 
   def repo,
-    do:
-      debug(
-        ProcessTree.get(:ecto_repo_module) || default_repo_module(),
-        "repo_module"
-      )
+    do: ProcessTree.get(:ecto_repo_module) || default_repo_module()
 
   defp default_repo_module(read_only? \\ repo_read_only?()) do
     module =

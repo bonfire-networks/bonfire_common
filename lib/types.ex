@@ -580,6 +580,12 @@ defmodule Bonfire.Common.Types do
 
       iex> maybe_to_string({:a, :tuple})
       "a: tuple"
+
+      iex> maybe_to_string([a: 1, b: 2])
+      "[a: 1, b: 2]"
+
+      iex> maybe_to_string([a: 1, b: %{}])
+      "[a: 1, b: nil]"
   """
   def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
     Atom.to_string(atom)
@@ -587,15 +593,25 @@ defmodule Bonfire.Common.Types do
 
   def maybe_to_string(list) when is_list(list) do
     # IO.inspect(list, label: "list")
-    inspect(list)
+    Enum.map(list, &maybe_to_string/1)
+    |> inspect()
   end
 
   def maybe_to_string({key, val}) do
-    maybe_to_string(key) <> ": " <> maybe_to_string(val)
+    "#{maybe_to_string(key)}: #{maybe_to_string(val)}"
   end
 
   def maybe_to_string(other) do
     to_string(other)
+  rescue
+    _ -> nil
+  end
+
+  def to_string_or_inspect(other) do
+    case maybe_to_string(other) do
+      nil -> inspect(other)
+      str -> str
+    end
   end
 
   @doc """

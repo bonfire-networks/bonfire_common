@@ -23,7 +23,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
     declare_test_instance()
     fun.()
   after
-    maybe_declare_test_instance(false)
+    declare_primary_instance()
   end
 
   def set_child_instance(parent_pid, parent_endpoint) do
@@ -37,22 +37,16 @@ defmodule Bonfire.Common.TestInstanceRepo do
     Boruta.Config.repo() |> debug("boruta repo")
   end
 
-  def maybe_declare_test_instance(_) do
+  def maybe_declare_test_instance(other) do
+    other |> flood("declaring primary instance for")
+    declare_primary_instance()
+  end
+
+  def declare_primary_instance() do
     Logger.metadata(instance: :primary)
 
     repo = default_repo()
-
-    if Config.env() == :test do
-      configured_repo = Config.repo()
-
-      if configured_repo != repo,
-        do: io_inspect("switching from repo #{configured_repo} to #{repo}")
-
-      if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
-      # if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
-    end
-
-    # Boruta.Config.repo() |> debug("boruta repo")
+    prev_configured_repo = Config.repo()
 
     process_put(
       phoenix_endpoint_module: default_endpoint(),
@@ -61,8 +55,17 @@ defmodule Bonfire.Common.TestInstanceRepo do
 
     repo.put_dynamic_repo(repo)
 
+    if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
+
+    configured_repo = Config.repo()
+
     if Config.env() == :test do
-      configured_repo = Config.repo()
+      if prev_configured_repo != repo,
+        do: io_inspect("switching from repo #{configured_repo} to #{repo}"),
+        else: io_inspect("repo already set to #{repo}")
+
+      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
+
       if configured_repo != repo, do: err(configured_repo, "wrong repo")
     end
 
@@ -72,23 +75,26 @@ defmodule Bonfire.Common.TestInstanceRepo do
   defp declare_test_instance do
     Logger.metadata(instance: :test)
     repo = Bonfire.Common.TestInstanceRepo
+    prev_configured_repo = Config.repo()
 
     process_put(
       phoenix_endpoint_module: Bonfire.Web.FakeRemoteEndpoint,
       ecto_repo_module: repo
     )
 
-    configured_repo = Config.repo()
-
-    if configured_repo != repo,
-      do: io_inspect("switching from repo #{configured_repo} to #{repo}")
-
-    # if Config.env() ==:test, do: 
-    #   Patch.patch(Boruta.Config, :repo, repo)
+    default_repo().put_dynamic_repo(repo)
 
     Config.put([Boruta.Oauth, :repo], repo)
 
-    default_repo().put_dynamic_repo(repo)
+    configured_repo = Config.repo()
+
+    if Config.env() == :test do
+      if prev_configured_repo != repo,
+        do: io_inspect("switching from repo #{configured_repo} to #{repo}"),
+        else: io_inspect("repo already set to #{repo}")
+
+      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
+    end
   end
 
   # todo: put somewhere reusable
