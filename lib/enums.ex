@@ -1114,22 +1114,43 @@ defmodule Bonfire.Common.Enums do
   def stringify_keys(nil, _recursive), do: nil
 
   def stringify_keys(object, true) when is_map(object) or is_list(object) do
-    object
-    |> maybe_to_map()
-    |> Enum.map(fn {k, v} ->
-      {
-        Types.maybe_to_string(k),
-        stringify_keys(v)
-      }
-    end)
-    |> Enum.into(%{})
+    if is_map(object) or Keyword.keyword?(object) do
+      object
+      |> maybe_to_map()
+      |> Enum.map(fn
+        {k, v} when not is_binary(k) ->
+          {
+            Types.maybe_to_string(k),
+            stringify_keys(v, true)
+          }
+
+        {k, v} when is_map(v) or is_list(v) ->
+          {
+            k,
+            stringify_keys(v, true)
+          }
+
+        {k, v} ->
+          {
+            k,
+            v
+          }
+      end)
+      |> Enum.into(%{})
+    else
+      object
+    end
   end
 
   def stringify_keys(object, _) when is_map(object) or is_list(object) do
-    object
-    |> maybe_to_map()
-    |> Enum.map(fn {k, v} -> {Types.maybe_to_string(k), v} end)
-    |> Enum.into(%{})
+    if is_map(object) or Keyword.keyword?(object) do
+      object
+      |> maybe_to_map()
+      |> Enum.map(fn {k, v} -> {Types.maybe_to_string(k), v} end)
+      |> Enum.into(%{})
+    else
+      object
+    end
   end
 
   # Walk a list and stringify the keys of any map members
