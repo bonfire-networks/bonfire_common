@@ -198,7 +198,7 @@ defmodule Bonfire.Common.Config do
   end
 
   def get_for_process(keys) do
-    # flood(keys, "Get process tree")
+    # debug(keys, "Get process tree")
     ProcessTree.get(keys)
   end
 

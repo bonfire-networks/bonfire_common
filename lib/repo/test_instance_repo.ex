@@ -38,7 +38,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   end
 
   def maybe_declare_test_instance(other) do
-    other |> flood("declaring primary instance for")
+    other |> debug("declaring primary instance for")
     declare_primary_instance()
   end
 
