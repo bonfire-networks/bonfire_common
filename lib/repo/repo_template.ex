@@ -477,7 +477,7 @@ defmodule Bonfire.Common.RepoTemplate do
 
           multiply_limit = opts[:multiply_limit]
 
-          if is_number(multiply_limit) and multiply_limit <= 6,
+          if is_number(multiply_limit),
             do: ceil(existing_value * multiply_limit),
             else: existing_value
         end)
@@ -642,9 +642,9 @@ defmodule Bonfire.Common.RepoTemplate do
         Ecto.Adapters.SQL.query!(__MODULE__, raw_sql, data, opts)
       end
 
-      # def to_sql_raw(sql, kind \\ :all) do
-      #   case to_sql(kind, sql) do
-      #     {query, params} -> EctoSparkles.Log.inline_params(query, Map.new(params))
+      # def to_sql_raw(query, kind \\ :all) do
+      #   case to_sql(kind, query) do
+      #     {sql, params} -> EctoSparkles.Log.inline_params(sql, Map.new(params))
       #   end
       # end
 
@@ -738,7 +738,8 @@ defmodule Bonfire.Common.RepoTemplate do
       """
       def filter_out_future_ulids(query) do
         now_ulid = Needle.ULID.generate(System.system_time(:millisecond))
-        from(fp in query, where: fp.id <= ^now_ulid)
+        # from(main_object in query, where: main_object.id <= ^now_ulid)
+        where(query, [m], m.id <= ^now_ulid)
       end
 
       @doc """
@@ -824,8 +825,9 @@ defmodule Bonfire.Common.RepoTemplate do
           iex> print_sql(from u in User)
           SELECT ... FROM users ...
       """
-      def print_sql(query, operation \\ :all) do
+      def print_sql(query, comment \\ "", operation \\ :all) do
         {sql, params} = Ecto.Adapters.SQL.to_sql(operation, __MODULE__, query)
+        IO.puts("SQL Query: #{comment}")
         IO.puts(sql)
         IO.inspect(params)
 
