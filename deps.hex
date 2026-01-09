@@ -1,11 +1,12 @@
 arrows = "~> 0.2"
-untangle = "~> 0.3" # log/inspect with code location
+untangle = "~> 0.4" # log/inspect with code location
 
-ecto_sparkles = "~> 0.2"
+ecto_sparkles = "~> 0.3"
 ecto_sql = "~> 3.8"
-needle_ulid = "~> 0.3"
+needle = "~> 0.9"
+needle_ulid = "~> 0.5"
 postgrex = "~> 0.21"
-paginator = "~> 1.1" # paginate queries
+# paginator = "~> 1.1" # paginate queries
 
 ex_cldr = "~> 2.44" # internationalisation
 ex_cldr_languages = "~> 0.3" # localise language names
