@@ -348,6 +348,15 @@ defmodule Bonfire.Common.Config do
     put_env(otp_app, parent_key, value)
   end
 
+  def put(key, value, otp_app) when is_map(value) do
+    # deep merge maps with existing config to avoid overwriting compile-time defaults
+    existing = app_get_env(otp_app, key)
+
+    if is_map(existing),
+      do: put_env(otp_app, key, Enums.deep_merge(existing, value, replace_lists: true)),
+      else: put_env(otp_app, key, value)
+  end
+
   def put(key, value, otp_app) do
     put_env(otp_app, key, value)
   end
