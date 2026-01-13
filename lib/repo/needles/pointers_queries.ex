@@ -2,6 +2,7 @@
 defmodule Bonfire.Common.Needles.Pointers.Queries do
   @moduledoc "Queries for `Needle` Pointers"
 
+  use Bonfire.Common.Repo
   import Ecto.Query
   alias Needle.Pointer
   import EctoSparkles
@@ -20,11 +21,12 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   def query(Pointer) do
     query_incl_deleted()
     |> where([p], is_nil(p.deleted_at))
+    |> repo().maybe_filter_out_future_ulids()
 
     # TODO: add filter to opt-in to including deleted ones
   end
 
-  def query(filters), do: query(Pointer) |> query(filters)
+  def query(filters), do: filter(query(Pointer), filters)
 
   def query(nil, filters), do: filter(query(Pointer), filters)
   def query(Pointer, filters), do: filter(query(Pointer), filters)

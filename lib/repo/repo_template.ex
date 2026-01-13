@@ -736,10 +736,14 @@ defmodule Bonfire.Common.RepoTemplate do
       Filters out activities with ULIDs scheduled in the future (timestamp > now).
       Should be used in feed queries to hide scheduled posts.
       """
-      def filter_out_future_ulids(query) do
-        now_ulid = Needle.ULID.generate(System.system_time(:millisecond))
-        # from(main_object in query, where: main_object.id <= ^now_ulid)
-        where(query, [m], m.id <= ^now_ulid)
+      def maybe_filter_out_future_ulids(query, opts \\ []) do
+        if opts[:include_scheduled] do
+          query
+        else
+          now_ulid = Needle.ULID.generate(System.system_time(:millisecond))
+          # from(main_object in query, where: main_object.id <= ^now_ulid)
+          where(query, [m], m.id <= ^now_ulid)
+        end
       end
 
       @doc """

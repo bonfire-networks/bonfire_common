@@ -895,7 +895,7 @@ defmodule Bonfire.Common.Utils do
            raise ArgumentError, "`:id` is required in opts for LiveView start_async operations")
 
     pid = socket.transport_pid
-    current_endpoint = Process.get(:phoenix_endpoint_module)
+    instance_meta = Bonfire.Common.TestInstanceRepo.get_parent_instance_meta()
 
     if socket && function_exported?(Phoenix.LiveView, :start_async, 4) do
       Phoenix.LiveView.start_async(
@@ -903,7 +903,7 @@ defmodule Bonfire.Common.Utils do
         id,
         fn ->
           # Preserve multi-tenancy/context in spawned process
-          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
+          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, instance_meta)
 
           maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)
 
@@ -931,7 +931,7 @@ defmodule Bonfire.Common.Utils do
            raise ArgumentError, "`:keys` is required in opts for LiveView assign_async operations")
 
     pid = socket.transport_pid
-    current_endpoint = Process.get(:phoenix_endpoint_module)
+    instance_meta = Bonfire.Common.TestInstanceRepo.get_parent_instance_meta()
 
     if socket && function_exported?(Phoenix.LiveView, :assign_async, 4) do
       Phoenix.LiveView.assign_async(
@@ -939,7 +939,7 @@ defmodule Bonfire.Common.Utils do
         keys,
         fn ->
           # Preserve multi-tenancy/context in spawned process
-          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
+          Bonfire.Common.TestInstanceRepo.set_child_instance(pid, instance_meta)
 
           maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)
 
@@ -963,7 +963,7 @@ defmodule Bonfire.Common.Utils do
 
   defp do_apply_task(module, function, fun, args, _opts \\ []) do
     pid = self()
-    current_endpoint = Process.get(:phoenix_endpoint_module)
+    instance_meta = Bonfire.Common.TestInstanceRepo.get_parent_instance_meta()
 
     apply(
       module,
@@ -972,7 +972,7 @@ defmodule Bonfire.Common.Utils do
         [
           fn ->
             # Preserve multi-tenancy/context in spawned process
-            Bonfire.Common.TestInstanceRepo.set_child_instance(pid, current_endpoint)
+            Bonfire.Common.TestInstanceRepo.set_child_instance(pid, instance_meta)
 
             # Allow spawned process to access parent's Ecto Sandbox connection (for tests)
             maybe_allow_sandbox_access(Bonfire.Common.Config.repo(), pid)

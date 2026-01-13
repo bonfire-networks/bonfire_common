@@ -26,9 +26,21 @@ defmodule Bonfire.Common.TestInstanceRepo do
     declare_primary_instance()
   end
 
-  def set_child_instance(parent_pid, parent_endpoint) do
+  def get_parent_instance_meta do
+    %{
+      current_endpoint: Process.get(:phoenix_endpoint_module),
+      oban_testing: Process.get(:oban_testing),
+      pid: self()
+    }
+  end
+
+  def set_child_instance(parent_pid, instance_meta) do
     Process.put(:task_parent_pid, parent_pid)
-    maybe_declare_test_instance(parent_endpoint)
+
+    # , else: Process.delete(:oban_testing)
+    if oban_testing = instance_meta[:oban_testing], do: Process.put(:oban_testing, oban_testing)
+
+    maybe_declare_test_instance(instance_meta[:current_endpoint])
   end
 
   def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do

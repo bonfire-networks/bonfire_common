@@ -93,7 +93,11 @@ defmodule Bonfire.Common.Needles do
   def one(id, opts \\ [])
   def one(id, opts) when is_binary(id), do: one(filter_one(id), opts)
   # TODO: boundary check by default in one and many?
-  def one(filters, opts), do: pointer_query(filters, opts) |> repo().single()
+  def one(filters, opts),
+    do:
+      pointer_query(filters, opts)
+      |> debug("one query")
+      |> repo().single()
 
   @doc """
   Retrieves a single object based on the provided filters with bang.
@@ -224,6 +228,19 @@ defmodule Bonfire.Common.Needles do
     end
   end
 
+  def query_base(pointer_or_filters \\ Pointer)
+  def query_base(:include_deleted), do: Queries.query_incl_deleted()
+
+  def query_base(opts) when is_list(opts) do
+    if opts[:deleted] || opts[:include_scheduled] do
+      Queries.query_incl_deleted()
+    else
+      Queries.query(Pointer)
+    end
+  end
+
+  def query_base(pointer_or_filters), do: Queries.query(pointer_or_filters)
+
   @doc """
   Prepares a query for pointers.
 
@@ -240,11 +257,7 @@ defmodule Bonfire.Common.Needles do
   end
 
   def pointer_query(filters, opts) do
-    if opts[:deleted] do
-      Queries.query_incl_deleted()
-    else
-      Queries.query(Pointer)
-    end
+    query_base(opts)
     # |> debug()
     |> Queries.query(filters)
     # |> debug()
