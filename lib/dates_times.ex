@@ -643,7 +643,7 @@ defmodule Bonfire.Common.DatesTimes do
 
   ## Examples
 
-      iex> to_iso8601(DateTime.utc_now())
+      > to_iso8601(DateTime.utc_now())
       "2024-07-25T12:34:56Z"
 
       iex> to_iso8601(nil)

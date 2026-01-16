@@ -91,7 +91,7 @@ defmodule Bonfire.Common.URIs do
       > path(%{id: "1"}, [some: :args], [])
       "/users/1/some_args"
 
-      iex> path("12345", [some: :args], [])
+      > path("12345", [some: :args], [])
       nil
   """
   def path(view_module_or_path_name_or_object, args \\ [], opts \\ [])
