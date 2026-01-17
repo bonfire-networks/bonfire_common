@@ -437,6 +437,14 @@ defmodule Bonfire.Common.Types do
     Needle.UID.valid?(str, params)
   end
 
+  def is_ulid?(str) when is_binary(str) and byte_size(str) == 26 do
+    Needle.UID.is_ulid?(str)
+  end
+
+  def is_ulid?(_other) do
+    false
+  end
+
   @doc """
   Takes a string and returns an atom if it can be converted to one, else returns the input itself.
 
