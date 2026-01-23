@@ -13,10 +13,17 @@ defmodule Bonfire.Common.Localise.Gettext do
   """
   use Bonfire.Common.Config
 
+  yes? = ~w(true yes 1)
+  no? = ~w(false no 0)
+
+  compile_all_locales? =
+    (System.get_env("COMPILE_ALL_LOCALES") not in no? and Bonfire.Common.Config.env() == :prod) or
+      System.get_env("COMPILE_ALL_LOCALES") in yes?
+
   # Limit locales in non-prod environments  
   allowed_locales =
-    if Config.env() == :prod or System.get_env("COMPILE_ALL_LOCALES") in ["true", "1"] do
-      # In prod, allow all locales discovered in priv directory (default behavior)
+    if compile_all_locales? do
+      # In prod, allow all locales discovered in priv directory (default behaviour)
       nil
     else
       # In dev/test, only compile specified locales from CLDR config
