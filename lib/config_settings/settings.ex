@@ -31,6 +31,9 @@ defmodule Bonfire.Common.Settings do
   alias Bonfire.Common.Extend
   use Bonfire.Common.Config
 
+  # Accumulate hook paths at compile time
+  Module.register_attribute(__MODULE__, :hook_paths, accumulate: true)
+
   @doc """
   Get settings value for a config key (optionally from a specific OTP app or Bonfire extension)
 
@@ -667,6 +670,18 @@ defmodule Bonfire.Common.Settings do
     do_set(attrs, opts)
   end
 
+  defp set_with_hooks(%{bonfire_boundaries: %{filter_keywords: filter_keywords}} = _attrs, opts) do
+    do_set(
+      %{
+        bonfire_boundaries: %{
+          filter_keywords:
+            Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(filter_keywords)
+        }
+      },
+      opts
+    )
+  end
+
   defp set_with_hooks(attrs, opts) do
     do_set(attrs, opts)
   end
@@ -911,7 +926,37 @@ defmodule Bonfire.Common.Settings do
     #   also_discard_unknown_nested_keys: false
     # )
     # |> debug("to_atoms")
+    |> apply_loaded_hooks()
   end
+
+  @doc """
+  Applies registered hooks to settings after loading from DB.
+  Only iterates over paths that have hooks defined (compiled at build time).
+  """
+  defp apply_loaded_hooks(settings) when is_map(settings) do
+    all_hook_paths()
+    |> flood("applying hooks")
+    |> Enum.reduce(settings, fn path, acc ->
+      case get_in(acc, path) do
+        nil -> acc
+        value -> put_in(acc, path, loaded_setting_hook(path, value))
+      end
+    end)
+  end
+
+  defp apply_loaded_hooks(settings), do: settings
+
+  # Hook definitions - each one registers its path at compile time
+  @hook_paths [:bonfire_boundaries, :filter_keywords]
+  defp loaded_setting_hook([:bonfire_boundaries, :filter_keywords], value) when is_list(value) do
+    Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
+  end
+
+  # Fallback for unmatched paths (shouldn't normally be called since we only iterate registered paths)
+  defp loaded_setting_hook(_path, value), do: value
+
+  # Returns all registered hook paths (generated at compile time)
+  defp all_hook_paths, do: @hook_paths
 
   defp instance_scope,
     do:
