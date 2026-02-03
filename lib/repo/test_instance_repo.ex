@@ -73,7 +73,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
 
     if Config.env() == :test do
       if prev_configured_repo != repo,
-        do: flood("switching from repo #{configured_repo} to #{repo}"),
+        do: debug("switching from repo #{configured_repo} to #{repo}"),
         else: debug("repo already set to #{repo}")
 
       if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
@@ -102,7 +102,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
 
     if Config.env() == :test do
       if prev_configured_repo != repo,
-        do: flood("switching from repo #{configured_repo} to #{repo}"),
+        do: debug("switching from repo #{configured_repo} to #{repo}"),
         else: debug("repo already set to #{repo}")
 
       if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")

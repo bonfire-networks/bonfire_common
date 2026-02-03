@@ -935,7 +935,7 @@ defmodule Bonfire.Common.Settings do
   """
   defp apply_loaded_hooks(settings) when is_map(settings) do
     all_hook_paths()
-    |> flood("applying hooks")
+    |> debug("applying hooks")
     |> Enum.reduce(settings, fn path, acc ->
       case get_in(acc, path) do
         nil -> acc
