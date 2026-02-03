@@ -18,6 +18,8 @@ defmodule Bonfire.Common.Telemetry do
       setup_oban()
 
       IO.puts("Oban logging is set up...")
+
+      setup_server_timing(repo_module)
     end
 
     setup_liveview_debugging()
@@ -101,6 +103,13 @@ defmodule Bonfire.Common.Telemetry do
     )
 
     Oban.Telemetry.attach_default_logger(encode: false)
+  end
+
+  def setup_server_timing(repo_module) do
+    if Extend.module_enabled?(Bonfire.UI.Common.ServerTimingTelemetry) do
+      Bonfire.UI.Common.ServerTimingTelemetry.setup(repo_module)
+      IO.puts("Server-Timing telemetry is set up...")
+    end
   end
 
   defp setup_wobserver do
