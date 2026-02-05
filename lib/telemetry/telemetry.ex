@@ -110,6 +110,12 @@ defmodule Bonfire.Common.Telemetry do
       Bonfire.UI.Common.ServerTimingTelemetry.setup(repo_module)
       IO.puts("Server-Timing telemetry is set up...")
     end
+
+    # Setup page profiler telemetry for LiveView events
+    if Extend.module_enabled?(Bonfire.UI.Common.PageTimingTelemetry) do
+      Bonfire.UI.Common.PageTimingTelemetry.setup()
+      IO.puts("Page profiler telemetry is set up...")
+    end
   end
 
   defp setup_wobserver do
