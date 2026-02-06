@@ -47,44 +47,6 @@ defmodule Bonfire.Common.ExtensionModule do
     Enum.map(modules, &declared_extension/1)
   end
 
-  def default_nav(%{default_nav: default_nav}) do
-    Utils.maybe_apply(Bonfire.UI.Common.NavModule, :nav, [default_nav], fallback_return: nil) ||
-      []
-  end
-
-  def default_nav(app) when is_atom(app) do
-    Utils.maybe_apply(Bonfire.UI.Common.NavModule, :nav, [extension(app)[:default_nav]],
-      fallback_return: nil
-    ) ||
-      []
-  end
-
-  def default_nav(apps) when is_list(apps) do
-    Enum.flat_map(apps, &default_nav/1)
-  end
-
-  def default_nav(_) do
-    []
-  end
-
-  def default_nav() do
-    default_nav_apps()
-    |> default_nav()
-  end
-
-  def default_nav_apps() do
-    Config.get([:ui, :default_nav_extensions], [:bonfire_ui_common, :bonfire_ui_social])
-  end
-
-  def extension_function_error(error, _args) do
-    warn(
-      error,
-      "NavModule - there's no extension module declared for this schema: 1) No function declared_extension/0 that returns this schema atom. 2)"
-    )
-
-    nil
-  end
-
   def app_modules() do
     Bonfire.Common.ExtensionBehaviour.behaviour_app_modules(__MODULE__)
   end
