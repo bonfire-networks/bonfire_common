@@ -458,7 +458,7 @@ defmodule Bonfire.Common.Enums do
   @doc """
   Takes a value and a fallback value. If the value is empty (e.g. an empty map, a non-loaded association, an empty list, an empty string, or nil), the fallback value is returned.
 
-  For lists and maps, empty elements/values are removed at the top level. By default, does NOT recurse into nested structures. Pass `recurse: true` as a third argument to deeply filter nested lists/maps.
+  For lists and maps, empty elements/values are removed at the top level. By default, does NOT recurse into nested structures. Pass `recurse: true` as a third argument to `filter_empty/3` to deeply filter nested lists/maps.
   """
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
@@ -496,11 +496,15 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def filter_empty(enum, fallback, opts) when is_list(opts) and is_map(enum) and not is_struct(enum) do
+  def filter_empty(enum, fallback, opts)
+      when is_list(opts) and is_map(enum) and not is_struct(enum) do
     if opts[:recurse] do
       enum |> filter_empty_enum(false) |> Enum.into(%{}) |> re_filter_empty(fallback)
     else
-      enum |> Enum.reject(fn {_k, v} -> empty?(v) end) |> Enum.into(%{}) |> re_filter_empty(fallback)
+      enum
+      |> Enum.reject(fn {_k, v} -> empty?(v) end)
+      |> Enum.into(%{})
+      |> re_filter_empty(fallback)
     end
   end
 
