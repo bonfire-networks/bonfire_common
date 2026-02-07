@@ -137,6 +137,20 @@ defmodule Bonfire.Common.Extend do
   def maybe_module(false, _), do: nil
 
   def maybe_module(module, opts) do
+    cache_key = {:maybe_module_cache, module}
+
+    case Process.get(cache_key, :not_cached) do
+      :not_cached ->
+        result = do_maybe_module(module, opts)
+        Process.put(cache_key, result)
+        result
+
+      cached ->
+        cached
+    end
+  end
+
+  defp do_maybe_module(module, opts) do
     if module_available?(module) do
       opts =
         Opts.to_options(opts)

@@ -42,7 +42,6 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   """
   def get_process_current_url do
     Process.get(:bonfire_current_url)
-    |> debug("url")
   end
 
   def start_link(_opts) do
@@ -79,7 +78,6 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   def handle_cast({:patch_url, msgid, domain, file, line, url}, state) do
     pot_file =
       determine_pot_file(domain)
-      |> debug("pot_file")
 
     # Normalize the file path to match what's in POT files
     relative_file = normalize_file_path(file)
@@ -140,7 +138,6 @@ defmodule Bonfire.Common.Localise.POAnnotator do
             try do
               content =
                 Expo.PO.compose(messages)
-                |> debug("composed")
 
               File.write!(pot_file, content)
             rescue
@@ -190,7 +187,6 @@ defmodule Bonfire.Common.Localise.POAnnotator do
           error ->
             error
         end
-        |> debug("parsed")
 
       _messages ->
         # Already parsed
@@ -385,8 +381,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
     # Create single URL comment line
     url_comment =
-      (@comment_prefix <> Enum.join(updated_urls, " "))
-      |> debug("updated_url_comment")
+      @comment_prefix <> Enum.join(updated_urls, " ")
 
     # Combine with other comments (URL comment first)
     updated_comments = [url_comment | other_comments]
