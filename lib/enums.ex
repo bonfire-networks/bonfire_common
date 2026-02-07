@@ -455,7 +455,11 @@ defmodule Bonfire.Common.Enums do
 
   defp magic_filter_empty(val, _, _, fallback), do: filter_empty(val, fallback)
 
-  @doc "Takes a value and a fallback value. If the value is empty (e.g. an empty map, a non-loaded association, an empty list, an empty string, or nil), the fallback value is returned."
+  @doc """
+  Takes a value and a fallback value. If the value is empty (e.g. an empty map, a non-loaded association, an empty list, an empty string, or nil), the fallback value is returned.
+
+  For lists and maps, empty elements/values are removed at the top level. By default, does NOT recurse into nested structures. Pass `recurse: true` as a third argument to deeply filter nested lists/maps.
+  """
   def filter_empty(val, fallback)
   def filter_empty(%Ecto.Association.NotLoaded{}, fallback), do: fallback
 
@@ -471,18 +475,47 @@ defmodule Bonfire.Common.Enums do
   def filter_empty(enum, fallback) when is_list(enum),
     do:
       enum
-      |> filter_empty_enum(false)
+      |> Enum.reject(&empty?/1)
       |> re_filter_empty(fallback)
 
   def filter_empty(enum, fallback) when is_map(enum) and not is_struct(enum),
     do:
       enum
-      # |> debug()
-      |> filter_empty_enum(false)
+      |> Enum.reject(fn {_k, v} -> empty?(v) end)
       |> Enum.into(%{})
       |> re_filter_empty(fallback)
 
   def filter_empty(val, _fallback), do: val
+
+  @doc "Like `filter_empty/2` but with options. Pass `recurse: true` to deeply filter nested lists/maps (the old default behavior)."
+  def filter_empty(enum, fallback, opts) when is_list(opts) and is_list(enum) do
+    if opts[:recurse] do
+      enum |> filter_empty_enum(false) |> re_filter_empty(fallback)
+    else
+      enum |> Enum.reject(&empty?/1) |> re_filter_empty(fallback)
+    end
+  end
+
+  def filter_empty(enum, fallback, opts) when is_list(opts) and is_map(enum) and not is_struct(enum) do
+    if opts[:recurse] do
+      enum |> filter_empty_enum(false) |> Enum.into(%{}) |> re_filter_empty(fallback)
+    else
+      enum |> Enum.reject(fn {_k, v} -> empty?(v) end) |> Enum.into(%{}) |> re_filter_empty(fallback)
+    end
+  end
+
+  def filter_empty(val, fallback, opts) when is_list(opts), do: filter_empty(val, fallback)
+
+  def filter_empty(%{key: nil}, fallback, key) when is_atom(key) or is_binary(key) do
+    fallback
+  end
+
+  def filter_empty(enum, fallback, key) when is_atom(key) or is_binary(key) do
+    case get_eager(enum, key) do
+      nil -> fallback
+      _ -> filter_empty(enum, fallback)
+    end
+  end
 
   @doc """
   Filters empty values from an enumerable. When given key-value pairs, it can either check keys as well, or only filter based on values.
@@ -513,12 +546,12 @@ defmodule Bonfire.Common.Enums do
   def filter_empty_enum(enum, check_keys?) when is_map(enum) or is_list(enum) do
     Enum.reduce(enum, [], fn
       {key, val}, acc when check_keys? == false ->
-        filtered_val = filter_empty(val, nil)
+        filtered_val = filter_empty(val, nil, recurse: true)
         if filtered_val == nil, do: acc, else: [{key, filtered_val} | acc]
 
       {key, val}, acc ->
-        filtered_key = filter_empty(key, nil)
-        filtered_val = filter_empty(val, nil)
+        filtered_key = filter_empty(key, nil, recurse: true)
+        filtered_val = filter_empty(val, nil, recurse: true)
 
         cond do
           filtered_key == nil or filtered_val == nil -> acc
@@ -526,7 +559,7 @@ defmodule Bonfire.Common.Enums do
         end
 
       val, acc ->
-        filtered_val = filter_empty(val, nil)
+        filtered_val = filter_empty(val, nil, recurse: true)
         if filtered_val == nil, do: acc, else: [filtered_val | acc]
     end)
     |> Enum.reverse()
@@ -538,16 +571,15 @@ defmodule Bonfire.Common.Enums do
   # defp re_filter_empty([val], nil), do: val
   defp re_filter_empty(val, _fallback), do: val
 
-  def filter_empty(%{key: nil}, fallback, _key) do
-    fallback
-  end
-
-  def filter_empty(enum, fallback, key) when is_atom(key) or is_binary(key) do
-    case get_eager(enum, key) do
-      nil -> fallback
-      _ -> filter_empty(enum, fallback)
-    end
-  end
+  # Shallow emptiness check for element-level filtering (does not recurse)
+  defp empty?(nil), do: true
+  defp empty?(""), do: true
+  defp empty?([]), do: true
+  defp empty?(map) when map == %{}, do: true
+  defp empty?(%Ecto.Association.NotLoaded{}), do: true
+  defp empty?(%Needle.Pointer{deleted_at: del}) when not is_nil(del), do: true
+  defp empty?({:error, _}), do: true
+  defp empty?(_), do: false
 
   # def filter_empty(enum, fallback, keys) when is_list(keys)  do
   #   case enum do
