@@ -140,6 +140,22 @@ defmodule Bonfire.Common.Utils do
       "5EVSER1S0STENS1B1YHVMAN01D"
   """
   def current_user(current_user_or_socket_or_opts, recursing \\ false) do
+    if recursing do
+      do_current_user(current_user_or_socket_or_opts, recursing)
+    else
+      case Process.get(:current_user_cache, :not_cached) do
+        :not_cached ->
+          result = do_current_user(current_user_or_socket_or_opts, recursing)
+          if result, do: Process.put(:current_user_cache, result)
+          result
+
+        cached ->
+          cached
+      end
+    end
+  end
+
+  defp do_current_user(current_user_or_socket_or_opts, recursing) do
     case current_user_or_socket_or_opts do
       {:ok, ret} = _socket ->
         current_user(ret)

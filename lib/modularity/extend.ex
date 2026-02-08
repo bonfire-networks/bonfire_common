@@ -359,9 +359,20 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp is_disabled?(module_or_extension, opts) do
-    get_modularity(module_or_extension, opts)
-    |> disabled_value?()
-    |> debug(inspect(module_or_extension))
+    cache_key = {:is_disabled_cache, module_or_extension}
+
+    case Process.get(cache_key, :not_cached) do
+      :not_cached ->
+        result =
+          get_modularity(module_or_extension, opts)
+          |> disabled_value?()
+
+        Process.put(cache_key, result)
+        result
+
+      cached ->
+        cached
+    end
   end
 
   @doc """
