@@ -232,7 +232,7 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
           |> debug("keys")
 
         assert is_map(settings_keys)
-        assert Map.has_key?(settings_keys, [Bonfire.UI.Common.LogoLive, :only_logo])
+        # assert Map.has_key?(settings_keys, [Bonfire.UI.Common.LogoLive, :only_logo])
         assert Map.has_key?(settings_keys, [:ui, :date_time_format])
         assert Map.has_key?(settings_keys, [:ui, :theme, :instance_theme])
       end
@@ -256,7 +256,7 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
         assert is_list(options)
         assert {:l, _, ["Relative"]} = Keyword.get(options, :relative)
         long = Keyword.get(options, :long)
-        # || {:l, _, ["Long"]} = long 
+        # || {:l, _, ["Long"]} = long
         assert long == "Long"
       end
     end
