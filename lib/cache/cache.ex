@@ -2,8 +2,8 @@ defmodule Bonfire.Common.Cache do
   @moduledoc """
   Helpers for caching data and operations.
 
-  This module provides functions to efficiently cache values and function results,
-  with automatic expiration. Use it to avoid repeating expensive operations.
+  This module provides functions to efficiently cache values and function results, with automatic expiration. Use it to avoid repeating expensive operations.
+
   """
 
   use Untangle
