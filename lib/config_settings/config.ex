@@ -382,7 +382,9 @@ defmodule Bonfire.Common.Config do
       )
       |> Enums.maybe_to_keyword_list(false, false)
     else
-      tree
+      # Convert maps to keyword lists so they get iterated leaf-by-leaf
+      # and merged into existing config, preserving keyword list structure of compile-time defaults
+      Enums.maybe_to_keyword_list(tree, false, true)
     end
     |> debug("map to put")
     |> case do
