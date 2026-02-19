@@ -46,7 +46,7 @@ defmodule Bonfire.Common.TestHelpers do
   end
 
   def mock_error_response(status \\ 401) do
-    {:ok, %{status: status, body: %{"message" => "Unauthorized"}}}
+    {:ok, %{status: status, body: %{"message" => "You need to login first."}}}
   end
 
   def mock_network_error do
