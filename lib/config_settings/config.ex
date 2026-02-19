@@ -520,7 +520,16 @@ defmodule Bonfire.Common.Config do
   """
 
   def repo,
-    do: ProcessTree.get(:ecto_repo_module) || default_repo_module()
+    do: ProcessTree.get(:ecto_repo_module) || migration_runner_repo() || default_repo_module()
+
+  # When running inside an Ecto migration, use the repo from the migration runner
+  # so that migrations for TestInstanceRepo use the correct repo.
+  defp migration_runner_repo do
+    case Process.get(:ecto_migration) do
+      %{runner: _} -> Ecto.Migration.Runner.repo()
+      _ -> nil
+    end
+  end
 
   defp default_repo_module(read_only? \\ repo_read_only?()) do
     module =
