@@ -41,7 +41,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   Helper to get current URL from runtime context
   """
   def get_process_current_url do
-    Process.get(:bonfire_current_url)
+    ProcessTree.get(:bonfire_current_url)
   end
 
   def start_link(_opts) do
@@ -391,12 +391,12 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
   # Debounce writes - only write after X seconds of no activity
   defp schedule_write(pot_file, after_seconds_inactivity \\ @after_seconds_inactivity) do
-    case Process.get({:write_timer, pot_file}) do
+    case ProcessTree.get({:write_timer, pot_file}) do
       nil -> :ok
-      timer_ref -> Process.cancel_timer(timer_ref)
+      timer_ref -> ProcessTree.cancel_timer(timer_ref)
     end
 
     timer_ref = Process.send_after(self(), {:write_file, pot_file}, after_seconds_inactivity)
-    Process.put({:write_timer, pot_file}, timer_ref)
+    ProcessTree.put({:write_timer, pot_file}, timer_ref)
   end
 end

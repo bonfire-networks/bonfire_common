@@ -28,29 +28,48 @@ defmodule Bonfire.Common.TestInstanceRepo do
 
   def get_parent_instance_meta do
     %{
-      current_endpoint: Process.get(:phoenix_endpoint_module),
-      oban_testing: Process.get(:oban_testing),
+      current_endpoint: ProcessTree.get(:phoenix_endpoint_module),
+      ecto_repo_module: ProcessTree.get(:ecto_repo_module),
+      oban_testing: ProcessTree.get(:oban_testing),
+      tesla_mock: ProcessTree.get(Tesla.Mock),
       pid: self()
     }
   end
 
-  def set_child_instance(parent_pid, instance_meta) do
-    Process.put(:task_parent_pid, parent_pid)
+  def set_child_instance(parent_pid \\ nil, instance_meta)
 
-    # , else: Process.delete(:oban_testing)
-    if oban_testing = instance_meta[:oban_testing], do: Process.put(:oban_testing, oban_testing)
-
-    maybe_declare_test_instance(instance_meta[:current_endpoint])
+  def set_child_instance(parent_pid, repo) when is_binary(repo) do
+    set_child_instance(parent_pid, %{ecto_repo_module: String.to_existing_atom(repo)})
   end
 
-  def maybe_declare_test_instance(v) when v == true or v == Bonfire.Web.FakeRemoteEndpoint do
+  def set_child_instance(parent_pid, repo) when is_atom(repo) and not is_nil(repo) do
+    set_child_instance(parent_pid, %{ecto_repo_module: repo})
+  end
+
+  def set_child_instance(parent_pid, %{} = instance_meta) do
+    if pid = parent_pid || instance_meta[:pid], do: Process.put(:task_parent_pid, pid)
+
+    if oban_testing = instance_meta[:oban_testing], do: Process.put(:oban_testing, oban_testing)
+    # , else: Process.delete(:oban_testing)
+
+    if is_function(instance_meta[:tesla_mock]),
+      do: Process.put(Tesla.Mock, instance_meta[:tesla_mock])
+
+    maybe_declare_test_instance(
+      instance_meta[:current_endpoint] || instance_meta[:ecto_repo_module]
+    )
+  end
+
+  def maybe_declare_test_instance(v)
+      when v == true or v == Bonfire.Web.FakeRemoteEndpoint or
+             v == Bonfire.Common.TestInstanceRepo do
     declare_test_instance()
 
-    Boruta.Config.repo() |> debug("boruta repo")
+    # Boruta.Config.repo() |> debug("boruta repo")
   end
 
   def maybe_declare_test_instance(other) do
-    other |> debug("declaring primary instance for")
+    other |> info("declaring primary instance for")
     declare_primary_instance()
   end
 
@@ -106,6 +125,27 @@ defmodule Bonfire.Common.TestInstanceRepo do
         else: debug("repo already set to #{repo}")
 
       if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
+    end
+  end
+
+  @doc """
+  Inserts an Oban job into the correct Oban instance based on the current repo context.
+  Routes to `Oban.TestInstance` when in the test instance context, otherwise to `Oban`.
+  """
+  def oban_insert(changeset) do
+    Oban.insert(oban_name(), changeset)
+  end
+
+  @doc """
+  Returns the Oban instance name for the current repo context.
+  """
+  def oban_name do
+    case ProcessTree.get(:ecto_repo_module) do
+      __MODULE__ ->
+        if Process.whereis(Oban.TestInstance), do: Oban.TestInstance, else: Oban
+
+      _ ->
+        Oban
     end
   end
 

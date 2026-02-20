@@ -525,7 +525,7 @@ defmodule Bonfire.Common.Config do
   # When running inside an Ecto migration, use the repo from the migration runner
   # so that migrations for TestInstanceRepo use the correct repo.
   defp migration_runner_repo do
-    case Process.get(:ecto_migration) do
+    case ProcessTree.get(:ecto_migration) do
       %{runner: _} -> Ecto.Migration.Runner.repo()
       _ -> nil
     end
@@ -574,7 +574,7 @@ defmodule Bonfire.Common.Config do
   """
   def endpoint_module,
     do:
-      Process.get(:phoenix_endpoint_module) ||
+      ProcessTree.get(:phoenix_endpoint_module) ||
         __get__(:endpoint_module, Bonfire.Web.Endpoint)
 
   @doc """
