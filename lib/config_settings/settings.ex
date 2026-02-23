@@ -898,7 +898,8 @@ defmodule Bonfire.Common.Settings do
   end
 
   # For instance scope: convert "" to nil (preserve key, override compile-time defaults)
-  defp strip_empty_string_values(data, true = _nil_mode) when is_map(data) and not is_struct(data) do
+  defp strip_empty_string_values(data, true = _nil_mode)
+       when is_map(data) and not is_struct(data) do
     data
     |> Enum.map(fn
       {k, ""} -> {k, nil}
