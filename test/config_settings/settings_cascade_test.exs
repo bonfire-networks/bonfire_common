@@ -107,6 +107,67 @@ defmodule Bonfire.Common.SettingsCascadeTest do
     end
   end
 
+  describe "maybe_fallback for empty strings" do
+    test "empty string in user settings falls back to provided default" do
+      user_with_empty_value = %{
+        id: "test_user_empty_str",
+        settings: %Bonfire.Data.Identity.Settings{
+          json: %{@test_otp_app => %{@test_module => %{location: ""}}}
+        }
+      }
+
+      result =
+        Settings.__get__(
+          [@test_module, :location],
+          "fallback_default",
+          current_user: user_with_empty_value,
+          otp_app: @test_otp_app
+        )
+
+      # "" should not propagate — falls back to provided default
+      assert result == "fallback_default"
+    end
+
+    test "nil in user settings falls back to provided default" do
+      user_with_nil = %{
+        id: "test_user_nil",
+        settings: %Bonfire.Data.Identity.Settings{
+          json: %{@test_otp_app => %{@test_module => %{location: nil}}}
+        }
+      }
+
+      result =
+        Settings.__get__(
+          [@test_module, :location],
+          "fallback_default",
+          current_user: user_with_nil,
+          otp_app: @test_otp_app
+        )
+
+      # nil overrides Config in deep merge, but maybe_fallback catches it
+      assert result == "fallback_default"
+    end
+
+    test "actual value in user settings overrides Config and default" do
+      user_with_value = %{
+        id: "test_user_value",
+        settings: %Bonfire.Data.Identity.Settings{
+          json: %{@test_otp_app => %{@test_module => %{location: "User City"}}}
+        }
+      }
+
+      result =
+        Settings.__get__(
+          [@test_module, :location],
+          "fallback_default",
+          current_user: user_with_value,
+          otp_app: @test_otp_app
+        )
+
+      assert result == "User City"
+    end
+  end
+
   describe "Config.put/3 preserves keyword list structure" do
     test "merges map into existing keyword list instead of replacing" do
       Application.put_env(@test_otp_app, @test_module, location: "Original", color: "blue")

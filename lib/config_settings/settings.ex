@@ -248,6 +248,7 @@ defmodule Bonfire.Common.Settings do
 
   defp maybe_fallback(val, fallback, fallback_value \\ nil)
   defp maybe_fallback(fallback_value, fallback, fallback_value), do: fallback
+  defp maybe_fallback("", fallback, _), do: fallback
   defp maybe_fallback(val, _, _), do: val
 
   defp the_otp_app(module_or_otp_app),
@@ -785,7 +786,7 @@ defmodule Bonfire.Common.Settings do
     with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
            # |> debug
-           |> upsert(settings, uid(scoped), opts) do
+           |> upsert(settings, uid(scoped), Keyword.put(opts, :scope, :instance)) do
       # also save it in Elixir's Config for quick lookups
       if delete_key = opts[:delete_key] do
         Config.delete(delete_key, opts[:otp_app])
@@ -890,10 +891,49 @@ defmodule Bonfire.Common.Settings do
       existing_data
       # |> debug("existing_data")
       |> deep_merge(new_data, replace_lists: true)
+      |> strip_empty_string_values(opts[:scope] == :instance)
       |> debug("merged settings to set")
       |> do_update(settings, ...)
     end
   end
+
+  # For instance scope: convert "" to nil (preserve key, override compile-time defaults)
+  defp strip_empty_string_values(data, true = _nil_mode) when is_map(data) and not is_struct(data) do
+    data
+    |> Enum.map(fn
+      {k, ""} -> {k, nil}
+      {k, v} -> {k, strip_empty_string_values(v, true)}
+    end)
+    |> Enum.into(%{})
+  end
+
+  # For user/account scope: remove "" keys (let cascade work)
+  defp strip_empty_string_values(data, _nil_mode) when is_map(data) and not is_struct(data) do
+    data
+    |> Enum.reject(fn {_k, v} -> v == "" end)
+    |> Enum.map(fn {k, v} -> {k, strip_empty_string_values(v, false)} end)
+    |> Enum.into(%{})
+  end
+
+  defp strip_empty_string_values(data, nil_mode) when is_list(data) do
+    if Keyword.keyword?(data) do
+      if nil_mode do
+        data
+        |> Enum.map(fn
+          {k, ""} -> {k, nil}
+          {k, v} -> {k, strip_empty_string_values(v, true)}
+        end)
+      else
+        data
+        |> Enum.reject(fn {_k, v} -> v == "" end)
+        |> Enum.map(fn {k, v} -> {k, strip_empty_string_values(v, false)} end)
+      end
+    else
+      data
+    end
+  end
+
+  defp strip_empty_string_values(data, _nil_mode), do: data
 
   defp do_update(
          %schema{} = settings,
