@@ -590,19 +590,17 @@ defmodule Bonfire.Common.Types do
       "a: tuple"
 
       iex> maybe_to_string([a: 1, b: 2])
-      "[a: 1, b: 2]"
+      "[a: 1, b: 2]" 
 
       iex> maybe_to_string([a: 1, b: %{}])
-      "[a: 1, b: nil]"
+      "[a: 1, b: ]"
   """
   def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
     Atom.to_string(atom)
   end
 
   def maybe_to_string(list) when is_list(list) do
-    # IO.inspect(list, label: "list")
-    Enum.map(list, &maybe_to_string/1)
-    |> inspect()
+    "[" <> Enum.map_join(list, ", ", &maybe_to_string/1) <> "]"
   end
 
   def maybe_to_string({key, val}) do

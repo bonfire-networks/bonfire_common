@@ -203,7 +203,7 @@ defmodule Bonfire.Common.Localise do
       iex> locale_name(:en)
       "English"
       iex> locale_name("fr")
-      "French"
+      "français"
 
   """
   def locale_name(locale) when is_atom(locale),

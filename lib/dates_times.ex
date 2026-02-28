@@ -36,7 +36,7 @@ defmodule Bonfire.Common.DatesTimes do
 
   ## Examples
 
-      iex> relative_date(DateTime.now!("Etc/UTC"))
+      > relative_date(DateTime.now!("Etc/UTC"))
       # "now" or "1 second ago" 
   """
   def relative_date(date_time, opts \\ []) do

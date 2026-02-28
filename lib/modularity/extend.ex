@@ -121,14 +121,17 @@ defmodule Bonfire.Common.Extend do
       iex> maybe_module(Bonfire.Common)
       Bonfire.Common
 
-      iex> Config.put(DisabledModule, modularity: :disabled)
+      iex> # Config.put(DisabledModule, modularity: :disabled)
+      iex> Process.put([:DisabledModule, :modularity], :disabled)
       iex> maybe_module(DisabledModule)
       nil
 
-      iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
+      iex> # Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
+      iex> Process.put([:bonfire_common, Bonfire.Common.Text, :modularity], Bonfire.Common.TextExtended)
       iex> maybe_module(Bonfire.Common.Text)
       Bonfire.Common.TextExtended
-      iex> Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
+      iex> # Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
+      iex> Process.put([:bonfire_common, Bonfire.Common.Text, :modularity], Bonfire.Common.Text)
       iex> maybe_module(Bonfire.Common.Text)
       Bonfire.Common.Text
   """
