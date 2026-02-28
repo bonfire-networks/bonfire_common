@@ -123,8 +123,20 @@ defmodule Bonfire.Common.Localise do
     # change Cldr locale
     Bonfire.Common.Localise.Cldr.put_locale(locale)
 
+    # Resolve the correct Gettext locale name from the CLDR locale tag.
+    # CLDR uses BCP47 format (e.g. "zh-TW") while Gettext uses POSIX format (e.g. "zh_TW").
+    # Without this mapping, locales like zh-Hant/zh-TW won't find their Gettext translations.
+    gettext_locale =
+      case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
+        {:ok, %{gettext_locale_name: name}} when not is_nil(name) ->
+          to_string(name)
+
+        _ ->
+          to_string(locale)
+      end
+
     # Sets the global Gettext locale for the current process.
-    Gettext.put_locale(to_string(locale))
+    Gettext.put_locale(gettext_locale)
 
     # change Gettext locale
     # Gettext.put_locale(Bonfire.Common.Localise.Gettext, to_string(locale))
