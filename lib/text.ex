@@ -676,11 +676,17 @@ defmodule Bonfire.Common.Text do
 
       iex> Bonfire.Common.Text.maybe_sane_html("<div class='test'>Safe</div>")
       "Safe"
+
+      iex> Bonfire.Common.Text.maybe_sane_html("<div class='invisible'>Safe</div>")
+      "<div class=\\"invisible\\">Safe</div>"
+
+      iex> Bonfire.Common.Text.maybe_sane_html("<span class='invisible'>Safe</span>")
+      "<span class=\\"invisible\\">Safe</span>"
   """
   def maybe_sane_html(content) do
     # TODO: can we use MDEx's sanitizer here when dealing with markdown content, and LazyHTML for raw HTML content?
-    if Extend.module_enabled?(HtmlSanitizeEx) do
-      HtmlSanitizeEx.markdown_html(content)
+    if Extend.module_enabled?(Bonfire.Common.Text.SanitizeHTML) do
+      Bonfire.Common.Text.SanitizeHTML.sanitize(content)
     else
       content
     end
@@ -1171,6 +1177,47 @@ defmodule Bonfire.Common.Text do
   end
 
   def strip_trailing_element(other, _tag, _match_fn), do: other
+
+  @doc """
+  Adds `class` to the last element matching `tag` in an HTML tree if all its
+  non-whitespace children satisfy `match_fn`.
+
+  Operates on a LazyHTML tree (list of tuples) to avoid extra string/tree conversions.
+  Returns the tree unchanged if the last element doesn't match.
+
+  ## Examples
+
+      iex> match_fn = fn {"a", [{"href", "/hashtag/" <> _}], _} -> true; _ -> false end
+      iex> mark_trailing_element([{"p", [], ["Hello"]}, {"p", [], [{"a", [{"href", "/hashtag/ABC"}], ["#test"]}]}], "p", "invisible", match_fn)
+      [{"p", [], ["Hello"]}, {"p", [{"class", "invisible"}], [{"a", [{"href", "/hashtag/ABC"}], ["#test"]}]}]
+
+      iex> match_fn = fn {"a", [{"href", "/hashtag/" <> _}], _} -> true; _ -> false end
+      iex> mark_trailing_element([{"p", [], ["Hello"]}, {"p", [], ["not a hashtag"]}], "p", "invisible", match_fn)
+      [{"p", [], ["Hello"]}, {"p", [], ["not a hashtag"]}]
+  """
+  def mark_trailing_element(tree, tag, class, match_fn)
+      when is_list(tree) and is_binary(tag) and is_function(match_fn, 1) do
+    case List.last(tree) do
+      {^tag, attrs, children} when is_list(children) ->
+        non_whitespace =
+          Enum.reject(children, fn
+            text when is_binary(text) -> String.trim(text) == ""
+            _ -> false
+          end)
+
+        if non_whitespace != [] and Enum.all?(non_whitespace, match_fn) do
+          marked = {tag, [{"class", class} | attrs], children}
+          List.replace_at(tree, -1, marked)
+        else
+          tree
+        end
+
+      _ ->
+        tree
+    end
+  end
+
+  def mark_trailing_element(other, _tag, _class, _match_fn), do: other
 
   def as_html_tree(nil), do: nil
   def as_html_tree(tree) when is_list(tree), do: tree
