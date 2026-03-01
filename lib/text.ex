@@ -789,9 +789,11 @@ defmodule Bonfire.Common.Text do
     iex> Bonfire.Common.Text.replace_links("<a href='/foo'>test</a>", %{"/baz" => "/qux"})
     [{"a", [{"href", "/foo"}], ["test"]}]
   """
-  def replace_links(nil, _), do: nil
+  def replace_links(input, replacements_map, fallback_match_fn \\ nil)
 
-  def replace_links(input, replacements_map)
+  def replace_links(nil, _, _), do: nil
+
+  def replace_links(input, replacements_map, fallback_match_fn)
       when is_map(replacements_map) and replacements_map != %{} do
     input
     |> as_html_tree()
@@ -799,12 +801,18 @@ defmodule Bonfire.Common.Text do
       {"a", attrs, children} = node ->
         case List.keyfind(attrs, "href", 0) do
           {"href", href} ->
-            case Map.get(replacements_map, String.downcase(href)) do
+            downcased = String.downcase(href)
+
+            case Map.get(replacements_map, downcased) ||
+                   (is_function(fallback_match_fn) &&
+                      fallback_match_fn.(replacements_map, downcased)) do
               nil ->
                 node
 
+              false ->
+                node
+
               new_href ->
-                # Only rewrite if there's a match
                 new_attrs = List.keyreplace(attrs, "href", 0, {"href", new_href})
                 {"a", new_attrs, children}
             end
@@ -818,7 +826,7 @@ defmodule Bonfire.Common.Text do
     end)
   end
 
-  def replace_links(input, _), do: input
+  def replace_links(input, _, _), do: input
 
   @doc """
   Makes local links within content live.
@@ -1124,6 +1132,46 @@ defmodule Bonfire.Common.Text do
       iex> as_html_tree(LazyHTML.from_fragment("<b>hi</b>"))
       [{"b", [], ["hi"]}]
   """
+  @doc """
+  Strips the last element matching `tag` from an HTML tree if all its non-whitespace
+  children satisfy `match_fn`.
+
+  Operates on a LazyHTML tree (list of tuples) to avoid extra string/tree conversions.
+  Returns the tree unchanged if the last element doesn't match.
+
+  ## Examples
+
+      iex> match_fn = fn {"a", [{"href", "/hashtag/" <> _}], _} -> true; _ -> false end
+      iex> strip_trailing_element([{"p", [], ["Hello"]}, {"p", [], [{"a", [{"href", "/hashtag/ABC"}], ["#test"]}]}], "p", match_fn)
+      [{"p", [], ["Hello"]}]
+
+      iex> match_fn = fn {"a", [{"href", "/hashtag/" <> _}], _} -> true; _ -> false end
+      iex> strip_trailing_element([{"p", [], ["Hello"]}, {"p", [], ["not a hashtag"]}], "p", match_fn)
+      [{"p", [], ["Hello"]}, {"p", [], ["not a hashtag"]}]
+  """
+  def strip_trailing_element(tree, tag, match_fn)
+      when is_list(tree) and is_binary(tag) and is_function(match_fn, 1) do
+    case List.last(tree) do
+      {^tag, _attrs, children} when is_list(children) ->
+        non_whitespace =
+          Enum.reject(children, fn
+            text when is_binary(text) -> String.trim(text) == ""
+            _ -> false
+          end)
+
+        if non_whitespace != [] and Enum.all?(non_whitespace, match_fn) do
+          List.delete_at(tree, -1)
+        else
+          tree
+        end
+
+      _ ->
+        tree
+    end
+  end
+
+  def strip_trailing_element(other, _tag, _match_fn), do: other
+
   def as_html_tree(nil), do: nil
   def as_html_tree(tree) when is_list(tree), do: tree
   def as_html_tree(input), do: as_lazy_html(input) |> LazyHTML.to_tree()
