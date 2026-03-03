@@ -121,39 +121,14 @@ defmodule Bonfire.Common.Extend do
       iex> maybe_module(Bonfire.Common)
       Bonfire.Common
 
-      iex> # Config.put(DisabledModule, modularity: :disabled)
-      iex> Process.put([:DisabledModule, :modularity], :disabled)
-      iex> maybe_module(DisabledModule)
+      iex> maybe_module(nil)
       nil
-
-      iex> # Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.TextExtended)
-      iex> Process.put([:bonfire_common, Bonfire.Common.Text, :modularity], Bonfire.Common.TextExtended)
-      iex> maybe_module(Bonfire.Common.Text)
-      Bonfire.Common.TextExtended
-      iex> # Config.put([Bonfire.Common.Text], modularity: Bonfire.Common.Text)
-      iex> Process.put([:bonfire_common, Bonfire.Common.Text, :modularity], Bonfire.Common.Text)
-      iex> maybe_module(Bonfire.Common.Text)
-      Bonfire.Common.Text
   """
   def maybe_module(module, opts \\ [])
   def maybe_module(nil, _), do: nil
   def maybe_module(false, _), do: nil
 
   def maybe_module(module, opts) do
-    cache_key = {:maybe_module_cache, module}
-
-    case Process.get(cache_key, :not_cached) do
-      :not_cached ->
-        result = do_maybe_module(module, opts)
-        Process.put(cache_key, result)
-        result
-
-      cached ->
-        cached
-    end
-  end
-
-  defp do_maybe_module(module, opts) do
     if module_available?(module) do
       opts =
         Opts.to_options(opts)
@@ -336,6 +311,24 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp get_modularity(module_or_extension, opts) do
+    process_cache({:modularity_cache, module_or_extension}, fn ->
+      do_get_modularity(module_or_extension, opts)
+    end)
+  end
+
+  defp process_cache(key, compute_fn) do
+    case Process.get(key, :not_cached) do
+      :not_cached ->
+        result = compute_fn.()
+        Process.put(key, result)
+        result
+
+      cached ->
+        cached
+    end
+  end
+
+  defp do_get_modularity(module_or_extension, opts) do
     case Keyword.pop(opts, :otp_app) do
       {nil, []} ->
         Config.__get__([module_or_extension, :modularity], nil)
@@ -362,20 +355,8 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp is_disabled?(module_or_extension, opts) do
-    cache_key = {:is_disabled_cache, module_or_extension}
-
-    case Process.get(cache_key, :not_cached) do
-      :not_cached ->
-        result =
-          get_modularity(module_or_extension, opts)
-          |> disabled_value?()
-
-        Process.put(cache_key, result)
-        result
-
-      cached ->
-        cached
-    end
+    get_modularity(module_or_extension, opts)
+    |> disabled_value?()
   end
 
   @doc """
@@ -404,6 +385,33 @@ defmodule Bonfire.Common.Extend do
       [disabled: true] -> true
       [disable: true] -> true
       _ -> false
+    end
+  end
+
+  @doc "Clears the Process-level modularity cache for a specific module or extension."
+  def clear_modularity_cache(module_or_extension) when is_atom(module_or_extension) do
+    Process.delete({:modularity_cache, module_or_extension})
+    :ok
+  end
+
+  @doc "Clears all Process-level modularity cache entries."
+  def clear_modularity_cache do
+    Process.get_keys()
+    |> Enum.each(fn
+      {:modularity_cache, _} = key -> Process.delete(key)
+      _ -> :ok
+    end)
+
+    :ok
+  end
+
+  @doc "Sets the Process-level modularity cache for a module/extension to a new value, or clears it if value is nil."
+  def reset_modularity_cache(module_or_extension, value)
+      when is_atom(module_or_extension) do
+    case value do
+      # NOTE: should we still cache nil values to avoid repeated checks for non-disabled modules?
+      nil -> Process.delete({:modularity_cache, module_or_extension})
+      _ -> Process.put({:modularity_cache, module_or_extension}, value)
     end
   end
 

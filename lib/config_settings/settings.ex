@@ -649,7 +649,9 @@ defmodule Bonfire.Common.Settings do
       :everyone_may_read
     )
 
-    do_set(attrs, opts)
+    result = do_set(attrs, opts)
+    maybe_reset_caches(attrs)
+    result
   end
 
   defp set_with_hooks(
@@ -668,24 +670,47 @@ defmodule Bonfire.Common.Settings do
       :everyone_may_see_read
     )
 
-    do_set(attrs, opts)
+    result = do_set(attrs, opts)
+    maybe_reset_caches(attrs)
+    result
   end
 
-  defp set_with_hooks(%{bonfire_boundaries: %{filter_keywords: filter_keywords}} = _attrs, opts) do
-    do_set(
-      %{
-        bonfire_boundaries: %{
-          filter_keywords:
-            Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(filter_keywords)
-        }
-      },
-      opts
-    )
+  defp set_with_hooks(%{bonfire_boundaries: %{filter_keywords: filter_keywords}} = attrs, opts) do
+    result =
+      do_set(
+        %{
+          bonfire_boundaries: %{
+            filter_keywords:
+              Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(filter_keywords)
+          }
+        },
+        opts
+      )
+
+    maybe_reset_caches(attrs)
+    result
   end
 
   defp set_with_hooks(attrs, opts) do
-    do_set(attrs, opts)
+    result = do_set(attrs, opts)
+    maybe_reset_caches(attrs)
+    result
   end
+
+  defp maybe_reset_caches(attrs) when is_map(attrs) do
+    Enum.each(attrs, fn
+      {module_or_ext, %{modularity: value}} ->
+        Extend.reset_modularity_cache(module_or_ext, value)
+
+      {_key, nested} when is_map(nested) ->
+        maybe_reset_caches(nested)
+
+      _ ->
+        :skip
+    end)
+  end
+
+  defp maybe_reset_caches(_), do: :skip
 
   defp do_set(attrs, opts) when is_map(attrs) do
     attrs
