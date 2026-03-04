@@ -142,7 +142,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   def oban_name do
     case ProcessTree.get(:ecto_repo_module) do
       __MODULE__ ->
-        if Process.whereis(Oban.TestInstance), do: Oban.TestInstance, else: Oban
+        if Oban.whereis(Oban.TestInstance) != nil, do: Oban.TestInstance, else: Oban
 
       _ ->
         Oban
