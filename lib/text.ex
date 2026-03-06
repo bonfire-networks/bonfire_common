@@ -683,13 +683,18 @@ defmodule Bonfire.Common.Text do
       iex> Bonfire.Common.Text.maybe_sane_html("<span class='invisible'>Safe</span>")
       "<span class=\\"invisible\\">Safe</span>"
   """
-  def maybe_sane_html(content) do
+  def maybe_sane_html(content) when is_binary(content) do
     # TODO: can we use MDEx's sanitizer here when dealing with markdown content, and LazyHTML for raw HTML content?
     if Extend.module_enabled?(Bonfire.Common.Text.SanitizeHTML) do
       Bonfire.Common.Text.SanitizeHTML.sanitize(content)
     else
       content
     end
+  end
+
+  def maybe_sane_html(content) do
+    warn(content, "not a string")
+    nil
   end
 
   @doc """

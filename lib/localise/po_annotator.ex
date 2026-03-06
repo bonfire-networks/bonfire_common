@@ -16,25 +16,27 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
   # Helper to patch POT files with runtime URL context (dev only)
   def maybe_patch_pot_with_url_ast(msgid, domain, file, line) do
-    if Config.env() == :dev and Config.get(:patch_pot_with_urls, true) do
-      quote do
-        case Bonfire.Common.Localise.POAnnotator.get_process_current_url() do
-          nil ->
-            :ok
+    if Config.env() in [:dev, :test] do
+      if url_host = System.get_env("BONFIRE_POT_URL_BASE") do
+        # debug(msgid, "Will annotate POT file with URL host #{url_host} at #{(file)}:#{(line)} ")
+        quote do
+          case Bonfire.Common.Localise.POAnnotator.get_process_current_url() do
+            nil ->
+              :ok
 
-          url ->
-            Bonfire.Common.Localise.POAnnotator.patch_async(
-              unquote(msgid),
-              unquote(domain),
-              unquote(file),
-              unquote(line),
-              url
-            )
+            url ->
+              Bonfire.Common.Localise.POAnnotator.patch_async(
+                unquote(msgid),
+                unquote(domain),
+                unquote(file),
+                unquote(line),
+                unquote(url_host),
+                url
+              )
+          end
         end
       end
-    else
-      quote do: :ok
-    end
+    end || quote do: :ok
   end
 
   @doc """
@@ -51,9 +53,14 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   @doc """
   Asynchronously patches POT file with URL context.
   """
-  def patch_async(msgid, domain, file, line, url) do
+  def patch_async(msgid, domain, file, line, url_host, url) do
     if Process.whereis(__MODULE__) do
-      GenServer.cast(__MODULE__, {:patch_url, msgid, domain, file, line, url})
+      GenServer.cast(__MODULE__, {:patch_url, msgid, domain, file, line, url_host, url})
+    else
+      error(
+        msgid,
+        "POAnnotator GenServer not running, cannot patch POT file at #{file}:#{line}"
+      )
     end
 
     :ok
@@ -75,7 +82,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
      }}
   end
 
-  def handle_cast({:patch_url, msgid, domain, file, line, url}, state) do
+  def handle_cast({:patch_url, msgid, domain, file, line, url_host, url}, state) do
     pot_file =
       determine_pot_file(domain)
 
@@ -91,7 +98,15 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
         if MapSet.member?(lookup, entry_key) do
           # Entry exists, check if URL needs to be added/updated
-          case update_entry_url_if_changed(new_state, pot_file, msgid, relative_file, line, url) do
+          case update_entry_url_if_changed(
+                 new_state,
+                 pot_file,
+                 msgid,
+                 relative_file,
+                 line,
+                 url_host,
+                 url
+               ) do
             {:changed, updated_state} ->
               # Only schedule write if something actually changed
               schedule_write(pot_file)
@@ -245,7 +260,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
-  defp update_entry_url_if_changed(state, pot_file, msgid, file, line, url) do
+  defp update_entry_url_if_changed(state, pot_file, msgid, file, line, url_host, url) do
     case Map.get(state.parsed_cache, pot_file) do
       %Expo.Messages{messages: messages} = expo_messages ->
         # Find the matching message and check if it needs updating
@@ -265,7 +280,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
                          ref_file == file and ref_line == line
                      end) do
                   # Check if URL comment needs updating
-                  case update_url_comments_if_needed(msg.extracted_comments, url) do
+                  case update_url_comments_if_needed(msg.extracted_comments, url_host, url) do
                     {:changed, updated_comments} ->
                       updated_msg = %{msg | extracted_comments: updated_comments}
                       {updated_msg, true}
@@ -290,7 +305,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
                          ref_file == file and ref_line == line
                      end) do
                   # Check if URL comment needs updating
-                  case update_url_comments_if_needed(msg.extracted_comments, url) do
+                  case update_url_comments_if_needed(msg.extracted_comments, url_host, url) do
                     {:changed, updated_comments} ->
                       updated_msg = %{msg | extracted_comments: updated_comments}
                       {updated_msg, true}
@@ -320,12 +335,11 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
-  defp update_url_comments_if_needed(extracted_comments, new_url)
+  defp update_url_comments_if_needed(extracted_comments, url_host, new_url)
        when is_list(extracted_comments) and extracted_comments != [] do
     max_urls = Config.get(:pot_max_urls_per_entry, @default_max_urls)
-    url_prefix = Config.get(:pot_url_prefix, "")
 
-    new_url = "#{url_prefix}#{new_url}"
+    new_url = "#{url_host}#{new_url}"
 
     # Find existing URL comment line
     {url_comment_lines, other_comments} =
@@ -363,11 +377,10 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
-  defp update_url_comments_if_needed(_extracted_comments, new_url) do
+  defp update_url_comments_if_needed(_extracted_comments, url_host, new_url) do
     max_urls = Config.get(:pot_max_urls_per_entry, @default_max_urls)
-    url_prefix = Config.get(:pot_url_prefix, "")
 
-    new_url = "#{url_prefix}#{new_url}"
+    new_url = "#{url_host}#{new_url}"
 
     do_update_urls([], [new_url], max_urls)
   end
@@ -391,12 +404,12 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
   # Debounce writes - only write after X seconds of no activity
   defp schedule_write(pot_file, after_seconds_inactivity \\ @after_seconds_inactivity) do
-    case ProcessTree.get({:write_timer, pot_file}) do
+    case Process.get({:write_timer, pot_file}) do
       nil -> :ok
-      timer_ref -> ProcessTree.cancel_timer(timer_ref)
+      timer_ref -> Process.cancel_timer(timer_ref)
     end
 
     timer_ref = Process.send_after(self(), {:write_file, pot_file}, after_seconds_inactivity)
-    ProcessTree.put({:write_timer, pot_file}, timer_ref)
+    Process.put({:write_timer, pot_file}, timer_ref)
   end
 end
