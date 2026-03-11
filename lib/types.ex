@@ -753,6 +753,10 @@ defmodule Bonfire.Common.Types do
     if !opts[:only_schemas], do: :group, else: Bonfire.Classify.Category
   end
 
+  def object_type(%{__struct__: Bonfire.Classify.Category, type: :topic}, _opts) do
+    Bonfire.Classify.Category
+  end
+
   def object_type(%{__struct__: schema}, opts) when schema != Pointer,
     do: object_type(schema, opts)
 
