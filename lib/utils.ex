@@ -206,15 +206,16 @@ defmodule Bonfire.Common.Utils do
         nil
 
       _ ->
-        if !empty?(current_user_or_socket_or_opts) and recursing != :skip do
-          debug(
-            current_user_or_socket_or_opts,
-            "No current_user found, will fallback to looking for a current_user_id",
-            trace_skip: if(recursing, do: 2, else: 1)
-          )
+        # if !empty?(current_user_or_socket_or_opts) and recursing != :skip do
+        #   debug(
+        #     current_user_or_socket_or_opts,
+        #     "No current_user found, will fallback to looking for a current_user_id",
+        #     trace_skip: if(recursing, do: 2, else: 1)
+        #   )
 
-          current_user_id(current_user_or_socket_or_opts, :skip)
-        end
+        #   current_user_id(current_user_or_socket_or_opts, :skip)
+        # end
+        nil
     end ||
       (
         if !recursing,
@@ -225,6 +226,11 @@ defmodule Bonfire.Common.Utils do
 
         nil
       )
+  end
+
+  def current_user_or_id(current_user_or_socket_or_opts, recursing \\ false) do
+    current_user(current_user_or_socket_or_opts, recursing) ||
+      current_user_id(current_user_or_socket_or_opts, :skip)
   end
 
   @doc """

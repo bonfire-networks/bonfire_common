@@ -195,7 +195,7 @@ defmodule Bonfire.Common.Media do
   def avatar_url(url, opts \\ [])
 
   def avatar_url(%{profile: %{icon: _} = profile}, opts) do
-    debug(profile, "avatar_url: profile.icon")
+    # debug(profile, "avatar_url: profile.icon")
     avatar_url(profile, opts)
   end
 
