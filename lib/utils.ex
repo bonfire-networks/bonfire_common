@@ -120,7 +120,7 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Returns the current user from socket, assigns, or options.
 
-  This function traverses various possible structures to find and return the current user (or current user ID if that's all that's available). 
+  This function traverses various possible structures to find and return the current user.
 
   ## Examples
 
@@ -137,7 +137,7 @@ defmodule Bonfire.Common.Utils do
       %{id: "user4"}
 
       iex> Bonfire.Common.Utils.current_user(%{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
-      "5EVSER1S0STENS1B1YHVMAN01D"
+      nil
   """
   def current_user(current_user_or_socket_or_opts, recursing \\ false) do
     case current_user_or_socket_or_opts do
@@ -228,6 +228,19 @@ defmodule Bonfire.Common.Utils do
       )
   end
 
+  @doc """
+  Returns the current user or current user ID from socket, assigns, or options.
+
+  This function traverses various possible structures to find and return the current user (or current user ID if that's all that's available). 
+
+  ## Examples
+
+      iex> Bonfire.Common.Utils.current_user_or_id(%{current_user: %{id: "user1"}})
+      %{id: "user1"}
+
+      iex> Bonfire.Common.Utils.current_user_or_id(%{current_user_id: "5EVSER1S0STENS1B1YHVMAN01D"})
+      "5EVSER1S0STENS1B1YHVMAN01D"
+  """
   def current_user_or_id(current_user_or_socket_or_opts, recursing \\ false) do
     current_user(current_user_or_socket_or_opts, recursing) ||
       current_user_id(current_user_or_socket_or_opts, :skip)
