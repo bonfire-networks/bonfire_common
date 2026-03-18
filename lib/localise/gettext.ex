@@ -14,7 +14,7 @@ defmodule Bonfire.Common.Localise.Gettext do
   use Bonfire.Common.Config
 
   yes? = ~w(true yes 1)
-  no? = ~w(false no 0)
+  no? = ~w(false no none 0)
 
   compile_all_locales? =
     (System.get_env("COMPILE_ALL_LOCALES") not in no? and Bonfire.Common.Config.env() == :prod) or
