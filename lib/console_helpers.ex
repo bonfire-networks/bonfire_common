@@ -19,7 +19,13 @@ defmodule ConsoleHelpers do
       import Bonfire.Me.Fake
       import Untangle
 
-      IEx.configure(auto_reload: true)
+      IEx.configure(
+        auto_reload: true,
+        inspect: [
+          limit: 1_000,
+          printable_limit: 10_000
+        ]
+      )
     end
   end
 end
