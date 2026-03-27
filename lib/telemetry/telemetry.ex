@@ -27,9 +27,8 @@ defmodule Bonfire.Common.Telemetry do
 
     setup_wobserver()
 
-    Corsica.Telemetry.attach_default_handler(log_levels: [rejected: :warning, invalid: :warning])
-
-    IO.puts("Corsica telemetry is set up...")
+    # Corsica.Telemetry.attach_default_handler(log_levels: [rejected: :warning, invalid: :warning])
+    # IO.puts("Corsica telemetry is set up...")
 
     if Bonfire.Common.Errors.maybe_sentry_dsn() do
       :logger.add_handler(:bonfire_sentry_handler, Sentry.LoggerHandler, %{
