@@ -9,6 +9,7 @@ defmodule Bonfire.Common.Cache do
   use Untangle
   use Arrows
   alias Bonfire.Common.Utils
+  alias Bonfire.Common.Cache.Backend, as: CacheBackend
   use Bonfire.Common.Config
 
   # 6 hours
@@ -17,6 +18,7 @@ defmodule Bonfire.Common.Cache do
   @error_cache_ttl 1_000 * 60 * 5
 
   @default_store :bonfire_cache
+  @default_backend Cachex
 
   # TODO: explore using Decorator lib to support decorating functions to cache them
   # use Decorator.Define, cache: 0
@@ -27,7 +29,8 @@ defmodule Bonfire.Common.Cache do
   Stores a value in the cache with the given key and options.
 
   ## Options
-    * `:cache_store` - The cache store to use (defaults to #{inspect(@default_store)})
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
     * `:expire` - Time in milliseconds until the cache entry expires (defaults to #{@default_cache_ttl}ms meaning 6 hours)
 
   ## Examples
@@ -41,13 +44,7 @@ defmodule Bonfire.Common.Cache do
       "temporary"
   """
   def put(key, value, opts \\ []) do
-    Cachex.put(
-      opts[:cache_store] || default_cache_store(),
-      key,
-      value,
-      opts |> Keyword.put_new(:expire, @default_cache_ttl)
-    )
-
+    CacheBackend.put(opts[:cache_backend] || @default_backend, key, value, Keyword.put_new(opts, :expire, @default_cache_ttl))
     value
   end
 
@@ -57,7 +54,8 @@ defmodule Bonfire.Common.Cache do
   Returns `{:ok, value}` if the key exists, `{:ok, nil}` if the key does not exist, or `{:error, reason}` if there was an error.
 
   ## Options
-    * `:cache_store` - The cache store to use (defaults to #{inspect(@default_store)})
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
 
   ## Examples
 
@@ -68,7 +66,8 @@ defmodule Bonfire.Common.Cache do
       iex> Bonfire.Common.Cache.get("non_existent_key")
       {:ok, nil}
   """
-  def get(key, opts \\ []), do: Cachex.get(opts[:cache_store] || default_cache_store(), key)
+  def get(key, opts \\ []),
+    do: CacheBackend.get(opts[:cache_backend] || @default_backend, key, opts)
 
   @doc """
   Retrieves a value from the cache with the given key and unwraps the result.
@@ -76,7 +75,8 @@ defmodule Bonfire.Common.Cache do
   Returns the value if the key exists or nil if it doesn't exist or there was an error.
 
   ## Options
-    * `:cache_store` - The cache store to use (defaults to #{inspect(@default_store)})
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
 
   ## Examples
 
@@ -93,11 +93,15 @@ defmodule Bonfire.Common.Cache do
         val
 
       {:error, e} ->
-        error(e)
-        nil
+        
+       case opts[:on_error] do
+        :error -> error(e)
+        nil -> opts[:default]
+        other -> other
+       end
 
       _ ->
-        nil
+        opts[:default]
     end
   end
 
@@ -105,7 +109,8 @@ defmodule Bonfire.Common.Cache do
   Removes the entry associated with a key from the cache.
 
   ## Options
-    * `:cache_store` - The cache store to use (defaults to `default_cache_store/0`})
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
 
   ## Examples
 
@@ -115,7 +120,7 @@ defmodule Bonfire.Common.Cache do
       nil
   """
   def remove(key, opts \\ []) do
-    Cachex.del(opts[:cache_store] || default_cache_store(), key)
+    CacheBackend.delete(opts[:cache_backend] || @default_backend, key, opts)
     # ~> debug("Removed from cache: #{inspect key}")
   end
 
@@ -123,7 +128,8 @@ defmodule Bonfire.Common.Cache do
   Clears all entries from the cache.
 
   ## Options
-    * `:cache_store` - The cache store to use (defaults to #{inspect(@default_store)})
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
 
   ## Examples
 
@@ -135,10 +141,8 @@ defmodule Bonfire.Common.Cache do
       nil
   """
   def remove_all(opts \\ []) do
-    store = opts[:cache_store] || default_cache_store()
-
-    Cachex.clear(store)
-    ~> debug("Cleared cache: #{store}")
+    CacheBackend.clear(opts[:cache_backend] || @default_backend, opts)
+    ~> debug("Cleared cache")
   end
 
   @doc """
@@ -248,39 +252,46 @@ defmodule Bonfire.Common.Cache do
     # debug(opts)
     key = Keyword.fetch!(opts, :cache_key)
     expire = opts[:expire] || @default_cache_ttl
-    cache_store = opts[:cache_store] || default_cache_store()
+    backend = opts[:cache_backend] || @default_backend
+    cache_store = opts[:cache_store] || @default_store
 
-    if Code.loaded?(Cachex) and :ets.whereis(cache_store) != :undefined do
-      Cachex.execute!(cache_store, fn cache ->
-        case Cachex.exists?(cache, key) do
+    if Code.loaded?(backend) and
+         (backend != Cachex or :ets.whereis(cache_store) != :undefined) do
+      CacheBackend.execute_transaction(backend, key, fn cache_ref ->
+          # Cachex: cache_ref is the transaction handle; must override cache_store
+          inner_opts = if backend==Cachex, do: Keyword.put(opts, :cache_store, cache_ref), else: opts
+
+        case CacheBackend.has_key?(backend, key, inner_opts) do
           {:ok, true} ->
             debug(key, "getting from cache")
             # warn(key, "getting from cache", trace_limit: 100)
 
             if opts[:check_env] == false or Config.env() != :dev do
-              Cachex.get!(cache, key)
+              elem(CacheBackend.get(backend, key, inner_opts), 1)
             else
-              with {:error, e} <- Cachex.get!(cache, key) do
+              with {:error, e} <- CacheBackend.get(backend, key, inner_opts) do
                 error(
                   e,
                   "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
                 )
 
                 val = maybe_apply_or_fun(module, fun, args, opts)
-                Cachex.put!(cache, key, val, expire: expire)
+                CacheBackend.put(backend, key, val, Keyword.put(inner_opts, :expire, expire))
                 val
+              else
+                {:ok, val} -> val
               end
             end
 
           {:ok, false} ->
             with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
               debug(key, "got an error, putting in cache with short TTL")
-              Cachex.put!(cache, key, ret, expire: @error_cache_ttl)
+              CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, @error_cache_ttl))
               ret
             else
               ret ->
                 debug(key, "fetched and putting in cache for next time")
-                Cachex.put!(cache, key, ret, expire: expire)
+                CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, expire))
                 ret
             end
 
@@ -288,7 +299,7 @@ defmodule Bonfire.Common.Cache do
             error(e, "!! CACHE IS NOT WORKING !!")
             maybe_apply_or_fun(module, fun, args, opts)
         end
-      end)
+      end, opts)
     else
       # warn(nil, "!! Cache not available, fallback to [re-]running the function without cache !!")
 
@@ -326,13 +337,17 @@ defmodule Bonfire.Common.Cache do
   """
   def cached_preloads_for_objects(name, objects, fun, opts \\ [])
       when is_list(objects) and is_function(fun) do
-    Cachex.execute!(opts[:cache_store] || default_cache_store(), fn cache ->
+    backend = opts[:cache_backend] || @default_backend
+
+    CacheBackend.execute_transaction(backend, name, fn cache ->
+      inner_opts = Keyword.put(opts, :cache_store, cache)
+
       maybe_cached =
         Enum.map(objects, fn obj ->
           id = Bonfire.Common.Types.uid(obj)
           key = "#{name}:{id}"
 
-          with {:ok, ret} <- Cachex.get(cache, key) do
+          with {:ok, ret} <- CacheBackend.get(backend, key, inner_opts) do
             {id, ret}
           end
         end)
@@ -348,7 +363,7 @@ defmodule Bonfire.Common.Cache do
 
       Enum.each(not_cached, fn {id, v} ->
         # TODO: longer cache TTL?
-        Cachex.put(cache, "#{name}:#{id}", v)
+        CacheBackend.put(backend, "#{name}:#{id}", v, inner_opts)
       end)
 
       # cached = Enum.reject(maybe_cached, fn {_, v} -> is_nil(v) end)
@@ -357,7 +372,7 @@ defmodule Bonfire.Common.Cache do
       |> Map.merge(not_cached)
 
       # |> debug("all")
-    end)
+    end, opts)
   end
 
   @doc """
@@ -437,14 +452,12 @@ defmodule Bonfire.Common.Cache do
   end
 
   @doc """
-  Returns the default cache store to use.
+  Returns the default cache backend module.
 
   ## Examples
 
-      iex> Bonfire.Common.Cache.default_cache_store()
-      :bonfire_cache
+      iex> Bonfire.Common.Cache.default_cache_backend()
+      Cachex
   """
-  defp default_cache_store do
-    @default_store
-  end
+  def default_cache_backend, do: @default_backend
 end

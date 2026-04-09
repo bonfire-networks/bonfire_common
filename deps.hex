@@ -45,5 +45,8 @@ faker = "~> 0.17" # fake data generation, mostly for tests
 
 process_tree = "~> 0.3.0"
 
-nebulex = "~> 2.6.1"
+nebulex = "~> 3.0.3"
+nebulex_local = "~> 3.0"
+nebulex_distributed = "~> 3.0"
+nebulex_disk_lfu = "~> 3.0.0"
 
