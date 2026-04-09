@@ -44,7 +44,13 @@ defmodule Bonfire.Common.Cache do
       "temporary"
   """
   def put(key, value, opts \\ []) do
-    CacheBackend.put(opts[:cache_backend] || @default_backend, key, value, Keyword.put_new(opts, :expire, @default_cache_ttl))
+    CacheBackend.put(
+      opts[:cache_backend] || @default_backend,
+      key,
+      value,
+      Keyword.put_new(opts, :expire, @default_cache_ttl)
+    )
+
     value
   end
 
@@ -93,12 +99,11 @@ defmodule Bonfire.Common.Cache do
         val
 
       {:error, e} ->
-        
-       case opts[:on_error] do
-        :error -> error(e)
-        nil -> opts[:default]
-        other -> other
-       end
+        case opts[:on_error] do
+          :error -> error(e)
+          nil -> opts[:default]
+          other -> other
+        end
 
       _ ->
         opts[:default]
@@ -257,49 +262,62 @@ defmodule Bonfire.Common.Cache do
 
     if Code.loaded?(backend) and
          (backend != Cachex or :ets.whereis(cache_store) != :undefined) do
-      CacheBackend.execute_transaction(backend, key, fn cache_ref ->
+      CacheBackend.execute_transaction(
+        backend,
+        key,
+        fn cache_ref ->
           # Cachex: cache_ref is the transaction handle; must override cache_store
-          inner_opts = if backend==Cachex, do: Keyword.put(opts, :cache_store, cache_ref), else: opts
+          inner_opts =
+            if backend == Cachex, do: Keyword.put(opts, :cache_store, cache_ref), else: opts
 
-        case CacheBackend.has_key?(backend, key, inner_opts) do
-          {:ok, true} ->
-            debug(key, "getting from cache")
-            # warn(key, "getting from cache", trace_limit: 100)
+          case CacheBackend.has_key?(backend, key, inner_opts) do
+            {:ok, true} ->
+              debug(key, "getting from cache")
+              # warn(key, "getting from cache", trace_limit: 100)
 
-            if opts[:check_env] == false or Config.env() != :dev do
-              elem(CacheBackend.get(backend, key, inner_opts), 1)
-            else
-              with {:error, e} <- CacheBackend.get(backend, key, inner_opts) do
-                error(
-                  e,
-                  "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
+              if opts[:check_env] == false or Config.env() != :dev do
+                elem(CacheBackend.get(backend, key, inner_opts), 1)
+              else
+                with {:error, e} <- CacheBackend.get(backend, key, inner_opts) do
+                  error(
+                    e,
+                    "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
+                  )
+
+                  val = maybe_apply_or_fun(module, fun, args, opts)
+                  CacheBackend.put(backend, key, val, Keyword.put(inner_opts, :expire, expire))
+                  val
+                else
+                  {:ok, val} -> val
+                end
+              end
+
+            {:ok, false} ->
+              with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
+                debug(key, "got an error, putting in cache with short TTL")
+
+                CacheBackend.put(
+                  backend,
+                  key,
+                  ret,
+                  Keyword.put(inner_opts, :expire, @error_cache_ttl)
                 )
 
-                val = maybe_apply_or_fun(module, fun, args, opts)
-                CacheBackend.put(backend, key, val, Keyword.put(inner_opts, :expire, expire))
-                val
-              else
-                {:ok, val} -> val
-              end
-            end
-
-          {:ok, false} ->
-            with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
-              debug(key, "got an error, putting in cache with short TTL")
-              CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, @error_cache_ttl))
-              ret
-            else
-              ret ->
-                debug(key, "fetched and putting in cache for next time")
-                CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, expire))
                 ret
-            end
+              else
+                ret ->
+                  debug(key, "fetched and putting in cache for next time")
+                  CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, expire))
+                  ret
+              end
 
-          {:error, e} ->
-            error(e, "!! CACHE IS NOT WORKING !!")
-            maybe_apply_or_fun(module, fun, args, opts)
-        end
-      end, opts)
+            {:error, e} ->
+              error(e, "!! CACHE IS NOT WORKING !!")
+              maybe_apply_or_fun(module, fun, args, opts)
+          end
+        end,
+        opts
+      )
     else
       # warn(nil, "!! Cache not available, fallback to [re-]running the function without cache !!")
 
@@ -339,40 +357,45 @@ defmodule Bonfire.Common.Cache do
       when is_list(objects) and is_function(fun) do
     backend = opts[:cache_backend] || @default_backend
 
-    CacheBackend.execute_transaction(backend, name, fn cache ->
-      inner_opts = Keyword.put(opts, :cache_store, cache)
+    CacheBackend.execute_transaction(
+      backend,
+      name,
+      fn cache ->
+        inner_opts = Keyword.put(opts, :cache_store, cache)
 
-      maybe_cached =
-        Enum.map(objects, fn obj ->
-          id = Bonfire.Common.Types.uid(obj)
-          key = "#{name}:{id}"
+        maybe_cached =
+          Enum.map(objects, fn obj ->
+            id = Bonfire.Common.Types.uid(obj)
+            key = "#{name}:{id}"
 
-          with {:ok, ret} <- CacheBackend.get(backend, key, inner_opts) do
-            {id, ret}
-          end
+            with {:ok, ret} <- CacheBackend.get(backend, key, inner_opts) do
+              {id, ret}
+            end
+          end)
+
+        not_cached =
+          maybe_cached
+          |> Enum.filter(fn {_, v} -> is_nil(v) end)
+          |> Enum.map(fn {id, _} -> id end)
+          # |> debug("not yet cached")
+          |> fun.()
+
+        # |> debug("fetched")
+
+        Enum.each(not_cached, fn {id, v} ->
+          # TODO: longer cache TTL?
+          CacheBackend.put(backend, "#{name}:#{id}", v, inner_opts)
         end)
 
-      not_cached =
+        # cached = Enum.reject(maybe_cached, fn {_, v} -> is_nil(v) end)
         maybe_cached
-        |> Enum.filter(fn {_, v} -> is_nil(v) end)
-        |> Enum.map(fn {id, _} -> id end)
-        # |> debug("not yet cached")
-        |> fun.()
+        |> Map.new()
+        |> Map.merge(not_cached)
 
-      # |> debug("fetched")
-
-      Enum.each(not_cached, fn {id, v} ->
-        # TODO: longer cache TTL?
-        CacheBackend.put(backend, "#{name}:#{id}", v, inner_opts)
-      end)
-
-      # cached = Enum.reject(maybe_cached, fn {_, v} -> is_nil(v) end)
-      maybe_cached
-      |> Map.new()
-      |> Map.merge(not_cached)
-
-      # |> debug("all")
-    end, opts)
+        # |> debug("all")
+      end,
+      opts
+    )
   end
 
   @doc """

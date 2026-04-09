@@ -23,7 +23,10 @@ defmodule Bonfire.Common.Cache.BenchmarkHelpers do
     Cachex.clear(:bonfire_cache)
     NebulexLocalCache.delete_all()
     NebulexCoherentCache.delete_all()
-    if Code.loaded?(Bonfire.Common.Cache.DiskLFUCache), do: Bonfire.Common.Cache.DiskLFUCache.delete_all()
+
+    if Code.loaded?(Bonfire.Common.Cache.DiskLFUCache),
+      do: Bonfire.Common.Cache.DiskLFUCache.delete_all()
+
     :erlang.garbage_collect()
     for pid <- Process.list(), do: :erlang.garbage_collect(pid)
     :ok

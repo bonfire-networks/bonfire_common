@@ -20,7 +20,15 @@ defmodule Bonfire.Common.Cache.Backend do
   @default_store :bonfire_cache
 
   # Internal keys that must not be forwarded to Nebulex (it validates opts strictly)
-  @bonfire_opts [:cache_backend, :cache_store, :default, :on_error, :check_env, :return, :root_path]
+  @bonfire_opts [
+    :cache_backend,
+    :cache_store,
+    :default,
+    :on_error,
+    :check_env,
+    :return,
+    :root_path
+  ]
 
   defp nebulex_opts(opts), do: Keyword.drop(opts, @bonfire_opts)
 
@@ -49,14 +57,22 @@ defmodule Bonfire.Common.Cache.Backend do
   end
 
   defp do_put(Cachex, key, val, opts),
-    do: Cachex.put(opts[:cache_store] || @default_store, key, val, Keyword.drop(opts, @bonfire_opts))
+    do:
+      Cachex.put(
+        opts[:cache_store] || @default_store,
+        key,
+        val,
+        Keyword.drop(opts, @bonfire_opts)
+      )
 
   defp do_put(SimpleDiskCache, key, val, opts), do: SimpleDiskCache.put(key, val, opts)
 
   defp do_put(mod, key, val, opts) do
     nebulex_put_opts = if opts[:expire], do: [ttl: opts[:expire]], else: []
 
-    mod.put!(key, if(is_binary(val), do: val, else: "term:" <> :erlang.term_to_binary(val)),
+    mod.put!(
+      key,
+      if(is_binary(val), do: val, else: "term:" <> :erlang.term_to_binary(val)),
       nebulex_put_opts
     )
   end
@@ -81,7 +97,7 @@ defmodule Bonfire.Common.Cache.Backend do
     do: Cachex.execute!(opts[:cache_store] || @default_store, fun)
 
   def execute_transaction(SimpleDiskCache, _key, fun, opts),
-    do: raise "SimpleDiskCache does not currently support transactions"
+    do: raise("SimpleDiskCache does not currently support transactions")
 
   def execute_transaction(mod, key, fun, opts) do
     case mod.transaction(fun, Keyword.put(nebulex_opts(opts), :keys, [key])) do
