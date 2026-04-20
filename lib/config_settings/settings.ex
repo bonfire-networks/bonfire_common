@@ -297,7 +297,8 @@ defmodule Bonfire.Common.Settings do
     # debug(current_user, "current_user")
     # debug(current_account, "current_account")
 
-    if (scope != :instance and not is_map(current_user) and not is_map(current_account)) or
+    if (scope != :instance and not is_map(current_user) and not is_map(current_account) and
+          not is_map(scope)) or
          (is_struct(current_user) and Map.has_key?(current_user, :settings) and
             not Ecto.assoc_loaded?(current_user.settings)) or
          (is_struct(current_account) and Map.has_key?(current_account, :settings) and
@@ -407,7 +408,7 @@ defmodule Bonfire.Common.Settings do
       do_fetch(scope_id)
       # |> debug("fetched")
     else
-      if !e(opts, :preload, nil) and Config.env() != :test,
+      if !e(opts, :preload, nil),
         do:
           warn(
             scope_id,
@@ -447,6 +448,7 @@ defmodule Bonfire.Common.Settings do
             maybe_fetch(scope_id, opts ++ [recursing: true]) ||
               maybe_warn_not_fetched(scope, opts[:recursing])
         end
+        |> info("settings maybe_fetched for #{scope_id}")
     end
   end
 
