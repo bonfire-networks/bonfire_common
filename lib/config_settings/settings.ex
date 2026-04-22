@@ -677,21 +677,37 @@ defmodule Bonfire.Common.Settings do
     result
   end
 
-  defp set_with_hooks(%{bonfire_boundaries: %{filter_keywords: filter_keywords}} = attrs, opts) do
-    result =
-      do_set(
-        %{
-          bonfire_boundaries: %{
-            filter_keywords:
-              Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(filter_keywords)
-          }
-        },
-        opts
-      )
+  # defp set_with_hooks(%{activity_pub: %{mrf_keyword: mrf_keyword}} = attrs, opts) do
+  #   result =
+  #     do_set(
+  #       %{
+  #         activity_pub: %{
+  #           mrf_keyword:
+  #             Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(mrf_keyword)
+  #         }
+  #       },
+  #       opts
+  #     )
 
-    maybe_reset_caches(attrs)
-    result
-  end
+  #   maybe_reset_caches(attrs)
+  #   result
+  # end
+
+  # defp set_with_hooks(%{bonfire_boundaries: %{filter_keywords: filter_keywords}} = attrs, opts) do
+  #   result =
+  #     do_set(
+  #       %{
+  #         bonfire_boundaries: %{
+  #           filter_keywords:
+  #             Bonfire.Boundaries.BlockKeywords.settings_set_hook_process(filter_keywords)
+  #         }
+  #       },
+  #       opts
+  #     )
+
+  #   maybe_reset_caches(attrs)
+  #   result
+  # end
 
   defp set_with_hooks(attrs, opts) do
     result = do_set(attrs, opts)
@@ -1015,10 +1031,15 @@ defmodule Bonfire.Common.Settings do
   defp apply_loaded_hooks(settings), do: settings
 
   # Hook definitions - each one registers its path at compile time
-  @hook_paths [:bonfire_boundaries, :filter_keywords]
-  defp loaded_setting_hook([:bonfire_boundaries, :filter_keywords], value) when is_list(value) do
+  @hook_paths [:activity_pub, :mrf_keyword]
+  defp loaded_setting_hook([:activity_pub, :mrf_keyword], value) when is_list(value) do
     Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
   end
+
+  # @hook_paths [:bonfire_boundaries, :filter_keywords]
+  # defp loaded_setting_hook([:bonfire_boundaries, :filter_keywords], value) when is_list(value) do
+  #   Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
+  # end
 
   # Fallback for unmatched paths (shouldn't normally be called since we only iterate registered paths)
   defp loaded_setting_hook(_path, value), do: value

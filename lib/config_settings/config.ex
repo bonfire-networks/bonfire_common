@@ -414,7 +414,7 @@ defmodule Bonfire.Common.Config do
           next.(E.ed(data, key, []))
 
         :get_and_update, data, next ->
-          data = Keyword.new(data)
+          data = Keyword.new(data || [])
           value = Keyword.get(data, key, [])
 
           case next.(value) do
