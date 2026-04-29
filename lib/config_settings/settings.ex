@@ -1047,7 +1047,7 @@ defmodule Bonfire.Common.Settings do
   # Returns all registered hook paths (generated at compile time)
   defp all_hook_paths, do: @hook_paths
 
-  defp instance_scope,
+  def instance_scope,
     do:
       maybe_apply(Bonfire.Boundaries.Circles, :get_id, :local, fallback_return: nil) ||
         "3SERSFR0MY0VR10CA11NSTANCE"
