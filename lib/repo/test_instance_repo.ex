@@ -19,6 +19,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
   def default_repo, do: Config.get!(:repo_module)
   def default_endpoint, do: Config.get!(:endpoint_module)
 
+  @doc "Runs code in the context of the test instance (i.e. using the test instance DB)"
   def apply(fun) do
     declare_test_instance()
     fun.()
