@@ -52,7 +52,11 @@ defmodule Bonfire.Common.Localise do
     # Only include configured locales if specified
     # config_locales = Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :locales], [])
 
-    ([default] ++ cldr_locales)
+    gettext_locales =
+      gettext_localisation_locales()
+      |> Enum.map(&normalize_locale/1)
+
+    ([default] ++ cldr_locales ++ gettext_locales)
     |> Enum.uniq()
   end
 
@@ -60,11 +64,13 @@ defmodule Bonfire.Common.Localise do
     # Add default locale to ensure it's always included
     default = default_locale()
 
-    gettext_locales = Gettext.known_locales(Bonfire.Common.Localise.Gettext)
-
-    ([default] ++ gettext_locales)
+    ([default] ++ gettext_localisation_locales())
     |> Enum.map(&normalize_locale/1)
     |> Enum.uniq()
+  end
+
+  defp gettext_localisation_locales do
+    Gettext.known_locales(Bonfire.Common.Localise.Gettext)
   end
 
   defp normalize_locale(locale) when is_binary(locale) do
@@ -227,6 +233,19 @@ defmodule Bonfire.Common.Localise do
             locale
         end
     end
+  end
+
+  @doc "Returns a list of locales paired with their localised display names, sorted alphabetically by display name."
+  def locales_with_names(locales) do
+    locales
+    |> Enum.map(fn l -> {l, locale_name(l)} end)
+    |> Enum.sort_by(&elem(&1, 1))
+  end
+
+  @doc "Returns known locales paired with their localised display names, sorted alphabetically by display name."
+  def known_locales_names_localised do
+    known_locales()
+    |> locales_with_names()
   end
 
   @doc "Config for the `Cldr.Plug.SetLocale` plug"
