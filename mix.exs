@@ -42,7 +42,7 @@ defmodule Bonfire.Common.MixProject do
             # needed for graphql client, eg github for changelog
             {:neuron, "~> 5.0", optional: true},
             # for extension install + mix tasks that do patching 
-            {:igniter, "~> 0.5", optional: true},
+            {:igniter, "~> 0.7", optional: true},
             # for encryption
             {:cloak, "~> 1.1.4", optional: true}
           ])
