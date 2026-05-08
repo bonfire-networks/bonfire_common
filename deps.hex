@@ -41,7 +41,7 @@ decorator = "~> 1.4 # function decorator helper
 git_diff = "~> 0.6.4" # parse diff of extensions' code
 beam_file = "~> 0.6" # BEAM file decompiler / code formatter  
 
-faker = "~> 0.17" # fake data generation, mostly for tests
+faker_fork = "~> 0.19" # fake data generation, mostly for tests
 
 process_tree = "~> 0.3.0"
 
