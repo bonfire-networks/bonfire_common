@@ -153,4 +153,147 @@ defmodule Bonfire.Common.Text.Test do
     # Just log the results for analysis
     IO.inspect(cache_test_results, label: "Cache Warmup Test Results")
   end
+
+  describe "maybe_markdown_to_html/2 sanitizer" do
+    alias Bonfire.Common.Text
+
+    test "generic_attributes allows rel on <a> to pass through ammonia" do
+      html = ~s(<a href="/hashtag/bonfire" rel="tag ugc" class="hashtag">#bonfire</a>)
+
+      result =
+        Text.maybe_markdown_to_html(html,
+          sanitize: true,
+          link_rel: nil
+        )
+
+      assert result =~ ~r/rel="[^"]*\btag\b/
+    end
+
+    test "link_rel: nil does not strip existing rel on <a>" do
+      html = ~s(<a href="/hashtag/bonfire" rel="tag ugc">#bonfire</a>)
+      result = Text.maybe_markdown_to_html(html, sanitize: true, link_rel: nil)
+      assert result =~ "rel="
+    end
+  end
+
+  describe "replace_links/3" do
+    alias Bonfire.Common.Text
+
+    test "replaces href from replacements map" do
+      html = ~s(<a href="/old">link</a>)
+      result = Text.replace_links(html, %{"/old" => "/new"})
+      assert {"a", [{"href", "/new"}], ["link"]} in result
+    end
+
+    test "leaves href unchanged when not in map" do
+      html = ~s(<a href="/keep">link</a>)
+      result = Text.replace_links(html, %{"/other" => "/new"})
+      assert {"a", [{"href", "/keep"}], ["link"]} in result
+    end
+
+    test "adds nofollow noopener to external links without rel" do
+      html = ~s(<a href="https://external.com">link</a>)
+      [{"a", attrs, _}] = Text.replace_links(html, %{"_" => "_"})
+      assert {"rel", "nofollow noopener"} in attrs
+    end
+
+    test "does not add nofollow to internal links" do
+      html = ~s(<a href="/internal">link</a>)
+      [{"a", attrs, _}] = Text.replace_links(html, %{"_" => "_"})
+      refute List.keymember?(attrs, "rel", 0)
+    end
+
+    test "preserves existing rel on external links" do
+      html = ~s(<a href="https://external.com" rel="ugc">link</a>)
+      [{"a", attrs, _}] = Text.replace_links(html, %{"_" => "_"})
+      assert {"rel", "ugc"} in attrs
+    end
+  end
+
+  describe "prepare_links_for_local_render/1" do
+    alias Bonfire.Common.Text
+
+    test "adds LiveView navigation attrs to local links" do
+      html = ~s(<a href="/local/path">local</a>)
+      result = Text.prepare_links_for_local_render(html)
+      assert result =~ ~s(data-phx-link="redirect")
+      assert result =~ ~s(data-phx-link-state="push")
+      assert result =~ ~s(href="/local/path")
+    end
+
+    test "adds rel=nofollow noopener to external links without rel" do
+      html = ~s(<a href="https://example.com">external</a>)
+      result = Text.prepare_links_for_local_render(html)
+      assert result =~ ~s(rel="nofollow noopener)
+      assert result =~ ~s(href="https://example.com")
+    end
+
+    test "adds nofollow noopener to external links with other rel" do
+      html = ~s(<a href="https://example.com" rel="ugc">external</a>)
+      result = Text.prepare_links_for_local_render(html)
+      assert result =~ "nofollow noopener"
+      assert result =~ ~s(href="https://example.com")
+    end
+
+    test "does not add nofollow to links that already have it" do
+      html = ~s(<a href="https://example.com" rel="nofollow noopener ugc">external</a>)
+      result = Text.prepare_links_for_local_render(html)
+      refute result =~ "nofollow noopener nofollow"
+    end
+
+    test "does not add rel to hashtag local links" do
+      html = ~s(<a href="/hashtag/elixir" class="hashtag" rel="tag ugc">#elixir</a>)
+      result = Text.prepare_links_for_local_render(html)
+      assert result =~ ~s(data-phx-link="redirect")
+      assert result =~ ~s(rel="tag ugc")
+      refute result =~ "nofollow"
+    end
+
+    test "passes through non-http non-local links unchanged" do
+      html = ~s(<a href="mailto:foo@bar.com">mail</a>)
+      result = Text.prepare_links_for_local_render(html)
+      assert result == html
+    end
+  end
+
+  describe "prepare_links_for_remote_render/2 :markdown" do
+    test "converts hashtag markdown link to HTML with class and rel" do
+      md = "post with [#elixir](/hashtag/elixir) tag"
+
+      result =
+        Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, "https://example.com")
+
+      assert result =~ ~s(class="hashtag")
+      assert result =~ ~s(rel="tag ugc")
+      assert result =~ ~s(href="https://example.com/hashtag/elixir")
+      refute result =~ "[#elixir]"
+    end
+
+    test "makes other relative markdown links absolute without HTML conversion" do
+      md = "[some link](/some/path)"
+
+      result =
+        Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, "https://example.com")
+
+      assert result == "[some link](https://example.com/some/path)"
+    end
+
+    test "makes image markdown links absolute" do
+      md = "![alt text](/images/pic.jpg)"
+
+      result =
+        Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, "https://example.com")
+
+      assert result == "![alt text](https://example.com/images/pic.jpg)"
+    end
+
+    test "makes relative href attributes absolute for :html format" do
+      html = ~s(<a href="/some/path">link</a>)
+
+      result =
+        Bonfire.Common.Text.prepare_links_for_remote_render(html, :html, "https://example.com")
+
+      assert result =~ ~s(href="https://example.com/some/path")
+    end
+  end
 end

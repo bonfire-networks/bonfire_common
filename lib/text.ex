@@ -400,7 +400,7 @@ defmodule Bonfire.Common.Text do
                autolink: false,
                table: true,
                tagfilter: true,
-               header_ids: ""
+               header_id_prefix: ""
                #  shortcodes: true # NOTE: not needed because we use smile lib
              ],
              render: [
@@ -418,12 +418,17 @@ defmodule Bonfire.Common.Text do
 
                  sanitize? ->
                    [
-                     # TODO: add `noreferrer` as well for non-public content?
-                     link_rel: "nofollow noopener",
+                     # nil preserves Linkify-generated rel (tag ugc / nofollow noopener ugc);
+                     # ammonia forbids rel in generic_attributes so we allow it per-tag on <a> below
+                     link_rel: Keyword.get(opts, :link_rel, nil),
                      # needed for MFM?
                      generic_attribute_prefixes: ["data-"],
-                     # class needed for MFM?
-                     generic_attributes: ["class"],
+                     generic_attributes: ["class"] ++ Keyword.get(opts, :generic_attributes, []),
+                     add_tag_attributes:
+                       Map.merge(
+                         %{"a" => ["class", "rel"]},
+                         Keyword.get(opts, :add_tag_attributes, %{})
+                       ),
                      url_schemes: [
                        "ftp",
                        "ftps",
@@ -814,19 +819,16 @@ defmodule Bonfire.Common.Text do
           {"href", href} ->
             downcased = String.downcase(href)
 
-            case Map.get(replacements_map, downcased) ||
-                   (is_function(fallback_match_fn) &&
-                      fallback_match_fn.(replacements_map, downcased)) do
-              nil ->
-                node
+            updated_attrs =
+              case Map.get(replacements_map, downcased) ||
+                     (is_function(fallback_match_fn) &&
+                        fallback_match_fn.(replacements_map, downcased)) do
+                nil -> attrs
+                false -> attrs
+                new_href -> List.keyreplace(attrs, "href", 0, {"href", new_href})
+              end
 
-              false ->
-                node
-
-              new_href ->
-                new_attrs = List.keyreplace(attrs, "href", 0, {"href", new_href})
-                {"a", new_attrs, children}
-            end
+            {"a", maybe_add_nofollow(updated_attrs, href), children}
 
           nil ->
             node
@@ -840,48 +842,78 @@ defmodule Bonfire.Common.Text do
   def replace_links(input, _, _), do: input
 
   @doc """
-  Makes local links within content live.
+  Prepares links in HTML content for local (browser) rendering: makes local links use
+  LiveView navigation and adds `rel="nofollow noopener"` to external links that don't
+  already carry a `rel` attribute.
 
   ## Examples
 
-      > make_local_links_live("<a href=\"/path\">Link</a>")
+      > prepare_links_for_local_render("<a href=\"/path\">Link</a>")
       "<a href=\"/path\" data-phx-link=\"redirect\" data-phx-link-state=\"push\">Link</a>"
   """
-
-  # Regex for local links that should be made "live"
-
-  def make_local_links_live(content)
+  def prepare_links_for_local_render(content)
       when is_binary(content) and byte_size(content) > 20 do
-    # local_instance = Bonfire.Common.URIs.base_url()
+    base = URIs.base_url()
 
-    content
-    # handle internal links
-    |> Regex.replace(
-      local_links_regex(),
-      ...,
-      " \\1/\\2 data-phx-link=\"redirect\" data-phx-link-state=\"push\""
-    )
-
-    # |> debug(content)
+    Regex.replace(~r/<a ([^>]*?)href="([^"]*)"([^>]*)>/, content, fn _, pre, href, post ->
+      link_tag(href, pre, post, base)
+    end)
   end
 
-  def make_local_links_live(content), do: content
+  def prepare_links_for_local_render(content), do: content
 
-  defp local_links_regex, do: ~r/(<a [^>]*href=\")\/(.+\")/U
+  # keep old name as alias for call sites in pinned deps
+  def make_local_links_live(content), do: prepare_links_for_local_render(content)
 
-  def make_links_absolute(content, format, base_url \\ nil)
+  defp link_tag("/" <> _ = href, pre, post, _base),
+    do: ~s(<a #{pre}href="#{href}"#{post} data-phx-link="redirect" data-phx-link-state="push">)
 
-  def make_links_absolute(content, :markdown, base_url)
+  defp link_tag("http" <> _ = href, pre, post, base) do
+    if String.starts_with?(href, base) do
+      # absolute local URL — strip origin and recurse as relative path
+      link_tag(String.replace_leading(href, base, ""), pre, post, base)
+    else
+      other_attrs = pre <> post
+
+      if String.contains?(other_attrs, "nofollow"),
+        do: ~s(<a #{other_attrs}href="#{href}">),
+        else: ~s(<a rel="nofollow noopener" #{other_attrs}href="#{href}">)
+    end
+  end
+
+  defp link_tag(href, pre, post, _base),
+    do: ~s(<a #{pre}href="#{href}"#{post}>)
+
+  def prepare_links_for_remote_render(content, format, base_url \\ nil)
+
+  def prepare_links_for_remote_render(content, :markdown, base_url)
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
 
-    Regex.replace(~r/(\]\()\/([^)]+)\)/, content, "\\1#{base_url}/\\2)")
-    |> Regex.replace(~r/(!\[.*?\]\()\/([^)]+)\)/, ..., "\\1#{base_url}/\\2)")
+    # Single pass: handles images, hashtag links (emitting HTML with class/rel for GH #1754), and regular links
+    Regex.replace(~r/(!?)\[([^\]]*)\]\(\/([^)]+)\)/, content, fn
+      _, "!", alt, path ->
+        "![#{alt}](#{base_url}/#{path})"
+
+      _, _, "#" <> _ = text, "hashtag/" <> _ = path ->
+        ~s(<a class="hashtag" rel="tag ugc" href="#{base_url}/#{path}">#{text}</a>)
+
+      _, _, text, path ->
+        "[#{text}](#{base_url}/#{path})"
+    end)
   end
 
-  def make_links_absolute(content, _, _) do
-    content
+  def prepare_links_for_remote_render(content, :html, base_url)
+      when is_binary(content) and byte_size(content) > 10 do
+    base_url = base_url || URIs.base_url()
+    Regex.replace(~r/href="(\/[^"]*)"/, content, "href=\"#{base_url}\\1\"")
   end
+
+  def prepare_links_for_remote_render(content, _, _), do: content
+
+  # keep old name as alias for call sites in pinned deps
+  def make_links_absolute(content, format, base_url \\ nil),
+    do: prepare_links_for_remote_render(content, format, base_url)
 
   @doc """
   Extracts URLs from HTML content using LazyHTML.
@@ -1330,5 +1362,12 @@ defmodule Bonfire.Common.Text do
     |> Enum.drop_while(fn node -> br_or_empty_paragraph?.(node) end)
     |> Enum.reverse()
     |> LazyHTML.Tree.to_html()
+  end
+
+  defp maybe_add_nofollow(attrs, href) do
+    if String.starts_with?(href, ["http://", "https://"]) and
+         !List.keymember?(attrs, "rel", 0),
+       do: [{"rel", "nofollow noopener"} | attrs],
+       else: attrs
   end
 end
