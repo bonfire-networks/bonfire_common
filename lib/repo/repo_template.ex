@@ -498,6 +498,22 @@ defmodule Bonfire.Common.RepoTemplate do
         )
       end
 
+      @doc "Paginates or not based on `paginate?`. When `paginate?` is a keyword list or map, it is passed directly as pagination opts to avoid re-extraction."
+      def many_maybe_paginated(query, paginate?, opts)
+
+      def many_maybe_paginated(query, false = _paginate?, opts) do
+        many(query, opts)
+      end
+
+      def many_maybe_paginated(query, paginate?, opts)
+          when is_list(paginate?) or is_map(paginate?) do
+        many_paginated(query, paginate?)
+      end
+
+      def many_maybe_paginated(query, _paginate?, opts) do
+        many_paginated(query, opts)
+      end
+
       @doc """
       Execute a query for multiple results and return one page of results.
       This uses the main implementation for pagination, which is cursor-based and powered by the `Paginator` library.
@@ -511,18 +527,19 @@ defmodule Bonfire.Common.RepoTemplate do
 
       def many_paginated(%{order_bys: order} = queryable, opts, repo_opts)
           when is_list(order) and length(order) > 0 do
-        # info(opts, "opts")
-        debug(order, "order_bys")
-        paginator_paginate(queryable, opts, repo_opts)
+        if opts[:return] == :stream,
+          do: many_stream(queryable, opts),
+          else: paginator_paginate(queryable, opts, repo_opts)
       end
 
       def many_paginated(queryable, opts, repo_opts) do
-        # info(opts, "opts")
-        queryable
-        |> order_by([o],
-          desc: o.id
-        )
-        |> paginator_paginate(opts, repo_opts)
+        if opts[:return] == :stream do
+          many_stream(queryable, opts)
+        else
+          queryable
+          |> order_by([o], desc: o.id)
+          |> paginator_paginate(opts, repo_opts)
+        end
       end
 
       @doc """
@@ -537,7 +554,11 @@ defmodule Bonfire.Common.RepoTemplate do
           #Ecto.Query<...>
       """
       def many(query, opts \\ []) do
-        if opts[:return] == :query, do: query, else: all(query, opts)
+        case opts[:return] do
+          :query -> query
+          :stream -> many_stream(query, opts)
+          _ -> all(query, opts)
+        end
       rescue
         exception in Postgrex.Error ->
           handle_postgrex_exception(exception, __STACKTRACE__, [])
@@ -652,6 +673,63 @@ defmodule Bonfire.Common.RepoTemplate do
         query
         |> Ecto.Query.exclude(:preload)
         |> subquery()
+      end
+
+      @doc """
+      Builds a cursor-paginated ID-only subquery for use as the inner half of a deferred join.
+
+      The caller passes a query with dedup/ordering already applied. This strips the select
+      to IDs, applies cursor-aware pagination with a multiplied limit (so enough candidates
+      survive boundary filtering on the outer query), and returns a subquery ready to be joined.
+      """
+      def build_deferred_inner_subquery(query, _filters \\ [], opts) do
+        import Ecto.Query, only: [offset: 2]
+
+        inner_opts =
+          opts
+          |> Keyword.put_new(:paginate, true)
+          |> Keyword.put_new(:multiply_limit, max(opts[:deferred_join_multiply_limit] || 2, 4))
+          |> Keyword.put(:return, :query)
+
+        select_fn = opts[:pre_execute_fn] || (&select_only_id/1)
+
+        query
+        |> select_fn.()
+        |> many_paginated(inner_opts)
+        |> offset(^(opts[:deferred_join_offset] || 0))
+        |> make_subquery()
+      end
+
+      @doc "Strips the select to just `:id` on the root binding."
+      def select_only_id(query) do
+        import Ecto.Query, only: [select: 2]
+        query |> Ecto.Query.exclude(:select) |> select([:id])
+      end
+
+      @doc "Streams a query. Pass `pre_execute_fn: fn query -> query end` or `select_only: :id` to transform the query before streaming."
+      def many_stream(query, opts) do
+        pre_execute_fn =
+          opts[:pre_execute_fn] ||
+            if opts[:select_only] == :id, do: &select_only_id/1, else: & &1
+
+        case opts[:stream_callback] do
+          nil ->
+            s = stream(query, max_rows: opts[:max_rows] || 100)
+            transact(fn -> Enum.to_list(s) end)
+
+          callback ->
+            transaction(
+              fn ->
+                callback.(
+                  query
+                  |> Ecto.Query.exclude(:preload)
+                  |> pre_execute_fn.()
+                  |> stream(max_rows: opts[:max_rows] || 100)
+                )
+              end,
+              timeout: opts[:timeout] || 3_600_000
+            )
+        end
       end
 
       @doc """
