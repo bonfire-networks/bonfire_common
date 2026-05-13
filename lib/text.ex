@@ -602,7 +602,12 @@ defmodule Bonfire.Common.Text do
     |> SimpleSlug.slugify(
       joiner: opts[:joiner] || "-",
       lowercase?: opts[:lowercase?] != false,
-      truncate: if(truncate != false, do: truncate || 128)
+      truncate:
+        cond do
+          truncate == false -> false
+          is_integer(truncate) -> truncate
+          true -> 128
+        end
     )
     |> URI.encode()
   end
