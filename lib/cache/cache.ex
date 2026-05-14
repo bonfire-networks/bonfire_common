@@ -35,7 +35,7 @@ defmodule Bonfire.Common.Cache do
 
   ## Examples
 
-      iex> Bonfire.Common.Cache.put("my_key", "my_value")
+      iex> Bonfire.Common.Cache.put("my_key", "my_value", async: false)
       "my_value"
       iex> Bonfire.Common.Cache.get("my_key")
       {:ok, "my_value"}
@@ -65,7 +65,7 @@ defmodule Bonfire.Common.Cache do
 
   ## Examples
 
-      iex> Bonfire.Common.Cache.put("fetch_me", "hello")
+      iex> Bonfire.Common.Cache.put("fetch_me", "hello", async: false)
       iex> Bonfire.Common.Cache.get("fetch_me")
       {:ok, "hello"}
       
@@ -86,7 +86,7 @@ defmodule Bonfire.Common.Cache do
 
   ## Examples
 
-      iex> Bonfire.Common.Cache.put("my_key", "my_value")
+      iex> Bonfire.Common.Cache.put("my_key", "my_value", async: false)
       iex> Bonfire.Common.Cache.get!("my_key")
       "my_value"
       
