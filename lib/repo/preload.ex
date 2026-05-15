@@ -401,4 +401,57 @@ defmodule Bonfire.Common.Repo.Preload do
     debug(other, "skip")
     object
   end
+
+  @doc """
+  Follows any unresolved `%Needle.Pointer{}` values found at `path` within `objects`,
+  skipping those whose schema role is `:virtual` or `:mixin` (which don't need a DB query).
+  Also applies any explicit `preload_nested` schema/preload pairs (e.g. `{Schema, assocs}` tuples).
+  Both are merged into one `maybe_preloads_per_nested_schema/4` call.
+  """
+  def maybe_follow_pointer_schemas(objects, path, preload_nested \\ [], opts \\ [])
+
+  def maybe_follow_pointer_schemas(%{edges: edges} = page, path, preload_nested, opts) do
+    %{page | edges: maybe_follow_pointer_schemas(edges, path, preload_nested, opts)}
+  end
+
+  def maybe_follow_pointer_schemas(objects, path, preload_nested, opts) when is_list(objects) do
+    schemas = detect_pointer_schemas(objects, path, preload_nested)
+    maybe_preloads_per_nested_schema(objects, path, preload_nested ++ schemas, opts)
+  end
+
+  def maybe_follow_pointer_schemas(object, path, preload_nested, opts) do
+    schemas = detect_pointer_schemas([object], path, preload_nested)
+    maybe_preloads_per_nested_schema(object, path, preload_nested ++ schemas, opts)
+  end
+
+  defp detect_pointer_schemas(objects, path, preload_nested) do
+    already_covered =
+      MapSet.new(preload_nested, fn
+        {schema, _assocs} -> schema
+        schema -> schema
+      end)
+      |> debug("already covered schemas in detect_pointer_schemas")
+
+    objects
+    |> Enum.flat_map(fn obj ->
+      case get_in(obj, path) do
+        %Pointer{table_id: table_id} ->
+          case Needle.Tables.schema(table_id) do
+            {:ok, schema} ->
+              if MapSet.member?(already_covered, schema) or
+                   Needle.Util.role(schema) in [:virtual, :mixin],
+                 do: [],
+                 else: [schema]
+
+            _ ->
+              []
+          end
+
+        _ ->
+          []
+      end
+    end)
+    |> Enum.uniq()
+    |> debug("dynamic pointer schemas to follow")
+  end
 end
