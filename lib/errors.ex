@@ -126,22 +126,29 @@ defmodule Bonfire.Common.Errors do
       debug_log_with_banner(msg, exception, exception_banner, stacktrace, error_msg)
       # error(stacktrace, inspect exception_banner)
 
-      {:error,
-       Enum.join(
-         Bonfire.Common.Enums.filter_empty(
-           [
-             error_msg,
-             "",
-             to_string(exception_banner) |> String.slice(0..1000),
-             "\n",
-             to_string(formatted_stacktrace) |> String.slice(0..1000),
-             ""
-           ],
-           []
-         ),
-         "\n"
-       )
-       |> String.slice(0..3000)}
+      # Only surface the banner + stacktrace in the UI for actual exceptions.
+      # Expected, control-flow errors (e.g. a thrown friendly message with no
+      # real crash) just show the message — the full trace is still logged above.
+      if is_nil(exception) do
+        {:error, error_msg}
+      else
+        {:error,
+         Enum.join(
+           Bonfire.Common.Enums.filter_empty(
+             [
+               error_msg,
+               "",
+               to_string(exception_banner) |> String.slice(0..1000),
+               "\n",
+               to_string(formatted_stacktrace) |> String.slice(0..1000),
+               ""
+             ],
+             []
+           ),
+           "\n"
+         )
+         |> String.slice(0..3000)}
+      end
     else
       debug_log(msg, exception, stacktrace, kind, error_msg)
       {:error, error_msg}
