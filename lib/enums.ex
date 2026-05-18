@@ -157,7 +157,7 @@ defmodule Bonfire.Common.Enums do
 
         val ->
           val
-          |> debug("with struct Access")
+          # |> debug("with struct Access")
       end
     else
       get_in(map, access_keys(keys, last_fallback))
@@ -177,16 +177,16 @@ defmodule Bonfire.Common.Enums do
   rescue
     e in BadMapError ->
       # eg. an element in the tree is not a map
-      warn(e)
+      if error_fallback != :empty, do: warn(e)
       error_fallback || BadMapError
 
     e in FunctionClauseError ->
-      warn(e)
+      if error_fallback != :empty, do: warn(e)
       error_fallback || FunctionClauseError
 
     e in UndefinedFunctionError ->
       # eg. function MyStruct.fetch/2 is undefined (does not implement the Access behaviour)
-      warn(e)
+      if error_fallback != :empty, do: warn(e)
       error_fallback || UndefinedFunctionError
   end
 
