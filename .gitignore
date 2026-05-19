@@ -6,7 +6,7 @@
 assets/node_modules
 assets/*.log
 priv/cldr
-
+lib/mix_tasks/localise
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
 
