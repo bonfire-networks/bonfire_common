@@ -1846,9 +1846,19 @@ defmodule Bonfire.Common.Enums do
       iex> Bonfire.Common.Enums.has_ok?([{:error, "failed"}])
       false
   """
+  def has_ok?({:ok, inner}) when is_list(inner) or is_tuple(inner), do: not has_error?(inner)
+  def has_ok?({:ok, _}), do: true
+  def has_ok?({:error, _}), do: false
+
   def has_ok?(enum) do
     has_tuple_key?(enum, :ok)
   end
+
+  @doc "Returns true only if the value explicitly contains an `:error` result tuple."
+  def has_error?({:error, _}), do: true
+  def has_error?({:ok, _}), do: false
+  def has_error?(list) when is_list(list), do: Enum.any?(list, &has_error?/1)
+  def has_error?(_), do: false
 
   @doc """
   Checks if all tuples in the enumerable are `:ok`.
