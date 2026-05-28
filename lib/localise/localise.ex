@@ -244,7 +244,7 @@ defmodule Bonfire.Common.Localise do
 
   @doc "Returns known locales paired with their localised display names, sorted alphabetically by display name."
   def known_locales_names_localised do
-    known_locales()
+    localisation_locales()
     |> locales_with_names()
   end
 
