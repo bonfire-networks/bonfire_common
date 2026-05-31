@@ -1041,6 +1041,50 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc """
+  Runs a list of functions in parallel and returns the first `{:ok, result}`,
+  cancelling any remaining tasks immediately. Returns `{:error, :not_found}` if
+  none succeed within the timeout.
+
+  ## Options
+    * `:timeout` - milliseconds to wait for any result (default: 5000)
+
+  ## Examples
+
+      iex> Utils.apply_async_first_ok([fn -> {:error, :nope} end, fn -> {:ok, 42} end])
+      {:ok, 42}
+
+      iex> Utils.apply_async_first_ok([fn -> {:error, :a} end, fn -> {:error, :b} end])
+      {:error, :not_found}
+  """
+  def apply_async_first_ok(fns, opts \\ []) do
+    timeout = opts[:timeout] || 100_000
+    parent = self()
+    ref = make_ref()
+
+    # start all tasks simultaneously before waiting on any
+    tasks =
+      for f <- fns do
+        apply_task(:async, fn -> send(parent, {ref, f.()}) end)
+      end
+
+    result = do_await_first_success(ref, length(tasks), timeout)
+    # cancel any still-running tasks
+    Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+    result
+  end
+
+  defp do_await_first_success(_ref, 0, _timeout), do: {:error, :not_found}
+
+  defp do_await_first_success(ref, remaining, timeout) do
+    receive do
+      {^ref, {:ok, _} = ok} -> ok
+      {^ref, {:error, _}} -> do_await_first_success(ref, remaining - 1, timeout)
+    after
+      timeout -> {:error, :not_found}
+    end
+  end
+
+  @doc """
   Checks if the given value is `nil`, an empty enumerable, or an empty string.
 
   ## Parameters
