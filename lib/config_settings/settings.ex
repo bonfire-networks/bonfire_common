@@ -106,7 +106,7 @@ defmodule Bonfire.Common.Settings do
           {otp_app, keys}
       end
 
-    debug(keys_tree, "Get settings in #{inspect(otp_app)} for", trace_skip: 1)
+    info(keys_tree, "Get settings in #{inspect(otp_app)} for", trace_skip: 1)
 
     get_settings(keys_tree, default, otp_app, opts)
   end
@@ -115,7 +115,7 @@ defmodule Bonfire.Common.Settings do
     __get__([key], default, opts)
   end
 
-  if Application.compile_env(:bonfire, :env) == :test do
+  if Config.env() == :test do
     # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
     defp get_settings(keys, default, otp_app, opts) when is_list(keys),
       do: get_for_process([otp_app] ++ keys) || do_get_settings(keys, default, otp_app, opts)
@@ -370,10 +370,57 @@ defmodule Bonfire.Common.Settings do
 
       true ->
         debug("for instance")
-        Config.get_all(otp_app)
+        instance_scope_settings(otp_app, opts)
     end
 
     # |> debug("config/settings for #{inspect(otp_app)}")
+  end
+
+  if Config.env() == :test do
+    # In dance test context (TestInstanceRepo active), read instance settings from DB so
+    # that two separate-DB instances have independent federation modes.
+    # For regular tests (primary repo), fall back to Config.get_all so that Config.put
+    # in tests is visible to Settings.get (same behaviour as production).
+    defp instance_scope_settings(otp_app, opts) do
+      if repo() == Bonfire.Common.TestInstanceRepo do
+        scope_id = instance_scope()
+
+        result =
+          maybe_fetch(scope_id, [preload: true] ++ opts)
+          |> settings_data_for_app(otp_app)
+
+        info(
+          "instance_scope_settings: repo=#{inspect(repo())}, scope_id=#{inspect(scope_id)}, result_keys=#{inspect(is_map(result) and Map.keys(result))}"
+        )
+
+        result
+      else
+        Config.get_all(otp_app)
+      end
+    end
+
+    # In dance test context: skip writing to Application config to avoid bleeding one
+    # instance's settings into the other via shared Application config.
+    # In regular tests: write normally so Settings.put is visible to Settings.get.
+    defp save_instance_settings_to_app_config(new_data, opts) do
+      if repo() != Bonfire.Common.TestInstanceRepo do
+        do_save_instance_settings_to_app_config(new_data, opts)
+      end
+    end
+  else
+    defp instance_scope_settings(otp_app, _opts), do: Config.get_all(otp_app)
+
+    defp save_instance_settings_to_app_config(new_data, opts),
+      do: do_save_instance_settings_to_app_config(new_data, opts)
+  end
+
+  defp do_save_instance_settings_to_app_config(new_data, opts) do
+    if delete_key = opts[:delete_key] do
+      Config.delete(delete_key, opts[:otp_app])
+    else
+      Config.put_tree(new_data, already_prepared: true)
+      |> info("put in config")
+    end
   end
 
   defp settings_data(%{json: %{} = json_data} = _settings) when json_data != %{} do
@@ -828,16 +875,10 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:instance, scoped} = _scope_tuple, settings, opts) do
     with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
-           # |> debug
-           |> upsert(settings, uid(scoped), Keyword.put(opts, :scope, :instance)) do
-      # also save it in Elixir's Config for quick lookups
-      if delete_key = opts[:delete_key] do
-        Config.delete(delete_key, opts[:otp_app])
-      else
-        Config.put_tree(new_data, already_prepared: true)
-        |> debug("put in config")
-      end
-
+           |> info("set_for instance fetch_or_empty")
+           |> upsert(settings, uid(scoped), Keyword.put(opts, :scope, :instance))
+           |> info("set_for instance upsert result") do
+      save_instance_settings_to_app_config(new_data, opts)
       {:ok, set}
     end
   end
@@ -875,7 +916,7 @@ defmodule Bonfire.Common.Settings do
 
     existing_data
     |> prepare_from_json()
-    |> debug("existing_data")
+    |> info("upsert existing_data prepared")
     |> do_upsert(
       settings,
       ...,
@@ -935,7 +976,7 @@ defmodule Bonfire.Common.Settings do
       # |> debug("existing_data")
       |> deep_merge(new_data, replace_lists: true)
       |> strip_empty_string_values(opts[:scope] == :instance)
-      |> debug("merged settings to set")
+      |> info("do_upsert merged settings")
       |> do_update(settings, ...)
     end
   end
@@ -988,7 +1029,9 @@ defmodule Bonfire.Common.Settings do
       new_data: new_data,
       json: prepare_for_json(new_data)
     })
+    |> info("do_update changeset")
     |> repo().update()
+    |> info("do_update result")
   end
 
   defp prepare_for_json(settings) do
