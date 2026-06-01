@@ -407,6 +407,35 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   @doc """
+  Marks a string for gettext extraction WITHOUT translating it (returns the msgid unchanged),
+  deriving the domain from the caller's extension — the extraction-only counterpart to `l/1`.
+
+  Use this for user-facing strings *defined* where the request locale isn't known yet (e.g. inside
+  a `ConfigModule.config/0`, which is evaluated once at boot under the default locale). Wrapping
+  them in `l/1` there would freeze the boot-locale value into config; `l_noop/1` instead leaves the
+  msgid untouched so the actual translation can happen at the point of display via `localise_dynamic/2`
+  (e.g. through `localise_tree/3`), while still ensuring the string lands in the `.po` catalogs.
+
+  Why not `localise_strings/2`? That registers strings for extraction at *compile time* (in
+  `Bonfire.Localise`), but strings defined in a runtime `ConfigModule.config/0` aren't available then
+  — the config is only loaded at boot. `l_noop/1` marks them for extraction in place instead.
+
+  ## Examples
+
+      iex> l_noop("Following")
+      "Following"
+  """
+  defmacro l_noop(msgid) when is_binary(msgid) do
+    case extension_name(__CALLER__.module) do
+      otp_app when is_binary(otp_app) ->
+        quote do: dgettext_noop(unquote(otp_app), unquote(msgid))
+
+      _ ->
+        quote do: gettext_noop(unquote(msgid))
+    end
+  end
+
+  @doc """
   Dynamically localises a text. This function is useful for localising strings only known at runtime (when you can't use the `l` or `lp` macros).
 
   ## Examples
@@ -434,6 +463,65 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   def localise_dynamic(msgid, _module), do: msgid
+
+  # Map/keyword keys whose string values are user-facing by convention, used as the default `keys`
+  # for `localise_tree/3`. Pass an explicit `keys` list when a structure has non-display values under
+  # any of these names, to avoid sending an identifier through gettext.
+  @default_localised_keys [
+    :name,
+    :label,
+    :description,
+    :help,
+    :tooltip,
+    :disabled,
+    :page_title,
+    :feed_title,
+    :feedback_title,
+    :feedback_message
+  ]
+
+  @doc "Default set of keys treated as user-facing display strings by `localise_tree/3`."
+  def default_localised_keys, do: @default_localised_keys
+
+  @doc """
+  Recursively re-localises the values of known display-string `keys` within a (possibly deeply
+  nested) data structure of maps, keyword lists, and lists, via `localise_dynamic/2` (domain derived
+  from `module`). Structs, non-string values, and values under other keys are left untouched.
+
+  This is the single point of translation for user-facing strings sourced from a
+  `ConfigModule.config/0`: those are marked with `l_noop/1` (extracted, but frozen to the boot locale),
+  so they must be re-translated per-request at the point of display — which is what this does.
+
+  Selection is by key name (see `default_localised_keys/0`), which is a deliberate convention: it
+  keeps call sites terse, but a binary stored under e.g. a non-display `:name` key *would* be sent
+  through gettext. When a structure mixes display and identifier values under these names, pass an
+  explicit `keys` list scoped to the display fields.
+
+  ## Examples
+
+      iex> localise_tree(%{label: "Hi", icon: "x", opts: [help: "Yo", n: 1]}, nil, [:label, :help])
+      %{label: "Hi", icon: "x", opts: [help: "Yo", n: 1]}
+  """
+  def localise_tree(data, module \\ nil, keys \\ @default_localised_keys)
+
+  def localise_tree(data, module, keys) when is_map(data) and not is_struct(data) do
+    Map.new(data, fn {k, v} -> {k, localise_tree_value(k, v, module, keys)} end)
+  end
+
+  def localise_tree(data, module, keys) when is_list(data) do
+    Enum.map(data, fn
+      {k, v} -> {k, localise_tree_value(k, v, module, keys)}
+      other -> localise_tree(other, module, keys)
+    end)
+  end
+
+  def localise_tree(data, _module, _keys), do: data
+
+  defp localise_tree_value(key, value, module, keys) when is_binary(value) do
+    if key in keys, do: localise_dynamic(value, module), else: value
+  end
+
+  defp localise_tree_value(_key, value, module, keys), do: localise_tree(value, module, keys)
 
   @doc """
   Localizes a list of strings at compile time.
