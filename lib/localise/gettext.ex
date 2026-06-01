@@ -407,35 +407,6 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   @doc """
-  Marks a string for gettext extraction WITHOUT translating it (returns the msgid unchanged),
-  deriving the domain from the caller's extension — the extraction-only counterpart to `l/1`.
-
-  Use this for user-facing strings *defined* where the request locale isn't known yet (e.g. inside
-  a `ConfigModule.config/0`, which is evaluated once at boot under the default locale). Wrapping
-  them in `l/1` there would freeze the boot-locale value into config; `l_noop/1` instead leaves the
-  msgid untouched so the actual translation can happen at the point of display via `localise_dynamic/2`
-  (e.g. through `localise_tree/3`), while still ensuring the string lands in the `.po` catalogs.
-
-  Why not `localise_strings/2`? That registers strings for extraction at *compile time* (in
-  `Bonfire.Localise`), but strings defined in a runtime `ConfigModule.config/0` aren't available then
-  — the config is only loaded at boot. `l_noop/1` marks them for extraction in place instead.
-
-  ## Examples
-
-      iex> l_noop("Following")
-      "Following"
-  """
-  defmacro l_noop(msgid) when is_binary(msgid) do
-    case extension_name(__CALLER__.module) do
-      otp_app when is_binary(otp_app) ->
-        quote do: dgettext_noop(unquote(otp_app), unquote(msgid))
-
-      _ ->
-        quote do: gettext_noop(unquote(msgid))
-    end
-  end
-
-  @doc """
   Dynamically localises a text. This function is useful for localising strings only known at runtime (when you can't use the `l` or `lp` macros).
 
   ## Examples
@@ -480,21 +451,20 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     :feedback_message
   ]
 
-  @doc "Default set of keys treated as user-facing display strings by `localise_tree/3`."
-  def default_localised_keys, do: @default_localised_keys
-
   @doc """
   Recursively re-localises the values of known display-string `keys` within a (possibly deeply
   nested) data structure of maps, keyword lists, and lists, via `localise_dynamic/2` (domain derived
   from `module`). Structs, non-string values, and values under other keys are left untouched.
 
   This is the single point of translation for user-facing strings sourced from a
-  `ConfigModule.config/0`: those are marked with `l_noop/1` (extracted, but frozen to the boot locale),
-  so they must be re-translated per-request at the point of display — which is what this does.
+  `ConfigModule.config/0`: those are wrapped in `l/1`, but `config/0` is evaluated once at boot under
+  the default locale (so the value is effectively the untranslated msgid), and they must be
+  re-translated per-request at the point of display — which is what this does.
 
-  Selection is by key name (see `default_localised_keys/0`), which is a deliberate convention: it
-  keeps call sites terse, but a binary stored under e.g. a non-display `:name` key *would* be sent
-  through gettext. When a structure mixes display and identifier values under these names, pass an
+  Selection is by key name (a fixed default set, overridable via the `keys` arg), which is a
+  deliberate convention: it keeps call sites terse, but a binary stored under e.g. a non-display
+  `:name` key *would* be sent through gettext. When a structure mixes display and identifier values
+  under these names, pass an
   explicit `keys` list scoped to the display fields.
 
   ## Examples
