@@ -117,17 +117,25 @@ defmodule Bonfire.Common.Settings do
 
   if Config.env() == :test do
     # NOTE: enables using `ProcessTree` in test env, eg. `Process.put([:bonfire_common, :my_key], :value)`
-    defp get_settings(keys, default, otp_app, opts) when is_list(keys),
-      do: get_for_process([otp_app] ++ keys) || do_get_settings(keys, default, otp_app, opts)
+    defp get_settings(keys, default, otp_app, opts) when is_list(keys) do
+      case get_for_process([otp_app] ++ keys, :not_set) do
+        :not_set -> do_get_settings(keys, default, otp_app, opts)
+        val -> val
+      end
+    end
 
-    defp get_settings(key, default, otp_app, opts),
-      do: get_for_process([otp_app, key]) || do_get_settings(key, default, otp_app, opts)
+    defp get_settings(key, default, otp_app, opts) do
+      case get_for_process([otp_app, key], :not_set) do
+        :not_set -> do_get_settings(key, default, otp_app, opts)
+        val -> val
+      end
+    end
   else
     defp get_settings(keys, default, otp_app, opts),
       do: do_get_settings(keys, default, otp_app, opts)
   end
 
-  def get_for_process(keys), do: ProcessTree.get(keys)
+  def get_for_process(keys, default \\ nil), do: ProcessTree.get(keys, default: default)
 
   defp do_get_settings(keys, default, otp_app, opts) do
     case get_for_ext(otp_app, opts) do
