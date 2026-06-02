@@ -1836,6 +1836,23 @@ defmodule Bonfire.Common.Enums do
   def all_oks_or_error(val), do: {:error, List.wrap(val)}
 
   @doc """
+  Reduces a list of result tuples to the first `{:ok, _}`, or the last element (typically an
+  `{:error, _}`) if none are ok. Use to combine several independent operations into one result where
+  succeeding at *any* of them is enough.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.first_ok_or_error([{:error, "a"}, {:ok, 2}, {:error, "b"}])
+      {:ok, 2}
+
+      iex> Bonfire.Common.Enums.first_ok_or_error([{:error, "a"}, {:error, "b"}])
+      {:error, "b"}
+  """
+  def first_ok_or_error(results) when is_list(results) do
+    Enum.find(results, List.last(results), &match?({:ok, _}, &1))
+  end
+
+  @doc """
   Checks if there are any `:ok` tuples in the enumerable.
 
   ## Examples

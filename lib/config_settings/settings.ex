@@ -137,6 +137,40 @@ defmodule Bonfire.Common.Settings do
 
   def get_for_process(keys, default \\ nil), do: ProcessTree.get(keys, default: default)
 
+  @default_process_override_namespaces [
+    :bonfire_common,
+    :bonfire,
+    :activity_pub,
+    :bonfire_federate_activitypub,
+    :bonfire_social
+  ]
+
+  @doc """
+  Clears process-dictionary config/settings overrides (the `Process.put/2` entries that back
+  `ProcessTree`-based overrides in test/runtime), so a stale process-scoped value can't bleed into
+  later work via process inheritance (e.g. an override set in a `setup_all` process that test
+  processes inherit as an ancestor).
+
+  Deletes only the bare `:federating` key and list keys whose head atom is in `namespaces` (default:
+  known Bonfire/AP namespaces) — leaving ExUnit/DBConnection/Sandbox and `$ancestors`/`$callers`
+  keys untouched. Pass a custom `namespaces` list to extend the set.
+  """
+  def reset_process_overrides(namespaces \\ @default_process_override_namespaces) do
+    Process.get()
+    |> Enum.each(fn
+      {:federating, _} ->
+        Process.delete(:federating)
+
+      {[head | _] = key, _} when is_atom(head) ->
+        if head in namespaces, do: Process.delete(key)
+
+      _ ->
+        :ok
+    end)
+
+    :ok
+  end
+
   defp do_get_settings(keys, default, otp_app, opts) do
     case get_for_ext(otp_app, opts) do
       [] ->
