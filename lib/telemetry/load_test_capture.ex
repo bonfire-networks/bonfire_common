@@ -71,7 +71,13 @@ defmodule Bonfire.Common.Telemetry.LoadTestCapture do
     unless state.enabled do
       query_event = repo_query_event()
       :telemetry.attach("loadtest-db", query_event, &__MODULE__.on_query/4, nil)
-      :telemetry.attach("loadtest-req", [:phoenix, :endpoint, :stop], &__MODULE__.on_request/4, nil)
+
+      :telemetry.attach(
+        "loadtest-req",
+        [:phoenix, :endpoint, :stop],
+        &__MODULE__.on_request/4,
+        nil
+      )
     end
 
     {:reply, :ok, %{state | enabled: true}}
