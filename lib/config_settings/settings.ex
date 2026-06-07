@@ -431,7 +431,7 @@ defmodule Bonfire.Common.Settings do
           maybe_fetch(scope_id, [preload: true] ++ opts)
           |> settings_data_for_app(otp_app)
 
-        info(
+        debug(
           "instance_scope_settings: repo=#{inspect(repo())}, scope_id=#{inspect(scope_id)}, result_keys=#{inspect(is_map(result) and Map.keys(result))}"
         )
 
@@ -461,7 +461,7 @@ defmodule Bonfire.Common.Settings do
       Config.delete(delete_key, opts[:otp_app])
     else
       Config.put_tree(new_data, already_prepared: true)
-      |> info("put in config")
+      |> debug("put in config")
     end
   end
 
@@ -917,9 +917,9 @@ defmodule Bonfire.Common.Settings do
   defp set_for({:instance, scoped} = _scope_tuple, settings, opts) do
     with {:ok, %{json: new_data} = set} <-
            fetch_or_empty(scoped, opts)
-           |> info("set_for instance fetch_or_empty")
+           |> debug("set_for instance fetch_or_empty")
            |> upsert(settings, uid(scoped), Keyword.put(opts, :scope, :instance))
-           |> info("set_for instance upsert result") do
+           |> debug("set_for instance upsert result") do
       save_instance_settings_to_app_config(new_data, opts)
       {:ok, set}
     end
@@ -958,7 +958,7 @@ defmodule Bonfire.Common.Settings do
 
     existing_data
     |> prepare_from_json()
-    |> info("upsert existing_data prepared")
+    |> debug("upsert existing_data prepared")
     |> do_upsert(
       settings,
       ...,
@@ -1018,7 +1018,7 @@ defmodule Bonfire.Common.Settings do
       # |> debug("existing_data")
       |> deep_merge(new_data, replace_lists: true)
       |> strip_empty_string_values(opts[:scope] == :instance)
-      |> info("do_upsert merged settings")
+      |> debug("do_upsert merged settings")
       |> do_update(settings, ...)
     end
   end
@@ -1071,9 +1071,9 @@ defmodule Bonfire.Common.Settings do
       new_data: new_data,
       json: prepare_for_json(new_data)
     })
-    |> info("do_update changeset")
+    |> debug("do_update changeset")
     |> repo().update()
-    |> info("do_update result")
+    |> debug("do_update result")
   end
 
   defp prepare_for_json(settings) do

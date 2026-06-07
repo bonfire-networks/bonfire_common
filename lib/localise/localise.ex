@@ -7,6 +7,7 @@ defmodule Bonfire.Common.Localise do
   import Untangle
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Types
+  alias Bonfire.Common.Cache
 
   defmacro __using__(_opts) do
     quote do
@@ -237,6 +238,14 @@ defmodule Bonfire.Common.Localise do
 
   @doc "Returns a list of locales paired with their localised display names, sorted alphabetically by display name."
   def locales_with_names(locales) do
+    # Cached: building this list calls the expensive `locale_name/1` (CLDR display-name lookup +
+    # reflection fallback) once per locale, and the language selectors re-evaluate it on every render
+    # for all (~120 in prod) installed locales. The result only changes when the set of installed
+    # locales does (i.e. on deploy), so memoise it keyed on the given `locales`.
+    Cache.maybe_apply_cached(&do_locales_with_names/1, [locales])
+  end
+
+  defp do_locales_with_names(locales) do
     locales
     |> Enum.map(fn l -> {l, locale_name(l)} end)
     |> Enum.sort_by(&elem(&1, 1))
