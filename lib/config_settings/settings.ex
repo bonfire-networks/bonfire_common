@@ -894,24 +894,47 @@ defmodule Bonfire.Common.Settings do
   end
 
   defp set_for({:current_user, scoped} = _scope_tuple, settings, opts) do
-    fetch_or_empty(scoped, opts)
-    # |> debug
-    |> upsert(settings, uid(scoped), opts)
-    ~> {:ok,
-     %{
-       __context__: %{current_user: map_put_settings(scoped, ...)}
-     }}
+    result =
+      fetch_or_empty(scoped, opts)
+      # |> debug
+      |> upsert(settings, uid(scoped), opts)
+      ~> {:ok,
+       %{
+         __context__: %{current_user: map_put_settings(scoped, ...)}
+       }}
+
+    # the cached current_user (see LoadCurrentUser.get_current/2) embeds these settings
+    with {:ok, _} <- result do
+      Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Users, :invalidate_cached_current, [scoped],
+        fallback_return: nil
+      )
+    end
+
+    result
   end
 
   defp set_for({:current_account, scoped} = _scope_tuple, settings, opts) do
-    fetch_or_empty(scoped, opts)
-    # |> debug
-    |> upsert(settings, uid(scoped), opts)
-    ~> {:ok,
-     %{
-       __context__: %{current_account: map_put_settings(scoped, ...)}
-       # TODO: assign this within current_user ?
-     }}
+    result =
+      fetch_or_empty(scoped, opts)
+      # |> debug
+      |> upsert(settings, uid(scoped), opts)
+      ~> {:ok,
+       %{
+         __context__: %{current_account: map_put_settings(scoped, ...)}
+         # TODO: assign this within current_user ?
+       }}
+
+    # account settings are embedded in each of its users' cached current_user
+    with {:ok, _} <- result do
+      Bonfire.Common.Utils.maybe_apply(
+        Bonfire.Me.Users,
+        :invalidate_cached_current_for_account,
+        [scoped],
+        fallback_return: nil
+      )
+    end
+
+    result
   end
 
   defp set_for({:instance, scoped} = _scope_tuple, settings, opts) do
