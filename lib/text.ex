@@ -737,6 +737,22 @@ defmodule Bonfire.Common.Text do
   def text_only(_content), do: nil
 
   @doc """
+  Collapses any run of whitespace (incl. newlines/tabs) into a single space and trims.
+
+  ## Examples
+
+      iex> normalize_whitespace("  hello\n  world\t! ")
+      "hello world !"
+  """
+  def normalize_whitespace(text) when is_binary(text) do
+    text
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
+  end
+
+  def normalize_whitespace(text), do: text
+
+  @doc """
   Converts text to emotes if the Emote module is enabled.
 
   ## Examples
