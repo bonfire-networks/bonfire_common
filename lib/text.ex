@@ -741,7 +741,7 @@ defmodule Bonfire.Common.Text do
 
   ## Examples
 
-      iex> normalize_whitespace("  hello\n  world\t! ")
+      iex> normalize_whitespace("  hello\\n  world\\t! ")
       "hello world !"
   """
   def normalize_whitespace(text) when is_binary(text) do

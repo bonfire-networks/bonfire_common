@@ -119,7 +119,7 @@ defmodule Bonfire.Common.Cache do
 
   ## Examples
 
-      iex> Bonfire.Common.Cache.put("delete_me", "value")
+      iex> Bonfire.Common.Cache.put("delete_me", "value", async: false)
       iex> Bonfire.Common.Cache.remove("delete_me")
       iex> Bonfire.Common.Cache.get!("delete_me")
       nil
@@ -139,8 +139,8 @@ defmodule Bonfire.Common.Cache do
   ## Examples
 
       iex> Bonfire.Common.Cache.remove_all()
-      iex> Bonfire.Common.Cache.put("key1", "value1")
-      iex> Bonfire.Common.Cache.put("key2", "value2")
+      iex> Bonfire.Common.Cache.put("key1", "value1", async: false)
+      iex> Bonfire.Common.Cache.put("key2", "value2", async: false)
       iex> _removed_count = Bonfire.Common.Cache.remove_all()
       iex> Bonfire.Common.Cache.get!("key1")
       nil

@@ -257,14 +257,21 @@ defmodule Bonfire.Common.Test.Interactive do
       #   do: info("Wrapping tests in DB transactions to be rolled back"),
       #   else: info("*Not* wrapping tests in DB transactions")
 
-      :ok =
-        Ecto.Adapters.SQL.Sandbox.checkout(repo,
-          sandbox: wrap_test_in_transaction_and_rollback
-        )
+      if wrap_test_in_transaction_and_rollback do
+        :ok = Ecto.Adapters.SQL.Sandbox.checkout(repo, sandbox: true)
 
-      if not wrap_test_in_transaction_and_rollback or !tags[:async] do
-        info("Running Ecto in shared mode")
-        Ecto.Adapters.SQL.Sandbox.mode(repo, {:shared, self()})
+        # non-async sandboxed tests share one owned connection so spawned processes can see
+        # the wrapping transaction; async tests keep per-process ownership for isolation
+        if !tags[:async] do
+          info("Running Ecto in shared mode")
+          Ecto.Adapters.SQL.Sandbox.mode(repo, {:shared, self()})
+        end
+      else
+        # No SQL sandbox (e.g. federation dance tests, which use committed data): don't put
+        # the pool into ownership/shared mode at all — keep it in `:auto` (as set at startup)
+        # so any process, including spawned Tasks and Oban workers, can use the pool freely.
+        # (Pinning `:auto` also clears any stale shared/manual mode left by a previous module.)
+        Ecto.Adapters.SQL.Sandbox.mode(repo, :auto)
       end
     end
   end
