@@ -144,7 +144,7 @@ defmodule Bonfire.Common.Extend do
           debug(module, "module is disabled")
           nil
 
-        (is_nil(modularity) or modularity == true or modularity == module) and
+        (is_nil(modularity) or modularity == module or enabled_value?(modularity)) and
             do_is_extension_enabled?(opts[:otp_app], opts) ->
           debug(module, "module is not disabled or swapped, and extension is not disabled")
           module
@@ -368,22 +368,58 @@ defmodule Bonfire.Common.Extend do
       true
 
       iex> disabled_value?(false)
+      true
+
+      iex> disabled_value?(nil)
       false
 
       iex> disabled_value?(disabled: true)
       true
   """
-  def disabled_value?(value) do
+  def disabled_value?(value), do: flag_value?(value, false, :disable, :disabled)
+
+  @doc """
+  Checks if a value explicitly indicates that a module or extension is enabled.
+
+  Note this is *not* simply the inverse of `disabled_value?/1`: a `nil` value means
+  "not configured" (i.e. enabled by default) rather than an explicit enable flag, and a
+  swapped-in replacement module is not a plain enable flag either. This only matches the
+  explicit on switches (`true`, `:enable`/`:enabled`, and their `{key, true}`/`[key: true]` forms).
+
+  ## Examples
+
+      iex> enabled_value?(:enabled)
+      true
+
+      iex> enabled_value?(true)
+      true
+
+      iex> enabled_value?(enabled: true)
+      true
+
+      iex> enabled_value?(nil)
+      false
+
+      iex> enabled_value?(false)
+      false
+
+      iex> enabled_value?(SomeReplacementModule)
+      false
+  """
+  def enabled_value?(value), do: flag_value?(value, true, :enable, :enabled)
+
+  # Shared matcher for `disabled_value?/1` and `enabled_value?/1`: a flag may be expressed
+  # as the bare boolean, a short/long atom, or a `{atom, true}` / `[atom: true]` keyword form.
+  # Pins compile to a single `case`, so this stays as fast as inline literal clauses.
+  defp flag_value?(value, bool, short, long) do
     case value do
-      nil -> false
-      false -> false
-      :disable -> true
-      :disabled -> true
-      module when is_atom(module) -> false
-      {:disabled, true} -> true
-      {:disable, true} -> true
-      [disabled: true] -> true
-      [disable: true] -> true
+      ^bool -> true
+      ^short -> true
+      ^long -> true
+      {^short, true} -> true
+      {^long, true} -> true
+      [{^short, true}] -> true
+      [{^long, true}] -> true
       _ -> false
     end
   end

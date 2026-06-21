@@ -23,14 +23,20 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
       assert Extend.maybe_module(false) == nil
     end
 
-    test "returns nil when module disabled via config" do
-      Config.put([DisabledTestModule, :modularity], :disabled)
+    for value <- [:disabled, :disable, false, {:disabled, true}, [disabled: true]] do
+      test "returns nil when module disabled via config (#{inspect(value)})" do
+        Config.put(
+          [Bonfire.Common.Text, :modularity],
+          unquote(Macro.escape(value)),
+          :bonfire_common
+        )
 
-      Extend.clear_modularity_cache(DisabledTestModule)
-      assert Extend.maybe_module(DisabledTestModule) == nil
-    after
-      Config.delete([DisabledTestModule, :modularity])
-      Extend.clear_modularity_cache()
+        Extend.clear_modularity_cache(Bonfire.Common.Text)
+        assert Extend.maybe_module(Bonfire.Common.Text) == nil
+      after
+        Config.put([Bonfire.Common.Text, :modularity], Bonfire.Common.Text, :bonfire_common)
+        Extend.clear_modularity_cache()
+      end
     end
 
     test "returns replacement when module swapped via config" do
@@ -41,6 +47,42 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
     after
       Config.put([Bonfire.Common.Text, :modularity], Bonfire.Common.Text, :bonfire_common)
       Extend.clear_modularity_cache()
+    end
+
+    for value <- [:enabled, :enable, true, {:enabled, true}, {:enable, true}, [enabled: true]] do
+      test "returns the module itself when explicitly enabled via config (#{inspect(value)})" do
+        Config.put(
+          [Bonfire.Common.Text, :modularity],
+          unquote(Macro.escape(value)),
+          :bonfire_common
+        )
+
+        Extend.clear_modularity_cache(Bonfire.Common.Text)
+        assert Extend.maybe_module(Bonfire.Common.Text) == Bonfire.Common.Text
+      after
+        Config.put([Bonfire.Common.Text, :modularity], Bonfire.Common.Text, :bonfire_common)
+        Extend.clear_modularity_cache()
+      end
+    end
+  end
+
+  describe "enabled_value?/1" do
+    test "recognizes enabled values" do
+      assert Extend.enabled_value?(:enabled)
+      assert Extend.enabled_value?(:enable)
+      assert Extend.enabled_value?(true)
+      assert Extend.enabled_value?({:enabled, true})
+      assert Extend.enabled_value?({:enable, true})
+      assert Extend.enabled_value?(enabled: true)
+      assert Extend.enabled_value?(enable: true)
+    end
+
+    test "rejects non-enabled values" do
+      refute Extend.enabled_value?(nil)
+      refute Extend.enabled_value?(false)
+      refute Extend.enabled_value?(:disabled)
+      # a swapped-in module is not a plain "enabled" flag
+      refute Extend.enabled_value?(SomeModule)
     end
   end
 
@@ -119,6 +161,7 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
     test "recognizes disabled values" do
       assert Extend.disabled_value?(:disabled)
       assert Extend.disabled_value?(:disable)
+      assert Extend.disabled_value?(false)
       assert Extend.disabled_value?({:disabled, true})
       assert Extend.disabled_value?({:disable, true})
       assert Extend.disabled_value?(disabled: true)
@@ -127,7 +170,7 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
 
     test "rejects non-disabled values" do
       refute Extend.disabled_value?(nil)
-      refute Extend.disabled_value?(false)
+      refute Extend.disabled_value?(true)
       refute Extend.disabled_value?(SomeModule)
     end
   end
