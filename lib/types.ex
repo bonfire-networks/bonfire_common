@@ -803,6 +803,17 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Data.Social.Post
 
+  def object_type(type, _opts)
+      when type in [
+             Bonfire.Articles.Article,
+             "7ARTC1ESF0RB0NF1REP0STS000",
+             "articles",
+             "article",
+             :article,
+             :articles
+           ],
+      do: Bonfire.Articles.Article
+
   def object_type(type, opts)
       when type in [
              Bonfire.Classify.Category,
