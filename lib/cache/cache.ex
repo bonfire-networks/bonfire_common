@@ -181,7 +181,7 @@ defmodule Bonfire.Common.Cache do
     |> Keyword.put_new_lazy(:cache_key, fn ->
       key_for_call(fun, args)
     end)
-    |> do_maybe_apply_cached(fun, args, ...)
+    |> cache_dispatch(nil, fun, args)
   end
 
   def maybe_apply_cached({module, fun}, args, opts)
@@ -190,10 +190,35 @@ defmodule Bonfire.Common.Cache do
     |> Keyword.put_new_lazy(:cache_key, fn ->
       key_for_call({module, fun}, args)
     end)
-    |> do_maybe_apply_cached(module, fun, args, ...)
+    |> cache_dispatch(module, fun, args)
   end
 
   def maybe_apply_cached(fun, args, opts), do: maybe_apply_cached(fun, [args], opts)
+
+  # Standard `:cache` verb dispatch, shared by every cached fn (DRY):
+  #   * `false`    -> bypass entirely: run the fn, neither read nor write the cache
+  #   * `:reset`   -> remove the (resolved) key only, no recompute
+  #   * `:refresh` -> remove the key, then recompute + repopulate
+  #   * otherwise  -> serve from cache (default)
+  # Dispatch happens AFTER `:cache_key` is resolved, so explicit-key callers reset/refresh correctly.
+  defp cache_dispatch(opts, module, fun, args) do
+    key = Keyword.fetch!(opts, :cache_key)
+
+    case opts[:cache] do
+      false ->
+        maybe_apply_or_fun(module, fun, args, opts)
+
+      :reset ->
+        remove(key, opts)
+
+      :refresh ->
+        remove(key, opts)
+        do_maybe_apply_cached(module, fun, args, opts)
+
+      _ ->
+        do_maybe_apply_cached(module, fun, args, opts)
+    end
+  end
 
   @doc """
   Removes the result of a given function ran using `maybe_apply_cached/3` from the cache.
