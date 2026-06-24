@@ -3,6 +3,7 @@ defmodule Bonfire.Common.RuntimeConfig do
 
   import Untangle
   require Bonfire.Common.Config
+  use Bonfire.Common.Localise
 
   @behaviour Bonfire.Common.ConfigModule
   def config_module, do: true
@@ -32,7 +33,9 @@ defmodule Bonfire.Common.RuntimeConfig do
         do: repos ++ [Bonfire.Common.TestInstanceRepo],
         else: repos
 
-    db_url = System.get_env("DATABASE_URL") || System.get_env("CLOUDRON_POSTGRESQL_URL")
+    db_url =
+      Bonfire.Common.EnvSecrets.env_or_file("DATABASE_URL") ||
+        Bonfire.Common.EnvSecrets.env_or_file("CLOUDRON_POSTGRESQL_URL")
 
     pg_username =
       System.get_env("POSTGRES_USER") ||
@@ -42,7 +45,9 @@ defmodule Bonfire.Common.RuntimeConfig do
       System.get_env("POSTGRES_HOST") ||
         System.get_env("CLOUDRON_POSTGRESQL_HOST", "localhost")
 
-    pg_pw = System.get_env("POSTGRES_PASSWORD") || System.get_env("CLOUDRON_POSTGRESQL_PASSWORD")
+    pg_pw =
+      Bonfire.Common.EnvSecrets.env_or_file("POSTGRES_PASSWORD") ||
+        Bonfire.Common.EnvSecrets.env_or_file("CLOUDRON_POSTGRESQL_PASSWORD")
 
     db_url || pg_pw ||
       System.get_env("MIX_QUIET") ||
@@ -195,7 +200,60 @@ defmodule Bonfire.Common.RuntimeConfig do
     config :bonfire_common, Bonfire.Common.Localise.Cldr, locales: :all
 
     config :bonfire_common, Bonfire.Common.AntiSpam.Akismet,
-      api_key: System.get_env("AKISMET_API_KEY")
+      api_key: Bonfire.Common.EnvSecrets.env_or_file("AKISMET_API_KEY")
+
+    # Oban throughput presets (#1638) — admin-switchable multipliers over the configured queue sizes.
+    # `:default` (the env baseline) and `:custom` (per-queue overrides) are built-in; the rest scale
+    # every managed queue's limit by their factor. `cards` is the per-preset UI metadata (here, since
+    # this module has `l()` for i18n, unlike `config/runtime.exs`).
+    config :bonfire_common, Bonfire.Common.ObanPresets,
+      preset_names: [:eco, :default, :turbo, :custom],
+      multipliers: [eco: 0.5, turbo: 2.0],
+      cards: [
+        eco: [
+          icon: "ph:leaf-duotone",
+          name: l("Eco"),
+          description:
+            l(
+              "Gentler on the server (half the default concurrency). Good for small or shared hosting."
+            )
+        ],
+        default: [
+          icon: "ph:gauge-duotone",
+          name: l("Default"),
+          description: l("As configured by server admins, your app flavour, or developers.")
+        ],
+        turbo: [
+          icon: "ph:rocket-launch-duotone",
+          name: l("Turbo"),
+          description:
+            l("Double the concurrency for faster federation and such on capable servers.")
+        ],
+        custom: [
+          icon: "ph:sliders-horizontal-duotone",
+          name: l("Custom"),
+          description: l("Fine-tune individual queue concurrency.")
+        ]
+      ],
+      # Quick per-group boost toggles (Layer 2): toggling one runs that group of federation queues
+      # at double concurrency (the `turbo` level), on top of whatever preset is active.
+      groups: [
+        interactions: [
+          name: l("Mentions & follows"),
+          description: l("Keep incoming messages, mentions and follow requests snappy."),
+          queues: [:federator_incoming_mentions, :federator_incoming_follows]
+        ],
+        incoming: [
+          name: l("Incoming"),
+          description: l("See remote activities appear faster in feeds."),
+          queues: [:federator_incoming]
+        ],
+        outgoing: [
+          name: l("Outgoing delivery"),
+          description: l("Sending local activities out to the fediverse."),
+          queues: [:federator_outgoing]
+        ]
+      ]
   end
 
   def skip_test_tags(extras \\ []) do

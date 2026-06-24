@@ -798,6 +798,16 @@ defmodule Bonfire.Common.Settings do
   #   result
   # end
 
+  # #1638: when the Oban federation-throughput preset/overrides change, apply the new
+  # limits live (no restart) via Oban.scale_queue — after persisting (do_set updates Config,
+  # which `apply_current` reads).
+  defp set_with_hooks(%{Bonfire.Common.ObanPresets => _} = attrs, opts) do
+    result = do_set(attrs, opts)
+    maybe_apply(Bonfire.Common.ObanPresets, :apply_current, [])
+    maybe_reset_caches(attrs)
+    result
+  end
+
   defp set_with_hooks(attrs, opts) do
     result = do_set(attrs, opts)
     maybe_reset_caches(attrs)

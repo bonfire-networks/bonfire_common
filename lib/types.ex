@@ -421,6 +421,29 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc """
+  Returns the value as a positive integer (> 0), or `nil` if it isn't one.
+
+  ## Examples
+      iex> maybe_to_pos_integer(3)
+      3
+
+      iex> maybe_to_pos_integer("5")
+      5
+
+      iex> maybe_to_pos_integer(0)
+      nil
+
+      iex> maybe_to_pos_integer("nope")
+      nil
+  """
+  def maybe_to_pos_integer(val) do
+    case maybe_to_integer(val, 0) do
+      int when is_integer(int) and int > 0 -> int
+      _ -> nil
+    end
+  end
+
+  @doc """
   Takes a string and returns true if it is a valid UUID or ULID.
 
   ## Examples
@@ -584,23 +607,27 @@ defmodule Bonfire.Common.Types do
       "some_atom"
 
       iex> maybe_to_string([1, 2, 3])
-      "[1, 2, 3]"
+      "1, 2, 3"
 
       iex> maybe_to_string({:a, :tuple})
       "a: tuple"
 
       iex> maybe_to_string([a: 1, b: 2])
-      "[a: 1, b: 2]" 
+      "a: 1, b: 2" 
 
       iex> maybe_to_string([a: 1, b: %{}])
-      "[a: 1, b: ]"
+      "a: 1, b: "
   """
+  def maybe_to_string(string) when is_binary(string) do
+    string
+  end
+
   def maybe_to_string(atom) when is_atom(atom) and not is_nil(atom) do
     Atom.to_string(atom)
   end
 
-  def maybe_to_string(list) when is_list(list) do
-    "[" <> Enum.map_join(list, ", ", &maybe_to_string/1) <> "]"
+  def maybe_to_string(list) when is_list(list) or is_map(list) do
+    Enum.map_join(list, ", ", &maybe_to_string/1)
   end
 
   def maybe_to_string({key, val}) do
