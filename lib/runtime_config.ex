@@ -152,9 +152,10 @@ defmodule Bonfire.Common.RuntimeConfig do
         slow_query_ms: 500,
         queue_target: 5_000,
         queue_interval: 2_000,
-        timeout: 50_000,
+        timeout: System.get_env("DB_QUERY_TIMEOUT", "50000") |> String.to_integer(),
         connect_timeout: 10_000,
-        ownership_timeout: 100_000,
+        ownership_timeout:
+          System.get_env("DB_OWNERSHIP_TIMEOUT", "100000") |> String.to_integer(),
         # Increase pool size for CI to handle concurrent tests - force minimum of 20 for tests
         pool_size: max(pool_size, 20),
         log: false,
