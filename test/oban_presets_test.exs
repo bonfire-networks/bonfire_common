@@ -4,13 +4,16 @@ defmodule Bonfire.Common.ObanPresetsTest do
   alias Bonfire.Common.ObanPresets
   alias Bonfire.Common.Config
 
+  @keys [:preset, :queues, :managed_queues, :prioritised_groups]
+
   setup do
-    on_exit(fn ->
-      Config.delete([ObanPresets, :preset])
-      Config.delete([ObanPresets, :queues])
-      Config.delete([ObanPresets, :managed_queues])
-      Config.delete([ObanPresets, :prioritised_groups])
-    end)
+    # start each test from a clean slate — Config is global, so a leftover from another test
+    # (or a concurrent suite) would otherwise bleed in
+    Config.put([ObanPresets, :preset], :default)
+    Config.put([ObanPresets, :queues], %{})
+    Config.put([ObanPresets, :prioritised_groups], %{})
+
+    on_exit(fn -> Enum.each(@keys, &Config.delete([ObanPresets, &1])) end)
 
     :ok
   end

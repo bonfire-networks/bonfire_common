@@ -1,10 +1,13 @@
 defmodule Bonfire.Common.ObanPresets do
   @moduledoc """
-  Runtime, admin-switchable throughput presets for the federation Oban queues (#1638).
+  Runtime, admin-switchable throughput presets for the Oban background queues (#1638).
 
-  Federation runs as Oban background jobs; on small/shared servers a burst can saturate the Ecto pool. An instance admin can pick a preset (`:default | :balanced | :eco | :custom`) plus optional per-queue overrides; the effective limits are applied **live** via `Oban.scale_queue/2` (no restart) and are how Oban **boots** (see `start_oban/1`, wired from `Bonfire.Application.maybe_oban/1`).
+  Federation/import/etc. run as Oban background jobs; on small/shared servers a burst can saturate the Ecto pool. An instance admin picks a preset and the effective limits are applied **live** via `Oban.scale_queue/2` (no restart) and are how Oban **boots** (see `start_oban/1`, wired from `Bonfire.Application.maybe_oban/1`).
 
-  Presets scale all Oban queues together (full set coming from the Oban config); the federation subset is kept only to group the quick Incoming/Outgoing overrides in the UI.
+  Effective limits = preset base → prioritised groups → per-queue overrides:
+  - **Preset** (`[ObanPresets, :preset]`): `:default` = the env-configured baseline; `:custom` = overrides-only; every other preset (e.g. `:eco`, `:turbo`) scales the baseline by its config `:multipliers` factor, applied to **all** managed queues.
+  - **Prioritised groups** (`:prioritised_groups`): toggling a config-defined `:groups` group runs its queues at the `:turbo` (2×) level on top of the preset.
+  - **Per-queue overrides** (`:queues`): a sparse `%{queue => limit}` map (the "Custom" / advanced layer).
   """
   use Bonfire.Common.Config
   alias Bonfire.Common.Config
@@ -81,7 +84,7 @@ defmodule Bonfire.Common.ObanPresets do
   end
 
   @doc """
-  Named federation queue groups for the Layer-2 quick boost toggles (config `:groups`),
+  Named federation queue groups for the Layer-2 "prioritise" toggles (config `:groups`),
   as `group => [name:, description:, queues:]`.
   """
   def queue_groups, do: Config.get([__MODULE__, :groups], [])
@@ -205,8 +208,9 @@ defmodule Bonfire.Common.ObanPresets do
   defp normalize_preset(preset) when is_atom(preset) and not is_nil(preset),
     do: if(preset in preset_names(), do: preset, else: :default)
 
+  # `maybe_to_atom!` returns nil (not the string) for an unknown name, so this can't recurse forever
   defp normalize_preset(preset) when is_binary(preset),
-    do: normalize_preset(Types.maybe_to_atom(preset))
+    do: normalize_preset(Types.maybe_to_atom!(preset))
 
   defp normalize_preset(_), do: :default
 
@@ -227,7 +231,7 @@ defmodule Bonfire.Common.ObanPresets do
     do: if(queue in managed_queues(), do: queue)
 
   defp to_known_queue(queue) when is_binary(queue),
-    do: to_known_queue(Types.maybe_to_atom(queue))
+    do: to_known_queue(Types.maybe_to_atom!(queue))
 
   defp to_known_queue(_), do: nil
 
@@ -243,7 +247,7 @@ defmodule Bonfire.Common.ObanPresets do
     do: if(Keyword.has_key?(queue_groups(), group), do: group)
 
   defp to_known_group(group) when is_binary(group),
-    do: to_known_group(Types.maybe_to_atom(group))
+    do: to_known_group(Types.maybe_to_atom!(group))
 
   defp to_known_group(_), do: nil
 
