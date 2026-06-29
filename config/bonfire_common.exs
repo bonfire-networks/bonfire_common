@@ -54,6 +54,8 @@ config :ex_cldr,
   default_backend: Bonfire.Common.Localise.Cldr,
   json_library: Jason
 
+config :mdex_native, syntax_highlighter: :lumis
+
 pg_username = System.get_env("POSTGRES_USER") || "postgres"
 pg_pw = System.get_env("POSTGRES_PASSWORD") || "postgres"
 database = System.get_env("POSTGRES_DB") || "bonfire_dev"
