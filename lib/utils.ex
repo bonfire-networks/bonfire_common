@@ -306,6 +306,11 @@ defmodule Bonfire.Common.Utils do
       user_id when is_binary(user_id) ->
         Types.uid(user_id)
 
+      opts when is_list(opts) ->
+        # keyword-list opts (e.g. `[current_user: "<id>", ...]`) — mirror what
+        # `current_user/1` does so a bare id passed in opts resolves here too
+        if Keyword.keyword?(opts), do: current_user_id(Map.new(opts), true)
+
       _ ->
         if recursing != :skip,
           do:
