@@ -434,9 +434,9 @@ defmodule MyExtension do
   use Bonfire.Common.ExtensionModule
   
   # Declares extension capabilities
-  declare_extension("My Extension",
+  declare_extension(l("My Extension"),
     icon: "hero-puzzle-piece",
-    description: "Does amazing things"
+    description: l("Does amazing things")
   )
 end
 ```

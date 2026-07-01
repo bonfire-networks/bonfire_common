@@ -10,7 +10,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
 
       iex> defmodule MyExtension do
       ...>   import Bonfire.Common.Modularity.DeclareHelpers
-      ...>   declare_extension("My Extension", readme: "MY_README.md")
+      ...>   declare_extension(l("My Extension"), readme: "MY_README.md")
       ...> end
 
   """

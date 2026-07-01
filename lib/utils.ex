@@ -101,7 +101,7 @@ defmodule Bonfire.Common.Utils do
     end
   end
 
-  declare_extension("Common",
+  declare_extension(l("Common"),
     icon: "carbon:software-resource",
     emoji: "🔶",
     description: l("Common utilities and functionality used by most other extensions.")
