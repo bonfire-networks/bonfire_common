@@ -254,6 +254,165 @@ defmodule Bonfire.Common.RuntimeConfig do
           queues: [:federator_outgoing]
         ]
       ]
+
+    # Instance performance tuning (calm-empowerment over the Postgres layer; see
+    # `Bonfire.Common.Settings.Calm.InstanceTuning` + plans/postgres-ops-tuning.md › C2).
+    # Presets/toggles are TRANSFORMS over the boot baseline (a pg_settings snapshot) — boot config
+    # stays the single source of truth; values are typed + clamped, applied via whitelisted
+    # ALTER SYSTEM + pg_reload_conf. NOTE bounds/tiers are in each GUC's base unit (work_mem: kB).
+    # Enum-typed GUCs (wal_compression, default_toast_compression) await an :enum knob type.
+    config :bonfire_common, Bonfire.Common.Settings.Calm.InstanceTuning,
+      preset_names: [:eco, :default, :turbo, :custom],
+      cards: [
+        eco: [
+          icon: "ph:leaf-duotone",
+          name: l("Eco"),
+          description: l("Leave headroom for other services sharing this machine.")
+        ],
+        default: [
+          icon: "ph:gauge-duotone",
+          name: l("Default"),
+          description: l("The boot configuration, sized to the detected resources.")
+        ],
+        turbo: [
+          icon: "ph:rocket-launch-duotone",
+          name: l("Turbo"),
+          description: l("This machine is for Bonfire — favor speed.")
+        ],
+        custom: [
+          icon: "ph:sliders-horizontal-duotone",
+          name: l("Custom"),
+          description: l("Fine-tune individual settings.")
+        ]
+      ],
+      # Level 1: per-knob transforms over the baseline (only deviations listed)
+      presets: [
+        eco: [
+          work_mem: {:scale, 0.5},
+          maintenance_work_mem: {:scale, 0.5},
+          log_min_duration_statement: {:set, 5_000}
+        ],
+        turbo: [
+          work_mem: {:scale, 2.0},
+          maintenance_work_mem: {:scale, 2.0},
+          autovacuum_vacuum_cost_limit: {:set, 2_000},
+          autovacuum_vacuum_cost_delay: {:set, 2.0},
+          track_io_timing: {:set, "on"},
+          log_min_duration_statement: {:set, 2_000}
+        ]
+      ],
+      # Level 2: outcome-named override toggles (each bundles a few knob transforms)
+      groups: [
+        faster_feeds: [
+          name: l("Faster feeds & threads"),
+          description: l("Give queries more memory to sort with."),
+          knobs: [work_mem: {:step, 1}, log_temp_files: {:set, 0}]
+        ],
+        lean_database: [
+          name: l("Keep the database lean"),
+          description:
+            l("Clean up more aggressively (good for busy or bulk-importing instances)."),
+          knobs: [
+            autovacuum_vacuum_cost_limit: {:set, 2_000},
+            autovacuum_vacuum_insert_scale_factor: {:set, 0.02},
+            autovacuum_naptime: {:set, 30}
+          ]
+        ],
+        diagnostics: [
+          name: l("Deep diagnostics"),
+          description:
+            l(
+              "Log slow queries and I/O details (small overhead, enable when things feel slow and you want to investigate)."
+            ),
+          knobs: [
+            log_min_duration_statement: {:set, 2_000},
+            track_io_timing: {:set, "on"},
+            log_lock_waits: {:set, "on"}
+          ]
+        ],
+        quiet_logs: [
+          name: l("Quiet logs"),
+          description: l("Only log unusually slow things."),
+          knobs: [
+            log_min_duration_statement: {:set, -1},
+            log_autovacuum_min_duration: {:set, 10_000}
+          ]
+        ]
+      ],
+      # Level 3: the knob registry (context :user/:sighup = live on reload; :postmaster would need
+      # a restart badge — none included yet)
+      knob_registry: [
+        work_mem: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          unit: "kB",
+          bounds: {4_096, 2_097_152},
+          tiers: [16_384, 32_768, 65_536, 131_072, 262_144]
+        ],
+        maintenance_work_mem: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          unit: "kB",
+          bounds: {16_384, 4_194_304}
+        ],
+        effective_io_concurrency: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          bounds: {0, 512}
+        ],
+        max_parallel_workers_per_gather: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          bounds: {0, 16}
+        ],
+        random_page_cost: [layer: :postgres, context: :user, type: :real],
+        jit: [layer: :postgres, context: :user, type: :bool],
+        track_io_timing: [layer: :postgres, context: :user, type: :bool],
+        log_min_duration_statement: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          unit: "ms",
+          bounds: {-1, 3_600_000}
+        ],
+        log_temp_files: [
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          unit: "kB",
+          bounds: {-1, 1_048_576}
+        ],
+        log_lock_waits: [layer: :postgres, context: :user, type: :bool],
+        autovacuum_vacuum_scale_factor: [layer: :postgres, context: :sighup, type: :real],
+        autovacuum_vacuum_insert_scale_factor: [layer: :postgres, context: :sighup, type: :real],
+        autovacuum_analyze_scale_factor: [layer: :postgres, context: :sighup, type: :real],
+        autovacuum_vacuum_cost_limit: [
+          layer: :postgres,
+          context: :sighup,
+          type: :int,
+          bounds: {-1, 10_000}
+        ],
+        autovacuum_vacuum_cost_delay: [layer: :postgres, context: :sighup, type: :real],
+        autovacuum_naptime: [
+          layer: :postgres,
+          context: :sighup,
+          type: :int,
+          unit: "s",
+          bounds: {1, 86_400}
+        ],
+        log_checkpoints: [layer: :postgres, context: :sighup, type: :bool],
+        log_autovacuum_min_duration: [
+          layer: :postgres,
+          context: :sighup,
+          type: :int,
+          unit: "ms",
+          bounds: {-1, 3_600_000}
+        ]
+      ]
   end
 
   def skip_test_tags(extras \\ []) do

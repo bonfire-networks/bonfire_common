@@ -808,6 +808,15 @@ defmodule Bonfire.Common.Settings do
     result
   end
 
+  # instance performance tuning: after the preset/toggles/knobs change, apply the diff live
+  # (whitelisted ALTER SYSTEM + pg_reload_conf — see Settings.Calm.InstanceTuning)
+  defp set_with_hooks(%{Bonfire.Common.Settings.Calm.InstanceTuning => _} = attrs, opts) do
+    result = do_set(attrs, opts)
+    maybe_apply(Bonfire.Common.Settings.Calm.InstanceTuning, :apply_current, [])
+    maybe_reset_caches(attrs)
+    result
+  end
+
   defp set_with_hooks(attrs, opts) do
     result = do_set(attrs, opts)
     maybe_reset_caches(attrs)

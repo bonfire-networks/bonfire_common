@@ -4,21 +4,43 @@ defmodule Bonfire.Common.ObanPresets do
 
   Federation/import/etc. run as Oban background jobs; on small/shared servers a burst can saturate the Ecto pool. An instance admin picks a preset and the effective limits are applied **live** via `Oban.scale_queue/2` (no restart) and are how Oban **boots** (see `start_oban/1`, wired from `Bonfire.Application.maybe_oban/1`).
 
-  Effective limits = preset base → prioritised groups → per-queue overrides:
+  Built on `Bonfire.Common.Settings.Calm` (the shared calm-empowerment engine, this module was its first consumer and keeps its original config namespace + settings keys). Effective limits = preset base → prioritised groups → per-queue overrides:
   - **Preset** (`[ObanPresets, :preset]`): `:default` = the env-configured baseline; `:custom` = overrides-only; every other preset (e.g. `:eco`, `:turbo`) scales the baseline by its config `:multipliers` factor, applied to **all** managed queues.
   - **Prioritised groups** (`:prioritised_groups`): toggling a config-defined `:groups` group runs its queues at the `:turbo` (2×) level on top of the preset.
   - **Per-queue overrides** (`:queues`): a sparse `%{queue => limit}` map (the "Custom" / advanced layer).
   """
   use Bonfire.Common.Config
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings.Calm
   alias Bonfire.Common.Types
   require Logger
 
-  @preset_key :preset
-  @overrides_key :queues
+  @behaviour Calm
 
-  # Preset names + multipliers live in config (`config :bonfire_common, Bonfire.Common.ObanPresets, ...`);
-  # `:default` (env baseline) and `:custom` (overrides-only) are the only built-ins.
+  # the settings keys, kept verbatim from before the Calm extraction (stored instance settings)
+  @keys [preset: :preset, values: :queues, toggles: :prioritised_groups]
+
+  # ── Calm callbacks: knobs are the managed queues, values are positive ints ──
+
+  @impl Calm
+  def knobs, do: managed_queues()
+
+  @impl Calm
+  def baseline, do: env_limits()
+
+  @impl Calm
+  def normalize_value(_queue, limit), do: Types.maybe_to_pos_integer(limit)
+
+  # a prioritised group = its queues at the turbo level, on top of the preset
+  @impl Calm
+  def toggle_transforms(group_opts) do
+    group_opts
+    |> Keyword.get(:queues, [])
+    |> List.wrap()
+    |> Map.new(&{&1, {:preset_level, :turbo}})
+  end
+
+  # ── queues ──────────────────────────────────────────────────────────────────
 
   @doc """
   All Oban queues the presets manage. Defaults to **every** queue in the Oban config (so it stays
@@ -40,54 +62,35 @@ defmodule Bonfire.Common.ObanPresets do
     String.starts_with?(name, "federator") or name == "remote_fetcher"
   end
 
+  # ── presets/cards/groups (delegated to the Calm engine, same config shape) ──
+
   @doc "The available preset names, in UI order (config `:preset_names`)."
-  def preset_names, do: Config.get([__MODULE__, :preset_names], [:default, :custom])
+  def preset_names, do: Calm.preset_names(__MODULE__)
 
   @doc "Preset name => env multiplier, as a keyword list (config `:multipliers`)."
-  def multipliers, do: Config.get([__MODULE__, :multipliers], [])
+  def multipliers, do: Calm.multipliers(__MODULE__)
 
   @doc "Per-preset UI metadata (`name`, `icon`, `description`) as a keyword list (config `:cards`)."
-  def cards, do: Config.get([__MODULE__, :cards], [])
+  def cards, do: Calm.cards(__MODULE__)
 
   @doc """
   Base per-queue limits for a named preset, before per-queue overrides. `:default` = the env-configured
-  baseline (`env_limits/0`), `:custom` = nil (overrides-only); every other preset scales the baseline by
+  baseline (`baseline/0`), `:custom` = nil (overrides-only); every other preset scales the baseline by
   its `multipliers/0` factor (min 1), e.g. `:eco` = half, `:turbo` = double.
   """
-  def limits_for(preset)
-
-  def limits_for(:default), do: env_limits()
-  def limits_for(:custom), do: nil
-  def limits_for(preset) when is_binary(preset), do: limits_for(normalize_preset(preset))
-
-  def limits_for(preset) when is_atom(preset) do
-    case Keyword.get(multipliers(), preset) do
-      nil -> env_limits()
-      factor -> scale_env(fn n -> max(1, trunc(n * factor)) end)
-    end
-  end
-
-  def limits_for(_), do: limits_for(:default)
-
-  defp scale_env(fun), do: Map.new(env_limits(), fn {queue, limit} -> {queue, fun.(limit)} end)
+  def limits_for(preset), do: Calm.values_for_preset(__MODULE__, preset)
 
   @doc "The currently-configured preset (from the instance setting / Config), default `:default`."
-  def current_preset do
-    Config.get([__MODULE__, @preset_key], :default)
-    |> normalize_preset()
-  end
+  def current_preset, do: Calm.current_preset(__MODULE__, @keys[:preset])
 
   @doc "Sparse per-queue overrides currently configured (from the instance setting / Config)."
-  def current_overrides do
-    Config.get([__MODULE__, @overrides_key], %{})
-    |> normalize_overrides()
-  end
+  def current_overrides, do: Calm.current_values(__MODULE__, @keys[:values])
 
   @doc """
   Named federation queue groups for the Layer-2 "prioritise" toggles (config `:groups`),
   as `group => [name:, description:, queues:]`.
   """
-  def queue_groups, do: Config.get([__MODULE__, :groups], [])
+  def queue_groups, do: Calm.toggle_groups(__MODULE__)
 
   @doc "The queues belonging to a group."
   def group_queues(group) do
@@ -98,10 +101,7 @@ defmodule Bonfire.Common.ObanPresets do
   end
 
   @doc "Which groups are currently prioritised, as `group => boolean` (from the instance setting)."
-  def current_priorities do
-    Config.get([__MODULE__, :prioritised_groups], [])
-    |> normalize_priorities()
-  end
+  def current_priorities, do: Calm.current_toggles(__MODULE__, @keys[:toggles])
 
   @doc "All queues in the currently-prioritised groups."
   def prioritised_queues do
@@ -113,13 +113,9 @@ defmodule Bonfire.Common.ObanPresets do
   Effective per-queue limits: the preset base, then any **prioritised groups** bumped to the `turbo`
   (2×) level, then the sparse per-queue overrides (most specific wins).
   """
-  def effective_limits do
-    base = limits_for(current_preset()) || %{}
+  def effective_limits, do: Calm.effective(__MODULE__, @keys)
 
-    base
-    |> Map.merge(Map.take(limits_for(:turbo), prioritised_queues()))
-    |> Map.merge(current_overrides())
-  end
+  # ── Oban-specific: boot + live apply ────────────────────────────────────────
 
   @doc """
   Lazy boot entrypoint for the Oban child (called by the supervisor when starting Oban, *after*
@@ -147,7 +143,7 @@ defmodule Bonfire.Common.ObanPresets do
 
   @doc "Apply the given preset (live) to all running Oban instances."
   def apply_preset(preset) do
-    case limits_for(normalize_preset(preset)) do
+    case limits_for(preset) do
       nil -> :ok
       limits -> apply_limits(limits)
     end
@@ -204,52 +200,4 @@ defmodule Bonfire.Common.ObanPresets do
 
   # all queue names known to the Oban config (so `managed_queues` stays in sync by default)
   defp oban_queue_names, do: Keyword.keys(oban_queues_config())
-
-  defp normalize_preset(preset) when is_atom(preset) and not is_nil(preset),
-    do: if(preset in preset_names(), do: preset, else: :default)
-
-  # `maybe_to_atom!` returns nil (not the string) for an unknown name, so this can't recurse forever
-  defp normalize_preset(preset) when is_binary(preset),
-    do: normalize_preset(Types.maybe_to_atom!(preset))
-
-  defp normalize_preset(_), do: :default
-
-  defp normalize_overrides(overrides) when is_map(overrides) or is_list(overrides) do
-    for {queue, limit} <- overrides,
-        queue_atom = to_known_queue(queue),
-        not is_nil(queue_atom),
-        limit_int = Types.maybe_to_pos_integer(limit),
-        not is_nil(limit_int),
-        into: %{} do
-      {queue_atom, limit_int}
-    end
-  end
-
-  defp normalize_overrides(_), do: %{}
-
-  defp to_known_queue(queue) when is_atom(queue),
-    do: if(queue in managed_queues(), do: queue)
-
-  defp to_known_queue(queue) when is_binary(queue),
-    do: to_known_queue(Types.maybe_to_atom!(queue))
-
-  defp to_known_queue(_), do: nil
-
-  defp normalize_priorities(priorities) when is_map(priorities) or is_list(priorities) do
-    for {group, on} <- priorities, g = to_known_group(group), not is_nil(g), into: %{} do
-      {g, truthy?(on)}
-    end
-  end
-
-  defp normalize_priorities(_), do: %{}
-
-  defp to_known_group(group) when is_atom(group),
-    do: if(Keyword.has_key?(queue_groups(), group), do: group)
-
-  defp to_known_group(group) when is_binary(group),
-    do: to_known_group(Types.maybe_to_atom!(group))
-
-  defp to_known_group(_), do: nil
-
-  defp truthy?(v), do: v in [true, "true", "on", "1", 1]
 end

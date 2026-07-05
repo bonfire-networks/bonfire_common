@@ -444,6 +444,47 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc """
+  Clamps a number between `lo` and `hi`; nil values pass through.
+
+  ## Examples
+      iex> maybe_clamp(5, 1, 10)
+      5
+
+      iex> maybe_clamp(0, 1, 10)
+      1
+
+      iex> maybe_clamp(99, 1, 10)
+      10
+
+      iex> maybe_clamp(nil, 1, 10)
+      nil
+  """
+  def maybe_clamp(val, lo, hi)
+  def maybe_clamp(nil, _, _), do: nil
+  def maybe_clamp(val, lo, hi) when is_number(val), do: val |> max(lo) |> min(hi)
+  def maybe_clamp(val, _, _), do: val
+
+  @doc """
+  Coerces common boolean representations to `true`/`false`, or nil when unrecognisable.
+
+  ## Examples
+      iex> maybe_to_boolean("on")
+      true
+
+      iex> maybe_to_boolean("false")
+      false
+
+      iex> maybe_to_boolean(1)
+      true
+
+      iex> maybe_to_boolean("junk")
+      nil
+  """
+  def maybe_to_boolean(v) when v in [true, "true", "on", "1", 1, "yes"], do: true
+  def maybe_to_boolean(v) when v in [false, "false", "off", "0", 0, "no"], do: false
+  def maybe_to_boolean(_), do: nil
+
+  @doc """
   Takes a string and returns true if it is a valid UUID or ULID.
 
   ## Examples
