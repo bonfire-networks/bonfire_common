@@ -281,6 +281,14 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
     defp apply_one({:ecto_queries_log_level, level}) when is_atom(level),
       do: Bonfire.Common.Config.put(:queries_log_level, level, :ecto_sparkles)
 
+    # NPlus1Reporter.setup/0 attaches or detaches the span-end handlers based on the flag we
+    # just projected — N+1 detection has ZERO attached telemetry handlers while off (same
+    # attach-on-enable principle as the page profiler)
+    defp apply_one({:n_plus_1_detect, value}) do
+      Bonfire.Common.Config.put(:n_plus_1_detect, value in [true, "on"], :ecto_sparkles)
+      EctoSparkles.NPlus1Reporter.setup()
+    end
+
     # LIVE: LV reads endpoint.config(:live_view)[:hibernate_after] from the endpoint's mutable
     # ETS config per mount — config_change updates it, new mounts pick it up, no restart
     defp apply_one({:lv_hibernate_after, ms}) when is_integer(ms) do
@@ -311,6 +319,9 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
 
     defp current_value(:ecto_queries_log_level),
       do: Application.get_env(:ecto_sparkles, :queries_log_level, :debug)
+
+    defp current_value(:n_plus_1_detect),
+      do: if(EctoSparkles.NPlus1Detector.enabled?(), do: "on", else: "off")
 
     defp current_value(:lv_hibernate_after) do
       endpoint = Bonfire.Common.Config.endpoint_module()

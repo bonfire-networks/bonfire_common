@@ -527,16 +527,23 @@ defmodule Bonfire.Common.Config do
       Bonfire.Common.Repo
   """
 
-  def repo,
-    do: ProcessTree.get(:ecto_repo_module) || migration_runner_repo() || default_repo_module()
+  if Application.compile_env(:bonfire, :env) in [:test, :dev] do
+    def repo,
+      do: ProcessTree.get(:ecto_repo_module) || migration_runner_repo() || default_repo_module()
 
-  # When running inside an Ecto migration, use the repo from the migration runner
-  # so that migrations for TestInstanceRepo use the correct repo.
-  defp migration_runner_repo do
-    case ProcessTree.get(:ecto_migration) do
-      %{runner: _} -> Ecto.Migration.Runner.repo()
-      _ -> nil
+    # When running inside an Ecto migration, use the repo from the migration runner
+    # so that migrations for TestInstanceRepo use the correct repo.
+    defp migration_runner_repo do
+      case ProcessTree.get(:ecto_migration) do
+        %{runner: _} -> Ecto.Migration.Runner.repo()
+        _ -> nil
+      end
     end
+  else
+    # `repo()` is called on every query path, and a `ProcessTree` MISS walks the whole process
+    # ancestry via cross-process `Process.info` — so in prod (the pdict swap serves
+    # TestInstanceRepo / dance tests) resolve statically from config.
+    def repo, do: default_repo_module()
   end
 
   defp default_repo_module(read_only? \\ repo_read_only?()) do
@@ -580,10 +587,15 @@ defmodule Bonfire.Common.Config do
       Bonfire.Web.Endpoint
 
   """
-  def endpoint_module,
-    do:
-      ProcessTree.get(:phoenix_endpoint_module) ||
-        __get__(:endpoint_module, Bonfire.Web.Endpoint)
+  if Application.compile_env(:bonfire, :env) in [:test, :dev] do
+    def endpoint_module,
+      do:
+        ProcessTree.get(:phoenix_endpoint_module) ||
+          __get__(:endpoint_module, Bonfire.Web.Endpoint)
+  else
+    # same rationale as `repo/0`: no ProcessTree ancestor walks in prod
+    def endpoint_module, do: __get__(:endpoint_module, Bonfire.Web.Endpoint)
+  end
 
   @doc """
   Retrieves the environment configuration for the application.

@@ -347,7 +347,8 @@ defmodule Bonfire.Common.RuntimeConfig do
           knobs: [
             log_min_duration_statement: {:set, 2_000},
             track_io_timing: {:set, "on"},
-            log_lock_waits: {:set, "on"}
+            log_lock_waits: {:set, "on"},
+            n_plus_1_detect: {:set, "on"}
           ]
         ],
         quiet_logs: [
@@ -577,6 +578,11 @@ defmodule Bonfire.Common.RuntimeConfig do
           layer: :elixir,
           type: :enum,
           values: [:debug, :info, :warning]
+        ],
+        n_plus_1_detect: [
+          name: l("Detect repeated queries (N+1)"),
+          layer: :elixir,
+          type: :bool
         ],
         # ── boot-time env knobs: displayed read-only with their env-var hint ──
         pool_size: [

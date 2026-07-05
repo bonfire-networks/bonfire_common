@@ -1,11 +1,9 @@
 defmodule Bonfire.Common.Telemetry.LoadTestCapture do
   @moduledoc """
-  On-demand, in-memory capture of ONLY slow DB queries, slow connection
-  checkouts (pool wait), and slow HTTP requests — for load testing without
-  drowning in Bonfire's normal logs.
+  On-demand, in-memory capture of ONLY slow DB queries, slow connection checkouts (pool wait), and slow HTTP requests. 
+  For load testing without drowning in Bonfire's normal logs.
 
-  Nothing is logged: matching events are stored in a bounded ETS ring buffer
-  and are queried afterwards (from a remote console / Tidewave):
+  Nothing is logged: matching events are stored in a bounded ETS ring buffer and are queried afterwards (from a remote console / Tidewave):
 
       alias Bonfire.Common.Telemetry.LoadTestCapture, as: Cap
       Cap.enable(); Cap.reset()    # before the load test
@@ -16,14 +14,9 @@ defmodule Bonfire.Common.Telemetry.LoadTestCapture do
       Cap.worst_requests(20)       # slowest SERVER-SIDE requests -> server vs harness
       Cap.disable()
 
-  Why three dimensions: high `queue_time` means the pool was starved (requests
-  waiting for a connection), high `query_time` means a query itself was slow
-  (bad plan / missing index / lock), and the server-side request duration tells
-  us whether a client-observed stall actually happened on the server at all (vs
-  in the load generator / network path).
+  Why three dimensions: high `queue_time` means the pool was starved (requests waiting for a connection), high `query_time` means a query itself was slow (bad plan / missing index / lock), and the server-side request duration tells us whether a client-observed stall actually happened on the server at all (vs in the load generator / network path).
 
-  It is self-starting (no supervision-tree changes) and removable: it only
-  attaches telemetry handlers while enabled and writes to its own ETS table.
+  It is self-starting (no supervision-tree changes) and removable: it only attaches telemetry handlers while enabled and writes to its own ETS table.
   """
   use GenServer
 
@@ -89,17 +82,7 @@ defmodule Bonfire.Common.Telemetry.LoadTestCapture do
     {:reply, :ok, %{state | enabled: false}}
   end
 
-  # Derive the repo's telemetry prefix rather than hardcoding it
-  defp repo_query_event do
-    prefix =
-      try do
-        Bonfire.Common.Repo.config()[:telemetry_prefix] || [:bonfire, :repo]
-      rescue
-        _ -> [:bonfire, :repo]
-      end
-
-    prefix ++ [:query]
-  end
+  defp repo_query_event, do: EctoSparkles.Log.query_event(Bonfire.Common.Repo)
 
   ## Hot-path handlers (run in the caller process; direct ETS write, no GenServer call)
 
@@ -171,15 +154,14 @@ defmodule Bonfire.Common.Telemetry.LoadTestCapture do
   defp pct([]), do: %{p50: 0.0, p95: 0.0, max: 0.0}
 
   defp pct(xs) do
-    sorted = Enum.sort(xs)
-    len = length(sorted)
-    %{p50: at(sorted, div(len, 2)), p95: at(sorted, trunc(len * 0.95)), max: List.last(sorted)}
+    %{
+      p50: Bonfire.Common.Enums.percentile(xs, 50, round: false),
+      p95: Bonfire.Common.Enums.percentile(xs, 95, round: false),
+      max: Enum.max(xs)
+    }
   end
 
-  defp at(list, i), do: Enum.at(list, min(i, length(list) - 1))
-
-  defp ms(nil), do: 0.0
-  defp ms(t), do: System.convert_time_unit(t, :native, :microsecond) / 1000
+  defp ms(t), do: EctoSparkles.Log.native_us(t) / 1000
 
   defp th, do: :persistent_term.get({@table, :th}, defaults())
 

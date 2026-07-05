@@ -1,4 +1,15 @@
 defmodule Bonfire.Common.Telemetry do
+  @moduledoc """
+  Boot-time wiring for logging/telemetry integrations (OTel, Sentry, Ecto/Oban/LiveView handlers), plus the span-end N+1 reporting handlers.
+
+  ## Process-context conventions
+
+  There are exactly TWO sanctioned ways to keep per-request/per-process context in the process dictionary, don't add a third, join a tier:
+
+  - **Tier 1: inherited, set-once request/job CONTEXT** (e.g. `caller_class`, `action`): use `Logger.metadata/1`. It tags every log line AND is readable by telemetry consumers via `ProcessTree.get(:"$logger_metadata$")`, which walks ancestors so spawned Tasks attribute to their origin. Only set-once values belong here: ProcessTree returns the WHOLE metadata map of the NEAREST ancestor that has any, so a process writing its own metadata shadows every inherited key for itself and its descendants — mutable writes here would silently break `caller_class` attribution (degrading it to `:unknown`).
+
+  - **Tier 2: mutable process-local instrumentation state** (timing accumulators like `:server_timing_start`/`:server_timing_custom`, detector state like `EctoSparkles.NPlus1Detector`'s counts): plain namespaced pdict keys via `Process.put/get`, NEVER `Logger.metadata` (per-write map rebuilds, log-line leakage, and the shadowing hazard above). Local reads/writes only.
+  """
   require Logger
   alias Bonfire.Common.Extend
 
@@ -104,17 +115,9 @@ defmodule Bonfire.Common.Telemetry do
     Oban.Telemetry.attach_default_logger(encode: false)
   end
 
-  def setup_server_timing(repo_module) do
-    if Extend.module_enabled?(Bonfire.UI.Common.ServerTimingTelemetry) do
-      Bonfire.UI.Common.ServerTimingTelemetry.setup(repo_module)
-      IO.puts("Server-Timing telemetry is set up...")
-    end
-
-    # Setup page profiler telemetry for LiveView events
-    if Extend.module_enabled?(Bonfire.UI.Common.PageTimingTelemetry) do
-      Bonfire.UI.Common.PageTimingTelemetry.setup()
-      IO.puts("Page profiler telemetry is set up...")
-    end
+  def setup_server_timing(_repo_module) do
+    # NOTE: Server-Timing / page-profiler telemetry handlers are now attached by `Bonfire.UI.Common.PageTimingStorage` when the profiler is ENABLED (boot env or live enable/disable) as attaching them unconditionally made every DB query and router/LV event pay a ProcessTree ancestor walk even with the profiler off.
+    IO.puts("Server-Timing telemetry attaches on profiler enable...")
   end
 
   defp setup_wobserver do

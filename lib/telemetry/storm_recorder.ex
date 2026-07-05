@@ -56,6 +56,16 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
     # scheduler_wall_time must be on for :scheduler.sample/0; guarded — never block start
     safe(fn -> :erlang.system_flag(:scheduler_wall_time, true) end)
 
+    # auto-enable N+1 detection for the storm window (per-row query amplification is exactly
+    # what a storm dump should attribute); the prior value is restored on stop — an admin's
+    # explicit "on" is never clobbered
+    n1_prev = Application.get_env(:ecto_sparkles, :n_plus_1_detect, false)
+
+    safe(fn ->
+      Application.put_env(:ecto_sparkles, :n_plus_1_detect, true)
+      EctoSparkles.NPlus1Reporter.setup()
+    end)
+
     Process.send_after(self(), :auto_stop, auto_stop_ms)
     {:ok, _} = :timer.send_interval(interval, :tick)
 
@@ -67,13 +77,21 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
        interval: interval,
        started_at: DateTime.utc_now(),
        last_sched_sample: safe(fn -> :scheduler.sample() end),
-       pgss_start: pg_stat_statements_top()
+       pgss_start: pg_stat_statements_top(),
+       n1_prev: n1_prev
      }}
   end
 
   @impl true
   def terminate(_reason, state) do
     detach_handlers()
+
+    # restore the pre-window N+1 detection setting (Reporter.setup/0 detaches if now off)
+    safe(fn ->
+      Application.put_env(:ecto_sparkles, :n_plus_1_detect, Map.get(state, :n1_prev, false))
+      EctoSparkles.NPlus1Reporter.setup()
+    end)
+
     log_pgss_diff(state)
     :ok
   end
@@ -122,9 +140,7 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
 
   defp detach_handlers, do: :telemetry.detach(@handler_id)
 
-  defp repo_query_event do
-    (Repo.config()[:telemetry_prefix] || [:bonfire, :common, :repo]) ++ [:query]
-  end
+  defp repo_query_event, do: EctoSparkles.Log.query_event(Repo)
 
   @doc false
   # Runs in the CALLING process — counter bumps only, and it must NEVER take the caller down.
@@ -190,9 +206,7 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
   defp sanitize(value) when is_binary(value), do: String.slice(value, 0, 60)
   defp sanitize(_), do: nil
 
-  defp native_us(nil), do: 0
-  defp native_us(v) when is_integer(v), do: System.convert_time_unit(v, :native, :microsecond)
-  defp native_us(_), do: 0
+  defp native_us(v), do: EctoSparkles.Log.native_us(v)
 
   defp bump(key, by) do
     :ets.update_counter(@tab, key, by, {key, 0})

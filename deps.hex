@@ -1,7 +1,7 @@
 arrows = "~> 0.2"
-untangle = "~> 0.4" # log/inspect with code location
+untangle = "~> 0.5" # log/inspect with code location
 
-ecto_sparkles = "~> 0.3"
+ecto_sparkles = "~> 0.4"
 ecto_sql = "~> 3.8"
 needle = "~> 0.9"
 needle_ulid = "~> 0.5"

@@ -1974,4 +1974,69 @@ defmodule Bonfire.Common.Enums do
   def string_keys?(map) when is_map(map) do
     map |> Map.keys() |> Enum.all?(&is_binary/1)
   end
+
+  @doc """
+  Arithmetic mean of a list of numbers (0 for an empty list), rounded by default (pass `round: false` for the exact float).
+
+  ## Examples
+
+      iex> avg([1, 2, 3, 4])
+      3
+
+      iex> avg([1, 2], round: false)
+      1.5
+
+      iex> avg([])
+      0
+  """
+  def avg(list, opts \\ [])
+  def avg([], _opts), do: 0
+
+  def avg(list, opts) when is_list(list),
+    do: maybe_round(Enum.sum(list) / length(list), opts)
+
+  @doc """
+  The `p`th percentile (0-100) of a list of numbers, with linear interpolation between ranks (0 for an empty list), rounded by default (pass `round: false` for the exact value).
+
+  ## Examples
+
+      iex> percentile([1, 2, 3, 4, 5], 50)
+      3
+
+      iex> percentile([1, 2, 3, 4], 50)
+      3
+
+      iex> percentile([1, 2, 3, 4], 50, round: false)
+      2.5
+
+      iex> percentile([10, 20], 95)
+      20
+
+      iex> percentile([], 99)
+      0
+  """
+  def percentile(list, p, opts \\ [])
+  def percentile([], _p, _opts), do: 0
+
+  def percentile(list, p, opts) when is_list(list) and is_number(p) do
+    sorted = Enum.sort(list)
+    k = (length(sorted) - 1) * p / 100
+    f = floor(k)
+    c = ceil(k)
+
+    value =
+      if f == c do
+        Enum.at(sorted, round(k))
+      else
+        lower = Enum.at(sorted, f)
+        upper = Enum.at(sorted, c)
+        lower + (upper - lower) * (k - f)
+      end
+
+    maybe_round(value, opts)
+  end
+
+  defp maybe_round(value, opts) do
+    if Keyword.get(opts, :round, true), do: round(value), else: value
+  end
 end
