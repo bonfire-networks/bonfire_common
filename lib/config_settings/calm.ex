@@ -46,7 +46,14 @@ defmodule Bonfire.Common.Settings.Calm do
   @doc "Per-knob transforms for a preset (optional — for consumers whose presets aren't uniform multipliers); nil = baseline."
   @callback preset_transforms(preset :: atom) :: [{knob, transform}] | nil
 
-  @optional_callbacks transform: 3, toggle_transforms: 1, preset_transforms: 1
+  @doc """
+  Resolve a STORED Level-3 value into the applied value (optional), for consumers that store
+  relative intent (e.g. a percent-of-baseline) instead of absolute numbers, so stored settings
+  stay meaningful when the underlying resources/baseline change (e.g. after a VPS resize).
+  """
+  @callback resolve_value(knob, stored :: term) :: term
+
+  @optional_callbacks transform: 3, toggle_transforms: 1, preset_transforms: 1, resolve_value: 2
 
   # ── config readers (namespaced under the consumer module) ─────────────────
 
@@ -132,9 +139,16 @@ defmodule Bonfire.Common.Settings.Calm do
   def effective(mod, keys) do
     base = values_for_preset(mod, current_preset(mod, keys[:preset])) || %{}
 
+    values = current_values(mod, keys[:values])
+
+    values =
+      if function_exported?(mod, :resolve_value, 2),
+        do: Map.new(values, fn {knob, stored} -> {knob, mod.resolve_value(knob, stored)} end),
+        else: values
+
     base
     |> Map.merge(toggled_values(mod, keys[:toggles]))
-    |> Map.merge(current_values(mod, keys[:values]))
+    |> Map.merge(values)
   end
 
   @doc "The knob values contributed by the currently-ON Level-2 toggles."

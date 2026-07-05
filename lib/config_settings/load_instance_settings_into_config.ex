@@ -39,10 +39,26 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
       # generate an updated reverse router based on extensions that are enabled/disabled
       Extend.generate_reverse_router!()
 
+      # boot re-assert for instance performance tuning: snapshot the boot baseline (pg_settings
+      # etc.) and re-apply the admin's saved intent on top — the durable copy is the Settings
+      # just loaded; the projections (ALTER SYSTEM, Logger level, app env) must be rebuilt each
+      # boot (on recipe deploys the DB entrypoint even regenerates postgresql.auto.conf).
+      # No-op when nothing deviates from the baseline; must never block/fail the boot.
+      reassert_instance_tuning()
+
       {put, Map.new(settings)}
     else
       Logger.info("No instance Settings to load into Config")
       {:ok, %{skip: "No settings to load"}}
     end
+  end
+
+  defp reassert_instance_tuning do
+    Bonfire.Common.Utils.maybe_apply(
+      Bonfire.Common.Settings.Calm.InstanceTuning,
+      :apply_current,
+      [], fallback_return: nil)
+  rescue
+    e -> Logger.warning("Could not re-assert instance tuning at boot: #{inspect(e)}")
   end
 end

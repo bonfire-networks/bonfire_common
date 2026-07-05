@@ -235,6 +235,23 @@ defmodule Bonfire.Common.RuntimeConfig do
           description: l("Fine-tune individual queue concurrency.")
         ]
       ],
+      # Human labels for known queues (advanced editor rows; unknown queues fall back to the
+      # technical name, which always shows in the row tooltip)
+      queue_labels: [
+        federator_incoming: l("Incoming activities"),
+        federator_incoming_unverified: l("Incoming activities (unverified)"),
+        federator_incoming_mentions: l("Incoming mentions & messages"),
+        federator_incoming_follows: l("Incoming follows"),
+        federator_outgoing: l("Outgoing deliveries"),
+        remote_fetcher: l("Fetching remote content"),
+        import: l("Data Imports"),
+        deletion: l("Data Deletions"),
+        database_prune: l("Database pruning"),
+        static_generator: l("Static page generation"),
+        fetch_open_science: l("Open science sync"),
+        ghost_webhooks: l("Ghost webhooks"),
+        search_index: l("Search indexing")
+      ],
       # Quick per-group boost toggles (Layer 2): toggling one runs that group of federation queues
       # at double concurrency (the `turbo` level), on top of whatever preset is active.
       groups: [
@@ -272,17 +289,17 @@ defmodule Bonfire.Common.RuntimeConfig do
         default: [
           icon: "ph:gauge-duotone",
           name: l("Default"),
-          description: l("The boot configuration, sized to the detected resources.")
+          description: l("The default configuration.")
         ],
         turbo: [
           icon: "ph:rocket-launch-duotone",
           name: l("Turbo"),
-          description: l("This machine is for Bonfire — favor speed.")
+          description: l("This machine is for Bonfire: favor speed.")
         ],
         custom: [
           icon: "ph:sliders-horizontal-duotone",
           name: l("Custom"),
-          description: l("Fine-tune individual settings.")
+          description: l("Manually adjust individual settings.")
         ]
       ],
       # Level 1: per-knob transforms over the baseline (only deviations listed)
@@ -290,7 +307,9 @@ defmodule Bonfire.Common.RuntimeConfig do
         eco: [
           work_mem: {:scale, 0.5},
           maintenance_work_mem: {:scale, 0.5},
-          log_min_duration_statement: {:set, 5_000}
+          log_min_duration_statement: {:set, 5_000},
+          lv_hibernate_after: {:set, 3_000},
+          app_log_level: {:set, :warning}
         ],
         turbo: [
           work_mem: {:scale, 2.0},
@@ -298,7 +317,8 @@ defmodule Bonfire.Common.RuntimeConfig do
           autovacuum_vacuum_cost_limit: {:set, 2_000},
           autovacuum_vacuum_cost_delay: {:set, 2.0},
           track_io_timing: {:set, "on"},
-          log_min_duration_statement: {:set, 2_000}
+          log_min_duration_statement: {:set, 2_000},
+          lv_hibernate_after: {:set, 15_000}
         ]
       ],
       # Level 2: outcome-named override toggles (each bundles a few knob transforms)
@@ -332,85 +352,318 @@ defmodule Bonfire.Common.RuntimeConfig do
         ],
         quiet_logs: [
           name: l("Quiet logs"),
-          description: l("Only log unusually slow things."),
+          description: l("Only log warnings, errors, and unusually slow things."),
           knobs: [
             log_min_duration_statement: {:set, -1},
-            log_autovacuum_min_duration: {:set, 10_000}
+            log_autovacuum_min_duration: {:set, 10_000},
+            app_log_level: {:set, :warning}
           ]
         ]
       ],
       # Level 3: the knob registry (context :user/:sighup = live on reload; :postmaster would need
-      # a restart badge — none included yet)
+      # a restart badge — none included yet). `unit:` is the HUMAN unit all our numbers use
+      # (bounds/tiers/presets/UI); the applier emits pg unit-suffixed literals and converts the
+      # pg-native units back on baseline read. `name:` is the admin-facing label (the technical
+      # GUC name shows in a tooltip).
       knob_registry: [
         work_mem: [
+          name: l("Query working memory"),
           layer: :postgres,
           context: :user,
           type: :int,
-          unit: "kB",
-          bounds: {4_096, 2_097_152},
-          tiers: [16_384, 32_768, 65_536, 131_072, 262_144]
+          unit: "MB",
+          bounds: {4, 2_048},
+          tiers: [16, 32, 64, 128, 256],
+          # admin overrides stored as % of the tuner's baseline (slider UI) — recomputes on resize
+          relative: true
         ],
         maintenance_work_mem: [
+          name: l("Maintenance memory"),
           layer: :postgres,
           context: :user,
           type: :int,
-          unit: "kB",
-          bounds: {16_384, 4_194_304}
+          unit: "MB",
+          bounds: {16, 4_096},
+          relative: true
+        ],
+        effective_cache_size: [
+          name: l("Assumed OS cache size (query planner)"),
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          unit: "MB",
+          bounds: {256, 65_536},
+          relative: true
         ],
         effective_io_concurrency: [
+          name: l("Concurrent disk reads"),
           layer: :postgres,
           context: :user,
           type: :int,
           bounds: {0, 512}
         ],
         max_parallel_workers_per_gather: [
+          name: l("Parallel workers per query"),
           layer: :postgres,
           context: :user,
           type: :int,
-          bounds: {0, 16}
+          bounds: {0, 16},
+          # CPU-scaled by the tuner → admin overrides stored as % of baseline
+          relative: true
         ],
-        random_page_cost: [layer: :postgres, context: :user, type: :real],
-        jit: [layer: :postgres, context: :user, type: :bool],
-        track_io_timing: [layer: :postgres, context: :user, type: :bool],
+        max_parallel_workers: [
+          name: l("Parallel workers (total)"),
+          layer: :postgres,
+          context: :sighup,
+          type: :int,
+          bounds: {0, 64},
+          relative: true
+        ],
+        max_parallel_maintenance_workers: [
+          name: l("Parallel maintenance workers"),
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          bounds: {0, 16},
+          relative: true
+        ],
+        default_statistics_target: [
+          name: l("Planner statistics detail"),
+          layer: :postgres,
+          context: :user,
+          type: :int,
+          bounds: {10, 10_000}
+        ],
+        random_page_cost: [
+          name: l("Random read cost (query planner)"),
+          layer: :postgres,
+          context: :user,
+          type: :real
+        ],
+        jit: [name: l("JIT query compilation"), layer: :postgres, context: :user, type: :bool],
+        track_io_timing: [
+          name: l("Track I/O timing"),
+          layer: :postgres,
+          context: :user,
+          type: :bool
+        ],
         log_min_duration_statement: [
+          name: l("Log queries slower than"),
           layer: :postgres,
           context: :user,
           type: :int,
           unit: "ms",
-          bounds: {-1, 3_600_000}
+          bounds: {-1, 3_600_000},
+          sentinels: %{-1 => l("disabled"), 0 => l("log everything")},
+          # curated choices render as a labeled select — no bare -1/0 magic numbers in the UI
+          choices: [
+            {-1, l("disabled")},
+            {100, "100 ms"},
+            {500, "500 ms"},
+            {1_000, "1 s"},
+            {2_000, "2 s"},
+            {5_000, "5 s"},
+            {30_000, "30 s"}
+          ]
         ],
         log_temp_files: [
+          name: l("Log temp files larger than"),
           layer: :postgres,
           context: :user,
           type: :int,
-          unit: "kB",
-          bounds: {-1, 1_048_576}
+          unit: "MB",
+          bounds: {-1, 1_024},
+          sentinels: %{-1 => l("disabled"), 0 => l("log all")},
+          choices: [
+            {-1, l("disabled")},
+            {0, l("log all")},
+            {8, "8 MB"},
+            {64, "64 MB"},
+            {256, "256 MB"}
+          ]
         ],
-        log_lock_waits: [layer: :postgres, context: :user, type: :bool],
-        autovacuum_vacuum_scale_factor: [layer: :postgres, context: :sighup, type: :real],
-        autovacuum_vacuum_insert_scale_factor: [layer: :postgres, context: :sighup, type: :real],
-        autovacuum_analyze_scale_factor: [layer: :postgres, context: :sighup, type: :real],
+        log_lock_waits: [
+          name: l("Log lock waits"),
+          layer: :postgres,
+          context: :user,
+          type: :bool
+        ],
+        autovacuum_vacuum_scale_factor: [
+          name: l("Vacuum when dead rows exceed (fraction)"),
+          layer: :postgres,
+          context: :sighup,
+          type: :real
+        ],
+        autovacuum_vacuum_insert_scale_factor: [
+          name: l("Vacuum after inserts exceed (fraction)"),
+          layer: :postgres,
+          context: :sighup,
+          type: :real
+        ],
+        autovacuum_analyze_scale_factor: [
+          name: l("Refresh statistics when changes exceed (fraction)"),
+          layer: :postgres,
+          context: :sighup,
+          type: :real
+        ],
         autovacuum_vacuum_cost_limit: [
+          name: l("Cleanup work per round"),
           layer: :postgres,
           context: :sighup,
           type: :int,
-          bounds: {-1, 10_000}
+          bounds: {-1, 10_000},
+          sentinels: %{-1 => l("use the global vacuum limit")},
+          choices: [
+            {-1, l("use the global vacuum limit")},
+            {200, l("gentle (200)")},
+            {1_000, l("steady (1000)")},
+            {2_000, l("brisk (2000)")},
+            {5_000, l("aggressive (5000)")}
+          ]
         ],
-        autovacuum_vacuum_cost_delay: [layer: :postgres, context: :sighup, type: :real],
+        autovacuum_vacuum_cost_delay: [
+          name: l("Cleanup pause between rounds"),
+          layer: :postgres,
+          context: :sighup,
+          type: :real,
+          unit: "ms"
+        ],
         autovacuum_naptime: [
+          name: l("Time between cleanup checks"),
           layer: :postgres,
           context: :sighup,
           type: :int,
           unit: "s",
           bounds: {1, 86_400}
         ],
-        log_checkpoints: [layer: :postgres, context: :sighup, type: :bool],
+        log_checkpoints: [
+          name: l("Log checkpoints"),
+          layer: :postgres,
+          context: :sighup,
+          type: :bool
+        ],
         log_autovacuum_min_duration: [
+          name: l("Log cleanups slower than"),
           layer: :postgres,
           context: :sighup,
           type: :int,
           unit: "ms",
-          bounds: {-1, 3_600_000}
+          bounds: {-1, 3_600_000},
+          sentinels: %{-1 => l("disabled"), 0 => l("log all")},
+          choices: [
+            {-1, l("disabled")},
+            {0, l("log all")},
+            {1_000, "1 s"},
+            {10_000, "10 s"},
+            {60_000, "1 min"}
+          ]
+        ],
+        # ── Elixir layer (live via Logger.configure / app env read at call time) ──
+        app_log_level: [
+          name: l("App log level"),
+          layer: :elixir,
+          type: :enum,
+          values: [:debug, :info, :warning, :error]
+        ],
+        ecto_slow_query_ms: [
+          name: l("Log queries slower than (app-side)"),
+          layer: :elixir,
+          type: :int,
+          unit: "ms",
+          bounds: {50, 60_000}
+        ],
+        ecto_queries_log_level: [
+          name: l("Query log level"),
+          layer: :elixir,
+          type: :enum,
+          values: [:debug, :info, :warning]
+        ],
+        # ── boot-time env knobs: displayed read-only with their env-var hint ──
+        pool_size: [
+          name: l("Database pool size"),
+          layer: :elixir,
+          read_only: true,
+          env: "POOL_SIZE",
+          repo_key: :pool_size
+        ],
+        db_query_timeout: [
+          name: l("Query timeout"),
+          layer: :elixir,
+          read_only: true,
+          env: "DB_QUERY_TIMEOUT",
+          unit: "ms",
+          repo_key: :timeout
+        ],
+        db_connect_timeout: [
+          name: l("Database connect timeout"),
+          layer: :elixir,
+          read_only: true,
+          env: "DB_CONNECT_TIMEOUT",
+          unit: "ms",
+          repo_key: :connect_timeout
+        ],
+
+        # LIVE: LV reads endpoint.config(:live_view)[:hibernate_after] from mutable ETS per mount
+        # (verified in deps 2026-07-05) — new mounts pick changes up instantly, no restart
+        lv_hibernate_after: [
+          name: l("LiveView hibernation delay"),
+          layer: :elixir,
+          type: :int,
+          unit: "ms",
+          bounds: {1_000, 120_000},
+          tiers: [3_000, 7_000, 15_000, 30_000]
+        ],
+        finch_connect_timeout: [
+          name: l("Outbound HTTP connect timeout"),
+          layer: :elixir,
+          read_only: true,
+          env: "FINCH_CONNECT_TIMEOUT",
+          unit: "ms",
+          display_default: "5000"
+        ],
+        # ── deploy-side Postgres tuner inputs (read by postgres-tune.sh at DB CONTAINER start —
+        # the app can only display them, and only if the deploy compose passes them to the app
+        # service too; changing them = edit deploy env + restart the db service) ──
+        available_ram_mb: [
+          name: l("RAM allotted to services (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "AVAILABLE_RAM_MB",
+          unit: "MB"
+        ],
+        pg_ram_percent: [
+          name: l("Share of RAM for the database (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "PG_RAM_PERCENT",
+          unit: "%"
+        ],
+        cpu_count: [
+          name: l("CPU cores assumed by the DB tuner (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "CPU_COUNT"
+        ],
+        pg_db_type: [
+          name: l("Database workload profile (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "PG_DB_TYPE",
+          display_default: "mixed"
+        ],
+        disk_storage_type: [
+          name: l("Database disk type (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "DISK_STORAGE_TYPE",
+          display_default: "ssd"
+        ],
+        pg_max_connections: [
+          name: l("Max database connections (deploy)"),
+          layer: :elixir,
+          read_only: true,
+          env: "PG_MAX_CONNECTIONS",
+          display_default: "100"
         ]
       ]
   end
