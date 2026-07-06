@@ -584,6 +584,51 @@ defmodule Bonfire.Common.RuntimeConfig do
           layer: :elixir,
           type: :bool
         ],
+        # ── Overload shedding (`Bonfire.Common.Overload` reads these live, per tick) ──
+        overload_mode: [
+          name: l("Overload protection"),
+          layer: :elixir,
+          type: :enum,
+          values: [:monitor, :enforce, :off]
+        ],
+        overload_run_queue_soft_multiplier: [
+          name: l("Overload: soft threshold (× CPU cores)"),
+          layer: :elixir,
+          bounds: {1, 64}
+        ],
+        overload_run_queue_hard_multiplier: [
+          name: l("Overload: hard threshold (× CPU cores)"),
+          layer: :elixir,
+          bounds: {2, 128}
+        ],
+        overload_up_ticks: [
+          name: l("Overload: ticks to escalate"),
+          layer: :elixir,
+          bounds: {1, 30}
+        ],
+        overload_down_ticks: [
+          name: l("Overload: clear ticks to relax"),
+          layer: :elixir,
+          bounds: {3, 120}
+        ],
+        overload_cooldown_ms: [
+          name: l("Overload: cooldown after hard"),
+          layer: :elixir,
+          unit: "ms",
+          bounds: {0, 600_000}
+        ],
+        overload_retry_base_s: [
+          name: l("Overload: minimum retry delay"),
+          layer: :elixir,
+          unit: "s",
+          bounds: {5, 120}
+        ],
+        overload_retry_max_s: [
+          name: l("Overload: maximum retry delay"),
+          layer: :elixir,
+          unit: "s",
+          bounds: {30, 600}
+        ],
         # ── boot-time env knobs: displayed read-only with their env-var hint ──
         pool_size: [
           name: l("Database pool size"),

@@ -289,6 +289,27 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
       EctoSparkles.NPlus1Reporter.setup()
     end
 
+    # Overload shedding knobs: projected into the app env the sampler re-reads per tick,
+    # so changes are live within one tick (~2s), no process restart
+    @overload_keys %{
+      overload_mode: :mode,
+      overload_run_queue_soft_multiplier: :run_queue_soft_multiplier,
+      overload_run_queue_hard_multiplier: :run_queue_hard_multiplier,
+      overload_up_ticks: :up_ticks,
+      overload_down_ticks: :down_ticks,
+      overload_cooldown_ms: :cooldown_ms,
+      overload_retry_base_s: :retry_base_s,
+      overload_retry_max_s: :retry_max_s
+    }
+
+    defp apply_one({knob, value}) when is_map_key(@overload_keys, knob),
+      do:
+        Bonfire.Common.Config.put(
+          [Bonfire.Common.Overload, Map.fetch!(@overload_keys, knob)],
+          value,
+          :bonfire_common
+        )
+
     # LIVE: LV reads endpoint.config(:live_view)[:hibernate_after] from the endpoint's mutable
     # ETS config per mount — config_change updates it, new mounts pick it up, no restart
     defp apply_one({:lv_hibernate_after, ms}) when is_integer(ms) do
@@ -322,6 +343,10 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
 
     defp current_value(:n_plus_1_detect),
       do: if(EctoSparkles.NPlus1Detector.enabled?(), do: "on", else: "off")
+
+    # defaults live in ONE place: Overload.config/0 (the effective values the sampler runs with)
+    defp current_value(knob) when is_map_key(@overload_keys, knob),
+      do: Keyword.get(Bonfire.Common.Overload.config(), Map.fetch!(@overload_keys, knob))
 
     defp current_value(:lv_hibernate_after) do
       endpoint = Bonfire.Common.Config.endpoint_module()

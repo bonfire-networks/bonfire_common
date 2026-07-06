@@ -57,7 +57,9 @@ defmodule Bonfire.Common.Settings.LoadInstanceConfig do
     Bonfire.Common.Utils.maybe_apply(
       Bonfire.Common.Settings.Calm.InstanceTuning,
       :apply_current,
-      [], fallback_return: nil)
+      [],
+      fallback_return: nil
+    )
   rescue
     e -> Logger.warning("Could not re-assert instance tuning at boot: #{inspect(e)}")
   end

@@ -131,7 +131,9 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
       [
         repo_query_event(),
         [:phoenix, :router_dispatch, :stop],
-        [:finch, :request, :stop]
+        [:finch, :request, :stop],
+        # Overload shed decisions land in the storm window they belong to
+        [:bonfire, :overload, :shed]
       ],
       &__MODULE__.handle_event/4,
       %{repo_query_event: repo_query_event()}
@@ -176,6 +178,9 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
       event == [:finch, :request, :stop] ->
         bump({:out, :count}, 1)
         bump({:out, :us}, native_us(measurements[:duration]))
+
+      event == [:bonfire, :overload, :shed] ->
+        bump({:shed, sanitize(meta[:class]) || :unknown}, 1)
 
       true ->
         :ok
@@ -254,7 +259,13 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
   defp snapshot(sched_util) do
     %{
       at: DateTime.utc_now(),
-      run_queue: safe(fn -> :erlang.statistics(:total_run_queue_lengths_all) end) || 0,
+      # prefer Overload's published sample — storm snapshots then show the SAME number the shed
+      # decisions used; fall back to a direct read when the sampler isn't running/is :off
+      run_queue:
+        Bonfire.Common.Overload.pressure()[:run_queue] ||
+          safe(fn -> :erlang.statistics(:total_run_queue_lengths_all) end) || 0,
+      overload_level: Bonfire.Common.Overload.raw_level(),
+      sheds: drain_sheds(),
       schedulers: System.schedulers_online(),
       sched_util: sched_util,
       memory: :erlang.memory() |> Map.new() |> Map.take([:total, :processes, :binary]),
@@ -282,6 +293,14 @@ defmodule Bonfire.Common.Telemetry.StormRecorder do
          queue_max_us: take_counter({:db, class, :queue_max_us}),
          query_us: take_counter({:db, class, :query_us})
        }}
+    end)
+  end
+
+  defp drain_sheds do
+    :ets.match(@tab, {{:shed, :"$1"}, :"$2"})
+    |> Map.new(fn [class, count] ->
+      :ets.delete(@tab, {:shed, class})
+      {class, count}
     end)
   end
 
