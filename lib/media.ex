@@ -446,8 +446,7 @@ defmodule Bonfire.Common.Media do
   end
 
   def banner_fallback(default \\ "/images/bonfires.png"),
-    do:
-      Config.get([:ui, :default_images, :banner], default, name: l("Default banner image"))
+    do: Config.get([:ui, :default_images, :banner], default, name: l("Default banner image"))
 
   def emoji_url(media, opts \\ []),
     do:
