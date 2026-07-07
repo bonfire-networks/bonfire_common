@@ -266,7 +266,8 @@ defmodule Bonfire.Common.DatesTimes do
       case string
            |> String.trim("/")
            |> DateTime.from_iso8601() do
-        {:ok, datetime, 0} ->
+        # `from_iso8601` already normalizes to UTC, so any offset is acceptable
+        {:ok, datetime, _offset} ->
           datetime
 
         other ->
