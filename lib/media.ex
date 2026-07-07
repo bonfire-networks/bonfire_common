@@ -398,6 +398,9 @@ defmodule Bonfire.Common.Media do
       iex> banner_url(%{nonexistent_key: "value"})
       # Assume banner_fallback/0 returns "/images/bonfires.png"
       "/images/bonfires.png"
+
+      iex> banner_url(%{nonexistent_key: "value"}, fallback: false)
+      nil
   """
   def banner_url(media, opts \\ [])
 
@@ -434,13 +437,17 @@ defmodule Bonfire.Common.Media do
 
   def banner_url(%{image: url}, _opts) when is_binary(url), do: url
   def banner_url(%{profile: profile}, opts), do: banner_url(profile, opts)
-  def banner_url(_obj, _opts), do: banner_fallback()
 
-  def banner_fallback,
+  def banner_url(_obj, opts) do
+    if Keyword.get(opts, :fallback, true),
+      do: banner_fallback(),
+      # still honour an instance-configured default banner, just skip the built-in one
+      else: banner_fallback(nil)
+  end
+
+  def banner_fallback(default \\ "/images/bonfires.png"),
     do:
-      Config.get([:ui, :default_images, :banner], "/images/bonfires.png",
-        name: l("Default banner image")
-      )
+      Config.get([:ui, :default_images, :banner], default, name: l("Default banner image"))
 
   def emoji_url(media, opts \\ []),
     do:
