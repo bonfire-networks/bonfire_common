@@ -348,7 +348,7 @@ defmodule Bonfire.Common.URIs do
       id
     else
       obj
-      # |> debug("with character")
+      # TODO: what does this do and why?
       |> repo().maybe_preload(:character)
       |> e(:character, id)
       |> path_id(preload_if_needed: false)
@@ -443,42 +443,39 @@ defmodule Bonfire.Common.URIs do
     canonical_url
   end
 
-  def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object, opts) do
-    object =
-      if opts[:preload_if_needed] != false,
-        do: repo().maybe_preload(object, :peered),
-        else: object
-
-    e(object, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object, opts)
-  end
-
-  def canonical_url(%{peered: %{}} = object, _opts) do
-    maybe_generate_canonical_url(object)
-  end
-
-  def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object, opts) do
-    object =
-      if opts[:preload_if_needed] != false,
-        do: repo().maybe_preload(object, created: [:peered]),
-        else: object
-
-    e(object, :created, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object, opts)
-  end
-
+  # Character-bearing structs (a User or Category) carry their locality on `character.peered`, not top-level `:peered`, so handle them before the top-level `:peered` clauses below (otherwise a local actor with an unloaded top-level `:peered` would wrongly trip that clause).
   def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object, opts) do
     object =
-      if opts[:preload_if_needed] != false,
-        do: repo().maybe_preload(object, character: [:peered]),
-        else: object
+      warn_and_maybe_preload(object, [character: [:peered]], opts[:preload_if_needed])
 
     e(object, :character, :peered, :canonical_uri, nil) ||
       query_or_generate_canonical_url(object, opts)
   end
 
-  def canonical_url(%{character: %{peered: %{}}} = object, _opts) do
-    maybe_generate_canonical_url(object)
+  def canonical_url(%{character: %{peered: %{}}} = object, opts) do
+    maybe_generate_canonical_url(object, opts)
+  end
+
+  # Only for non-actor objects (e.g. a Post): an actor carries its locality on `:peered` under `character` (User/Category, which have a `:character` key) or on its own `:peered` (a bare Character, which has a `:username` key), and for a local actor that `:peered` is legitimately unloaded, so actors skip this tripwire and fall to the `%{peered: %{}}` generate clause below.
+  def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object, opts)
+      when not is_map_key(object, :character) and not is_map_key(object, :username) do
+    object =
+      warn_and_maybe_preload(object, :peered, opts[:preload_if_needed])
+
+    e(object, :peered, :canonical_uri, nil) ||
+      query_or_generate_canonical_url(object, opts)
+  end
+
+  def canonical_url(%{peered: %{}} = object, opts) do
+    maybe_generate_canonical_url(object, opts)
+  end
+
+  def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object, opts) do
+    object =
+      warn_and_maybe_preload(object, [created: [:peered]], opts[:preload_if_needed])
+
+    e(object, :created, :peered, :canonical_uri, nil) ||
+      query_or_generate_canonical_url(object, opts)
   end
 
   def canonical_url(%{path: "http" <> _ = url} = _object, _opts) do
@@ -508,9 +505,9 @@ defmodule Bonfire.Common.URIs do
   defp query_or_generate_canonical_url(object, opts) do
     if opts[:preload_if_needed] != false do
       remote_canonical_url(object) ||
-        maybe_generate_canonical_url(object)
+        maybe_generate_canonical_url(object, opts)
     else
-      if check_is_local?(object, opts), do: maybe_generate_canonical_url(object)
+      if check_is_local?(object, opts), do: maybe_generate_canonical_url(object, opts)
     end
   end
 
@@ -522,19 +519,51 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  def maybe_generate_canonical_url(%{character: %{username: id}}) when is_binary(id) do
-    maybe_generate_canonical_url(id)
+  # Loads `assoc` on demand when it wasn't preloaded upstream, and warns about it unless the caller explicitly opted into lazy loading with `preload_if_needed: true` (so a code path that just forgot to preload at the source is surfaced, while a deliberate lazy caller stays quiet). Returns the object preloaded, unless `preload_if_needed: false` skips the preload and returns it unchanged.
+  defp warn_and_maybe_preload(object, assoc, preload_if_needed?) do
+    if preload_if_needed? != true,
+      do: err(object, "#{inspect(assoc)} association(s) should be preloaded at the source")
+
+    if preload_if_needed? != false,
+      do: repo().maybe_preload(object, assoc),
+      else: object
   end
 
-  def maybe_generate_canonical_url(%{username: id}) when is_binary(id) do
-    maybe_generate_canonical_url(id)
+  @doc """
+  Generates the canonical ActivityPub URL for a local actor or object struct.
+
+  NEW local actors (created after the configured `:ulid_actor_ids_since` cutoff) federate with a ULID-based actor id (`/pub/person/<ULID>`, `/pub/group/<ULID>`, `/pub/organization/<ULID>`) instead of `/pub/actors/<username>`. Existing actors, and everything when the cutoff is unset, keep their username URL. WebFinger still advertises `acct:<username>@host` since that handle comes from `preferredUsername`, not the id.
+
+  `opts` is threaded through so `shared_user?/2` can honour `preload_if_needed`, the same lazy-preload pattern the `canonical_url` clauses use for `:peered`.
+  """
+  def maybe_generate_canonical_url(object, opts \\ [])
+
+  def maybe_generate_canonical_url(%{character: %{username: username}, id: id} = actor, opts)
+      when is_binary(username) and is_binary(id) do
+    case new_actor_scheme?(id) && actor_type_segment(actor, opts) do
+      segment when is_binary(segment) ->
+        ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
+        "#{base_url()}#{ap_base_path}/#{segment}/#{id}"
+
+      _ ->
+        # feature off, pre-cutoff actor, or a type we can't name → keep the username URL
+        maybe_generate_canonical_url(username, opts)
+    end
   end
 
-  def maybe_generate_canonical_url(%{id: id}) when is_binary(id) do
-    maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{character: %{username: id}}, opts) when is_binary(id) do
+    maybe_generate_canonical_url(id, opts)
   end
 
-  def maybe_generate_canonical_url(id) when is_binary(id) do
+  def maybe_generate_canonical_url(%{username: id}, opts) when is_binary(id) do
+    maybe_generate_canonical_url(id, opts)
+  end
+
+  def maybe_generate_canonical_url(%{id: id}, opts) when is_binary(id) do
+    maybe_generate_canonical_url(id, opts)
+  end
+
+  def maybe_generate_canonical_url(id, _opts) when is_binary(id) do
     ap_base_path = Bonfire.Common.Config.get(:ap_base_path, "/pub")
 
     if Types.is_uid?(id) do
@@ -544,24 +573,74 @@ defmodule Bonfire.Common.URIs do
     end
   end
 
-  def maybe_generate_canonical_url(%{"id" => id}),
-    do: maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{"id" => id}, opts),
+    do: maybe_generate_canonical_url(id, opts)
 
-  def maybe_generate_canonical_url(%{"username" => id}),
-    do: maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{"username" => id}, opts),
+    do: maybe_generate_canonical_url(id, opts)
 
-  def maybe_generate_canonical_url(%{username: id}),
-    do: maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{username: id}, opts),
+    do: maybe_generate_canonical_url(id, opts)
 
-  def maybe_generate_canonical_url(%{"displayUsername" => id}),
-    do: maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{"displayUsername" => id}, opts),
+    do: maybe_generate_canonical_url(id, opts)
 
-  def maybe_generate_canonical_url(%{"preferredUsername" => id}),
-    do: maybe_generate_canonical_url(id)
+  def maybe_generate_canonical_url(%{"preferredUsername" => id}, opts),
+    do: maybe_generate_canonical_url(id, opts)
 
-  def maybe_generate_canonical_url(_) do
+  def maybe_generate_canonical_url(_, _opts) do
     nil
   end
+
+  # A local actor uses the ULID scheme iff a cutoff ULID is configured and its id sorts after
+  # it (ULIDs are chronological, so this means "created after the cutoff"). Read via Config so
+  # tests can prime it (`Process.put`/`Application.put_env`); in prod it's set once at boot.
+  # Well-known singleton actors (e.g. the service/instance actor, whose hand-crafted id sorts
+  # after real ULIDs) are exempted so they always keep their stable username-based URL.
+  defp new_actor_scheme?(id) when is_binary(id) do
+    case Bonfire.Common.Config.get(:ulid_actor_ids_since, nil) do
+      cutoff when is_binary(cutoff) and cutoff != "" ->
+        id > cutoff and id not in Bonfire.Common.Config.get(:reserved_username_actor_ids, [])
+
+      _ ->
+        false
+    end
+  end
+
+  defp new_actor_scheme?(_), do: false
+
+  # The AP-actor-type path segment for a local character struct. Mirrors the federation type
+  # mapping: a Category is a Group, a User with a `shared_user` mixin (a team/organisation
+  # account) is an Organization, any other User is a Person. Returns nil for anything we can't
+  # name, so the caller falls back to the username URL rather than minting a mislabelled ULID URL.
+  defp actor_type_segment(%{__struct__: module} = actor, opts) do
+    cond do
+      module == Bonfire.Classify.Category ->
+        "group"
+
+      module == Bonfire.Data.Identity.User ->
+        if shared_user?(actor, opts), do: "organization", else: "person"
+
+      true ->
+        nil
+    end
+  end
+
+  defp actor_type_segment(_, _opts), do: nil
+
+  @doc "True if the given User is an organisation/shared account, i.e. it carries a loaded `shared_user` mixin. If the assoc isn't loaded yet, loads it on demand (unless `preload_if_needed: false`), the same lazy pattern the `canonical_url` clauses use for `:peered`, so callers don't have to remember to preload it."
+  def shared_user?(actor, opts \\ [])
+
+  def shared_user?(%{shared_user: %Ecto.Association.NotLoaded{}} = actor, opts) do
+    case warn_and_maybe_preload(actor, :shared_user, opts[:preload_if_needed]) do
+      # `preload_if_needed: false` left it unloaded, so we can't tell: treat as non-org
+      %{shared_user: %Ecto.Association.NotLoaded{}} -> false
+      reloaded -> shared_user?(reloaded, opts)
+    end
+  end
+
+  def shared_user?(%{shared_user: %_{}}, _opts), do: true
+  def shared_user?(_, _opts), do: false
 
   @doc """
   Returns the homepage URI (as struct) of the local instance.
