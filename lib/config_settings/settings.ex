@@ -4,19 +4,19 @@ defmodule Bonfire.Common.Settings do
 
   This module provides functionality for fetching and updating application and extension settings. The process for fetching settings follows a bottom-up system of overrides:
 
-  1. **User-specific settings:** 
+  1. **User-specific settings:**
     If `opts` contains `current_user`, settings are fetched from the user's settings.
 
-  2. **Account-specific settings:** 
+  2. **Account-specific settings:**
     If no settings are found for the user and `opts` contains `current_account`, settings are fetched from the account's settings.
 
-  3. **Instance-specific settings:** 
+  3. **Instance-specific settings:**
      NOTE: Changes to instance settings are stored both in the database and the OTP app config/application environment, and are loaded from the DB into OTP config at app startup by `Bonfire.Common.Settings.LoadInstanceConfig`.
 
-  4. **Default OTP config:** 
+  4. **Default OTP config:**
     If no settings are found at the user or account level, instance settings are loaded from OTP application configuration via `Bonfire.Common.Config`.
 
-  5. **Default value:** 
+  5. **Default value:**
     If no settings are found in the previous steps, the provided `default` value is returned.
 
   """
@@ -72,7 +72,7 @@ defmodule Bonfire.Common.Settings do
 
       > get([:bonfire_common, :otp_app])
       :bonfire
-      
+
       iex> get([Bonfire.Common.Localise.Cldr, :gettext])
       Bonfire.Common.Localise.Gettext
 
@@ -80,7 +80,7 @@ defmodule Bonfire.Common.Settings do
       Bonfire.Common.Localise.Gettext
 
   ## Options
-    * `:otp_app` - Optionally specifies the OTP application for which to fetch settings. If none is specified, it will look at the (first) key and check if it references a known OTP application (i.e. an extension) or a module, in which case it will fetch settings from that application. Otherwise it will look in the configured top-level OTP app (see `Config.top_level_otp_app/0`). 
+    * `:otp_app` - Optionally specifies the OTP application for which to fetch settings. If none is specified, it will look at the (first) key and check if it references a known OTP application (i.e. an extension) or a module, in which case it will fetch settings from that application. Otherwise it will look in the configured top-level OTP app (see `Config.top_level_otp_app/0`).
     * `:scope` - Optionally defines the scope for settings retrieval (e.g., `:user`, `:account`, or `:instance`).
   """
   Bonfire.Common.ConfigSettingsRegistration.def_registered_macro(
@@ -261,7 +261,12 @@ defmodule Bonfire.Common.Settings do
       |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
     else
       if is_map(result) or is_list(result) do
-        ed(result, keys_tree, nil)
+        lookup =
+          if is_list(result) and Enum.all?(result, &match?({_, _}, &1)),
+            do: Map.new(result),
+            else: result
+
+        ed(lookup, keys_tree, nil)
         |> maybe_fallback(default)
         |> debug("settings for #{inspect(keys_tree)}", trace_skip: 2)
       else

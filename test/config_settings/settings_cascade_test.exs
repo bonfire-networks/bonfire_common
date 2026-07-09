@@ -182,4 +182,26 @@ defmodule Bonfire.Common.SettingsCascadeTest do
       assert Bonfire.Common.Enums.get_eager(result, :size, nil) == "large"
     end
   end
+
+  describe "do_get_in/3 with a branch that isn't a valid keyword list" do
+    # A settings branch can hold non-atom keys (user-defined slugs from a widget, orphaned
+    # data, form artifacts). That makes it an invalid keyword list, so `get_in/2` is skipped.
+    # Sibling atom keys must still resolve rather than silently returning the default.
+    test "resolves a sibling atom key despite a string key in the branch" do
+      branch = [
+        {"widget_articles", [categories: [featured: true]]},
+        {:auto_import_articles, true},
+        {:ghost_url, "https://blog.example"}
+      ]
+
+      assert Settings.do_get_in(branch, [:auto_import_articles], false) == true
+      assert Settings.do_get_in(branch, [:ghost_url], nil) == "https://blog.example"
+    end
+
+    test "falls back to the default when the atom key is genuinely absent" do
+      branch = [{"some_slug", true}, {:other_key, 1}]
+
+      assert Settings.do_get_in(branch, [:missing_key], :default) == :default
+    end
+  end
 end
