@@ -135,57 +135,84 @@ defmodule Bonfire.Common.Repo.Preload do
     repo().preload(objects, preloads, opts)
   rescue
     e in ArgumentError ->
+      # A single invalid (sub-)assoc makes the whole batch `Repo.preload` raise (e.g. a
+      # heterogeneous list where one object's schema lacks an assoc). Recover by preloading the
+      # valid subset instead of dropping everything (the long-standing TODO).
       warn(
         e.message,
-        "skipped preload due to wrong argument: #{inspect(preloads)}"
+        "batch preload raised; recovering by preloading only the valid entries: #{inspect(preloads)}"
       )
 
-      # TODO
-      debug(
-        objects,
-        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-      )
-
-    e in ArgumentError ->
-      warn(
-        e.message,
-        "skipped preload due to wrong function clause: #{inspect(preloads)}"
-      )
-
-      # TODO
-      debug(
-        objects,
-        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-      )
-
-    e ->
-      error(e, "skipped preload with rescue: #{inspect(preloads)}")
-      # TODO
-      debug(
-        objects,
-        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-      )
+      recover_preload(objects, preloads, opts)
   catch
     :exit, e ->
       error(e, "skipped with exit: #{inspect(preloads)}")
-      # TODO
-      debug(
-        objects,
-        "returning non-preloaded object - TODO: we should still preload the assocs that do exist when one in the list was invalid"
-      )
+      objects
 
     e ->
       error(e, "skipped with catch: #{inspect(preloads)}")
-      # TODO
-      debug(
-        objects,
-        "returning non-preloaded object, but we should still preload the assocs that do exist when one in the list was invalid"
-      )
+      objects
   end
 
   defp try_repo_preload(obj, preloads, _) do
     warn(preloads, "unsupported preloads, return original object(s)")
     obj
+  end
+
+  # Recovery path (only after a batch preload raised): preload the valid subset of `preloads`,
+  # pruning any invalid (sub-)entry at ANY depth, so one bad assoc doesn't drop the rest.
+  defp recover_preload(objects, preloads, opts) do
+    case prune_preloads(objects, List.wrap(preloads), &List.wrap/1, opts) do
+      [] ->
+        objects
+
+      pruned ->
+        try do
+          repo().preload(objects, pruned, opts)
+        rescue
+          _ -> objects
+        end
+    end
+  end
+
+  # Returns the subset of `entries` that `Repo.preload` accepts, recursing into nested preloads.
+  # `wrap` turns a candidate (sub-)entry into the FULL preload spec to test, so a nested entry is
+  # validated in its parent's context (e.g. testing `:peered` as `[character: [:peered]]`).
+  defp prune_preloads(objects, entries, wrap, opts) do
+    Enum.flat_map(entries, fn entry ->
+      cond do
+        preloadable?(objects, wrap.(entry), opts) ->
+          [entry]
+
+        match?({_assoc, _nested}, entry) ->
+          {assoc, nested} = entry
+
+          case prune_preloads(
+                 objects,
+                 List.wrap(nested),
+                 fn sub -> wrap.({assoc, List.wrap(sub)}) end,
+                 opts
+               ) do
+            [] ->
+              # the nested list is fully invalid; keep the assoc alone if it loads on its own
+              if preloadable?(objects, wrap.(assoc), opts), do: [assoc], else: []
+
+            valid_nested ->
+              [{assoc, valid_nested}]
+          end
+
+        true ->
+          # an atom assoc that doesn't load: skip it
+          []
+      end
+    end)
+  end
+
+  defp preloadable?(objects, spec, opts) do
+    repo().preload(objects, spec, opts)
+    true
+  rescue
+    ArgumentError -> false
   end
 
   @doc """
