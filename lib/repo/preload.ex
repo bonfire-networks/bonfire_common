@@ -137,32 +137,36 @@ defmodule Bonfire.Common.Repo.Preload do
     e in ArgumentError ->
       # A single invalid (sub-)assoc makes the whole batch `Repo.preload` raise (e.g. a
       # heterogeneous list where one object's schema lacks an assoc). Recover by preloading the
-      # valid subset instead of dropping everything (the long-standing TODO).
-      warn(
-        e.message,
-        "batch preload raised; recovering by preloading only the valid entries: #{inspect(preloads)}"
-      )
+      # valid subset instead of dropping everything (the long-standing TODO). `err` raises in test
+      # env so the bad preload list gets fixed at its source; pass `skip_err: true` to only warn
+      # (used by the recovery tests to exercise this path).
+      msg = "batch preload raised; recovering by preloading only the valid entries: #{inspect(preloads)}"
+
+      if opts[:skip_err],
+        do: warn(e.message, msg),
+        else: err(e.message, msg)
 
       recover_preload(objects, preloads, opts)
   catch
     :exit, e ->
-      error(e, "skipped with exit: #{inspect(preloads)}")
+      err(e, "skipped with exit: #{inspect(preloads)}")
       objects
 
     e ->
-      error(e, "skipped with catch: #{inspect(preloads)}")
+      err(e, "skipped with catch: #{inspect(preloads)}")
       objects
   end
 
   defp try_repo_preload(obj, preloads, _) do
-    warn(preloads, "unsupported preloads, return original object(s)")
+    err(preloads, "unsupported preloads, return original object(s)")
     obj
   end
 
-  # Recovery path (only after a batch preload raised): preload the valid subset of `preloads`,
-  # pruning any invalid (sub-)entry at ANY depth, so one bad assoc doesn't drop the rest.
+  # Recovery path (only after a batch preload raised): prune the invalid (sub-)entries via schema
+  # REFLECTION (`__schema__(:association, name)` — no queries), then run ONE `Repo.preload` with the
+  # valid subset, so one bad assoc doesn't drop the rest and nothing is loaded twice.
   defp recover_preload(objects, preloads, opts) do
-    case prune_preloads(objects, List.wrap(preloads), &List.wrap/1, opts) do
+    case prune_preloads(object_schemas(objects), List.wrap(preloads)) do
       [] ->
         objects
 
@@ -175,44 +179,63 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
-  # Returns the subset of `entries` that `Repo.preload` accepts, recursing into nested preloads.
-  # `wrap` turns a candidate (sub-)entry into the FULL preload spec to test, so a nested entry is
-  # validated in its parent's context (e.g. testing `:peered` as `[character: [:peered]]`).
-  defp prune_preloads(objects, entries, wrap, opts) do
-    Enum.flat_map(entries, fn entry ->
-      cond do
-        preloadable?(objects, wrap.(entry), opts) ->
-          [entry]
+  defp object_schemas(objects) do
+    objects
+    |> List.wrap()
+    |> Enum.map(fn
+      %schema{} -> schema
+      _ -> nil
+    end)
+    |> Enum.uniq()
+  end
 
-        match?({_assoc, _nested}, entry) ->
-          {assoc, nested} = entry
+  # Keeps the entries whose assoc every schema in the (possibly heterogeneous) list defines,
+  # recursing into nested preloads via each assoc's related schema.
+  defp prune_preloads(schemas, entries) do
+    Enum.flat_map(entries, fn
+      assoc when is_atom(assoc) ->
+        if known_assoc?(schemas, assoc), do: [assoc], else: []
 
-          case prune_preloads(
-                 objects,
-                 List.wrap(nested),
-                 fn sub -> wrap.({assoc, List.wrap(sub)}) end,
-                 opts
-               ) do
-            [] ->
-              # the nested list is fully invalid; keep the assoc alone if it loads on its own
-              if preloadable?(objects, wrap.(assoc), opts), do: [assoc], else: []
+      {assoc, nested} when is_atom(assoc) and (is_list(nested) or is_atom(nested)) ->
+        related = known_assoc?(schemas, assoc) && related_schemas(schemas, assoc)
 
-            valid_nested ->
-              [{assoc, valid_nested}]
-          end
+        cond do
+          related == false ->
+            []
 
-        true ->
-          # an atom assoc that doesn't load: skip it
-          []
-      end
+          related == [] ->
+            # can't resolve the nested schema (e.g. a through-assoc): keep the entry as-is; if its
+            # nested part is what's invalid, the outer rescue returns the objects unchanged
+            [{assoc, nested}]
+
+          true ->
+            case prune_preloads(related, List.wrap(nested)) do
+              [] -> [assoc]
+              valid_nested -> [{assoc, valid_nested}]
+            end
+        end
+
+      other ->
+        # entries we can't reflect on (queries, functions): keep them; the outer rescue copes
+        [other]
     end)
   end
 
-  defp preloadable?(objects, spec, opts) do
-    repo().preload(objects, spec, opts)
-    true
-  rescue
-    ArgumentError -> false
+  defp known_assoc?(schemas, assoc) do
+    schemas != [] and
+      Enum.all?(schemas, fn schema ->
+        is_atom(schema) and not is_nil(schema) and function_exported?(schema, :__schema__, 2) and
+          not is_nil(schema.__schema__(:association, assoc))
+      end)
+  end
+
+  # The related schema(s) an assoc points at, via the existing reflection helper (which returns
+  # nil/false for shapes with no queryable, e.g. through-assocs).
+  defp related_schemas(schemas, assoc) do
+    schemas
+    |> Enum.map(&Needles.Tables.maybe_assoc_module(assoc, &1))
+    |> Enum.filter(&(is_atom(&1) and not is_nil(&1) and &1 != false))
+    |> Enum.uniq()
   end
 
   @doc """
