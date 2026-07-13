@@ -49,6 +49,14 @@ defmodule Bonfire.Common.Repo.Preload do
   @doc """
   Conditionally preloads associations based on provided options.
 
+  ## Options
+
+    * `:prune` - when the preload list is a deliberate superset across possible schemas, pass `prune: true` to fit it to the actual schema(s) upfront via reflection (invalid entries are dropped quietly instead of raising)
+    * `:skip_err` - only warn (instead of `err`, which raises in test env) when a batch preload
+      raises and gets recovered
+    * `:follow_pointers` - set false to avoid following pointers
+    * `:with_cache` - cache preload results (only with `follow_pointers: false`)
+
   ## Examples
 
       iex> maybe_preload(some_struct, [:assoc1, :assoc2])
@@ -132,29 +140,70 @@ defmodule Bonfire.Common.Repo.Preload do
       "maybe_preload: trying Ecto.Repo.preload"
     )
 
-    repo().preload(objects, preloads, opts)
-  rescue
-    e in ArgumentError ->
-      # A single invalid (sub-)assoc makes the whole batch `Repo.preload` raise (e.g. a
-      # heterogeneous list where one object's schema lacks an assoc). Recover by preloading the
-      # valid subset instead of dropping everything (the long-standing TODO). `err` raises in test
-      # env so the bad preload list gets fixed at its source; pass `skip_err: true` to only warn
-      # (used by the recovery tests to exercise this path).
-      msg = "batch preload raised; recovering by preloading only the valid entries: #{inspect(preloads)}"
+    # `prune: true` — for call sites whose preload list is a deliberate superset across possible
+    # schemas: fit it to the actual schema(s) upfront via reflection, so nothing raises. On a
+    # heterogeneous list this must split per schema FIRST (each subset pruned to its own schema's
+    # assocs) — pruning the mixed list to the intersection could silently drop everything, and
+    # batch-preloading it would raise anyway (Ecto requires a homogeneous list).
+    heterogeneous? = heterogeneous?(objects)
+    prune? = opts[:prune]
 
-      if opts[:skip_err],
-        do: warn(e.message, msg),
-        else: err(e.message, msg)
+    # explicit `try` (not a function-level rescue) so the bindings above stay visible in `rescue`
+    try do
+      cond do
+        prune? && heterogeneous? ->
+          recover_preload(objects, preloads, true, opts)
 
-      recover_preload(objects, preloads, opts)
-  catch
-    :exit, e ->
-      err(e, "skipped with exit: #{inspect(preloads)}")
-      objects
+        prune? ->
+          repo().preload(
+            objects,
+            prune_preloads(object_schemas(objects), List.wrap(preloads)),
+            opts
+          )
 
-    e ->
-      err(e, "skipped with catch: #{inspect(preloads)}")
-      objects
+        true ->
+          repo().preload(objects, preloads, opts)
+      end
+    rescue
+      e in ArgumentError ->
+        # A single invalid (sub-)assoc makes the whole batch `Repo.preload` raise, and a
+        # heterogeneous list makes it raise outright (Ecto requires a homogeneous list). Recover by
+        # preloading the valid subset (split per schema when heterogeneous) instead of dropping
+        # everything. A mixed-struct list is legitimate in Bonfire (pointers!), so it only warns;
+        # an invalid-assoc list is a bug at its source, so `err` raises in test env to get it fixed
+        # there — pass `skip_err: true` to only warn (used by the recovery tests).
+        msg =
+          "batch preload raised; recovering by preloading only the valid entries: #{inspect(preloads)}"
+
+        cond do
+          opts[:skip_err] ->
+            warn(e.message, msg)
+
+          heterogeneous? ->
+            err(
+              e.message,
+              msg <>
+                " (heterogeneous list: can batch per schema but fix the call site or pass `prune: true` to filter the list to the actual schema(s))"
+            )
+
+          true ->
+            err(
+              e.message,
+              msg <>
+                " (can skip invalid entries but fix the call site or pass `prune: true` to automatically group and filter the list to the actual schema(s))"
+            )
+        end
+
+        recover_preload(objects, preloads, heterogeneous?, opts)
+    catch
+      :exit, e ->
+        err(e, "skipped with exit: #{inspect(preloads)}")
+        objects
+
+      e ->
+        err(e, "skipped with catch: #{inspect(preloads)}")
+        objects
+    end
   end
 
   defp try_repo_preload(obj, preloads, _) do
@@ -162,10 +211,28 @@ defmodule Bonfire.Common.Repo.Preload do
     obj
   end
 
-  # Recovery path (only after a batch preload raised): prune the invalid (sub-)entries via schema
-  # REFLECTION (`__schema__(:association, name)` — no queries), then run ONE `Repo.preload` with the
-  # valid subset, so one bad assoc doesn't drop the rest and nothing is loaded twice.
-  defp recover_preload(objects, preloads, opts) do
+  # Recovery path (only after a batch preload raised): a heterogeneous list can't be batch-preloaded
+  # at all (Ecto requires a homogeneous list), so split it per schema, recover each subset, and
+  # reassemble in the original order; a homogeneous batch goes straight to the prune-and-retry path.
+  defp recover_preload(objects, preloads, true = _heterogeneous?, opts) do
+    objects
+    |> Enum.with_index()
+    |> Enum.group_by(fn {obj, _i} -> object_schema(obj) end)
+    |> Enum.flat_map(fn {_schema, entries} ->
+      {objs, idxs} = Enum.unzip(entries)
+      Enum.zip(recover_preload_batch(objs, preloads, opts), idxs)
+    end)
+    |> Enum.sort_by(&elem(&1, 1))
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp recover_preload(objects, preloads, _not_heterogeneous?, opts),
+    do: recover_preload_batch(objects, preloads, opts)
+
+  # Prune the invalid (sub-)entries via schema REFLECTION (`__schema__(:association, name)` — no
+  # queries), then run ONE `Repo.preload` with the valid subset, so one bad assoc doesn't drop the
+  # rest and nothing is loaded twice.
+  defp recover_preload_batch(objects, preloads, opts) do
     case prune_preloads(object_schemas(objects), List.wrap(preloads)) do
       [] ->
         objects
@@ -179,15 +246,22 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
+  defp object_schema(%schema{}), do: schema
+  defp object_schema(_), do: nil
+
   defp object_schemas(objects) do
     objects
     |> List.wrap()
-    |> Enum.map(fn
-      %schema{} -> schema
-      _ -> nil
-    end)
+    |> Enum.map(&object_schema/1)
     |> Enum.uniq()
   end
+
+  # More than one distinct struct type in the list (nil entries aside) — `Repo.preload` refuses these
+  defp heterogeneous?(objects) when is_list(objects) do
+    objects |> object_schemas() |> Enum.reject(&is_nil/1) |> length() > 1
+  end
+
+  defp heterogeneous?(_), do: false
 
   # Keeps the entries whose assoc every schema in the (possibly heterogeneous) list defines,
   # recursing into nested preloads via each assoc's related schema.

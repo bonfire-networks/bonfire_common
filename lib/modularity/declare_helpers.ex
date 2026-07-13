@@ -9,6 +9,7 @@ defmodule Bonfire.Common.Modularity.DeclareHelpers do
   ## Examples
 
       iex> defmodule MyExtension do
+      ...>   use Bonfire.Common.Localise
       ...>   import Bonfire.Common.Modularity.DeclareHelpers
       ...>   declare_extension(l("My Extension"), readme: "MY_README.md")
       ...> end

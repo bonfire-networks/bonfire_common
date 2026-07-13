@@ -392,13 +392,13 @@ defmodule Bonfire.Common.URIs do
       iex> canonical_url(%{character: %{peered: %{canonical_uri: "http://example.com"}}})
       "http://example.com"
 
-      iex> canonical_url(%{peered: %Ecto.Association.NotLoaded{}})
+      iex> canonical_url(%{peered: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
       nil
 
-      iex> canonical_url(%{created: %Ecto.Association.NotLoaded{}})
+      iex> canonical_url(%{created: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
       nil
 
-      iex> canonical_url(%{character: %Ecto.Association.NotLoaded{}})
+      iex> canonical_url(%{character: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
       nil
 
       iex> canonical_url(%{character: %{peered: %{}}})
@@ -521,8 +521,12 @@ defmodule Bonfire.Common.URIs do
 
   # Loads `assoc` on demand when it wasn't preloaded upstream, and warns about it unless the caller explicitly opted into lazy loading with `preload_if_needed: true` (so a code path that just forgot to preload at the source is surfaced, while a deliberate lazy caller stays quiet). Returns the object preloaded, unless `preload_if_needed: false` skips the preload and returns it unchanged.
   defp warn_and_maybe_preload(object, assoc, preload_if_needed?) do
-    if preload_if_needed? != true,
-      do: err(object, "#{inspect(assoc)} association(s) should be preloaded at the source")
+    msg = "#{inspect(assoc)} association(s) should be preloaded at the source"
+
+    # when caller knowingly opts in/out → only warn (like skip_err); unset default → err (raises in test)
+    if preload_if_needed? in [true, false],
+      do: warn(object, msg),
+      else: err(object, msg)
 
     if preload_if_needed? != false,
       do: repo().maybe_preload(object, assoc),
@@ -532,11 +536,26 @@ defmodule Bonfire.Common.URIs do
   @doc """
   Generates the canonical ActivityPub URL for a local actor or object struct.
 
-  NEW local actors (created after the configured `:ulid_actor_ids_since` cutoff) federate with a ULID-based actor id (`/pub/person/<ULID>`, `/pub/group/<ULID>`, `/pub/organization/<ULID>`) instead of `/pub/actors/<username>`. Existing actors, and everything when the cutoff is unset, keep their username URL. WebFinger still advertises `acct:<username>@host` since that handle comes from `preferredUsername`, not the id.
+  NEW local actors (created after the instance's recorded `:ulid_actor_ids_since` cutoff, auto-recorded at the first boot with this feature by `Bonfire.Common.Settings.IdCutoffs`) federate with a ULID-based actor id (`/pub/person/<ULID>`, `/pub/group/<ULID>`, `/pub/organization/<ULID>`) instead of `/pub/actors/<username>`. Existing actors, and everything when no cutoff is recorded (e.g. in tests unless primed), keep their username URL. WebFinger still advertises `acct:<username>@host` since that handle comes from `preferredUsername`, not the id.
 
   `opts` is threaded through so `shared_user?/2` can honour `preload_if_needed`, the same lazy-preload pattern the `canonical_url` clauses use for `:peered`.
   """
   def maybe_generate_canonical_url(object, opts \\ [])
+
+  # a bare Character (e.g. an alias target) is the actor mixin of its user: when the `:user` is
+  # loaded, take the actor branch with it (so it gets the same URL scheme/id as the actor
+  # itself); otherwise we can't name its type and it keeps the legacy username URL — which would
+  # DIVERGE from the actor's own canonical id under the new scheme, so preload `:user` at the
+  # source wherever a bare Character's URL matters (e.g. `alsoKnownAs` in `format_actor`)
+  def maybe_generate_canonical_url(%Bonfire.Data.Identity.Character{} = character, opts) do
+    case character do
+      %{user: %{id: _} = user} ->
+        maybe_generate_canonical_url(Map.put(user, :character, character), opts)
+
+      %{username: username} when is_binary(username) ->
+        maybe_generate_canonical_url(username, opts)
+    end
+  end
 
   def maybe_generate_canonical_url(%{character: %{username: username}, id: id} = actor, opts)
       when is_binary(username) and is_binary(id) do
@@ -592,41 +611,38 @@ defmodule Bonfire.Common.URIs do
     nil
   end
 
-  # A local actor uses the ULID scheme iff a cutoff ULID is configured and its id sorts after
-  # it (ULIDs are chronological, so this means "created after the cutoff"). Read via Config so
-  # tests can prime it (`Process.put`/`Application.put_env`); in prod it's set once at boot.
-  # Well-known singleton actors (e.g. the service/instance actor, whose hand-crafted id sorts
-  # after real ULIDs) are exempted so they always keep their stable username-based URL.
+  # A local actor uses the ULID scheme iff its id sorts after the instance's recorded cutoff i.e. it was created after this instance first booted with this feature (the cutoff is auto-recorded per instance by `Bonfire.Common.Settings.IdCutoffs`; in test env it defaults to epoch-zero via config/test.exs — see the IdCutoffs moduledoc for how tests override it).
+  # Well-known singleton actors (e.g. the service/instance actor, whose hand-crafted id sorts after real ULIDs) are exempted so they always keep their stable username-based URL.
   defp new_actor_scheme?(id) when is_binary(id) do
-    case Bonfire.Common.Config.get(:ulid_actor_ids_since, nil) do
-      cutoff when is_binary(cutoff) and cutoff != "" ->
-        id > cutoff and id not in Bonfire.Common.Config.get(:reserved_username_actor_ids, [])
-
-      _ ->
-        false
-    end
+    Bonfire.Common.Settings.IdCutoffs.after?(:ulid_actor_ids_since, id) and
+      id not in Bonfire.Common.Config.get(:reserved_username_actor_ids, [])
   end
 
   defp new_actor_scheme?(_), do: false
 
-  # The AP-actor-type path segment for a local character struct. Mirrors the federation type
-  # mapping: a Category is a Group, a User with a `shared_user` mixin (a team/organisation
-  # account) is an Organization, any other User is a Person. Returns nil for anything we can't
-  # name, so the caller falls back to the username URL rather than minting a mislabelled ULID URL.
-  defp actor_type_segment(%{__struct__: module} = actor, opts) do
-    cond do
-      module == Bonfire.Classify.Category ->
-        "group"
+  # The AP-actor-type path segment for a local character struct. Mirrors the federation type mapping: a Category is a Group, a User with a `shared_user` mixin (a team/organisation account) is an Organization, any other User is a Person. Matches the struct module first (fast path); when that doesn't name a type, falls back to `Types.object_type/1` ONCE, because mention resolution and batch actor getters pass (virtual) `%Needle.Pointer{}`s whose concrete type lives in `table_id` — without this they minted username URLs, diverging from the same actor's canonical ULID URL. Returns nil for anything we can't name, so the caller falls back to the username URL rather than minting a mislabelled ULID URL.
+  defp actor_type_segment(%{__struct__: module} = actor, opts),
+    do: type_segment(module, actor, opts)
 
-      module == Bonfire.Data.Identity.User ->
-        if shared_user?(actor, opts), do: "organization", else: "person"
+  defp actor_type_segment(actor, opts), do: type_segment(nil, actor, opts)
 
-      true ->
+  defp type_segment(Bonfire.Classify.Category, _actor, _opts), do: "group"
+  defp type_segment(:topic, _actor, _opts), do: "group"
+
+  defp type_segment(Bonfire.Data.Identity.User, actor, opts),
+    do: if(shared_user?(actor, opts), do: "organization", else: "person")
+
+  defp type_segment(module, actor, opts) do
+    # e.g. a Pointer: resolve the concrete type from table_id and retry once (`type != module`
+    # guards against looping when object_type returns the module we already failed to match)
+    case Types.object_type(actor) do
+      type when is_atom(type) and not is_nil(type) and type != module ->
+        type_segment(type, actor, opts)
+
+      _ ->
         nil
     end
   end
-
-  defp actor_type_segment(_, _opts), do: nil
 
   @doc "True if the given User is an organisation/shared account, i.e. it carries a loaded `shared_user` mixin. If the assoc isn't loaded yet, loads it on demand (unless `preload_if_needed: false`), the same lazy pattern the `canonical_url` clauses use for `:peered`, so callers don't have to remember to preload it."
   def shared_user?(actor, opts \\ [])
@@ -702,6 +718,101 @@ defmodule Bonfire.Common.URIs do
   end
 
   @doc "Return the homepage URL (as string) of the local instance"
+  @doc """
+  Normalizes local AP (ActivityPub) links in user content to their in-app equivalents, based on format.
+
+  ## Examples
+
+      > normalise_local_links("<a href=\\"http://localhost:4000/pub/actors/foo\\">Actor</a>", :html)
+      "<a href=\\"/character/foo\\">Actor</a>"
+  """
+  def normalise_local_links(input, format)
+
+  def normalise_local_links(input, :html) do
+    local_instance = base_url()
+
+    input
+    |> Bonfire.Common.Text.as_html_tree()
+    |> LazyHTML.Tree.postwalk(fn
+      {"a", attrs, children} = node ->
+        case List.keyfind(attrs, "href", 0) do
+          {"href", href} ->
+            new_href =
+              href
+              |> String.replace_leading(local_instance, "")
+              |> localise_ap_path()
+
+            if new_href != href do
+              new_attrs = List.keyreplace(attrs, "href", 0, {"href", new_href})
+              {"a", new_attrs, children}
+            else
+              node
+            end
+
+          nil ->
+            node
+        end
+
+      node ->
+        node
+    end)
+  end
+
+  def normalise_local_links(content, :markdown)
+      when is_binary(content) and byte_size(content) > 20 do
+    local_instance = base_url()
+
+    content
+    # handle local AP paths, type-aware via `localise_ap_path/1`
+    |> then(
+      &Regex.replace(md_ap_paths_regex(local_instance), &1, fn _, pre, path ->
+        pre <> localise_ap_path(path)
+      end)
+    )
+    # handle other local links
+    |> Regex.replace(md_local_links_regex(local_instance), ..., "\\1\\2")
+
+    # |> debug(content)
+  end
+
+  def normalise_local_links(content, _format), do: content
+
+  # Regex patterns for normalizing links (actors: legacy username URLs + new-scheme ULID URLs)
+  defp md_ap_paths_regex(local_instance),
+    do: ~r/(\()#{local_instance}(\/pub\/(?:actors|person|group|organization|objects)\/.+\))/U
+
+  defp md_local_links_regex(local_instance), do: ~r/(\]\()#{local_instance}(.+\))/U
+
+  @doc """
+  Rewrites a local AP path to its in-app equivalent based on the actor/object type in the path, via binary prefix matching (single dispatch, no repeated scans). Unrecognised paths pass through unchanged.
+
+  ## Examples
+
+      iex> localise_ap_path("/pub/actors/alice")
+      "/character/alice"
+
+      iex> localise_ap_path("/pub/person/01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      "/user/01J3MQ2Q4RVB1WTE3KT1D8ZNX1"
+
+      iex> localise_ap_path("/pub/organization/01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      "/user/01J3MQ2Q4RVB1WTE3KT1D8ZNX1"
+
+      iex> localise_ap_path("/pub/group/01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      "/group/01J3MQ2Q4RVB1WTE3KT1D8ZNX1"
+
+      iex> localise_ap_path("/pub/objects/01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      "/discussion/01J3MQ2Q4RVB1WTE3KT1D8ZNX1"
+
+      iex> localise_ap_path("/something/else")
+      "/something/else"
+  """
+  def localise_ap_path("/pub/actors/" <> rest), do: "/character/" <> rest
+  def localise_ap_path("/pub/person/" <> rest), do: "/user/" <> rest
+  def localise_ap_path("/pub/organization/" <> rest), do: "/user/" <> rest
+  def localise_ap_path("/pub/group/" <> rest), do: "/group/" <> rest
+  def localise_ap_path("/pub/objects/" <> rest), do: "/discussion/" <> rest
+  def localise_ap_path(path), do: path
+
   def base_url(conn_or_socket_or_uri \\ nil)
 
   def base_url(%{host: host, port: 80}) when is_binary(host),
