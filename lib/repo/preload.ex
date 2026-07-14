@@ -150,20 +150,9 @@ defmodule Bonfire.Common.Repo.Preload do
 
     # explicit `try` (not a function-level rescue) so the bindings above stay visible in `rescue`
     try do
-      cond do
-        prune? && heterogeneous? ->
-          recover_preload(objects, preloads, true, opts)
-
-        prune? ->
-          repo().preload(
-            objects,
-            prune_preloads(object_schemas(objects), List.wrap(preloads)),
-            opts
-          )
-
-        true ->
-          repo().preload(objects, preloads, opts)
-      end
+      if prune?,
+        do: preload_pruned(objects, List.wrap(preloads), opts),
+        else: repo().preload(objects, preloads, opts)
     rescue
       e in ArgumentError ->
         # A single invalid (sub-)assoc makes the whole batch `Repo.preload` raise, and a
@@ -263,15 +252,86 @@ defmodule Bonfire.Common.Repo.Preload do
 
   defp heterogeneous?(_), do: false
 
+  # A pointer association may already contain its resolved concrete struct (for example an Activity.object containing a User). Group by that loaded shape before pruning so each batch keeps the nested preloads valid for its concrete schema instead of reflecting only on Pointer.
+  defp preload_pruned([], _preloads, _opts), do: []
+
+  defp preload_pruned(objects, preloads, opts) when is_list(objects) do
+    objects
+    |> Enum.with_index()
+    |> Enum.group_by(fn {object, _index} -> preload_shape(object, preloads) end)
+    |> Enum.flat_map(fn {_shape, indexed_objects} ->
+      {grouped_objects, indexes} = Enum.unzip(indexed_objects)
+      Enum.zip(preload_pruned_batch(grouped_objects, preloads, opts), indexes)
+    end)
+    |> Enum.sort_by(&elem(&1, 1))
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp preload_pruned(object, preloads, opts),
+    do: List.first(preload_pruned_batch([object], preloads, opts))
+
+  defp preload_pruned_batch([%_{} = example | _] = objects, preloads, opts) do
+    case prune_preloads_for_object(example, preloads) do
+      [] -> objects
+      pruned -> repo().preload(objects, pruned, opts)
+    end
+  end
+
+  defp preload_pruned_batch(objects, _preloads, _opts), do: objects
+
+  defp preload_shape(%schema{} = object, entries) do
+    {preload_shape_schema(object, schema),
+     Enum.map(entries, fn
+       {assoc, nested} when is_atom(assoc) and (is_list(nested) or is_atom(nested)) ->
+         {assoc, nested_preload_shape(Map.get(object, assoc), List.wrap(nested))}
+
+       entry ->
+         entry
+     end)}
+  end
+
+  defp preload_shape_schema(%Needle.Pointer{} = pointer, _schema),
+    do: {Needle.Pointer, concrete_pointer_schema(pointer)}
+
+  defp preload_shape_schema(_object, schema), do: schema
+
+  defp preload_shape(object, _entries), do: object_schema(object)
+
+  defp nested_preload_shape(%Ecto.Association.NotLoaded{}, _entries), do: :not_loaded
+  defp nested_preload_shape(%_{} = object, entries), do: preload_shape(object, entries)
+
+  defp nested_preload_shape(objects, entries) when is_list(objects) do
+    objects
+    |> Enum.map(&preload_shape(&1, entries))
+    |> Enum.uniq()
+  end
+
+  defp nested_preload_shape(_object, _entries), do: nil
+
   # Keeps the entries whose assoc every schema in the (possibly heterogeneous) list defines,
   # recursing into nested preloads via each assoc's related schema.
   defp prune_preloads(schemas, entries) do
+    do_prune_preloads(schemas, entries, nil)
+  end
+
+  defp prune_preloads_for_object(%schema{} = object, entries) do
+    do_prune_preloads([schema], entries, object)
+  end
+
+  defp do_prune_preloads(schemas, entries, object) do
     Enum.flat_map(entries, fn
       assoc when is_atom(assoc) ->
         if known_assoc?(schemas, assoc), do: [assoc], else: []
 
       {assoc, nested} when is_atom(assoc) and (is_list(nested) or is_atom(nested)) ->
-        related = known_assoc?(schemas, assoc) && related_schemas(schemas, assoc)
+        loaded_related = loaded_assoc_objects(object, assoc)
+
+        related =
+          known_assoc?(schemas, assoc) &&
+            case loaded_assoc_schemas(loaded_related) do
+              [] -> related_schemas(schemas, assoc)
+              concrete_schemas -> concrete_schemas
+            end
 
         cond do
           related == false ->
@@ -283,7 +343,7 @@ defmodule Bonfire.Common.Repo.Preload do
             [{assoc, nested}]
 
           true ->
-            case prune_preloads(related, List.wrap(nested)) do
+            case do_prune_preloads(related, List.wrap(nested), List.first(loaded_related)) do
               [] -> [assoc]
               valid_nested -> [{assoc, valid_nested}]
             end
@@ -373,6 +433,31 @@ defmodule Bonfire.Common.Repo.Preload do
         id -> Map.get(processed_objects, id) || obj
       end
     end)
+  end
+
+  defp loaded_assoc_objects(%{} = object, assoc) do
+    case Map.get(object, assoc) do
+      %Ecto.Association.NotLoaded{} -> []
+      %_{} = loaded -> [loaded]
+      loaded when is_list(loaded) -> Enum.filter(loaded, &is_struct(&1))
+      _ -> []
+    end
+  end
+
+  defp loaded_assoc_objects(_object, _assoc), do: []
+
+  defp loaded_assoc_schemas(objects) do
+    objects
+    |> Enum.map(fn
+      %Needle.Pointer{} = pointer -> concrete_pointer_schema(pointer)
+      object -> object_schema(object)
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp concrete_pointer_schema(pointer) do
+    Bonfire.Common.Types.object_type(pointer, only_schemas: true) || Needle.Pointer
   end
 
   def maybe_preloads_per_nested_schema(%{edges: edges} = page, path, schema_and_or_preloads, opts) do

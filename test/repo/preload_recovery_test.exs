@@ -11,8 +11,10 @@ defmodule Bonfire.Common.Repo.PreloadRecoveryTest do
   use Bonfire.Common.DataCase, async: false
 
   alias Bonfire.Common.Repo.Preload
+  alias Bonfire.Data.Identity.Caretaker
   alias Bonfire.Data.Identity.User
   alias Bonfire.Data.Identity.Character
+  alias Bonfire.Data.Social.Activity
 
   setup do
     account = Bonfire.Me.Fake.fake_account!()
@@ -78,6 +80,48 @@ defmodule Bonfire.Common.Repo.PreloadRecoveryTest do
     assert %Character{} = u.character
     assert %Character{} = p.character
     refute log =~ "batch preload raised"
+  end
+
+  test "prune: true uses the concrete schema of an already-loaded polymorphic association", %{
+    user: user
+  } do
+    caretaker = %Caretaker{id: user.id, caretaker_id: user.id, caretaker: user}
+
+    result =
+      Preload.maybe_preload(caretaker, [caretaker: [:post_content]], prune: true)
+
+    assert %User{} = result.caretaker
+  end
+
+  test "prune: true uses the concrete type encoded by a loaded Pointer association", %{
+    user: user
+  } do
+    {:ok, pointer} = Bonfire.Common.Needles.one(user.id, skip_boundary_check: true)
+    caretaker = %Caretaker{id: user.id, caretaker_id: user.id, caretaker: pointer}
+
+    result =
+      Preload.maybe_preload(caretaker, [caretaker: [:post_content]], prune: true)
+
+    assert %Needle.Pointer{} = result.caretaker
+    assert match?(%Ecto.Association.NotLoaded{}, result.caretaker.post_content)
+  end
+
+  test "prune: true fits repeated nested preloads to a polymorphic Activity object", %{
+    user: user
+  } do
+    {:ok, pointer} = Bonfire.Common.Needles.one(user.id, skip_boundary_check: true)
+    activity = %Activity{id: user.id, object_id: user.id, object: pointer}
+
+    result =
+      Preload.maybe_preload(
+        activity,
+        [object: [:post_content], object: [:peered]],
+        prune: true
+      )
+
+    assert %Needle.Pointer{} = result.object
+    assert match?(%Ecto.Association.NotLoaded{}, result.object.post_content)
+    refute match?(%Ecto.Association.NotLoaded{}, result.object.peered)
   end
 
   test "recovers a HETEROGENEOUS list by batching per schema, preserving order", %{user: user} do
