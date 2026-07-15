@@ -1260,8 +1260,10 @@ defmodule Bonfire.Common.Enums do
          values_to_integers
        ) do
     # turn any keys into atoms (if such atoms already exist) and discard the rest
+    # (`maybe_to_atom_or_module` returns nil for unknown keys, and `is_atom(nil)` is
+    # true, so nil must be excluded or unknown keys end up kept under a nil key)
     :maps.filter(
-      fn k, _v -> is_atom(k) end,
+      fn k, _v -> is_atom(k) and not is_nil(k) end,
       data
       |> Map.drop(["_csrf_token", "_persistent_id"])
       |> Map.new(fn {k, v} ->

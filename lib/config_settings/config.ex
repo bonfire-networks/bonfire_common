@@ -391,12 +391,16 @@ defmodule Bonfire.Common.Config do
       |> Enums.maybe_to_keyword_list(false, false)
     else
       # Convert maps to keyword lists so they get iterated leaf-by-leaf
-      # and merged into existing config, preserving keyword list structure of compile-time defaults
-      Enums.maybe_to_keyword_list(tree, false, true)
+      # and merged into existing config, preserving keyword list structure of compile-time defaults.
+      # Not forced: a map that can't be a keyword list (string keys without existing atoms,
+      # e.g. custom theme palettes keyed by colour name) is kept whole and `put` as-is below,
+      # instead of having those entries silently discarded.
+      Enums.maybe_to_keyword_list(tree, false, false)
     end
     |> debug("map to put")
     |> case do
-      tree when is_list(tree) -> do_put_tree(parent_keys, tree, otp_app)
+      # keep passing opts down so `already_prepared` isn't lost mid-descent
+      tree when is_list(tree) -> do_put_tree(parent_keys, tree, otp_app, opts)
       tree -> put(parent_keys, tree, otp_app)
     end
   end
