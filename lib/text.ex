@@ -175,6 +175,37 @@ defmodule Bonfire.Common.Text do
   defp html_tag_regex, do: ~r/<\/?[a-z][\s\S]*>/i
 
   @doc """
+  Returns the number of characters changed (insertions plus deletions) between two strings, based on the Myers difference algorithm. Nils are treated as empty strings.
+
+  Note that this measures the magnitude of the change, unlike a signed net length difference (where a same-length replacement would misleadingly count as zero).
+
+  ## Examples
+
+      iex> diff_size("abc", "abc")
+      0
+
+      iex> diff_size("abc", "abcde")
+      2
+
+      iex> diff_size("abcde", "abc")
+      2
+
+      iex> diff_size("abc", "xyz")
+      6
+
+      iex> diff_size(nil, "abc")
+      3
+  """
+  def diff_size(previous, current) do
+    String.myers_difference(previous || "", current || "")
+    |> Enum.map(fn
+      {:eq, _} -> 0
+      {_ins_or_del, string} -> String.length(string)
+    end)
+    |> Enum.sum()
+  end
+
+  @doc """
   Truncates a string to a maximum length, optionally adding a suffix.
 
   ## Examples
