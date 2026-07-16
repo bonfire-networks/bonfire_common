@@ -372,7 +372,10 @@ defmodule Bonfire.Common.Config do
   defp do_put_tree(k, v, otp_app, opts \\ [])
 
   defp do_put_tree(parent_keys, tree, otp_app, opts) when is_list(tree) do
-    if Keyword.keyword?(tree) do
+    # NOTE: `Keyword.keyword?([])` is `true`, so an empty list would otherwise be treated as a
+    # keyword subtree and iterated over — writing nothing and silently leaving any previous value
+    # in place. An empty list is a leaf value (e.g. clearing a list-valued setting), so `put` it.
+    if tree != [] and Keyword.keyword?(tree) do
       Enum.each(tree, fn
         {k, v} -> do_put_tree(parent_keys ++ [k], v, otp_app, opts)
       end)
