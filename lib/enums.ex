@@ -875,41 +875,69 @@ defmodule Bonfire.Common.Enums do
     do_flatten(rest, [kv | acc], recursive)
   end
 
-  @doc "If given a struct, returns a map representation of it"
-  def struct_to_map(other, recursive \\ false)
+  @doc """
+  If given a struct, returns a map representation of it. `opts[:keep_nils]` keeps loaded-nil values (default drops them, along with `NotLoaded` assocs, via `map_filter_empty/2`).
 
-  def struct_to_map(struct = %{__struct__: type}, false) do
+  ## Examples
+
+      iex> struct_to_map(%URI{host: nil, path: "/x"}) |> Map.has_key?(:host)
+      false
+
+      iex> struct_to_map(%URI{host: nil, path: "/x"}, false, keep_nils: true) |> Map.has_key?(:host)
+      true
+
+      iex> struct_to_map(%URI{host: nil, path: "/x"}) |> Map.get(:path)
+      "/x"
+  """
+  def struct_to_map(other, recursive \\ false, opts \\ [])
+
+  def struct_to_map(struct = %{__struct__: type}, false, opts) do
     Map.from_struct(struct)
     |> Map.drop([:__meta__])
     |> Map.put_new(:__typename, type)
-    |> map_filter_empty()
+    |> map_filter_empty(opts)
   end
 
-  def struct_to_map(struct = %{__struct__: _type}, true) do
-    struct_to_map(struct, false)
-    |> Enum.map(&struct_to_map(&1, true))
+  def struct_to_map(struct = %{__struct__: _type}, true, opts) do
+    struct_to_map(struct, false, opts)
+    |> Enum.map(&struct_to_map(&1, true, opts))
     |> Map.new()
   end
 
-  def struct_to_map(data, true) when is_map(data) do
-    struct_to_map(data, false)
-    |> Enum.map(&struct_to_map(&1, true))
+  def struct_to_map(data, true, opts) when is_map(data) do
+    struct_to_map(data, false, opts)
+    |> Enum.map(&struct_to_map(&1, true, opts))
     |> Map.new()
   end
 
-  def struct_to_map(data, true) do
+  def struct_to_map(data, true, opts) do
     if Enumerable.impl_for(data) do
-      struct_to_map(data, false)
+      struct_to_map(data, false, opts)
       |> Enum.map(fn
-        {k, v} -> {k, struct_to_map(v, true)}
-        v -> struct_to_map(v, true)
+        {k, v} -> {k, struct_to_map(v, true, opts)}
+        v -> struct_to_map(v, true, opts)
       end)
     else
       data
     end
   end
 
-  def struct_to_map(other, _false), do: other
+  def struct_to_map(other, _false, _opts), do: other
+
+  @doc """
+  Converts a struct to a plain map, dropping only `:__meta__` (whose `source` is the struct's table) and `:__struct__`, and KEEPING everything else, including loaded-nil assocs. Unlike `struct_to_map/2` it does not filter out empty (`nil`/`NotLoaded`) values, so it's suitable as the input to `struct/2` when re-typing (e.g. resolving a `Needle.Pointer` to its concrete type while preserving a local object's loaded `:peered` == nil).
+
+  ## Examples
+
+      iex> m = de_struct(%URI{host: nil, path: "/x"})
+      iex> {is_struct(m), Map.has_key?(m, :host), m.path}
+      {false, true, "/x"}
+
+      iex> de_struct("not a struct")
+      "not a struct"
+  """
+  def de_struct(%_{} = struct), do: struct |> Map.from_struct() |> Map.drop([:__meta__])
+  def de_struct(other), do: other
 
   @doc "Returns a map representation of the input object. If the second argument is `true`, the function will recursively convert nested data structures to maps as well."
   def maybe_to_map(obj, recursive \\ false)
@@ -1070,18 +1098,85 @@ defmodule Bonfire.Common.Enums do
 
   def nested_structs_to_maps(v), do: v
 
+  @doc """
+  Merges two maps/structs into a struct. Given a `module` (1st arg), first coerces `first` into that struct type and then overlays `precedence`; without a module it just delegates to `maybe_merge_to_struct/3`.
+
+  ## Examples
+
+      iex> # with a module: coerce `first` into it, then overlay `precedence`
+      iex> merge_to_struct(URI, %{host: "a"}, %{path: "/x"})
+      %URI{host: "a", path: "/x"}
+
+      iex> # no module (arity-2): delegates to maybe_merge_to_struct/3
+      iex> merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"})
+      %URI{host: "a", path: "/x"}
+  """
   def merge_to_struct(module \\ nil, first, precedence)
 
-  def merge_to_struct(module, first, precedence) when not is_struct(first),
-    do: merge_to_struct(nil, struct(module, first), precedence)
+  def merge_to_struct(module, first, precedence) when not is_nil(module),
+    do: maybe_merge_to_struct(struct(module, first), precedence, skip_prepare_merge: true)
 
-  def merge_to_struct(_, first, precedence) when is_struct(first),
-    do: struct(first, struct_to_map(precedence))
+  def merge_to_struct(_, first, precedence),
+    do: maybe_merge_to_struct(first, precedence)
 
-  def maybe_merge_to_struct(first, precedence) when is_struct(first),
-    do: struct(first, struct_to_map(precedence))
+  @doc """
+  Overlays `precedence` onto `first`, returning a struct (keeping `first`'s type when it is one). By default `precedence`'s empty (`nil`/`NotLoaded`) values are dropped so they don't clobber `first`'s loaded values; pass `skip_prepare_merge: true` to let `precedence` win even with nils (i.e. when `precedence` is authoritative).
 
-  def maybe_merge_to_struct(%{} = first, precedence) do
+  ## Examples
+
+      iex> # both structs, default: precedence's real values overlay; its nil `host` is dropped, so first's "a" survives
+      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"})
+      %URI{host: "a", path: "/x"}
+
+      iex> # both structs + keep_nils: precedence's loaded-nil `host` is kept so it overrides first (but NotLoaded assocs are still dropped, unlike skip_prepare_merge)
+      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, keep_nils: true)
+      %URI{host: nil, path: "/x"}
+
+      iex> # both structs + skip_prepare_merge: precedence wins wholesale — nils AND NotLoaded
+      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, skip_prepare_merge: true)
+      %URI{host: nil, path: "/x"}
+
+      iex> # struct first, plain-map precedence: overlay the given keys onto first
+      iex> maybe_merge_to_struct(%URI{host: "a", path: "/old"}, %{path: "/new"})
+      %URI{host: "a", path: "/new"}
+
+      iex> # map first: merge as plain maps, precedence winning on shared keys
+      iex> maybe_merge_to_struct(%{a: 1}, %{a: 2, b: 3})
+      %{a: 2, b: 3}
+
+      iex> # nil first: return precedence unchanged
+      iex> maybe_merge_to_struct(nil, %{a: 1})
+      %{a: 1}
+
+      iex> # nil precedence: return first unchanged, for any `first` (struct, map, or other value)
+      iex> maybe_merge_to_struct(%URI{host: "a"}, nil)
+      %URI{host: "a"}
+
+      iex> maybe_merge_to_struct([1, 2], nil)
+      [1, 2]
+  """
+  def maybe_merge_to_struct(first, precedence, opts \\ [])
+
+  # nil on either side short-circuits — MUST precede the struct/map heads below, else a struct/map `first` with nil precedence hits `struct(first, nil)` / `merge_structs_as_map(map, nil)` and crashes.
+  def maybe_merge_to_struct(nil, precedence, _opts), do: precedence
+  def maybe_merge_to_struct(first, nil, _opts), do: first
+
+  def maybe_merge_to_struct(first, precedence, opts)
+      when is_struct(first) and is_struct(precedence) do
+    # `struct/2` can't take a struct as its fields, so convert precedence to a plain map first.
+    # By default `struct_to_map` drops precedence's nils/NotLoaded so they don't clobber `first`'s loaded values. `skip_prepare_merge: true` bypasses that cleaning and uses `de_struct`, letting precedence's values (incl. nils) win, same keep-everything semantics as a struct→struct re-type.
+    precedence =
+      if Keyword.get(opts, :skip_prepare_merge, false),
+        do: de_struct(precedence),
+        else: struct_to_map(precedence, false, opts)
+
+    struct(first, precedence)
+  end
+
+  def maybe_merge_to_struct(first, precedence, _opts) when is_struct(first),
+    do: struct(first, precedence)
+
+  def maybe_merge_to_struct(%{} = first, precedence, _opts) do
     merged = merge_structs_as_map(first, precedence)
 
     # |> debug()
@@ -1103,9 +1198,6 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
-  def maybe_merge_to_struct(nil, precedence), do: precedence
-  def maybe_merge_to_struct(first, nil), do: first
-
   def merge_structs_as_map(%{__typename: type} = target, merge)
       when not is_struct(target) and not is_struct(merge),
       do:
@@ -1123,23 +1215,28 @@ defmodule Bonfire.Common.Enums do
   def merge_structs_as_map(target, merge) when is_map(target) and is_map(merge),
     do: Map.merge(target, merge)
 
-  @doc "Recursively filters nil values from a map"
-  def map_filter_empty(data) when is_map(data) and not is_struct(data) do
+  @doc """
+  Recursively filters `nil` and `NotLoaded` values from a map. `opts[:keep_nils]` retains `nil` values (a *loaded* assoc that happens to be nil, e.g. a local object's `:peered`), while still dropping unloaded (`NotLoaded`) assocs.
+  """
+  def map_filter_empty(data, opts \\ [])
+
+  def map_filter_empty(data, opts) when is_map(data) and not is_struct(data) do
+    keep_nils = Keyword.get(opts, :keep_nils, false)
+
     data
-    # |> Enum.map(&map_filter_empty/1)
     |> Enum.reject(fn
-      {_, nil} -> true
+      {_, nil} -> not keep_nils
       {_, %Ecto.Association.NotLoaded{}} -> true
       _ -> false
     end)
     |> Map.new()
   end
 
-  def map_filter_empty({k, v}) do
+  def map_filter_empty({k, v}, _opts) do
     {k, map_filter_empty(v)}
   end
 
-  def map_filter_empty(v) do
+  def map_filter_empty(v, _opts) do
     filter_empty(v, nil)
   end
 
@@ -1671,36 +1768,40 @@ defmodule Bonfire.Common.Enums do
       }
 
   """
-  def maybe_to_struct(obj, type \\ nil)
+  def maybe_to_struct(obj, type \\ nil, opts \\ [])
 
   # Already the correct struct type
-  def maybe_to_struct(%struct_type{} = obj, target_type)
+  def maybe_to_struct(%struct_type{} = obj, target_type, _opts)
       when target_type == struct_type,
       do: obj
 
-  # Convert between struct types
-  def maybe_to_struct(obj, type) when is_struct(obj) do
-    struct_to_map(obj) |> maybe_to_struct(type)
+  # Convert between struct types. Default drops empty (`nil`/`NotLoaded`) values via `struct_to_map/3` (whose `opts` — incl. `keep_nils: true` — thread through here), so re-typing (e.g. resolving a Pointer to its concrete type) can preserve a local object's loaded `:peered` == nil instead of dropping it and forcing a downstream re-preload/raise. `skip_prepare_merge: true` keeps EVERYTHING (nils AND NotLoaded) via `de_struct/1`.
+  def maybe_to_struct(obj, type, opts) when is_struct(obj) do
+    if opts[:skip_prepare_merge] do
+      maybe_to_struct(de_struct(obj), type, opts)
+    else
+      maybe_to_struct(struct_to_map(obj, false, opts), type, opts)
+    end
   end
 
   # Handle string type names
-  def maybe_to_struct(obj, type) when is_binary(type) do
+  def maybe_to_struct(obj, type, opts) when is_binary(type) do
     case Types.maybe_to_module(type) do
-      module when is_atom(module) -> maybe_to_struct(obj, module)
+      module when is_atom(module) -> maybe_to_struct(obj, module, opts)
       _ -> obj
     end
   end
 
   # Try inferring type from data if no explicit type provided
-  def maybe_to_struct(obj, nil) do
+  def maybe_to_struct(obj, nil, opts) do
     case schema_type(obj) do
       nil -> obj
-      type -> maybe_to_struct(obj, type)
+      type -> maybe_to_struct(obj, type, opts)
     end
   end
 
-  # Convert to struct if module exists
-  def maybe_to_struct(obj, type) when is_atom(type) do
+  # Convert to struct if module exists (`obj` is already a map here — `opts` were applied above)
+  def maybe_to_struct(obj, type, _opts) when is_atom(type) do
     if Extend.module_exists?(type) do
       struct(type, obj)
     else
@@ -1709,7 +1810,7 @@ defmodule Bonfire.Common.Enums do
   end
 
   # Fallback for no conversion
-  def maybe_to_struct(obj, _type), do: obj
+  def maybe_to_struct(obj, _type, _opts), do: obj
 
   @doc "Infer the struct or schema type from a map"
   def schema_type(%type{}), do: type

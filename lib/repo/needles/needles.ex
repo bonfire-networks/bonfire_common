@@ -428,23 +428,39 @@ defmodule Bonfire.Common.Needles do
   """
   def follow!(pointer_or_pointers, opts \\ [])
 
-  def follow!(%Pointer{table_id: table_id} = pointer, opts) do
-    with {:ok, schema} <- Needle.Tables.schema(table_id),
-         :virtual <- schema.__pointers__(:role) do
-      # info(table_id, "virtual - skip following ")
-      if function_exported?(schema, :__struct__, 0) do
-        # debug("schema is available in the compiled app")
-        struct(schema, Enums.struct_to_map(pointer))
-      else
-        debug("schema is not available in the compiled app")
-        pointer
-      end
-    else
-      _e ->
-        # info(e, "not a virtual")
-        do_follow!(pointer, opts)
+  def follow!(%Pointer{} = pointer, opts) do
+    case maybe_follow_virtual(pointer) do
+      # not a (compiled) virtual → needs a real DB follow
+      %Pointer{} = pointer -> do_follow!(pointer, opts)
+      virtual_struct -> virtual_struct
     end
   end
+
+  @doc """
+  Resolve a *virtual* pointer to its concrete struct IN-MEMORY (no DB query), by re-typing the
+  pointer's already-loaded fields into the pointed-to (virtual) schema — so callers can
+  pattern-match / classify on the real type. E.g. `Bonfire.Common.URIs.canonical_url/2` must not
+  mistake a bare Pointer's *virtual* `:character` field for a real actor: resolving to the
+  concrete `%Post{}` (which has no `:character`) routes it to the correct locality clause, while
+  any assocs already preloaded on the pointer (e.g. `:peered`) carry over via `struct_to_map`.
+
+  Returns the input unchanged for a non-virtual pointer (which needs a real DB follow, e.g. via
+  `follow!/2`), a virtual schema not compiled into the app, or a non-pointer.
+  """
+  def maybe_follow_virtual(%Pointer{table_id: table_id} = pointer) do
+    with {:ok, schema} <- Needle.Tables.schema(table_id),
+         :virtual <- schema.__pointers__(:role),
+         true <- function_exported?(schema, :__struct__, 0) do
+      # `keep_nils: true` preserves the pointer's LOADED assoc state (incl. loaded-nil assocs like
+      # a local object's `:peered`), so downstream locality/type classification (e.g.
+      # `URIs.canonical_url/2`) doesn't re-preload them and raise the preload-at-source guard.
+      Enums.maybe_to_struct(pointer, schema)
+    else
+      _ -> pointer
+    end
+  end
+
+  def maybe_follow_virtual(other), do: other
 
   def follow!(pointers, opts) do
     do_follow!(pointers, opts)

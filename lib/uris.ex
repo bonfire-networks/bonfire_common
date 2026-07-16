@@ -413,6 +413,14 @@ defmodule Bonfire.Common.URIs do
   """
   def canonical_url(object, opts \\ [])
 
+  # A bare polymorphic `Needle.Pointer` carries *virtual* `:character` AND `:peered` fields (both `NotLoaded`), so it would wrongly match the actor (`character`) / object (`:peered`) locality clauses below, misclassifying, e.g., a Post-pointer as an actor. Resolve a virtual pointer to its concrete struct first (in-memory, no query; any preloaded assocs like `:peered` carry over) so locality is classified on the REAL type. A non-virtual pointer (returned unchanged) falls back to id-based resolution.
+  def canonical_url(%Needle.Pointer{} = object, opts) do
+    case Bonfire.Common.Needles.maybe_follow_virtual(object) do
+      %Needle.Pointer{} = object -> query_or_generate_canonical_url(object, opts)
+      concrete_object -> canonical_url(concrete_object, opts)
+    end
+  end
+
   def canonical_url(%{canonical_uri: canonical_url}, _opts)
       when is_binary(canonical_url) do
     canonical_url
