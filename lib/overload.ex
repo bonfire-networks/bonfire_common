@@ -261,13 +261,20 @@ defmodule Bonfire.Common.Overload do
   @doc "The effective sampler config: knob values with their defaults, THE single source for both the sampler and the tuning card's baseline. Thresholds are multipliers of the machine's scheduler count."
   def config do
     schedulers = System.schedulers_online()
-    get = &Bonfire.Common.Config.__get__([__MODULE__, &1], &2)
+    # read the whole module keyword list in ONE config lookup, then pull knobs from it
+    # (the sampler calls this every tick — one cached read keeps it live-tunable without
+    # re-reading each knob individually, which also multiplied the debug logging per tick)
+    cfg = Bonfire.Common.Config.__get__([__MODULE__], [])
+    get = &Keyword.get(cfg, &1, &2)
+
+    soft_multiplier = get.(:run_queue_soft_multiplier, 4)
+    hard_multiplier = get.(:run_queue_hard_multiplier, 10)
 
     [
-      run_queue_soft_multiplier: get.(:run_queue_soft_multiplier, 4),
-      run_queue_hard_multiplier: get.(:run_queue_hard_multiplier, 10),
-      run_queue_soft: get.(:run_queue_soft_multiplier, 4) * schedulers,
-      run_queue_hard: get.(:run_queue_hard_multiplier, 10) * schedulers,
+      run_queue_soft_multiplier: soft_multiplier,
+      run_queue_hard_multiplier: hard_multiplier,
+      run_queue_soft: soft_multiplier * schedulers,
+      run_queue_hard: hard_multiplier * schedulers,
       up_ticks: get.(:up_ticks, 3),
       down_ticks: get.(:down_ticks, 15),
       cooldown_ms: get.(:cooldown_ms, 60_000),
