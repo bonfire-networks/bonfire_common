@@ -392,34 +392,11 @@ defmodule Bonfire.Common.URIs do
       iex> canonical_url(%{character: %{peered: %{canonical_uri: "http://example.com"}}})
       "http://example.com"
 
-      iex> canonical_url(%{peered: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
-      nil
-
-      iex> canonical_url(%{created: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
-      nil
-
-      iex> canonical_url(%{character: %Ecto.Association.NotLoaded{}}, preload_if_needed: true)
-      nil
-
-      iex> canonical_url(%{character: %{peered: %{}}})
-      nil
-
       iex> canonical_url(%{path: "http://example.com"})
       "http://example.com"
 
-      iex> canonical_url(%{other: "data"})
-      nil
-
   """
   def canonical_url(object, opts \\ [])
-
-  # A bare polymorphic `Needle.Pointer` carries *virtual* `:character` AND `:peered` fields (both `NotLoaded`), so it would wrongly match the actor (`character`) / object (`:peered`) locality clauses below, misclassifying, e.g., a Post-pointer as an actor. Resolve a virtual pointer to its concrete struct first (in-memory, no query; any preloaded assocs like `:peered` carry over) so locality is classified on the REAL type. A non-virtual pointer (returned unchanged) falls back to id-based resolution.
-  def canonical_url(%Needle.Pointer{} = object, opts) do
-    case Bonfire.Common.Needles.maybe_follow_virtual(object) do
-      %Needle.Pointer{} = object -> query_or_generate_canonical_url(object, opts)
-      concrete_object -> canonical_url(concrete_object, opts)
-    end
-  end
 
   def canonical_url(%{canonical_uri: canonical_url}, _opts)
       when is_binary(canonical_url) do
@@ -451,22 +428,26 @@ defmodule Bonfire.Common.URIs do
     canonical_url
   end
 
-  # Character-bearing structs (a User or Category) carry their locality on `character.peered`, not top-level `:peered`, so handle them before the top-level `:peered` clauses below (otherwise a local actor with an unloaded top-level `:peered` would wrongly trip that clause).
-  def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object, opts) do
-    object =
-      warn_and_maybe_preload(object, [character: [:peered]], opts[:preload_if_needed])
-
-    e(object, :character, :peered, :canonical_uri, nil) ||
-      query_or_generate_canonical_url(object, opts)
+  def canonical_url(%{created: %{peered: %{canonical_uri: canonical_url}}}, _opts)
+      when is_binary(canonical_url) do
+    canonical_url
   end
 
-  def canonical_url(%{character: %{peered: %{}}} = object, opts) do
+  def canonical_url(%{character: %{peered: nil}} = object, opts) do
+    maybe_generate_canonical_url(object, opts)
+  end
+
+  def canonical_url(%{peered: nil} = object, opts) do
+    maybe_generate_canonical_url(object, opts)
+  end
+
+  def canonical_url(%{created: %{peered: nil}} = object, opts) do
     maybe_generate_canonical_url(object, opts)
   end
 
   # Only for non-actor objects (e.g. a Post): an actor carries its locality on `:peered` under `character` (User/Category, which have a `:character` key) or on its own `:peered` (a bare Character, which has a `:username` key), and for a local actor that `:peered` is legitimately unloaded, so actors skip this tripwire and fall to the `%{peered: %{}}` generate clause below.
   def canonical_url(%{peered: %Ecto.Association.NotLoaded{}} = object, opts)
-      when not is_map_key(object, :character) and not is_map_key(object, :username) do
+      when not is_map_key(object, :character) do
     object =
       warn_and_maybe_preload(object, :peered, opts[:preload_if_needed])
 
@@ -474,8 +455,24 @@ defmodule Bonfire.Common.URIs do
       query_or_generate_canonical_url(object, opts)
   end
 
-  def canonical_url(%{peered: %{}} = object, opts) do
-    maybe_generate_canonical_url(object, opts)
+  # A bare polymorphic `Needle.Pointer` carries *virtual* `:character` AND `:peered` fields (both `NotLoaded`), so it would wrongly match the actor (`character`) / object (`:peered`) locality clauses below, misclassifying, e.g., a Post-pointer as an actor. Resolve a virtual pointer to its concrete struct first (in-memory, no query; any preloaded assocs like `:peered` carry over) so locality is classified on the REAL type. A non-virtual pointer (returned unchanged) falls back to id-based resolution.
+  def canonical_url(%Needle.Pointer{} = object, opts) do
+    case Bonfire.Common.Needles.maybe_follow_virtual(object) do
+      %Needle.Pointer{} = object ->
+        query_or_generate_canonical_url(object, opts)
+
+      concrete_object ->
+        canonical_url(concrete_object, opts)
+    end
+  end
+
+  # Character-bearing structs (a User or Category) carry their locality on `character.peered`, not top-level `:peered`, so handle them before the top-level `:peered` clauses below (otherwise a local actor with an unloaded top-level `:peered` would wrongly trip that clause).
+  def canonical_url(%{character: %Ecto.Association.NotLoaded{}} = object, opts) do
+    object =
+      warn_and_maybe_preload(object, [character: [:peered]], opts[:preload_if_needed])
+
+    e(object, :character, :peered, :canonical_uri, nil) ||
+      query_or_generate_canonical_url(object, opts)
   end
 
   def canonical_url(%{created: %Ecto.Association.NotLoaded{}} = object, opts) do
@@ -511,12 +508,22 @@ defmodule Bonfire.Common.URIs do
   end
 
   defp query_or_generate_canonical_url(object, opts) do
-    if opts[:preload_if_needed] != false do
-      remote_canonical_url(object) ||
+    preload_if_needed? = opts[:preload_if_needed]
+    is_local? = check_is_local?(object, opts)
+
+    if preload_if_needed? != false and !is_local? do
+      if is_nil(preload_if_needed?),
+        do:
+          err(
+            object,
+            "could not find a canonical URL for this object, make sure to preload :peered upstream?"
+          )
+
+      remote_canonical_url(object)
+    end ||
+      if is_local? do
         maybe_generate_canonical_url(object, opts)
-    else
-      if check_is_local?(object, opts), do: maybe_generate_canonical_url(object, opts)
-    end
+      end
   end
 
   def remote_canonical_url(object) do

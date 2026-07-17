@@ -876,14 +876,14 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
-  If given a struct, returns a map representation of it. `opts[:keep_nils]` keeps loaded-nil values (default drops them, along with `NotLoaded` assocs, via `map_filter_empty/2`).
+  If given a struct, returns a map representation of it. 
 
   ## Examples
 
       iex> struct_to_map(%URI{host: nil, path: "/x"}) |> Map.has_key?(:host)
       false
 
-      iex> struct_to_map(%URI{host: nil, path: "/x"}, false, keep_nils: true) |> Map.has_key?(:host)
+      iex> struct_to_map(%URI{host: nil, path: "/x"}, false, preserve_nils: true) |> Map.has_key?(:host)
       true
 
       iex> struct_to_map(%URI{host: nil, path: "/x"}) |> Map.get(:path)
@@ -1107,33 +1107,36 @@ defmodule Bonfire.Common.Enums do
       iex> merge_to_struct(URI, %{host: "a"}, %{path: "/x"})
       %URI{host: "a", path: "/x"}
 
-      iex> # no module (arity-2): delegates to maybe_merge_to_struct/3
+      iex> # no module (arity-2): delegates to maybe_merge_to_struct/3 (default preserve_nils: true → precedence's nil wins)
       iex> merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"})
-      %URI{host: "a", path: "/x"}
+      %URI{host: nil, path: "/x"}
   """
   def merge_to_struct(module \\ nil, first, precedence)
 
+  # coerce `first` into `module` via `maybe_to_struct` (NOT `struct(module, first)`, which crashes when
+  # `first` is a struct — `struct/2` can't take a struct as fields); precedence then overlays with the
+  # merge default (`preserve_nils: true`).
   def merge_to_struct(module, first, precedence) when not is_nil(module),
-    do: maybe_merge_to_struct(struct(module, first), precedence, skip_prepare_merge: true)
+    do: maybe_merge_to_struct(maybe_to_struct(first, module, preserve_struct: true), precedence)
 
   def merge_to_struct(_, first, precedence),
     do: maybe_merge_to_struct(first, precedence)
 
   @doc """
-  Overlays `precedence` onto `first`, returning a struct (keeping `first`'s type when it is one). By default `precedence`'s empty (`nil`/`NotLoaded`) values are dropped so they don't clobber `first`'s loaded values; pass `skip_prepare_merge: true` to let `precedence` win even with nils (i.e. when `precedence` is authoritative).
+  Overlays `precedence` onto `first`, returning a struct (keeping `first`'s type when it is one). By default (`preserve_nils: true`) `precedence`'s real values AND its loaded-`nil`s overlay `first`, but its `NotLoaded` assocs are dropped so they can't clobber `first`'s loaded values. Pass `preserve_nils: false` to also drop `precedence`'s nils (never clobber), or `preserve_struct: true` for a fully-verbatim precedence (keeps `NotLoaded` too).
 
   ## Examples
 
-      iex> # both structs, default: precedence's real values overlay; its nil `host` is dropped, so first's "a" survives
+      iex> # both structs, default (preserve_nils: true): precedence's values AND its nil `host` overlay first
       iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"})
-      %URI{host: "a", path: "/x"}
-
-      iex> # both structs + keep_nils: precedence's loaded-nil `host` is kept so it overrides first (but NotLoaded assocs are still dropped, unlike skip_prepare_merge)
-      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, keep_nils: true)
       %URI{host: nil, path: "/x"}
 
-      iex> # both structs + skip_prepare_merge: precedence wins wholesale — nils AND NotLoaded
-      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, skip_prepare_merge: true)
+      iex> # preserve_nils: false — drop precedence's nils so they don't clobber; first's "a" survives
+      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, preserve_nils: false)
+      %URI{host: "a", path: "/x"}
+
+      iex> # preserve_struct: true — fully verbatim precedence (also keeps NotLoaded assocs)
+      iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, preserve_struct: true)
       %URI{host: nil, path: "/x"}
 
       iex> # struct first, plain-map precedence: overlay the given keys onto first
@@ -1164,9 +1167,12 @@ defmodule Bonfire.Common.Enums do
   def maybe_merge_to_struct(first, precedence, opts)
       when is_struct(first) and is_struct(precedence) do
     # `struct/2` can't take a struct as its fields, so convert precedence to a plain map first.
-    # By default `struct_to_map` drops precedence's nils/NotLoaded so they don't clobber `first`'s loaded values. `skip_prepare_merge: true` bypasses that cleaning and uses `de_struct`, letting precedence's values (incl. nils) win, same keep-everything semantics as a struct→struct re-type.
+    # A merge defaults to `preserve_nils: true`: precedence's real values AND its loaded-nils overlay `first`, but `struct_to_map` still drops precedence's `NotLoaded` so it can't clobber `first`.
+    # `preserve_nils: false` drops precedence's nils too (never clobber); `preserve_struct: true` uses
+    # `de_struct` for a fully-verbatim precedence (keeps `NotLoaded` as well).
+
     precedence =
-      if Keyword.get(opts, :skip_prepare_merge, false),
+      if Keyword.get(opts, :preserve_nils, true),
         do: de_struct(precedence),
         else: struct_to_map(precedence, false, opts)
 
@@ -1216,16 +1222,16 @@ defmodule Bonfire.Common.Enums do
     do: Map.merge(target, merge)
 
   @doc """
-  Recursively filters `nil` and `NotLoaded` values from a map. `opts[:keep_nils]` retains `nil` values (a *loaded* assoc that happens to be nil, e.g. a local object's `:peered`), while still dropping unloaded (`NotLoaded`) assocs.
+  Recursively filters `nil` and `NotLoaded` values from a map. `opts[:preserve_nils]` retains loaded-`nil` values (a *loaded* assoc that happens to be nil, e.g. a local actor's `:shared_user` or object's `:peered`); `NotLoaded` (unloaded) assocs are ALWAYS dropped.
   """
   def map_filter_empty(data, opts \\ [])
 
   def map_filter_empty(data, opts) when is_map(data) and not is_struct(data) do
-    keep_nils = Keyword.get(opts, :keep_nils, false)
+    preserve_nils = Keyword.get(opts, :preserve_nils, false)
 
     data
     |> Enum.reject(fn
-      {_, nil} -> not keep_nils
+      {_, nil} -> not preserve_nils
       {_, %Ecto.Association.NotLoaded{}} -> true
       _ -> false
     end)
@@ -1759,13 +1765,11 @@ defmodule Bonfire.Common.Enums do
         id: "01JB4E8T1H928QC6E1MP1XDZD8"
       }
 
-      iex> # Struct to a different struct
-      iex> maybe_to_struct(%Bonfire.Data.Identity.User{
-      ...>   id: "01JB4E8T1H928QC6E1MP1XDZD8"
-      ...> }, Bonfire.Data.Identity.Character)
-      %Bonfire.Data.Identity.Character{
-        id: "01JB4E8T1H928QC6E1MP1XDZD8"
-      }
+      iex> # Struct to a different structm a VERBATIM re-type by default (carries fields over), so we
+      iex> # assert the type + id rather than full-struct equality (unloaded assocs keep the source's owner)
+      iex> r = maybe_to_struct(%Bonfire.Data.Identity.User{id: "01JB4E8T1H928QC6E1MP1XDZD8"}, Bonfire.Data.Identity.Character)
+      iex> {r.__struct__, r.id}
+      {Bonfire.Data.Identity.Character, "01JB4E8T1H928QC6E1MP1XDZD8"}
 
   """
   def maybe_to_struct(obj, type \\ nil, opts \\ [])
@@ -1775,9 +1779,9 @@ defmodule Bonfire.Common.Enums do
       when target_type == struct_type,
       do: obj
 
-  # Convert between struct types. Default drops empty (`nil`/`NotLoaded`) values via `struct_to_map/3` (whose `opts` — incl. `keep_nils: true` — thread through here), so re-typing (e.g. resolving a Pointer to its concrete type) can preserve a local object's loaded `:peered` == nil instead of dropping it and forcing a downstream re-preload/raise. `skip_prepare_merge: true` keeps EVERYTHING (nils AND NotLoaded) via `de_struct/1`.
+  # Convert between struct types. Defaults to a VERBATIM copy (`preserve_struct: true` → `de_struct/1`): every field is carried over (incl. loaded-`nil` assocs like a local actor's `:shared_user` == nil), so re-typing (e.g. resolving a Pointer to its concrete type) never drops a loaded value and forces a downstream re-preload/raise. Pass `preserve_struct: false` for a FILTERED copy via `struct_to_map/3` (drops empties; `preserve_nils: true` then keeps loaded-nils), do this from MERGE call sites so they don't inherit the verbatim default.
   def maybe_to_struct(obj, type, opts) when is_struct(obj) do
-    if opts[:skip_prepare_merge] do
+    if Keyword.get(opts, :preserve_struct, true) do
       maybe_to_struct(de_struct(obj), type, opts)
     else
       maybe_to_struct(struct_to_map(obj, false, opts), type, opts)

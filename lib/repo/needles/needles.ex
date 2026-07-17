@@ -451,10 +451,8 @@ defmodule Bonfire.Common.Needles do
     with {:ok, schema} <- Needle.Tables.schema(table_id),
          :virtual <- schema.__pointers__(:role),
          true <- function_exported?(schema, :__struct__, 0) do
-      # `keep_nils: true` preserves the pointer's LOADED assoc state (incl. loaded-nil assocs like
-      # a local object's `:peered`), so downstream locality/type classification (e.g.
-      # `URIs.canonical_url/2`) doesn't re-preload them and raise the preload-at-source guard.
-      Enums.maybe_to_struct(pointer, schema)
+      # Re-type via a VERBATIM copy (`preserve_struct: true` → `de_struct`) that carries EVERY loaded field over, including loaded-nil assocs (e.g. a local actor's `:shared_user` == nil, or a local object's `:peered` == nil). A filtered copy would drop the nil and `struct/2` would restore the schema-default `%NotLoaded{}`, so downstream locality/type classification (e.g. `URIs.canonical_url/2` → `shared_user?/2`) would wrongly see "not preloaded" and raise the preload-at-source guard. (This is also `maybe_to_struct`'s default for a struct+type, but kept explicit here.)
+      Enums.maybe_to_struct(pointer, schema, preserve_struct: true)
     else
       _ -> pointer
     end
