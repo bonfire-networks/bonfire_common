@@ -41,6 +41,10 @@ defmodule Bonfire.Common.HTTP.Connection do
   end
 
   def adapter_options({adapter, base_opts}, opts), do: {adapter, Keyword.merge(base_opts, opts)}
+  # a bare adapter module that takes no options (e.g. `Tesla.Mock` in tests) must be passed
+  # through as-is: returning `opts` here would drop the adapter, leaving Tesla with no adapter
+  # to run (so `config :tesla, adapter: Tesla.Mock` would silently never take effect)
+  def adapter_options(adapter, _opts) when is_atom(adapter) and not is_nil(adapter), do: adapter
   def adapter_options(_, opts), do: opts
 
   @doc """
