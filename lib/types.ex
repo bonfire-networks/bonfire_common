@@ -1063,11 +1063,14 @@ defmodule Bonfire.Common.Types do
       "apactivity"
   """
   # @decorate time()
+  # Downcase *before* translating: the msgid is the lowercase English noun as it reads mid-sentence
+  # ("this post"), and each locale returns its own casing — German nouns stay capitalised ("Beitrag"),
+  # which a downcase applied to the translation would destroy.
   def object_type_display(object_type)
       when is_atom(object_type) and not is_nil(object_type) do
     module_to_human_readable(object_type)
-    |> localise_dynamic(__MODULE__)
     |> String.downcase()
+    |> localise_dynamic(__MODULE__)
   end
 
   def object_type_display(object) when not is_nil(object) do
@@ -1083,7 +1086,9 @@ defmodule Bonfire.Common.Types do
   Outputs the names of all object types for the purpose of adding to the localisation strings (as long as the output is piped through to `Bonfire.Common.Localise.Gettext.localise_strings/1` at compile time)
 
       > all_object_type_names()
-      ["User", "Delete this User", "Post", "Delete this Post", ...]
+      ["user", "Delete this user", "post", "Delete this post", ...]
+
+  Names are downcased to match the msgid `object_type_display/1` actually looks up.
   """
   def all_object_type_names() do
     Bonfire.Common.SchemaModule.modules()
@@ -1093,6 +1098,10 @@ defmodule Bonfire.Common.Types do
         t
         |> module_to_human_readable()
         |> sanitise_name()
+        |> case do
+          nil -> nil
+          name -> String.downcase(name)
+        end
 
       if t,
         do: [t, "Delete this #{t}"],
