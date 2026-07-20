@@ -94,7 +94,25 @@ defmodule Bonfire.Common.Overload do
     {:ok, state}
   end
 
-  defp default_sample, do: %{run_queue: :erlang.statistics(:total_run_queue_lengths_all)}
+  defp default_sample,
+    do: %{
+      run_queue: :erlang.statistics(:total_run_queue_lengths_all),
+      sched_delay_us: sched_delay_us()
+    }
+
+  # Scheduling-delay probe: how many microseconds LATE a short timer actually fires.
+  # Under BEAM fair scheduling a deep-but-draining run queue (e.g. a CPU-bound Oban burst) still gives every process its slice promptly, so this stays near zero; it only climbs when the scheduler is saturated enough that processes genuinely WAIT, which is when request latency (UX) actually suffers. That makes it the UX-faithful confirmation for the run-queue backlog signal. `base_ms` is subtracted out so the result is pure overshoot.
+  @sched_probe_base_ms 5
+  defp sched_delay_us do
+    t0 = System.monotonic_time(:microsecond)
+
+    receive do
+    after
+      @sched_probe_base_ms -> :ok
+    end
+
+    max(System.monotonic_time(:microsecond) - t0 - @sched_probe_base_ms * 1000, 0)
+  end
 
   @impl true
   def handle_call({:stand_down, duration_ms}, _from, state) do
@@ -148,16 +166,15 @@ defmodule Bonfire.Common.Overload do
   # one state-machine step: update streaks, maybe transition one level
   defp step(state, value, cfg) do
     up = %{
-      soft: streak(state.up_streaks.soft, value >= cfg[:run_queue_soft]),
-      hard: streak(state.up_streaks.hard, value >= cfg[:run_queue_hard])
+      soft: streak(state.up_streaks.soft, over?(:soft, value, state, cfg)),
+      hard: streak(state.up_streaks.hard, over?(:hard, value, state, cfg))
     }
 
     # a tick is "clear" for de-escalation when it wouldn't sustain the CURRENT level
     clear? =
       case state.level do
-        :hard -> value < cfg[:run_queue_hard]
-        :soft -> value < cfg[:run_queue_soft]
         :ok -> true
+        level -> not over?(level, value, state, cfg)
       end
 
     down = streak(state.down_streak, clear?)
@@ -184,6 +201,22 @@ defmodule Bonfire.Common.Overload do
   defp streak(count, true), do: count + 1
   defp streak(_count, false), do: 0
 
+  # Is this tick over the given level's threshold? With `escalation_signal: :run_queue` (default, observe-first) it's the raw run-queue backlog. With `:confirmed` the backlog must ALSO coincide with real scheduling delay (`sched_delay_confirm_us`), so a CPU-pegged-but-fair-scheduled burst (deep queue, ~0 delay) no longer counts as overload. Flip the knob only once the logged `sched_delay_us` at real vs benign episodes has validated the threshold.
+  defp over?(level, value, state, cfg) do
+    threshold = if level == :hard, do: cfg[:run_queue_hard], else: cfg[:run_queue_soft]
+
+    over_backlog = value >= threshold
+
+    case cfg[:escalation_signal] do
+      :confirmed ->
+        delay = state.sample[:sched_delay_us] || 0
+        over_backlog and delay >= cfg[:sched_delay_confirm_us]
+
+      _run_queue ->
+        over_backlog
+    end
+  end
+
   defp cooled_down?(state, cfg) do
     # the cooldown starts when :hard was ENTERED (state.since) — relax slowly after an episode
     System.monotonic_time(:millisecond) - state.since >= (cfg[:cooldown_ms] || 0)
@@ -192,15 +225,20 @@ defmodule Bonfire.Common.Overload do
   defp transition(state, to, value, cfg) do
     from = state.level
 
+    sched_delay_us = state.sample[:sched_delay_us]
+
     :telemetry.execute([:bonfire, :overload, :transition], %{severity: state.severity}, %{
       from: from,
       to: to,
       signal: :run_queue,
-      value: value
+      escalation_signal: cfg[:escalation_signal] || :run_queue,
+      value: value,
+      sched_delay_us: sched_delay_us
     })
 
+    # log the scheduling delay alongside the backlog: at a run-queue-driven transition, a NEAR-ZERO sched_delay is the tell that this was a benign burst (no real UX impact), the observe-first evidence for whether to flip `escalation_signal: :confirmed`.
     Logger.warning(
-      "Overload level #{from} → #{to} (run_queue=#{value}, severity=#{Float.round(state.severity, 2)}, mode=#{cfg[:mode]})"
+      "Overload level #{from} → #{to} (run_queue=#{value}, sched_delay_us=#{inspect(sched_delay_us)}, severity=#{Float.round(state.severity, 2)}, signal=#{cfg[:escalation_signal] || :run_queue}, mode=#{cfg[:mode]})"
     )
 
     # node-local fan-out to subscribed processes (banner, storm overlay) — overload is per-node
@@ -280,6 +318,10 @@ defmodule Bonfire.Common.Overload do
       cooldown_ms: get.(:cooldown_ms, 60_000),
       retry_base_s: get.(:retry_base_s, 30),
       retry_max_s: get.(:retry_max_s, 180),
+      # which signal drives escalation: `:run_queue` (raw backlog, observe-first default) or `:confirmed` (backlog AND scheduling delay, the UX-faithful gate, flip once validated)
+      escalation_signal: get.(:escalation_signal, :run_queue),
+      # scheduling delay (µs) that confirms a backlog is actually starving requests, in `:confirmed` mode. Default is a first guess, calibrate from the logged `sched_delay_us` values first.
+      sched_delay_confirm_us: get.(:sched_delay_confirm_us, 50_000),
       mode: get.(:mode, :monitor)
     ]
   end

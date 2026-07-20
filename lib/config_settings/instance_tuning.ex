@@ -299,7 +299,9 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
       overload_down_ticks: :down_ticks,
       overload_cooldown_ms: :cooldown_ms,
       overload_retry_base_s: :retry_base_s,
-      overload_retry_max_s: :retry_max_s
+      overload_retry_max_s: :retry_max_s,
+      overload_escalation_signal: :escalation_signal,
+      overload_sched_delay_confirm_us: :sched_delay_confirm_us
     }
 
     defp apply_one({knob, value}) when is_map_key(@overload_keys, knob),

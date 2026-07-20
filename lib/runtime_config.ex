@@ -629,6 +629,19 @@ defmodule Bonfire.Common.RuntimeConfig do
           unit: "s",
           bounds: {30, 600}
         ],
+        overload_escalation_signal: [
+          name: l("Overload: escalation signal"),
+          layer: :elixir,
+          type: :enum,
+          # :run_queue = backlog only (observe-first); :confirmed = backlog AND real scheduling delay
+          values: [:run_queue, :confirmed]
+        ],
+        overload_sched_delay_confirm_us: [
+          name: l("Overload: scheduling delay to confirm (µs)"),
+          layer: :elixir,
+          unit: "µs",
+          bounds: {1_000, 1_000_000}
+        ],
         # ── boot-time env knobs: displayed read-only with their env-var hint ──
         pool_size: [
           name: l("Database pool size"),
