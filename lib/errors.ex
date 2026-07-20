@@ -181,7 +181,12 @@ defmodule Bonfire.Common.Errors do
 
       # exception_banner = debug_banner(kind, exception, stacktrace)
 
-      Logger.error("#{msg_text} - #{exception_banner}\n#{formatted_stacktrace}",
+      # slice the banner (may inline a huge inspected term) so the stacktrace after it survives Logger's `:truncate`
+      reserved =
+        String.length(to_string(msg_text)) + String.length(to_string(formatted_stacktrace)) + 8
+
+      Logger.error(
+        "#{msg_text} - #{slice_to_log_limit(exception_banner, reserved: reserved)}\n#{formatted_stacktrace}",
         limit: :infinity,
         printable_limit: :infinity
       )
@@ -202,9 +207,13 @@ defmodule Bonfire.Common.Errors do
          msg_text \\ nil
        ) do
     msg_text = msg_text || error_msg(msg)
+    formatted_stacktrace = format_stacktrace(stacktrace, [])
+
+    reserved =
+      String.length(to_string(msg_text)) + String.length(to_string(formatted_stacktrace)) + 8
 
     Logger.error(
-      "#{msg_text} - #{exception_banner || exception}\n#{format_stacktrace(stacktrace, [])}",
+      "#{msg_text} - #{slice_to_log_limit(exception_banner || exception, reserved: reserved)}\n#{formatted_stacktrace}",
       limit: :infinity,
       printable_limit: :infinity
     )
