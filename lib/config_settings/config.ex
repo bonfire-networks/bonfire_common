@@ -37,12 +37,16 @@ defmodule Bonfire.Common.Config do
 
   """
   def require_extension_config!(extension) do
-    if !has_extension_config?(extension) do
+    if !has_extension_config?(extension) and not skip_require_config?() do
       compilation_error(
         "You have not configured the `#{extension}` Bonfire extension, please `cp ./deps/#{extension}/config/#{extension}.exs ./config/#{extension}.exs` in your Bonfire app repository and then customise the copied config as necessary"
       )
     end
   end
+
+  # `mix bonfire.install.copy_configs` compiles the app to run, but an extension's missing config would raise here first (chicken-and-egg, and each dep compiles in its own subprocess, past the reach of a process-dict flag). An OS env var crosses that subprocess boundary, letting the copy_configs task bootstrap before the real configs exist.
+  defp skip_require_config?,
+    do: System.get_env("BONFIRE_SKIP_REQUIRE_CONFIG") in ~w(1 true yes)
 
   @doc """
   Retrieves a configuration value for a key, optionally from a specific OTP app or extension.
