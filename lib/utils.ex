@@ -48,6 +48,9 @@ defmodule Bonfire.Common.Utils do
   use Gettext, backend: Bonfire.Common.Localise.Gettext
   import Bonfire.Common.Localise.Gettext.Helpers
 
+  # generous fallback for `apply_task(:await, ...)`: it is a backstop against a runaway function, not a latency budget (callers who need one should pass `:timeout`)
+  @default_await_timeout 60_000
+
   defmacro __common_utils__(opts \\ []) do
     quote do
       import Untangle
@@ -878,10 +881,11 @@ defmodule Bonfire.Common.Utils do
 
   ## Parameters
 
-  - `function`: The type of task to start (e.g. `:async`, `:start_link`, or `:start`).
+  - `function`: The type of task to start (e.g. `:async`, `:start_link`, `:start`, or `:await`).
   - `fun`: The function to execute async.
   - `opts`: Options for task execution, including:
     - `:module` - The module to use for task execution (defaults to `Task`).
+    - `:timeout` - How long to wait when using `:await`, or `false` to wait indefinitely (defaults to #{@default_await_timeout}ms).
 
   ## Examples
 
@@ -896,6 +900,10 @@ defmodule Bonfire.Common.Utils do
       # Start an async Task (which you must await to get the result)
       > apply_task(:async, fn -> IO.puts("Async task") end)
       # Output: "Async task"
+
+      # Run in a Task and wait for the result, killing it if it takes too long
+      iex> apply_task(:await, fn -> :hello end, timeout: 5_000)
+      {:ok, :hello}
 
       # Using LiveView's start_async
       > apply_task(:start_async, fn -> {:ok, %{result: "done"}} end, socket: socket, id: "task-123")
@@ -977,6 +985,36 @@ defmodule Bonfire.Common.Utils do
       task = do_apply_task(opts[:module] || Task, :async, fun, [], opts)
       result = Task.await(task)
       Phoenix.Socket.assign(socket, from_ok(result))
+    end
+  end
+
+  # Run in a Task and wait for the result, giving up (and killing the task) after a timeout
+  def apply_task(:await, fun, opts) when is_list(opts) and is_function(fun) do
+    task = do_apply_task(opts[:module] || Task, :async, fun, [], opts)
+
+    timeout =
+      case opts[:timeout] do
+        # wait for as long as it takes
+        false -> :infinity
+        nil -> @default_await_timeout
+        timeout -> timeout
+      end
+
+    # NOTE: unlike `Task.await/2`, which raises in the caller and leaves the task running, this makes sure a function that overruns its budget is actually stopped
+    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} ->
+        {:ok, result}
+
+      {:exit, reason} ->
+        error(reason, "Task exited")
+        {:error, :exit}
+
+      nil ->
+        error("Task took longer than #{timeout} and was killed")
+        {:error, :timeout}
+
+      other ->
+        error(other, "Task failed with unexpected result")
     end
   end
 
