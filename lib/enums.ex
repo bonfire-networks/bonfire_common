@@ -1123,7 +1123,9 @@ defmodule Bonfire.Common.Enums do
     do: maybe_merge_to_struct(first, precedence)
 
   @doc """
-  Overlays `precedence` onto `first`, returning a struct (keeping `first`'s type when it is one). By default (`preserve_nils: true`) `precedence`'s real values AND its loaded-`nil`s overlay `first`, but its `NotLoaded` assocs are dropped so they can't clobber `first`'s loaded values. Pass `preserve_nils: false` to also drop `precedence`'s nils (never clobber), or `preserve_struct: true` for a fully-verbatim precedence (keeps `NotLoaded` too).
+  Overlays `precedence` onto `first`, returning a struct (keeping `first`'s type when it is one).
+
+  When BOTH sides are structs, `precedence`'s real values and its loaded-`nil`s overlay `first`, but its `%Ecto.Association.NotLoaded{}` are dropped: an unloaded assoc is the absence of data, so letting it overlay would silently discard something `first` had loaded. Pass `preserve_nils: false` to drop `precedence`'s nils too (never clobber at all), or `preserve_struct: true` for a fully-verbatim `precedence` that keeps its `NotLoaded` as well.
 
   ## Examples
 
@@ -1138,6 +1140,18 @@ defmodule Bonfire.Common.Enums do
       iex> # preserve_struct: true — fully verbatim precedence (also keeps NotLoaded assocs)
       iex> maybe_merge_to_struct(%URI{host: "a"}, %URI{host: nil, path: "/x"}, preserve_struct: true)
       %URI{host: nil, path: "/x"}
+
+      iex> # an UNLOADED assoc on precedence never replaces a value first had loaded (its other keys still overlay)
+      iex> unloaded = %Ecto.Association.NotLoaded{__field__: :host, __owner__: URI, __cardinality__: :one}
+      iex> merged = maybe_merge_to_struct(%URI{host: "loaded"}, %URI{host: unloaded, path: "/x"})
+      iex> {merged.host, merged.path}
+      {"loaded", "/x"}
+
+      iex> # preserve_struct: true opts out — precedence verbatim, so its unloaded assoc DOES overlay
+      iex> unloaded = %Ecto.Association.NotLoaded{__field__: :host, __owner__: URI, __cardinality__: :one}
+      iex> merged = maybe_merge_to_struct(%URI{host: "loaded"}, %URI{host: unloaded}, preserve_struct: true)
+      iex> match?(%Ecto.Association.NotLoaded{}, merged.host)
+      true
 
       iex> # struct first, plain-map precedence: overlay the given keys onto first
       iex> maybe_merge_to_struct(%URI{host: "a", path: "/old"}, %{path: "/new"})
@@ -1167,14 +1181,12 @@ defmodule Bonfire.Common.Enums do
   def maybe_merge_to_struct(first, precedence, opts)
       when is_struct(first) and is_struct(precedence) do
     # `struct/2` can't take a struct as its fields, so convert precedence to a plain map first.
-    # A merge defaults to `preserve_nils: true`: precedence's real values AND its loaded-nils overlay `first`, but `struct_to_map` still drops precedence's `NotLoaded` so it can't clobber `first`.
-    # `preserve_nils: false` drops precedence's nils too (never clobber); `preserve_struct: true` uses
-    # `de_struct` for a fully-verbatim precedence (keeps `NotLoaded` as well).
+    # `struct_to_map` always drops precedence's `%NotLoaded{}`: an unloaded assoc is the ABSENCE of data, so letting it overlay would silently discard something `first` had loaded (that cost us a silently-empty markdown export, via `Activities.activity_under_object/1` merging a `Needle.Pointer` — which declares every mixin, unloaded — over a freshly-loaded object). It still honours `preserve_nils` (default true) for precedence's loaded-nils, which locality classification relies on (eg. a local object's `:peered` == nil). `preserve_struct: true` opts out for a caller that really wants precedence verbatim, `NotLoaded` included.
 
     precedence =
-      if Keyword.get(opts, :preserve_nils, true),
+      if Keyword.get(opts, :preserve_struct, false),
         do: de_struct(precedence),
-        else: struct_to_map(precedence, false, opts)
+        else: struct_to_map(precedence, false, Keyword.put_new(opts, :preserve_nils, true))
 
     struct(first, precedence)
   end
