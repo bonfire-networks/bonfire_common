@@ -8,7 +8,7 @@ defmodule Bonfire.Common.Settings.IdCutoffs do
 
       config :bonfire_common, Bonfire.Common.Settings.IdCutoffs, record: [ulid_actor_ids_since: true]
 
-  At boot (as a transient GenServer placed after `Bonfire.Common.Settings.LoadInstanceConfig`, so already-recorded cutoffs have been loaded from DB into Config) each declared key with no recorded value gets the current UID stored in instance settings under `[__MODULE__, :recorded, key]`: durable in the DB, mirrored into OTP config immediately, and reloaded into Config on subsequent boots:
+  At boot (registered as a `Bonfire.Common.StartupTask`, which runs after `Bonfire.Common.Settings.LoadInstanceConfig`, so already-recorded cutoffs have been loaded from DB into Config) each declared key with no recorded value gets the current UID stored in instance settings under `[__MODULE__, :recorded, key]`: durable in the DB, mirrored into OTP config immediately, and reloaded into Config on subsequent boots:
 
       config :bonfire_common, Bonfire.Common.Settings.IdCutoffs, recorded: [ulid_actor_ids_since: "01J..."]
 
@@ -16,20 +16,15 @@ defmodule Bonfire.Common.Settings.IdCutoffs do
 
   First used for `:ulid_actor_ids_since` (see `Bonfire.Common.URIs` docs on the actor URL scheme); intended to be reused for the ULID → prefixed UUIDv7 migration (per-schema `prefixed_ids_since`).
   """
-  use GenServer, restart: :transient
+  @behaviour Bonfire.Common.StartupTask
   require Logger
   use Bonfire.Common.Config
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Settings
 
-  @spec start_link(ignored :: term) :: GenServer.on_start()
-  def start_link(_), do: GenServer.start_link(__MODULE__, [])
-
-  @doc false
-  def init(_) do
-    record_declared()
-    :ignore
-  end
+  @doc "Startup-task entry (run by `Bonfire.Common.StartupTasks`): records any declared-but-unrecorded cutoffs."
+  @impl Bonfire.Common.StartupTask
+  def run, do: record_declared()
 
   @doc "Records any declared-but-unrecorded cutoffs (see `keys_to_record/0`). Skipped in the test env."
   def record_declared do
