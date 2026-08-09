@@ -3,9 +3,9 @@ defmodule Bonfire.Common.StartupTasks do
   Single supervised entry-point for one-shot startup tasks (`Bonfire.Common.StartupTask`) that must run AFTER instance Settings are loaded into Config by `Bonfire.Common.Settings.LoadInstanceConfig`, e.g.
   recording ID cutoffs (`Bonfire.Common.Settings.IdCutoffs`), and one-off data rollouts.
 
-  Added to the supervision tree ONCE (right after `LoadInstanceConfig`) so new tasks need no further wiring, a task registers itself by declaring its module in config (a keyword list, so declarations from any extension deep-merge; set a module to `false` to unregister):
+  Added to the supervision tree ONCE (right after `LoadInstanceConfig`) so new tasks need no further wiring, a task registers itself under a named key in the `:run` keyword list (keyword lists deep-merge across `config` declarations, so any extension adds its own without clobbering others'; set a key to `false` to unregister):
 
-      config :bonfire_common, Bonfire.Common.StartupTasks, run: [Bonfire.Common.Settings.IdCutoffs]
+      config :bonfire_common, Bonfire.Common.StartupTasks, run: [id_cutoffs: Bonfire.Common.Settings.IdCutoffs]
 
   Runs each registered task in `handle_continue`, i.e. AFTER `init/1` returns, so it NEVER blocks the rest of boot: sequentially, each guarded so one failing (or slow) task can neither break boot nor stop the others. A heavy task (e.g. a multi-million-row backfill) therefore runs in the background here while the app is already serving; it must be idempotent + self-gated (see `StartupTask`).
 
@@ -43,19 +43,20 @@ defmodule Bonfire.Common.StartupTasks do
     :ok
   end
 
-  @doc "The registered startup-task modules (keys of the `:run` keyword list whose value is truthy)."
-  def tasks, do: for({mod, truthy} <- Config.get([__MODULE__, :run], []), truthy, do: mod)
+  @doc "The registered startup-task modules (the truthy values of the `:run` keyword list)."
+  def tasks, do: for({_name, mod} <- Config.get([__MODULE__, :run], []), mod, do: mod)
 
   defp run_task(mod) do
     if Code.ensure_loaded?(mod) and function_exported?(mod, :run, 0) do
       mod.run()
+      Logger.info("Startup task #{inspect(mod)} completed")
     else
-      Logger.error("StartupTask #{inspect(mod)} does not implement run/0 — skipping")
+      Logger.error("Startup task #{inspect(mod)} does not implement run/0 — skipping")
     end
   rescue
     e ->
       Logger.error(
-        "StartupTask #{inspect(mod)} failed (will retry next boot): " <>
+        "Startup task #{inspect(mod)} failed (will retry next boot): " <>
           Exception.format(:error, e, __STACKTRACE__)
       )
   end
