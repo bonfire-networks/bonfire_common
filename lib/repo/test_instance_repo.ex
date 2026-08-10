@@ -87,7 +87,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
 
     repo.put_dynamic_repo(repo)
 
-    if Boruta.Config.repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
+    if boruta_repo() != repo, do: Config.put([Boruta.Oauth, :repo], repo)
 
     configured_repo = Config.repo()
 
@@ -96,7 +96,7 @@ defmodule Bonfire.Common.TestInstanceRepo do
         do: debug("switching from repo #{configured_repo} to #{repo}"),
         else: debug("repo already set to #{repo}")
 
-      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
+      if boruta_repo() && boruta_repo() != repo, do: err(boruta_repo(), "wrong boruta repo")
 
       if configured_repo != repo, do: err(configured_repo, "wrong repo")
     end
@@ -125,7 +125,13 @@ defmodule Bonfire.Common.TestInstanceRepo do
         do: debug("switching from repo #{configured_repo} to #{repo}"),
         else: debug("repo already set to #{repo}")
 
-      if Boruta.Config.repo() != repo, do: err(Boruta.Config.repo(), "wrong boruta repo")
+      if boruta_repo() && boruta_repo() != repo, do: err(boruta_repo(), "wrong boruta repo")
+    end
+  end
+
+  defp boruta_repo do
+    if Code.ensure_loaded?(Boruta.Config) and function_exported?(Boruta.Config, :repo, 0) do
+      Boruta.Config.repo()
     end
   end
 
