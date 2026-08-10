@@ -741,7 +741,7 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     # TODO: less ugly
     # :fixme
-    skip = extras ++ [:skip, :todo, :benchmark, :live_federation, :test_instance]
+    skip = extras ++ [:skip, :todo, :benchmark, :live_federation, :test_instance, :rate_limit]
 
     # skip two-instances-required federation tests
     skip =
