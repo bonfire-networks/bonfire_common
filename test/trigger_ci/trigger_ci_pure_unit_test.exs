@@ -1,6 +1,9 @@
 defmodule Bonfire.Common.TriggerCIPureUnitTest do
   use ExUnit.Case
 
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+  @moduletag :backend
+
   alias Bonfire.Common.TriggerCI
 
   describe "pure unit tests (no network)" do

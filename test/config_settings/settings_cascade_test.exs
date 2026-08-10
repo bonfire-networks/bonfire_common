@@ -1,5 +1,8 @@
 defmodule Bonfire.Common.SettingsCascadeTest do
   use ExUnit.Case, async: false
+
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+  @moduletag :backend
   use Bonfire.Common.Utils
   alias Bonfire.Common.Settings
   alias Bonfire.Common.Config

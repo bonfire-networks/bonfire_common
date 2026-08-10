@@ -4,6 +4,8 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuningTest do
   """
   use ExUnit.Case, async: false
 
+  @moduletag :backend
+
   alias Bonfire.Common.Settings.Calm.InstanceTuning
   alias Bonfire.Common.Config
 

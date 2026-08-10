@@ -1,6 +1,9 @@
 defmodule Bonfire.Common.ObanPresetsTest do
   use ExUnit.Case, async: false
 
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+  @moduletag :backend
+
   alias Bonfire.Common.ObanPresets
   alias Bonfire.Common.Config
 

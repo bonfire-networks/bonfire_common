@@ -2,6 +2,9 @@ defmodule Bonfire.Common.OverloadTest do
   # async: false — persistent_term + named process + telemetry handlers
   use ExUnit.Case, async: false
 
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+  @moduletag :backend
+
   alias Bonfire.Common.Overload
 
   # drive the sampler with injected run-queue values: tests mutate the Agent, tick manually

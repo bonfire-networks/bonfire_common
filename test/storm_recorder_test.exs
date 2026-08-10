@@ -3,6 +3,9 @@ defmodule Bonfire.Common.StormRecorderTest do
   The on-demand storm attribution recorder (plan: overloaded-whale.md Phase 0): starts before a load experiment, snapshots every `interval_ms` into a bounded ring, auto-stops after its window, and MUST be zero-cost when off — telemetry handlers attach on start and detach on stop.
   """
   use ExUnit.Case, async: false
+
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+  @moduletag :backend
   require Logger
 
   alias Bonfire.Common.Telemetry.StormRecorder
