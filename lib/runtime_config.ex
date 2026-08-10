@@ -755,6 +755,12 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     skip = if System.get_env("TEST_WITH_MNEME") == "no", do: [:mneme] ++ skip, else: skip
 
+    # skip end-to-end-encryption tests when the extension providing it isn't in this build (e.g. the ActivityPub lib's `mls:messages` actor advertisement, which the adapter only emits with it)
+    skip =
+      if Code.ensure_loaded?(Bonfire.Encrypt),
+        do: skip,
+        else: [:e2ee] ++ skip
+
     # skip browser automation tests in CI
     skip =
       if ci? || is_nil(chromedriver_path),

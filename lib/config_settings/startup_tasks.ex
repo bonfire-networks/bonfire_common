@@ -9,7 +9,7 @@ defmodule Bonfire.Common.StartupTasks do
 
   Runs each registered task in `handle_continue`, i.e. AFTER `init/1` returns, so it NEVER blocks the rest of boot: sequentially, each guarded so one failing (or slow) task can neither break boot nor stop the others. A heavy task (e.g. a multi-million-row backfill) therefore runs in the background here while the app is already serving; it must be idempotent + self-gated (see `StartupTask`).
 
-  Skipped in the `:test` env (tasks that need test coverage are called directly). `restart: :transient` plus a clean `:stop` means it isn't restarted once its tasks have run.
+  Uses `restart: :transient` plus a clean `:stop` means it isn't restarted once its tasks have run.
   """
   use GenServer, restart: :transient
   require Logger
@@ -27,17 +27,15 @@ defmodule Bonfire.Common.StartupTasks do
     {:stop, :normal, state}
   end
 
-  @doc "Runs every registered startup task (see `tasks/0`), each guarded. Skipped in the `:test` env."
+  @doc "Runs every registered startup task (see `tasks/0`), each guarded. Runs in every env, each task decides for itself whether it should do anything in the current env."
   def run_all do
-    if Config.env() != :test do
-      case tasks() do
-        [] ->
-          :ok
+    case tasks() do
+      [] ->
+        :ok
 
-        mods ->
-          Logger.info("Running #{length(mods)} startup task(s): #{inspect(mods)}")
-          Enum.each(mods, &run_task/1)
-      end
+      mods ->
+        Logger.info("Running #{length(mods)} startup task(s): #{inspect(mods)}")
+        Enum.each(mods, &run_task/1)
     end
 
     :ok
