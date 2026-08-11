@@ -17,6 +17,36 @@ defmodule Bonfire.Common.Localise do
   end
 
   @doc """
+  Registers the object type names for gettext extraction, at compile time.
+
+  Object type names ("post", "user", "article") are derived from the loaded schema modules rather than written out in source, so `mix gettext.extract` cannot find them by walking `l/1` call sites — they have to be enumerated and handed to `localise_strings/3` explicitly. They are looked up at runtime by `Bonfire.Common.Types.object_type_display/1`.
+
+  ## Where to call this from
+
+  **A flavour extension, not the root app.** Under `AS_UMBRELLA=1` — which `just localise-extract` requires, so that extraction can see extension sources at all — `apps_path` makes the root project an umbrella *container*, and umbrella roots do not own source. Anything in the root's `lib/` is therefore never compiled during extraction, its macros never expand, and it contributes nothing. (This is why `bonfire.po` sat empty and only a handful of hand-added object types ever existed.)
+
+  A flavour extension is the right home because it is by definition the thing that depends on every extension in its build, so all sibling apps are loaded by the time it compiles — which is what `Bonfire.Common.Types.all_object_type_names/0` needs, since it enumerates via `Application.loaded_applications/0`.
+
+      defmodule Social.Localise do
+        use Bonfire.Common.Localise
+        Bonfire.Common.Localise.localise_object_type_names()
+      end
+
+  ## Why only object types
+
+  Every other runtime-derived set belongs to the extension that declares it, and is emitted there — activity verbs by `bonfire_social`, base verb forms by `bonfire_boundaries` via plain `l/4` (they stay context-less, being the base sense). Only object types span every extension at once, so only they need a vantage point that can see them all. Emitting another extension's strings from here would also put them in the wrong gettext domain.
+  """
+  defmacro localise_object_type_names do
+    quote do
+      Bonfire.Common.Types.all_object_type_names()
+      |> Bonfire.Common.Localise.Gettext.Helpers.localise_strings(
+        Bonfire.Common.Types,
+        "object"
+      )
+    end
+  end
+
+  @doc """
   Gets the default locale from the configuration or returns "en".
 
   ## Examples

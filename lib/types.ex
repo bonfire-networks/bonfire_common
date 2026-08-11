@@ -1070,7 +1070,9 @@ defmodule Bonfire.Common.Types do
       when is_atom(object_type) and not is_nil(object_type) do
     module_to_human_readable(object_type)
     |> String.downcase()
-    |> localise_dynamic(__MODULE__)
+    # `"object"` must match what `Bonfire.Common.Localise.localise_object_type_names/0` emits, or
+    # the lookup silently falls back to the context-less entry
+    |> localise_dynamic(__MODULE__, "object")
   end
 
   def object_type_display(object) when not is_nil(object) do
@@ -1091,7 +1093,8 @@ defmodule Bonfire.Common.Types do
   Names are downcased to match the msgid `object_type_display/1` actually looks up.
   """
   def all_object_type_names() do
-    Bonfire.Common.SchemaModule.modules()
+    # `modules_all/0` rather than `modules/0`: most schemas never declare `SchemaModule`, it is their context module that names them, so `modules/0` yields a handful of the dozens that exist
+    Bonfire.Common.SchemaModule.modules_all()
     |> Enum.filter(&defines_struct?/1)
     |> Enum.flat_map(fn t ->
       t =

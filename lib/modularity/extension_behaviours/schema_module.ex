@@ -32,4 +32,26 @@ defmodule Bonfire.Common.SchemaModule do
   def linked_context_modules() do
     Bonfire.Common.ExtensionBehaviour.apply_modules_cached(modules(), :context_module)
   end
+
+  @doc """
+  Schemas named by context or query modules via their `schema_module/0` callback, which do not declare this behaviour themselves.
+
+  Most schemas are plain Ecto modules in `bonfire_data_*`: it is their context module (`Bonfire.Posts`, `Bonfire.Me.Users`) that declares the relationship, so `modules/0` alone reports a handful where dozens exist.
+  """
+  @spec modules_inferred() :: [atom]
+  def modules_inferred() do
+    alias Bonfire.Common.ExtensionBehaviour
+
+    (ExtensionBehaviour.modules_pointed_at(Bonfire.Common.ContextModule, :schema_module) ++
+       ExtensionBehaviour.modules_pointed_at(Bonfire.Common.QueryModule, :schema_module))
+    |> Enum.uniq()
+  end
+
+  @doc """
+  Every schema this app knows about: those declaring `SchemaModule`, plus those inferred from the other two behaviours.
+
+  Prefer this over `modules/0` when you want coverage rather than only modules that opted in.
+  """
+  @spec modules_all() :: [atom]
+  def modules_all(), do: Enum.uniq(modules() ++ modules_inferred())
 end

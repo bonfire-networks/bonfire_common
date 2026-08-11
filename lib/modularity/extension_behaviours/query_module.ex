@@ -143,4 +143,22 @@ defmodule Bonfire.Common.QueryModule do
   def linked_context_modules() do
     Bonfire.Common.ExtensionBehaviour.apply_modules_cached(modules(), :context_module)
   end
+
+  @doc """
+  Query modules named by schema or context modules via their `query_module/0` callback, which do not declare this behaviour themselves.
+  """
+  @spec modules_inferred() :: [atom]
+  def modules_inferred() do
+    alias Bonfire.Common.ExtensionBehaviour
+
+    (ExtensionBehaviour.modules_pointed_at(Bonfire.Common.SchemaModule, :query_module) ++
+       ExtensionBehaviour.modules_pointed_at(Bonfire.Common.ContextModule, :query_module))
+    |> Enum.uniq()
+  end
+
+  @doc """
+  Every query module this app knows about: those declaring `QueryModule`, plus those inferred from the other two behaviours.
+  """
+  @spec modules_all() :: [atom]
+  def modules_all(), do: Enum.uniq(modules() ++ modules_inferred())
 end

@@ -139,6 +139,25 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     Cache.maybe_apply_cached({__MODULE__, :apply_modules}, [modules, fun])
   end
 
+  @doc """
+  Returns the modules that `behaviour_module`'s declared modules name via `callback`.
+
+  Used to infer one behaviour's members from the other two: a context module declaring `schema_module/0` tells us about a schema that may never declare `SchemaModule` itself.
+
+  Only the declared list is read, never another behaviour's inferred list, which is what keeps the three `modules_inferred/0` implementations from recursing into each other.
+  """
+  def modules_pointed_at(behaviour_module, callback) do
+    declared = behaviour_module.modules()
+
+    linked = apply_modules_cached(declared, callback)
+
+    # `apply_modules/2` caches both directions, so looking each declaring module up by key is what isolates the pointed-at side from the modules doing the pointing
+    declared
+    |> Enum.flat_map(&List.wrap(linked[&1]))
+    |> Enum.filter(&is_atom/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
   @doc "Note: use `apply_modules_cached/2` instead, as it caches the result."
   @decorate time()
   def apply_modules(modules, fun) do

@@ -2,8 +2,8 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
   defmodule Bonfire.Common.ConfigSettingsRegistryTest do
     use ExUnit.Case, async: true
 
-  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
-  @moduletag :backend
+    # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag that `Bonfire.Common.DataCase` applies, so without it this also runs in the federation job catch-all
+    @moduletag :backend
     import Untangle
     use Bonfire.Common.Utils
 
@@ -249,18 +249,20 @@ if Code.ensure_loaded?(Bonfire.UI.Common) do
 
         # Check default is evaluated
         assert date_format.default == :relative
-        # assert "Date format" = Keyword.get(date_format.opts, :name)
-        assert {:l, _, ["Date format"]} = Keyword.get(date_format.opts, :name)
+        # these used to come back as unevaluated `{:l, _, [text]}` AST, but only because
+        # `process_ast/2` crashed on them: it called `localise_dynamic/1` with no module, which
+        # resolved the domain to the atom `:bonfire` and blew `Gettext.dpgettext/5`'s `is_domain/1`
+        # guard, and the surrounding `try` swallowed it. With the domain now taken from
+        # `env.module`, the branch does what its comment always said and returns the string
+        assert "Date format" = Keyword.get(date_format.opts, :name)
 
         assert Keyword.get(date_format.opts, :type) == :select
 
         # Check options are preserved + evaluated
         assert options = Keyword.get(date_format.opts, :options)
         assert is_list(options)
-        assert {:l, _, ["Relative"]} = Keyword.get(options, :relative)
-        long = Keyword.get(options, :long)
-        # || {:l, _, ["Long"]} = long
-        assert long == "Long"
+        assert "Relative" = Keyword.get(options, :relative)
+        assert Keyword.get(options, :long) == "Long"
       end
     end
 

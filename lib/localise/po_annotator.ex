@@ -1,7 +1,20 @@
 defmodule Bonfire.Common.Localise.POAnnotator do
   @moduledoc """
-  Asynchronously patches POT files with runtime URL context in dev environment.
-  Uses Expo library for reliable POT file parsing and composition.
+  Records which pages each translatable string actually appeared on, and writes those URLs into the .po files as translator-visible comments.
+
+  A translator looking at a bare msgid like "Post" has very little to go on: the `#:` occurrence line gives a filename, which helps a developer and almost nobody else. This annotator adds a `#.` developer comment naming the real pages the string rendered on, which Transifex shows alongside the string — so the translator can open the page and see it in context.
+
+      #. URLs: https://campground.bonfire.cafe/settings/user/extensions
+      #: lib/integration.ex:11
+      msgid "Posts"
+
+  ## How it works
+
+  `l/4` and `lc/4` expand to include a call to `maybe_patch_pot_with_url_ast/4`, which is a no-op unless **both** conditions hold: the env is `:dev` or `:test`, and `BONFIRE_POT_URL_BASE` is set. When active, each render looks up the current page from the process tree (`:bonfire_current_url`) and casts to this GenServer, which batches edits and rewrites the .po file after a few seconds of inactivity (`@after_seconds_inactivity`), keeping at most `@default_max_urls` URLs per entry. Parsing and composition go through `Expo` rather than string munging, so existing entries and comments survive.
+
+  ## What this means in practice
+
+  **Coverage is a side effect of browsing.** A string is only annotated if a developer, running with `BONFIRE_POT_URL_BASE` set, actually visited a page that rendered it. Strings behind rarely-visited screens, error states, or admin-only flows will have no URLs — their absence says nothing about whether the string is used. To improve coverage, browse the app with the variable set and commit the resulting .po changes.
   """
 
   use GenServer

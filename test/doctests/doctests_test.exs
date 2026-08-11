@@ -9,6 +9,8 @@ defmodule Bonfire.Common.DocsTest do
 
   doctest Bonfire.Common.Localise, import: true
   doctest Bonfire.Common.Localise.Gettext, import: true
+  # the `l/lp/lc/localise_*` examples live in Helpers, so without this line they were never run
+  doctest Bonfire.Common.Localise.Gettext.Helpers, import: true
 
   doctest Bonfire.Common.Extend, import: true
   doctest Bonfire.Common.Modularity.DeclareHelpers, import: true

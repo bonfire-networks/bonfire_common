@@ -276,7 +276,10 @@ defmodule Bonfire.Common.ConfigSettingsRegistry do
 
         # Handle l("text") functions - extract the string
         {:l, _, [text]} when is_binary(text) ->
-          localise_dynamic(text)
+          # the string belongs to whichever extension declared the setting, so the gettext domain
+          # has to come from `env.module` — without it the lookup goes to the `bonfire` domain,
+          # which no longer has any strings extracted into it, and silently returns the msgid
+          localise_dynamic(text, if(env, do: env.module))
 
         {:*, _, args} ->
           Enum.map(args, &process_ast(&1, opts))
