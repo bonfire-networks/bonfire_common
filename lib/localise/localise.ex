@@ -37,12 +37,15 @@ defmodule Bonfire.Common.Localise do
   Every other runtime-derived set belongs to the extension that declares it, and is emitted there — activity verbs by `bonfire_social`, base verb forms by `bonfire_boundaries` via plain `l/4` (they stay context-less, being the base sense). Only object types span every extension at once, so only they need a vantage point that can see them all. Emitting another extension's strings from here would also put them in the wrong gettext domain.
   """
   defmacro localise_object_type_names do
-    quote do
-      Bonfire.Common.Types.all_object_type_names()
-      |> Bonfire.Common.Localise.Gettext.Helpers.localise_strings(
-        Bonfire.Common.Types,
-        "object"
-      )
+    # one call per owner, since `localise_strings/3` takes a single module and so a single domain
+    for {owner, names} <- Bonfire.Common.Types.all_object_type_names_by_owner() do
+      quote do
+        Bonfire.Common.Localise.Gettext.Helpers.localise_strings(
+          unquote(names),
+          unquote(owner),
+          "object"
+        )
+      end
     end
   end
 

@@ -1070,9 +1070,9 @@ defmodule Bonfire.Common.Types do
       when is_atom(object_type) and not is_nil(object_type) do
     module_to_human_readable(object_type)
     |> String.downcase()
-    # `"object"` must match what `Bonfire.Common.Localise.localise_object_type_names/0` emits, or
+    # the owner and `"object"` must both match what `all_object_type_names_by_owner/0` emitted, or
     # the lookup silently falls back to the context-less entry
-    |> localise_dynamic(__MODULE__, "object")
+    |> localise_dynamic(object_type_owner(object_type) || __MODULE__, "object")
   end
 
   def object_type_display(object) when not is_nil(object) do
@@ -1093,26 +1093,51 @@ defmodule Bonfire.Common.Types do
   Names are downcased to match the msgid `object_type_display/1` actually looks up.
   """
   def all_object_type_names() do
+    all_object_type_names_by_owner()
+    |> Enum.flat_map(fn {_owner, names} -> names end)
+    |> Enum.uniq()
+    |> Enums.filter_empty([])
+  end
+
+  @doc """
+  The same names as `all_object_type_names/0`, grouped by the module whose extension owns each type.
+
+  Emission uses this to make one `localise_strings/3` call per owner, so "post" is extracted into `bonfire_posts` rather than everything landing in `bonfire_common`. `object_type_display/1` derives the same owner when looking a name up, and the two must agree or the lookup silently misses.
+  """
+  def all_object_type_names_by_owner() do
     # `modules_all/0` rather than `modules/0`: most schemas never declare `SchemaModule`, it is their context module that names them, so `modules/0` yields a handful of the dozens that exist
     Bonfire.Common.SchemaModule.modules_all()
     |> Enum.filter(&defines_struct?/1)
-    |> Enum.flat_map(fn t ->
-      t =
-        t
-        |> module_to_human_readable()
-        |> sanitise_name()
-        |> case do
-          nil -> nil
-          name -> String.downcase(name)
-        end
-
-      if t,
-        do: [t, "Delete this #{t}"],
-        else: []
+    |> Enum.flat_map(fn schema ->
+      case object_type_name(schema) do
+        nil -> []
+        name -> [{object_type_owner(schema) || __MODULE__, [name, "Delete this #{name}"]}]
+      end
     end)
-    |> Enums.filter_empty([])
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {owner, names} -> {owner, names |> List.flatten() |> Enum.uniq()} end)
+  end
 
-    # |> IO.inspect(label: "Making all object types localisable")
+  @doc """
+  The module whose extension owns an object type, used to pick its gettext domain.
+
+  Resolves through the schema's context module, since that is what lives in the feature extension (`Bonfire.Posts` for `Bonfire.Data.Social.Post`), and falls back to the schema itself where nothing names it. Returns nil for anything that is not a known schema, in which case callers fall back to `Bonfire.Common.Types`, keeping emission and lookup in step.
+  """
+  def object_type_owner(schema) when is_atom(schema) and not is_nil(schema) do
+    Bonfire.Common.ContextModule.linked_schema_modules()[schema] ||
+      if schema in Bonfire.Common.SchemaModule.modules_all(), do: schema
+  end
+
+  def object_type_owner(_), do: nil
+
+  defp object_type_name(schema) do
+    schema
+    |> module_to_human_readable()
+    |> sanitise_name()
+    |> case do
+      nil -> nil
+      name -> String.downcase(name)
+    end
   end
 
   @doc """

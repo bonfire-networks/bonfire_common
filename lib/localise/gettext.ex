@@ -127,6 +127,14 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   use Gettext, backend: Bonfire.Common.Localise.Gettext
   use Untangle
 
+  @doc false
+  defguard is_given_domain(domain) when is_binary(domain) or (is_atom(domain) and domain != nil)
+
+  # a domain given as an OTP app or module names the extension that owns the string; nil falls back to the caller's own
+  defp domain_or_caller(domain, caller_module) do
+    if is_binary(domain), do: domain, else: extension_name(domain || caller_module)
+  end
+
   @doc """
   Translates a string with optional bindings, context, and domain.
 
@@ -220,9 +228,9 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   defmacro l(msgid, bindings, nil, domain)
-           when (is_binary(domain) and is_list(bindings)) or
+           when (is_given_domain(domain) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    # Use the explicitly provided domain 
+    domain = domain_or_caller(domain, __CALLER__.module)
 
     pot_patch_ast =
       Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
@@ -241,9 +249,9 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   end
 
   defmacro l(msgid, bindings, context, domain)
-           when (is_binary(domain) and is_binary(context) and is_list(bindings)) or
+           when (is_given_domain(domain) and is_binary(context) and is_list(bindings)) or
                   (is_map(bindings) and is_binary(msgid)) do
-    # Use the explicitly provided context and domain 
+    domain = domain_or_caller(domain, __CALLER__.module)
 
     pot_patch_ast =
       Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
@@ -387,8 +395,8 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lp(msgid, msgid_plural, n, bindings, nil, domain)
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
-                  (is_map(bindings) and is_binary(domain)) do
-    # Use the explicitly provided domain 
+                  (is_map(bindings) and is_given_domain(domain)) do
+    domain = domain_or_caller(domain, __CALLER__.module)
 
     pot_patch_ast =
       Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
@@ -417,8 +425,8 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lp(msgid, msgid_plural, n, bindings, context, domain)
            when (is_binary(msgid) and is_binary(msgid_plural) and not is_nil(n) and
                    is_list(bindings)) or
-                  (is_map(bindings) and is_binary(context) and is_binary(domain)) do
-    # Use the explicitly provided context and domain 
+                  (is_map(bindings) and is_binary(context) and is_given_domain(domain)) do
+    domain = domain_or_caller(domain, __CALLER__.module)
 
     pot_patch_ast =
       Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
@@ -456,7 +464,11 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
 
   The context string must be byte-identical between here and any other reference to the same entry; a mismatch is silent, degrading to the context-less translation.
 
-  The gettext domain defaults to the calling module's extension, and can be overridden with the fourth argument. Domains are as strict as contexts, a lookup in one never sees a msgid extracted into another so an override is needed whenever a string is declared by a *different* extension than the one rendering it. Prefer a helper exported by the declaring extension, which keeps the domain with its owner rather than restating it at each call site.
+  The gettext domain defaults to the calling module's extension, and the fourth argument overrides it with an OTP app, a module, or a domain string. Domains are as strict as contexts: a lookup in one never sees a msgid extracted into another.
+
+  Use the override to give a shared label **one canonical entry**. A "Follow" button rendered from several extensions should be `lc("verb: action", "Follow", [], :bonfire_social)` at each site, so all of them extract to and look up the same unit, rather than each declaring its own copy that translators must translate repeatedly and keep in step.
+
+  Where the string is not a literal (verb names, object types resolved at runtime), an override cannot help, since there is nothing for the extractor to see. Those need a helper exported by the declaring extension plus an enumeration, as `Bonfire.Boundaries.Verbs.verb_name/1` and `Bonfire.Social.Localise` do.
 
   ## Examples
 
@@ -468,9 +480,8 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
   defmacro lc(context, msgid, bindings \\ [], domain \\ nil)
 
   defmacro lc(context, msgid, bindings, domain) when is_binary(context) and is_binary(msgid) do
-    # an explicit domain is the escape hatch for looking up a string another extension declares;
-    # prefer a helper exported by that extension, since it keeps the domain with its owner
-    domain = if is_binary(domain), do: domain, else: extension_name(__CALLER__.module)
+    # an OTP app or module names the extension that owns the string, so a shared label can be declared once in its home domain rather than copied into each caller's
+    domain = domain_or_caller(domain, __CALLER__.module)
 
     pot_patch_ast =
       Bonfire.Common.Localise.POAnnotator.maybe_patch_pot_with_url_ast(
@@ -685,10 +696,9 @@ defmodule Bonfire.Common.Localise.Gettext.Helpers do
     end
   end
 
-  # a gettext domain must be `:default` or a binary (see `Gettext.dpgettext/5`'s `is_domain/1`
-  # guard), so this returns a string like the clauses below — returning the `:bonfire` atom raised
-  # a FunctionClauseError for every `localise_dynamic/2` call without a module
-  defp extension_name(nil), do: "bonfire"
+  defp extension_name(nil) do
+    "bonfire_common"
+  end
 
   defp extension_name(module_or_app) when is_atom(module_or_app) do
     case Application.get_application(module_or_app) do
