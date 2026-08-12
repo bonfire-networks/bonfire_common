@@ -24,13 +24,17 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc "List modules that implement a behaviour"
   @callback modules() :: any
 
-  defp prepare_data_for_cache() do
-    _app_modules_to_scan = ModuleAnalyzer.app_modules_to_scan(cache: true)
+  # registered by `Bonfire.Application.start/2` (as `@sup_name`), so it exists exactly while the app is running
+  @app_supervisor Bonfire.Supervisor
 
-    # first find all *declared* behaviours (which are a behaviour of this module)
-    find_extension_behaviours()
-    #  then find modules that implement those behaviours
-    |> find_adopters_of_behaviours()
+  defp prepare_data_for_cache(opts) do
+    # fist index appps
+    app_modules_to_scan = ModuleAnalyzer.app_modules_to_scan(opts)
+    # then find all *declared* behaviours (which are a behaviour of this module)
+    app_modules_to_scan
+    |> find_extension_behaviours()
+    # then find modules that implement those behaviours
+    |> find_adopters_of_behaviours(app_modules_to_scan)
   end
 
   # multiple behaviours
@@ -115,12 +119,39 @@ defmodule Bonfire.Common.ExtensionBehaviour do
 
   def cached_behaviours(), do: :persistent_term.get(__MODULE__)
 
+  @doc """
+  Returns the cached registry, rebuilding it first if the loaded applications have changed since it was cached.
+
+  The registry reflects whatever happened to be loaded when it was populated. Before the app starts that is incidental: `use_modules/0`-style macros expand while compiling, so a snapshot taken then is whatever the first caller happened to trip, and was then reused for the rest of the build. One prod build compiled a router from 11 route modules while the running system reported 17, silently dropping `/messages` among others — even though a scan at that point finds 21.
+
+  The check is skipped entirely once the app is running, where the loaded applications are settled: it costs ~1ms against 0.02µs to read the cache, on a path hit for every module lookup. While compiling it is the other way round, ~1ms against ~80ms to rescan, and gets us a rescan only when applications have actually loaded since.
+  """
   def behaviours() do
-    cached_behaviours()
+    if app_started?() or not apps_changed?() do
+      cached_behaviours()
+    else
+      populate(cache: true)
+    end
   rescue
     _e in ArgumentError ->
-      populate()
+      populate(cache: true)
   end
+
+  # the app list cached by the last scan doubles as the baseline to compare against, so only one copy of it is ever kept
+  defp apps_changed? do
+    case Extend.cached_loaded_applications_map() do
+      nil ->
+        # nothing recorded to compare against, so leave it to the rescan to read the applications and record them
+        true
+
+      cached ->
+        # `cache: true` records what it read, in one step moving the baseline on and priming the rescan below with the fresh list. Left stale it would serve that rescan the very list it is meant to replace, and match here forever after
+        Extend.uncached_loaded_applications_map(cache: true) != cached
+    end
+  end
+
+  @doc "Whether the app is running, as opposed to eg. being compiled."
+  def app_started?, do: is_pid(Process.whereis(@app_supervisor))
 
   def behaviour_app_modules(behaviour, behaviours \\ nil)
   def behaviour_app_modules(behaviour, nil), do: behaviour_app_modules(behaviour, behaviours())
@@ -195,13 +226,13 @@ defmodule Bonfire.Common.ExtensionBehaviour do
 
   @doc false
   def init(_) do
-    populate()
+    populate(cache: true)
     :ignore
   end
 
-  def populate() do
+  def populate(opts \\ [cache: true]) do
     # Use the common populate_registry function
-    ModuleAnalyzer.populate_registry(__MODULE__, &prepare_data_for_cache/0)
+    ModuleAnalyzer.populate_registry(__MODULE__, fn -> prepare_data_for_cache(opts) end)
   end
 
   defdelegate apps_to_scan, to: ModuleAnalyzer

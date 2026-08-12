@@ -38,7 +38,8 @@ defmodule Bonfire.Common.ObjectTypeOwnershipTest do
     end
 
     test "covers the same names as all_object_type_names/0" do
-      flat = Types.all_object_type_names_by_owner() |> Enum.flat_map(fn {_owner, names} -> names end)
+      flat =
+        Types.all_object_type_names_by_owner() |> Enum.flat_map(fn {_owner, names} -> names end)
 
       assert Enum.sort(Enum.uniq(flat)) == Enum.sort(Enum.uniq(Types.all_object_type_names()))
     end

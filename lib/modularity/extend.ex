@@ -552,12 +552,27 @@ defmodule Bonfire.Common.Extend do
 
   """
   def loaded_applications_map(opts \\ [cache: false]) do
-    with nil <- :persistent_term.get(@loaded_apps_key, nil) do
+    with nil <- cached_loaded_applications_map() do
       uncached_loaded_applications_map(opts)
     end
   end
 
-  defp uncached_loaded_applications_map(opts \\ [cache: false]) do
+  @doc """
+  Forgets any cached list of loaded applications, so the next read reflects what is actually loaded.
+
+  Called by `Bonfire.Common.ExtensionBehaviour.populate/0`, which caches this list while scanning and would otherwise rescan the very same stale list it is trying to replace.
+  """
+  def invalidate_loaded_applications() do
+    :persistent_term.erase(@loaded_apps_key)
+    :persistent_term.erase(@loaded_apps_names_key)
+    :ok
+  end
+
+  @doc "Returns the cached list of loaded applications, or nil if none was recorded, unlike `loaded_applications_map/1` which falls back to reading them."
+  def cached_loaded_applications_map, do: :persistent_term.get(@loaded_apps_key, nil)
+
+  @doc "Reads the loaded applications directly, ignoring any cached list. Used to check whether the app set has changed since it was cached."
+  def uncached_loaded_applications_map(opts \\ [cache: false]) do
     apps_map =
       Application.loaded_applications()
       |> prepare_loaded_applications_map()
