@@ -122,12 +122,14 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   @doc """
   Returns the cached registry, rebuilding it first if the loaded applications have changed since it was cached.
 
-  The registry reflects whatever happened to be loaded when it was populated. Before the app starts that is incidental: `use_modules/0`-style macros expand while compiling, so a snapshot taken then is whatever the first caller happened to trip, and was then reused for the rest of the build. One prod build compiled a router from 11 route modules while the running system reported 17, silently dropping `/messages` among others — even though a scan at that point finds 21.
+  The registry reflects whatever was reachable when it was populated. Before the app starts that is incidental: `use_modules/0`-style macros expand while compiling, so a snapshot taken then is whatever the first caller happened to trip, and was then reused for the rest of the build. One prod build compiled a router from 11 route modules while the running system reported 17, silently dropping `/messages` among others — even though a scan at that point finds 21.
 
-  The check is skipped entirely once the app is running, where the loaded applications are settled: it costs ~1ms against 0.02µs to read the cache, on a path hit for every module lookup. While compiling it is the other way round, ~1ms against ~80ms to rescan, and gets us a rescan only when applications have actually loaded since.
+  Two ways it can be stale, hence two checks. Applications may have loaded since, which `apps_changed?/0` catches. Or the scan ran while `Mix.Project.in_project/4` had the code path narrowed to one dependency's own tree, which `Bonfire.Common.ModuleAnalyzer.code_path_changed?/0` catches: everything outside that tree is loaded and listed in its application spec, but cannot be loaded, so it fails every behaviour check and leaves no trace of having been missed.
+
+  Both are skipped entirely once the app is running, where the code path and the loaded applications are settled: they cost ~1ms against 0.02µs to read the cache, on a path hit for every module lookup. While compiling it is the other way round, ~1ms against ~80ms to rescan, and buys a rescan only when something actually changed.
   """
   def behaviours() do
-    if app_started?() or not apps_changed?() do
+    if app_started?() or (not apps_changed?() and not ModuleAnalyzer.code_path_changed?()) do
       cached_behaviours()
     else
       populate(cache: true)

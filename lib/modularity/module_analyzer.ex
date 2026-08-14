@@ -4,12 +4,18 @@ defmodule Bonfire.Common.ModuleAnalyzer do
   Common functionality for analyzing the codebase.
 
   This module provides the core functionality for scanning and analyzing modules across Bonfire applications, serving as a foundation for both the `ExtensionBehaviour` registry and the `ConfigSettingsRegistry`.
+
+  A scan is only as complete as the code path it runs under, which during compilation is whatever the dependency being compiled declares: `Mix.Project.in_project/4` narrows it per dependency, so an extension outside that dependency's tree has its applications loaded and its modules listed in its spec, yet cannot be loaded, and so fails every behaviour check silently. Cache that scan and the rest of the build inherits it. A newly added extension's routes went missing from the compiled router exactly this way, since `use_modules` expands at compile time against whatever the registry holds by then.
+
+  Hence `code_path_changed?/0`, which callers pair with their own staleness checks: a scan taken under a narrower code path than the current one has to be redone, and by the time the app itself compiles the path is complete.
   """
   use Untangle
   alias Bonfire.Common.Utils
   use Bonfire.Common.Config
   alias Bonfire.Common.Enums
   alias Bonfire.Common.Extend
+
+  @code_path_key {__MODULE__, :scanned_code_path}
 
   @doc """
   Get all Bonfire-related applications based on name pattern.
@@ -31,6 +37,40 @@ defmodule Bonfire.Common.ModuleAnalyzer do
         end
     end)
     |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Whether the build's code path has grown since the scan that is currently cached.
+
+  Always false once the app is running, and in a release, neither of which has a build directory that can change under them.
+  """
+  def code_path_changed? do
+    case build_code_path_size() do
+      nil -> false
+      size -> :persistent_term.get(@code_path_key, nil) != size
+    end
+  end
+
+  @doc "Records the code path a scan was taken under, so `code_path_changed?/0` can tell when it no longer holds."
+  def record_code_path do
+    case build_code_path_size() do
+      nil -> :ok
+      size -> :persistent_term.put(@code_path_key, size)
+    end
+  end
+
+  defp build_code_path_size do
+    if not Bonfire.Common.ExtensionBehaviour.app_started?() and Code.ensure_loaded?(Mix.Project) do
+      build_lib = Path.join(Mix.Project.build_path(), "lib")
+
+      :code.get_path()
+      |> Enum.count(&String.starts_with?(to_string(&1), build_lib))
+    end
+  rescue
+    # never let discovery fail because the build wasn't in the state we assumed
+    e ->
+      warn("could not read the code path: #{inspect(e)}")
+      nil
   end
 
   @doc """
@@ -65,6 +105,8 @@ defmodule Bonfire.Common.ModuleAnalyzer do
     Logger.info("Analyzing the codebase for #{inspect(module)}...")
 
     indexed = prepare_fun.()
+
+    record_code_path()
 
     # Store the result in persistent_term for fast global access
     :persistent_term.put(module, indexed)

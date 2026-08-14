@@ -450,7 +450,9 @@ defmodule Bonfire.Common.DatesTimes do
   """
   def date_from_pointer(object) do
     with id when is_binary(id) <- Bonfire.Common.Types.uid(object),
-         {:ok, ts} <- Needle.ULID.timestamp(id) do
+         # NOT Needle.ULID.timestamp/1, which only matches the 26-byte ULID form and so returned
+         # nil for every UUIDv7-based UID; Needle.UID.timestamp/1 handles both encodings
+         {:ok, ts} <- Needle.UID.timestamp(id) do
       to_date_time(ts)
     else
       e ->

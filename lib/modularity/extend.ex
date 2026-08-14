@@ -571,6 +571,64 @@ defmodule Bonfire.Common.Extend do
   @doc "Returns the cached list of loaded applications, or nil if none was recorded, unlike `loaded_applications_map/1` which falls back to reading them."
   def cached_loaded_applications_map, do: :persistent_term.get(@loaded_apps_key, nil)
 
+  @doc """
+  Removes the given modules from the running VM, and ends the processes that were running them.
+
+  Two steps, because neither catches everything on its own. `:code.purge/1` terminates processes with the code *on their stack*, which is a process caught mid-call, so `kill_processes_started_by/1` follows it to catch the idle ones, a parked `GenServer` holds its callback module as data rather than as a stack frame, so the purge walks straight past it.
+
+  Only durable in **embedded** code-loading mode, ie. in a release. In `:interactive` mode (dev/test) a purged module is reloaded from disk the next time it is called, so treat this as ending what is running rather than as making code unavailable.
+
+  ## Examples
+
+      iex> purge_modules([Not.A.Real.Module])
+      :ok
+  """
+  def purge_modules(modules) when is_list(modules) do
+    if :code.get_mode() == :interactive do
+      warn(
+        "purging modules in :interactive mode, where they reload from disk on next call, so this ends what is running but does not keep the code away"
+      )
+    end
+
+    for mod <- modules do
+      # drop any pre-existing old copy first, else :code.delete/1 refuses
+      :code.purge(mod)
+      :code.delete(mod)
+      # and again, to drop what delete/1 just made old (this kills processes mid-call)
+      :code.purge(mod)
+    end
+
+    killed = kill_processes_started_by(modules)
+    debug(killed, "purged #{length(modules)} module(s), ending this many process(es)")
+
+    :ok
+  end
+
+  @doc """
+  Kills every process that was started by one of the given modules, returning how many.
+
+  Matches on the module that started each process rather than on links or supervision, so a process orphaned from whatever spawned it is caught too.
+
+  ## Examples
+
+      iex> kill_processes_started_by([Not.A.Real.Module])
+      0
+  """
+  def kill_processes_started_by(modules) when is_list(modules) do
+    targets = MapSet.new(modules)
+
+    for pid <- Process.list(),
+        # nil for a process that died mid-scan, which this filters out
+        {:dictionary, dict} <- [Process.info(pid, :dictionary)],
+        {mod, _fun, _arity} <- [dict[:"$initial_call"]],
+        MapSet.member?(targets, mod),
+        reduce: 0 do
+      count ->
+        Process.exit(pid, :kill)
+        count + 1
+    end
+  end
+
   @doc "Reads the loaded applications directly, ignoring any cached list. Used to check whether the app set has changed since it was cached."
   def uncached_loaded_applications_map(opts \\ [cache: false]) do
     apps_map =
