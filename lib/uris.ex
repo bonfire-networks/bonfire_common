@@ -978,6 +978,40 @@ defmodule Bonfire.Common.URIs do
     endpoint_module.static_path(path)
   end
 
+  @doc """
+  Like `static_path/2`, but guaranteed to change when the file does.
+
+  In prod `static_path/2` already returns a content-hashed filename from `phx.digest`'s cache manifest. Outside prod there is no manifest (`cache_static_manifest` is only configured there), so the path comes back unchanged and a browser can keep serving a stale copy. That matters most for the bundles loaded through a dynamic `import()`, which the ES module registry caches by URL.
+
+  Use this for built assets that are fetched by URL. Plain `static_path/2` stays right for everything else, notably images rendered many times per page, which should not each pay a `File.stat`.
+
+      > versioned_static_path("/assets/console_terminal.js")
+      "/assets/console_terminal.js?v=123456789"
+  """
+  def versioned_static_path(path, endpoint_module \\ Bonfire.Common.Config.endpoint_module()) do
+    path = static_path(path, endpoint_module)
+
+    if Config.env() != :prod do
+      "#{path}?v=#{static_file_version(path)}"
+    else
+      path
+    end
+  end
+
+  # the mtime rather than a content hash, so it only changes when the file is actually rebuilt.
+  # Read per call rather than at compile time: bundles are rebuilt by esbuild without recompiling
+  # Elixir, so a compile-time value would freeze exactly when it needs to change. The stat only
+  # happens outside prod and costs a syscall, which is noise next to rendering the page
+  defp static_file_version(path) do
+    Path.join([to_string(:code.priv_dir(:bonfire)), "static", path])
+    |> File.stat()
+    |> case do
+      {:ok, %{mtime: mtime}} -> :erlang.phash2(mtime)
+      # not built yet, so bust every time rather than pinning a URL that may start working
+      _ -> System.system_time(:second)
+    end
+  end
+
   def check_is_local?(thing, opts \\ []) do
     Utils.maybe_apply(
       Bonfire.Federate.ActivityPub.AdapterUtils,
