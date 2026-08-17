@@ -94,6 +94,9 @@ if Code.ensure_loaded?(Telemetry.Metrics) do
         summary("bonfire.repo.query.idle_time", unit: @millis),
 
         # VM Metrics
+        # how busy the schedulers actually were, which no built-in dashboard page shows.
+        # `normal` rather than `total`, which is diluted by the always-idle dirty schedulers
+        last_value("vm.cpu.normal", unit: :percent),
         summary("vm.memory.total", unit: {:byte, :megabyte}),
         summary("vm.total_run_queue_lengths.total"),
         summary("vm.total_run_queue_lengths.cpu"),
@@ -109,9 +112,75 @@ if Code.ensure_loaded?(Telemetry.Metrics) do
         # A module, function and arguments to be invoked periodically.
         # This function must call :telemetry.execute/3 and a metric must be added above.
         # {Bonfire.UI.Common.Web, :count_users, []}
-        {Bonfire.Common.Telemetry.Metrics, :oban_worker_memory, []}
+        {Bonfire.Common.Telemetry.Metrics, :oban_worker_memory, []},
+        {Bonfire.Common.Telemetry.Metrics, :scheduler_utilization, []}
       ]
     end
+
+    @doc """
+    Emits `[:vm, :cpu]` with the percentage of wall time schedulers spent working.
+
+    The BEAM's honest CPU number: unlike `cpu_sup` it is not fooled by container limits, and unlike run queue lengths it says how *busy* the schedulers were rather than how many were waiting.
+
+    `:erlang.statistics(:scheduler_wall_time)` counts cumulatively, so a percentage needs the previous sample. It lives in the calling process's dictionary, which works because `:telemetry_poller` invokes measurements from its own long-lived process, with no extra process and no `:persistent_term` (whose writes would force a global GC scan and would be the wrong trade every 10s). The first call after boot therefore emits nothing.
+    """
+    def scheduler_utilization do
+      sample = scheduler_sample()
+      previous = Process.put(:scheduler_wall_time_sample, sample)
+
+      if previous do
+        :telemetry.execute([:vm, :cpu], scheduler_percentages(previous, sample), %{})
+      end
+    end
+
+    @doc """
+    Ensures scheduler time is being tracked, and returns a sample to diff against later.
+
+    The flag is global and setting it is not free, so it is set once per calling process rather than on every sample.
+    """
+    def scheduler_sample do
+      if !Process.get(:scheduler_wall_time_enabled) do
+        :erlang.system_flag(:scheduler_wall_time, true)
+        Process.put(:scheduler_wall_time_enabled, true)
+      end
+
+      :erlang.statistics(:scheduler_wall_time) |> Enum.sort()
+    end
+
+    @doc """
+    The percentage of wall time schedulers spent working between two `scheduler_sample/0` results.
+
+    Shared with `Bonfire.UI.Common.ProcessCpuDashboardPage`, which measures over its own refresh interval rather than the poller's fixed period.
+    """
+    def scheduler_percentages(previous, current) do
+      pairs = Enum.zip(previous, current)
+
+      # ids 1..schedulers_online are the normal ones, dirty-CPU schedulers follow
+      {normal, dirty} =
+        Enum.split_with(pairs, fn {{id, _, _}, _} -> id <= normal_scheduler_count() end)
+
+      %{
+        total: utilisation(pairs),
+        normal: utilisation(normal),
+        dirty_cpu: utilisation(dirty)
+      }
+    end
+
+    @doc "How many normal schedulers are online, ie. how many cores the VM will use."
+    def normal_scheduler_count, do: :erlang.system_info(:schedulers_online)
+
+    defp utilisation(pairs) do
+      {active, total} =
+        Enum.reduce(pairs, {0, 0}, fn {{_, active1, total1}, {_, active2, total2}},
+                                      {active, total} ->
+          {active + (active2 - active1), total + (total2 - total1)}
+        end)
+
+      percentage(active, total)
+    end
+
+    defp percentage(_active, total) when total <= 0, do: 0.0
+    defp percentage(active, total), do: Float.round(active * 100 / total, 1)
 
     defp get_and_put_http_method(%{conn: %{method: method}} = metadata) do
       Map.put(metadata, :method, method)
