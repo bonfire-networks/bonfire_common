@@ -530,7 +530,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url(%{path: "/" <> _ = path} = _object, _opts) do
-    "#{base_uri()}#{path}"
+    "#{base_url()}#{path}"
   end
 
   def canonical_url("http:" <> _ = url, _opts) do
@@ -542,7 +542,7 @@ defmodule Bonfire.Common.URIs do
   end
 
   def canonical_url("/" <> _ = path, _opts) do
-    "#{base_uri()}#{path}"
+    "#{base_url()}#{path}"
   end
 
   def canonical_url(object, opts) do

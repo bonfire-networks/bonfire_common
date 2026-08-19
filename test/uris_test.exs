@@ -3,6 +3,16 @@ defmodule Bonfire.Common.URIsTest do
 
   alias Bonfire.Common.URIs
 
+  describe "canonical_url/2" do
+    test "uses the normalized public base URL for relative paths" do
+      path = "/post/01M0DQ4JFGM29V771YBY5RK92S"
+
+      for relative <- [path, %{path: path}] do
+        assert URIs.canonical_url(relative) == "#{URIs.base_url()}#{path}"
+      end
+    end
+  end
+
   describe "versioned_static_path/1" do
     @moduletag :uris
 
