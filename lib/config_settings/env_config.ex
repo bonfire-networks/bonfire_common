@@ -112,6 +112,118 @@ defmodule Bonfire.Common.EnvConfig do
       ...> )
       [[host: "localhost"], [host: "remote"]]
   """
+  @blank ~w(none false no 0)
+
+  @doc """
+  Whether an env value means "explicitly empty/disabled".
+
+  Env vars can't hold `nil`, so operators need a way to say "off" that is distinct from "unset", the difference between overriding a default to nothing and not overriding it at all.
+
+      iex> EnvConfig.blank?("none")
+      true
+
+      iex> EnvConfig.blank?(" ")
+      true
+
+      iex> EnvConfig.blank?("example.com")
+      false
+  """
+  def blank?(value) when is_binary(value), do: String.trim(value) in ["" | @blank]
+  def blank?(nil), do: true
+  def blank?(_), do: false
+
+  @doc """
+  Splits a separated env value into a trimmed list, dropping blank-ish entries.
+
+  `Want.List` handles the splitting itself; what this adds is `blank?/1` semantics, so a whole value of `none` yields `[]` rather than `["none"]`.
+
+  ## Options
+
+    * `:separator` - defaults to the comma character.
+
+      iex> EnvConfig.list("a.com, b.com")
+      ["a.com", "b.com"]
+
+      iex> EnvConfig.list("none")
+      []
+
+      iex> EnvConfig.list("a:b", separator: ":")
+      ["a", "b"]
+  """
+  def list(value, opts \\ [])
+
+  def list(value, opts) when is_binary(value) do
+    if blank?(value) do
+      []
+    else
+      value
+      |> String.split(Keyword.get(opts, :separator, ","), trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&blank?/1)
+    end
+  end
+
+  def list(value, _opts), do: List.wrap(value)
+
+  @doc """
+  Merges env vars over a default keyed by an `{outer, inner}` PAIR, per pair.
+
+  Env vars are `<prefix>_<OUTER>_<INNER>=<value>`, against a default shaped `[{{outer, inner}, value}]` (or the equivalent map). Merging per pair, rather than replacing the whole structure as soon as one var is set, avoids the usual env-config surprise where configuring one thing silently discards unrelated defaults.
+
+  Keys are returned as strings, since env input must never mint atoms.
+
+  ## Options
+
+    * `:prefix` (required)
+    * `:transform_keys` - applied to both halves of the key (env keys arrive downcased), defaults to identity
+    * `:value` - casts each env value, defaults to `list/1`. A value casting to empty DROPS that pair, which is how an operator opts out of a shipped default.
+
+  ## Examples
+
+      iex> System.put_env("TESTN_X_SERVICE_GROUP", "a.com")
+      iex> EnvConfig.pairs([{{"Service", "Group"}, ["default.com"]}], prefix: "TESTN_X", transform_keys: &String.capitalize/1)
+      [{{"Service", "Group"}, ["a.com"]}]
+
+      iex> System.put_env("TESTN_Y_APPLICATION_GROUP", "b.com")
+      iex> EnvConfig.pairs([{{"Service", "Group"}, ["kept.com"]}], prefix: "TESTN_Y", transform_keys: &String.capitalize/1) |> Enum.sort()
+      [{{"Application", "Group"}, ["b.com"]}, {{"Service", "Group"}, ["kept.com"]}]
+
+      iex> System.put_env("TESTN_Z_SERVICE_GROUP", "none")
+      iex> EnvConfig.pairs([{{"Service", "Group"}, ["dropped.com"]}], prefix: "TESTN_Z", transform_keys: &String.capitalize/1)
+      []
+  """
+  def pairs(defaults \\ [], opts) do
+    defaults
+    # the one place that guarantees string keys, so callers can compare them directly rather than normalising at every read
+    |> Map.new(fn {{outer, inner}, value} -> {{to_string(outer), to_string(inner)}, value} end)
+    |> Map.merge(env_pairs(opts))
+    |> Enum.reject(fn {_pair, value} -> value in [nil, [], "", %{}] end)
+  end
+
+  defp env_pairs(opts) do
+    prefix = Keyword.fetch!(opts, :prefix)
+    transform = Keyword.get(opts, :transform_keys, & &1)
+    cast = Keyword.get(opts, :value, &list/1)
+
+    case parse(prefix: prefix) do
+      vars when is_map(vars) ->
+        Map.new(vars, fn {key, value} ->
+          case String.split(key, "_", parts: 2) do
+            [outer, inner] ->
+              {{transform.(outer), transform.(inner)}, cast.(value)}
+
+            _ ->
+              # a var not naming a PAIR can only be a typo, and ignoring it would look identical to the config simply not applying
+              raise ArgumentError,
+                    "#{prefix}_#{String.upcase(key)} should name two keys, eg #{prefix}_OUTER_INNER"
+          end
+        end)
+
+      _ ->
+        %{}
+    end
+  end
+
   @impl true
   def cast(input, opts) do
     case parse(input, opts) do
