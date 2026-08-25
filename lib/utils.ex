@@ -584,6 +584,18 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc """
+  Returns the current account struct if available, otherwise its id. 
+
+  Mirrors `current_user_or_id/2`.
+
+  Useful when only the account id is needed and the full account struct may not be preloaded, but a `current_account_id` is present in the assigns/socket/opts (or resolvable from a loaded `current_user`). 
+  """
+  def current_account_or_id(current_account_or_socket_or_opts, recursing \\ false) do
+    current_account(current_account_or_socket_or_opts, recursing) ||
+      current_account_id(current_account_or_socket_or_opts, :skip)
+  end
+
+  @doc """
   Returns a list of current account IDs and/or user IDs.
 
   This function returns a keyword list with the current account IDs and/or user IDs.

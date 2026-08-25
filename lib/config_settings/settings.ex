@@ -336,9 +336,9 @@ defmodule Bonfire.Common.Settings do
   defp fetch_all_scopes(otp_app, opts) do
     # debug(opts, "opts")
     current_user = current_user(opts)
-    current_user_id = id(current_user)
+    current_user_id = id(current_user) || current_user_id(opts)
     current_account = current_account(opts)
-    current_account_id = id(current_account)
+    current_account_id = id(current_account) || current_account_id(opts)
     scope = e(opts, :scope, nil) || if is_atom(opts), do: opts
     scope_id = id(scope)
     # debug(current_user, "current_user")

@@ -23,6 +23,12 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     test_instance = System.get_env("TEST_INSTANCE")
 
+    # Which database a test run gets. The invariant: an UNSANDBOXED run must never share a database with a sandboxed one. Unsandboxed runs COMMIT, so anything they leave behind stays visible to every later sandboxed test, surfacing as failures that are perfectly reproducible and look exactly like code bugs (see the `sql_sandbox` condition in `config/test.exs`: the sandbox is on only when NEITHER var is set).
+    # `TEST_INSTANCE` already gets its own DB via the suffix below; `PHX_SERVER` (live-federation, browser/UI tests, a test-env dev server) did not, and so was the one that could poison plain runs.
+    test_db_suffix =
+      test_instance ||
+        if(System.get_env("PHX_SERVER") in @yes?, do: "server")
+
     repo_app =
       Bonfire.Common.Config.get(:umbrella_otp_app) || Bonfire.Common.Config.get(:otp_app) ||
         :bonfire_common
@@ -82,7 +88,7 @@ defmodule Bonfire.Common.RuntimeConfig do
     database =
       case config_env() do
         :test ->
-          "bonfire_test_#{test_instance}_#{System.get_env("MIX_TEST_PARTITION") || 0}"
+          "bonfire_test_#{test_db_suffix}_#{System.get_env("MIX_TEST_PARTITION") || 0}"
 
         :dev ->
           System.get_env("POSTGRES_DB", "bonfire_dev")
