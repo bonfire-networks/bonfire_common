@@ -84,6 +84,9 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuningTest do
   setup do
     Process.register(self(), :instance_tuning_test_proc)
 
+    # the baseline and the last-applied snapshot live in `:persistent_term`, i.e. global to the node rather than to this process, and `apply_current/0` diffs against the last-applied one. Anything else that applied tuning (the `Settings` save hook calls `apply_current/0`) leaves one behind, and then every knob reads as changed here. Clearing it in `on_exit` isn't enough: this has to start from a known state, not trust that whatever ran before tidied up.
+    InstanceTuning.reset_baseline()
+
     Config.put([InstanceTuning, :appliers], postgres: TestApplier, elixir: ElixirTestApplier)
     Config.put([InstanceTuning, :knob_registry], @registry)
     Config.put([InstanceTuning, :preset_names], [:eco, :default, :turbo, :custom])
