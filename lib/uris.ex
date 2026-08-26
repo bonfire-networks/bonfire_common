@@ -819,6 +819,15 @@ defmodule Bonfire.Common.URIs do
       when is_binary(content) and byte_size(content) > 20 do
     local_instance = base_url()
 
+    # both regexes below interpolate (and so require) the instance's own URL, which most post bodies never mention. Since interpolation means they can't be compile-time literals, skipping them here saves two runtime `Regex.compile` calls as well as the two scans.
+    Common.Text.maybe_replace(
+      content,
+      local_instance,
+      &do_normalise_local_md_links(&1, local_instance)
+    )
+  end
+
+  defp do_normalise_local_md_links(content, local_instance) do
     content
     # handle local AP paths, type-aware via `localise_ap_path/1`
     |> then(

@@ -170,8 +170,14 @@ defmodule Bonfire.Common.Text do
 
       iex> contains_html?("Just text")
       false
+
+      iex> contains_html?("2 < 3 and 4 > 3")
+      false
   """
-  def contains_html?(string), do: Regex.match?(html_tag_regex(), string)
+  # the regex can only match starting from a `<`, so short-circuit on that rather than starting the regex engine (whose `[\s\S]*` is greedy and scans to the end of the string)
+  def contains_html?(string),
+    do: String.contains?(string, "<") and Regex.match?(html_tag_regex(), string)
+
   defp html_tag_regex, do: ~r/<\/?[a-z][\s\S]*>/i
 
   @doc """
@@ -335,6 +341,129 @@ defmodule Bonfire.Common.Text do
       _ ->
         # debug("otherwise look into shorter substring")
         do_underscore_truncate(input, length_minus_1)
+    end
+  end
+
+  @doc """
+  Runs `fun` on the text only if `needle` occurs in it, otherwise returns it untouched.
+
+  Lets a caller keep an expensive rewrite (typically a regex) off the hot path, since `:binary.match/2` is far cheaper than starting the regex engine and most text contains no candidate at all.
+
+  ## Examples
+
+      iex> maybe_replace("hello world", "z", &String.upcase/1)
+      "hello world"
+
+      iex> maybe_replace("hello world", "w", &String.upcase/1)
+      "HELLO WORLD"
+  """
+  def maybe_replace(text, needle, fun) when is_binary(text) do
+    case :binary.match(text, needle) do
+      :nomatch -> text
+      _ -> fun.(text)
+    end
+  end
+
+  def maybe_replace(text, _needle, _fun), do: text
+
+  @doc """
+  Undoes the markdown escaping that a WYSIWYG editor's CommonMark serializer applies to bare URLs and `@mentions`.
+
+  Milkdown wraps bare URLs in `<...>` autolinks and escapes a leading `@`, neither of which we want in the stored body.
+
+  ## Examples
+
+      iex> unwrap_markdown_autolinks("see <https://example.com/a> ok")
+      "see  https://example.com/a  ok"
+
+      iex> unwrap_markdown_autolinks("hi @<bob@example.com> there")
+      "hi  @bob@example.com  there"
+
+      iex> unwrap_markdown_autolinks("escaped \\\\@bob")
+      "escaped @bob"
+
+      iex> unwrap_markdown_autolinks("nothing to unwrap here")
+      "nothing to unwrap here"
+  """
+  def unwrap_markdown_autolinks(text) when is_binary(text) do
+    text
+    |> maybe_replace("<", &unwrap_autolinks/1)
+    # for @user@domain.tld
+    |> maybe_replace("\\@", &String.replace(&1, "\\@", "@"))
+  end
+
+  def unwrap_markdown_autolinks(text), do: text
+
+  defp unwrap_autolinks(text) do
+    text
+    |> Regex.replace(~r/<(http[^>]+)>/, ..., " \\1 ")
+    |> Regex.replace(~r/@<([^>]+)>/, ..., " @\\1 ")
+  end
+
+  @doc """
+  Collapses the backslash-only lines that a WYSIWYG editor's CommonMark serializer emits for visually-blank lines back into real blank lines.
+
+  Milkdown serializes a `hardBreak` node as `\\` + newline, so a blank line entered with Shift+Enter arrives as a backslash-only line. CommonMark reads those as line breaks rather than paragraph breaks, collapsing the whole post into a single paragraph of `<br>`s (bonfire-app#2216, #2218).
+
+  A hard break sitting directly before a blank line is dropped too, since it would otherwise render as a literal `\\` at the end of the paragraph. A hard break between two lines of text is left alone, because there it means what the author intended.
+
+  ## Examples
+
+      iex> normalise_markdown_hard_breaks("first\\n\\\\\\nsecond")
+      "first\\n\\nsecond"
+
+      iex> normalise_markdown_hard_breaks("one\\\\\\n\\\\\\ntwo")
+      "one\\n\\ntwo"
+
+      iex> normalise_markdown_hard_breaks("roses\\\\\\nviolets")
+      "roses\\\\\\nviolets"
+
+      iex> normalise_markdown_hard_breaks("trailing\\\\")
+      "trailing"
+
+      iex> normalise_markdown_hard_breaks("no backslashes here")
+      "no backslashes here"
+  """
+  def normalise_markdown_hard_breaks(text) when is_binary(text) do
+    maybe_replace(text, "\\", fn text ->
+      text
+      |> String.split("\n")
+      |> Enum.reverse()
+      |> Enum.reduce({[], true}, &fix_hard_break_line/2)
+      |> elem(0)
+      |> Enum.join("\n")
+    end)
+  end
+
+  def normalise_markdown_hard_breaks(text), do: text
+
+  # Folds right-to-left so each line knows whether the line *after* it ended up blank, which is what decides whether a trailing `\` is a real hard break or a stray one.
+  # Seeded `true` so a hard break at end of input counts as one before a blank line, and `String.trim/1` covers space, tab, NBSP and CR in one pass since all carry the Unicode `White_Space` property.
+  defp fix_hard_break_line(line, {acc, next_blank?}) do
+    {content, cr} =
+      if String.ends_with?(line, "\r"),
+        do: {binary_part(line, 0, byte_size(line) - 1), "\r"},
+        else: {line, ""}
+
+    trimmed = String.trim(content)
+
+    cond do
+      # a backslash-only line was meant to be a blank line
+      trimmed == "\\" ->
+        {[cr | acc], true}
+
+      # a hard break directly before a blank line would render as a literal `\` at paragraph end
+      next_blank? and String.ends_with?(trimmed, "\\") ->
+        stripped =
+          trimmed
+          |> binary_part(0, byte_size(trimmed) - 1)
+          # else trailing whitespace re-introduces the break we just removed
+          |> String.trim_trailing()
+
+        {[stripped <> cr | acc], false}
+
+      true ->
+        {[line | acc], trimmed == ""}
     end
   end
 
@@ -907,8 +1036,11 @@ defmodule Bonfire.Common.Text do
       when is_binary(content) and byte_size(content) > 20 do
     base = URIs.base_url()
 
-    Regex.replace(~r/<a ([^>]*?)href="([^"]*)"([^>]*)>/, content, fn _, pre, href, post ->
-      link_tag(href, pre, post, base)
+    # most post bodies contain no links at all, so skip the regex engine unless there's an anchor to rewrite
+    maybe_replace(content, "<a ", fn content ->
+      Regex.replace(~r/<a ([^>]*?)href="([^"]*)"([^>]*)>/, content, fn _, pre, href, post ->
+        link_tag(href, pre, post, base)
+      end)
     end)
   end
 
@@ -942,23 +1074,29 @@ defmodule Bonfire.Common.Text do
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
 
-    # Single pass: handles images, hashtag links (emitting HTML with class/rel for GH #1754), and regular links
-    Regex.replace(~r/(!?)\[([^\]]*)\]\(\/([^)]+)\)/, content, fn
-      _, "!", alt, path ->
-        "![#{alt}](#{base_url}/#{path})"
+    # every branch below needs a root-relative markdown link, so `](/` is a sound (and usually absent) pre-check
+    maybe_replace(content, "](/", fn content ->
+      # Single pass: handles images, hashtag links (emitting HTML with class/rel for GH #1754), and regular links
+      Regex.replace(~r/(!?)\[([^\]]*)\]\(\/([^)]+)\)/, content, fn
+        _, "!", alt, path ->
+          "![#{alt}](#{base_url}/#{path})"
 
-      _, _, "#" <> _ = text, "hashtag/" <> _ = path ->
-        ~s(<a class="hashtag" rel="tag ugc" href="#{base_url}/#{path}">#{text}</a>)
+        _, _, "#" <> _ = text, "hashtag/" <> _ = path ->
+          ~s(<a class="hashtag" rel="tag ugc" href="#{base_url}/#{path}">#{text}</a>)
 
-      _, _, text, path ->
-        "[#{text}](#{base_url}/#{path})"
+        _, _, text, path ->
+          "[#{text}](#{base_url}/#{path})"
+      end)
     end)
   end
 
   def prepare_links_for_remote_render(content, :html, base_url)
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
-    Regex.replace(~r/href="(\/[^"]*)"/, content, "href=\"#{base_url}\\1\"")
+
+    maybe_replace(content, ~s(href="/), fn content ->
+      Regex.replace(~r/href="(\/[^"]*)"/, content, "href=\"#{base_url}\\1\"")
+    end)
   end
 
   def prepare_links_for_remote_render(content, _, _), do: content
