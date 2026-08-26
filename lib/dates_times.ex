@@ -601,6 +601,45 @@ defmodule Bonfire.Common.DatesTimes do
   end
 
   @doc """
+  Compares two points in time at the resolution of the coarser one, returning `:lt`, `:eq` or `:gt`.
+
+  Takes anything `to_date_time/1` accepts (a `DateTime`, a `Date`, an object, a UID/ULID), so a stored object can be compared directly rather than being converted at the call site.
+
+  Both sides are truncated to `opts[:precision]` (`:millisecond` by default) first. That default matters: a UID's timestamp carries only MILLISECONDS, so comparing one against a microsecond `DateTime.utc_now/0` otherwise reads as `:lt` whenever the two land in the same millisecond, resulting in a coin flip rather than a real ordering. Pass `precision: :microsecond` to compare exactly.
+
+  Returns `nil` if either side can't be read as a date.
+
+  ## Examples
+
+      iex> compare(~U[2023-07-24 12:00:00.123456Z], ~U[2023-07-24 12:00:00.123999Z])
+      :eq
+
+      iex> compare(~U[2023-07-24 12:00:00.123456Z], ~U[2023-07-24 12:00:00.123999Z], precision: :microsecond)
+      :lt
+
+      iex> compare(~U[2023-07-25 12:00:00Z], ~U[2023-07-24 12:00:00Z])
+      :gt
+
+      iex> compare("not a date", ~U[2023-07-24 12:00:00Z])
+      nil
+  """
+  def compare(a, b, opts \\ []) do
+    precision = opts[:precision] || :millisecond
+
+    with %DateTime{} = a <- to_date_time(a),
+         %DateTime{} = b <- to_date_time(b) do
+      DateTime.compare(
+        DateTime.truncate(a, precision),
+        DateTime.truncate(b, precision)
+      )
+    else
+      _ ->
+        error({a, b}, "could not compare as dates")
+        nil
+    end
+  end
+
+  @doc """
   Checks if a `DateTime` is in the future relative to the current time.
 
   ## Examples
