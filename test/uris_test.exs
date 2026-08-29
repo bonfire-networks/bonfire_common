@@ -3,6 +3,61 @@ defmodule Bonfire.Common.URIsTest do
 
   alias Bonfire.Common.URIs
 
+  describe "strip_tracking_params/1" do
+    test "strips utm_* and known tracking params, and the fragment" do
+      assert URIs.strip_tracking_params(
+               "https://blog.example.com/post/?utm_source=x&utm_medium=y&fbclid=abc#section"
+             ) == "https://blog.example.com/post/"
+    end
+
+    test "strips the fragment" do
+      assert URIs.strip_tracking_params("https://blog.example.com/post/#section") ==
+               "https://blog.example.com/post/"
+    end
+
+    test "keeps non-tracking params (and their order-independent set)" do
+      out = URIs.strip_tracking_params("https://blog.example.com/p?id=7&utm_campaign=z&page=2")
+      assert out =~ "id=7"
+      assert out =~ "page=2"
+      refute out =~ "utm_campaign"
+    end
+
+    test "leaves a clean url untouched (aside from dropping an empty query/fragment)" do
+      assert URIs.strip_tracking_params("https://blog.example.com/post/") ==
+               "https://blog.example.com/post/"
+    end
+
+    test "passes non-binaries through" do
+      assert URIs.strip_tracking_params(nil) == nil
+    end
+  end
+
+  describe "strip_trailing_slash/1" do
+    test "strips a non-root trailing slash" do
+      assert URIs.strip_trailing_slash("https://blog.example.com/post/") ==
+               "https://blog.example.com/post"
+    end
+
+    test "keeps the root slash" do
+      assert URIs.strip_trailing_slash("https://blog.example.com/") ==
+               "https://blog.example.com/"
+    end
+
+    test "leaves a slash-less path untouched" do
+      assert URIs.strip_trailing_slash("https://blog.example.com/post") ==
+               "https://blog.example.com/post"
+    end
+
+    test "preserves the query while stripping the path's trailing slash" do
+      assert URIs.strip_trailing_slash("https://blog.example.com/post/?id=7") ==
+               "https://blog.example.com/post?id=7"
+    end
+
+    test "passes non-binaries through" do
+      assert URIs.strip_trailing_slash(nil) == nil
+    end
+  end
+
   describe "canonical_url/2" do
     test "uses the normalized public base URL for relative paths" do
       path = "/post/01M0DQ4JFGM29V771YBY5RK92S"

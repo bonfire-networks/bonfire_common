@@ -1043,4 +1043,65 @@ defmodule Bonfire.Common.URIs do
         URI.append_query(URI.parse(url || ""), params)
     end
   end
+
+  # any `utm_*` param is always treated as tracking; this is the default list of the rest, overridable
+  # via `config :bonfire_common, :tracking_params, [...]`
+  @default_tracking_params ~w(fbclid gclid dclid gbraid wbraid msclkid mc_cid mc_eid mkt_tok vero_id _ga igshid si ref ref_src _hsenc _hsmi yclid twclid oly_anon_id oly_enc_id _openstat)
+
+  @doc """
+  Strips analytics/tracking query params (`utm_*`, `fbclid`, `gclid`, …) and the `#fragment` from a URL, so links that differ only by campaign/click tracking normalise to the same value. Used to key and look up media by URL without minting a separate object per tracked variant. The non-`utm_` param list is configurable via `config :bonfire_common, :tracking_params`.
+  """
+  def strip_tracking_params(url) when is_binary(url) do
+    tracking = tracking_params()
+    uri = URI.parse(url)
+
+    query =
+      case uri.query do
+        nil ->
+          nil
+
+        q ->
+          case URI.decode_query(q) |> Map.reject(fn {k, _} -> tracking_param?(k, tracking) end) do
+            kept when map_size(kept) == 0 -> nil
+            kept -> URI.encode_query(kept)
+          end
+      end
+
+    %{uri | query: query, fragment: nil} |> URI.to_string()
+  rescue
+    _ -> url
+  end
+
+  def strip_tracking_params(other), do: other
+
+  @doc """
+  Removes a trailing slash from the URL's path (except the root `/`), keeping the rest of the URL (query included) intact. 
+
+  Used to build a slash-normalized LOOKUP key so `/post` and `/post/` collapse, WITHOUT normalising the stored identity `path` (so genuinely-different pages stay apart).
+  """
+  def strip_trailing_slash(url) when is_binary(url) do
+    uri = URI.parse(url)
+
+    case uri.path do
+      path when path in [nil, "", "/"] ->
+        url
+
+      path ->
+        if String.ends_with?(path, "/"),
+          do: %{uri | path: String.trim_trailing(path, "/")} |> URI.to_string(),
+          else: url
+    end
+  rescue
+    _ -> url
+  end
+
+  def strip_trailing_slash(other), do: other
+
+  defp tracking_params,
+    do: Bonfire.Common.Config.get([:bonfire_common, :tracking_params], @default_tracking_params)
+
+  defp tracking_param?(key, tracking) do
+    key = String.downcase(key)
+    String.starts_with?(key, "utm_") or key in tracking
+  end
 end
