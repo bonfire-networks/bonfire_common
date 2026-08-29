@@ -152,6 +152,9 @@ defmodule Bonfire.Common.Enums do
         FunctionClauseError ->
           last_fallback
 
+        ArgumentError ->
+          last_fallback
+
         UndefinedFunctionError ->
           get_in(map, access_keys(keys, last_fallback))
 
@@ -183,6 +186,11 @@ defmodule Bonfire.Common.Enums do
     e in FunctionClauseError ->
       if error_fallback != :empty, do: warn(e)
       error_fallback || FunctionClauseError
+
+    e in ArgumentError ->
+      # eg. `Access.get/3` on a list that isn't a keyword list, which is how a JSON-LD array arrives
+      if error_fallback != :empty, do: warn(e)
+      error_fallback || ArgumentError
 
     e in UndefinedFunctionError ->
       # eg. function MyStruct.fetch/2 is undefined (does not implement the Access behaviour)

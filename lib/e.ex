@@ -428,7 +428,27 @@ defmodule Bonfire.Common.E do
     handle_fallback(object, key, nil, fallback)
   end
 
-  @doc "Returns a value from a nested map, or a fallback if not present"
+  @doc """
+  Returns a value from a nested map, or a fallback if not present.
+
+  A key part-way down can hold a list rather than a map — JSON-LD does this constantly, since an
+  `@graph` or a page describing several entities arrives as an array. Each key is then looked for
+  in the entries, like `ed/3` does.
+
+  ## Examples
+
+      iex> ed(%{"a" => %{"b" => "value"}}, "a", "b", "fallback")
+      "value"
+
+      iex> ed(%{"a" => %{}}, "a", "b", "fallback")
+      "fallback"
+
+      iex> ed(%{"a" => [%{"@type" => "BreadcrumbList"}]}, "a", "image", nil)
+      nil
+
+      iex> ed(%{"a" => [%{"@type" => "BreadcrumbList"}, %{"image" => "cover.jpg"}]}, "a", "image", nil)
+      "cover.jpg"
+  """
   def ed(object, key1, key2, fallback) do
     get_in_access_keys_or(object, [key1, key2], fallback, fn object ->
       # if get_in didn't work, revert to peeling one layer at a time
@@ -437,6 +457,19 @@ defmodule Bonfire.Common.E do
     end)
   end
 
+  @doc """
+  Returns a value from a nested map, or a fallback if not present.
+
+  Handles a list part-way down, as `ed/4` does.
+
+  ## Examples
+
+      iex> ed(%{"m" => %{"a" => [%{"@type" => "BreadcrumbList"}]}}, "m", "a", "image", nil)
+      nil
+
+      iex> ed(%{"m" => %{"a" => [%{"image" => "cover.jpg"}]}}, "m", "a", "image", nil)
+      "cover.jpg"
+  """
   def ed(object, key1, key2, key3, fallback) do
     get_in_access_keys_or(object, [key1, key2, key3], fallback, fn object ->
       ed(object, key1, key2, %{})

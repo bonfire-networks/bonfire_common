@@ -120,7 +120,7 @@ defmodule Bonfire.Common.Media do
   def thumbnail_url(%{metadata: %{"module" => module}} = media) do
     case Common.Types.maybe_to_module(module) do
       nil ->
-        Map.drop(media, [:metadata]) |> image_url() |> debug("imggg1")
+        Map.drop(media, [:metadata]) |> image_url()
 
       module when is_atom(module) or is_binary(module) ->
         Utils.maybe_apply(module, :remote_url, [media, :thumbnail], fallback_return: nil)
@@ -128,7 +128,6 @@ defmodule Bonfire.Common.Media do
       _ ->
         nil
     end
-    |> debug("t1")
   end
 
   def thumbnail_url(%{media_type: media_type} = media) do
@@ -137,7 +136,7 @@ defmodule Bonfire.Common.Media do
         nil
 
       String.starts_with?(media_type || "", "image") ->
-        image_url(media) |> debug("imggg2")
+        image_url(media)
 
       String.starts_with?(media_type || "", "video") ->
         Utils.maybe_apply(Files.VideoUploader, :remote_url, [media, :thumbnail],
@@ -149,7 +148,6 @@ defmodule Bonfire.Common.Media do
           fallback_return: nil
         )
     end
-    |> debug("t2")
   end
 
   def thumbnail_url(_) do
