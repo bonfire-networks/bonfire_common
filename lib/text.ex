@@ -1111,7 +1111,9 @@ defmodule Bonfire.Common.Text do
   Accepts string, LazyHTML struct, or tree as input.
   Returns {:ok, %{html: LazyHTML struct, urls: [url, ...]}} or nil for blank input.
 
-  Filters out mention and hashtag URLs.
+  Filters out mention and hashtag anchors, so their URLs aren't unfurled as link previews: skips any anchor whose `class` includes `mention`, `hashtag`, `u-url` or `h-card`, or whose `rel` includes `tag`. 
+  `u-url`/`h-card` are microformats2 and `rel="tag"` is a standard rel; this is a heuristic net, the authoritative exclusion is the AP `tag` array handled upstream. 
+  Pass `include_mentions: true` to keep them.
 
   ## Examples
 
@@ -1124,6 +1126,12 @@ defmodule Bonfire.Common.Text do
       iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["mailto:test@example.com"]}} = Bonfire.Common.Text.extract_urls_from_html("<div>no non-HTTP links</div><a href='/'>test</a><a href='mailto:test@example.com'>test</a>", allow_non_http: true)
 
       iex> {:ok, %{html: %LazyHTML{resource: _}, urls: ["ftp://test@example.com"]}} = Bonfire.Common.Text.extract_urls_from_html("<div>no non-HTTP links</div><a href='/'>test</a><a href='ftp://test@example.com'>test</a>", allow_non_http: true)
+
+      iex> {:ok, %{urls: []}} = Bonfire.Common.Text.extract_urls_from_html(~s(<a href="https://mastodon.social/@bob" class="u-url mention">@bob</a>))
+
+      iex> {:ok, %{urls: []}} = Bonfire.Common.Text.extract_urls_from_html(~s(<a href="https://mastodon.social/tags/x" class="mention hashtag" rel="tag">#x</a>))
+
+      iex> {:ok, %{urls: ["https://mastodon.social/@bob"]}} = Bonfire.Common.Text.extract_urls_from_html(~s(<a href="https://mastodon.social/@bob" class="u-url mention">@bob</a>), include_mentions: true)
 
       iex> Bonfire.Common.Text.extract_urls_from_html(nil)
       nil
@@ -1140,9 +1148,17 @@ defmodule Bonfire.Common.Text do
       input
       |> as_lazy_html()
 
+    # 2.2 markup net (see @doc): drop mention/hashtag anchors so they aren't unfurled, unless the caller opts to keep them
+    selector =
+      if opts[:include_mentions] do
+        "a[href]"
+      else
+        "a[href]:not(.mention):not(.hashtag):not(.u-url):not(.h-card):not([rel~=\"tag\"])"
+      end
+
     urls =
       html
-      |> LazyHTML.query("a[href]")
+      |> LazyHTML.query(selector)
       |> LazyHTML.attribute("href")
       |> Enum.filter(fn url ->
         String.starts_with?(url, ["http://", "https://"]) or

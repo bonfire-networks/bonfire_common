@@ -58,6 +58,41 @@ defmodule Bonfire.Common.URIsTest do
     end
   end
 
+  describe "normalise_for_comparison/1" do
+    test "strips tracking + fragment + trailing slash and downcases" do
+      assert URIs.normalise_for_comparison("https://Example.com/@Bob/?utm_source=x#frag") ==
+               "https://example.com/@bob"
+    end
+
+    test "leaves an already-normalised url unchanged" do
+      assert URIs.normalise_for_comparison("https://example.com/@bob") ==
+               "https://example.com/@bob"
+    end
+
+    test "is idempotent" do
+      url = "https://Example.com/Users/Junes/?fbclid=abc"
+      once = URIs.normalise_for_comparison(url)
+      assert once == URIs.normalise_for_comparison(once)
+    end
+
+    test "folds /@user case so the same actor compares equal" do
+      assert URIs.normalise_for_comparison("https://mastodon.social/@JuneS") ==
+               URIs.normalise_for_comparison("https://mastodon.social/@junes")
+    end
+
+    test "canonicalises query param order and collapses duplicate keys" do
+      assert URIs.normalise_for_comparison("https://example.com/a?b=2&a=1") ==
+               URIs.normalise_for_comparison("https://example.com/a?a=1&b=2")
+
+      assert URIs.normalise_for_comparison("https://example.com/a?a=1&a=2") ==
+               "https://example.com/a?a=2"
+    end
+
+    test "passes non-binaries through" do
+      assert URIs.normalise_for_comparison(nil) == nil
+    end
+  end
+
   describe "canonical_url/2" do
     test "uses the normalized public base URL for relative paths" do
       path = "/post/01M0DQ4JFGM29V771YBY5RK92S"

@@ -296,4 +296,39 @@ defmodule Bonfire.Common.Text.Test do
       assert result =~ ~s(href="https://example.com/some/path")
     end
   end
+
+  describe "extract_urls_from_html/2 mention/hashtag filtering" do
+    alias Bonfire.Common.Text
+
+    test "skips a Mastodon mention anchor (class u-url mention)" do
+      html =
+        ~s(<span class="h-card"><a href="https://mastodon.social/@bob" class="u-url mention">@bob</a></span>)
+
+      assert {:ok, %{urls: []}} = Text.extract_urls_from_html(html)
+    end
+
+    test "skips a hashtag anchor (class mention hashtag, rel tag)" do
+      html = ~s(<a href="https://mastodon.social/tags/x" class="mention hashtag" rel="tag">#x</a>)
+      assert {:ok, %{urls: []}} = Text.extract_urls_from_html(html)
+    end
+
+    test "keeps a plain external link" do
+      assert {:ok, %{urls: ["https://example.com/post"]}} =
+               Text.extract_urls_from_html(~s(<a href="https://example.com/post">plain</a>))
+    end
+
+    test "keeps a plain link alongside a filtered mention" do
+      html =
+        ~s(<a href="https://mastodon.social/@bob" class="u-url mention">@bob</a> and <a href="https://example.com">link</a>)
+
+      assert {:ok, %{urls: ["https://example.com"]}} = Text.extract_urls_from_html(html)
+    end
+
+    test "keeps a mention anchor when include_mentions: true" do
+      html = ~s(<a href="https://mastodon.social/@bob" class="u-url mention">@bob</a>)
+
+      assert {:ok, %{urls: ["https://mastodon.social/@bob"]}} =
+               Text.extract_urls_from_html(html, include_mentions: true)
+    end
+  end
 end

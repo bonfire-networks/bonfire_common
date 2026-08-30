@@ -1097,6 +1097,32 @@ defmodule Bonfire.Common.URIs do
 
   def strip_trailing_slash(other), do: other
 
+  @doc """
+  Builds a normalised COMPARISON key for a URL, so different renderings of the same resource compare equal. Strips tracking params + fragment, strips a trailing slash (except root), and downcases.
+
+  Comparison-only: the result is NOT a dereferenceable URL (it downcases the whole URL, including the path, since fedi username/tag case is not significant for identity in practice). Passes non-binaries
+  through.
+
+  ## Examples
+
+      iex> Bonfire.Common.URIs.normalise_for_comparison("https://Example.com/@Bob/?utm_source=x#frag")
+      "https://example.com/@bob"
+
+      iex> Bonfire.Common.URIs.normalise_for_comparison("https://example.com/@bob")
+      "https://example.com/@bob"
+
+      iex> Bonfire.Common.URIs.normalise_for_comparison(nil)
+      nil
+  """
+  def normalise_for_comparison(url) when is_binary(url) do
+    url
+    |> String.downcase()
+    |> strip_tracking_params()
+    |> strip_trailing_slash()
+  end
+
+  def normalise_for_comparison(other), do: other
+
   defp tracking_params,
     do: Bonfire.Common.Config.get([:bonfire_common, :tracking_params], @default_tracking_params)
 
