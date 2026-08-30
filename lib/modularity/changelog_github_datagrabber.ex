@@ -309,8 +309,8 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     # Fetch unreferenced commits (those not linked to issues/PRs)
     referenced_commits = prepare_referenced_commit_shas(issues_with_pr_contributors)
 
-    # Get repository list from issues for commit fetching
-    repo_list = get_repository_list(issues_with_pr_contributors)
+    # Get repository list for commit fetching
+    repo_list = get_repository_list(org, issues_with_pr_contributors, closed_after)
 
     unreferenced_commits =
       fetch_unreferenced_commits(
@@ -330,6 +330,121 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     issues_with_pr_contributors ++ unreferenced_prs ++ unreferenced_commits
   end
 
+  @github_graphql_url "https://api.github.com/graphql"
+
+  # Shared PullRequest selection, interpolated wherever a PR can show up in a query. Neuron
+  # reserves `...name` spreads for fragments registered with it, so this is inlined instead.
+  @pr_fields """
+  ... on PullRequest {
+    number
+    title
+    url
+    author {
+      login
+    }
+    commits(first: 10) {
+      edges {
+        node {
+          commit {
+            author {
+              user {
+                login
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  """
+
+  defp github_query(query, error_label) do
+    with token when is_binary(token) and token != "" <-
+           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
+         {:ok, %{body: body}} <-
+           Neuron.query(query, nil,
+             url: @github_graphql_url,
+             headers: [{"authorization", "Bearer #{token}"}]
+           ),
+         {:ok, parsed_body} <- (is_binary(body) and Jason.decode(body)) || {:ok, body} do
+      {:ok, parsed_body}
+    else
+      e -> error(e, error_label)
+    end
+  end
+
+  defp cursor_param(nil), do: ""
+  defp cursor_param(cursor), do: ", after: \"#{cursor}\""
+
+  # The `search` connection, shared by the issue and PR queries
+  defp search_query(query_string, cursor, node_selection) do
+    """
+    query {
+      search(first: 50, type: ISSUE, query: "#{query_string}"#{cursor_param(cursor)}) {
+        issueCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        edges {
+          node {
+    #{node_selection}
+          }
+        }
+      }
+    }
+    """
+  end
+
+  # Walks a cursor-paginated GraphQL connection. `fetch_page` receives the current cursor and returns `{:ok, items, page_info}` to carry on, `{:halt, items}` to stop after this page, or `:error` to give up and keep whatever was accumulated so far.
+  defp paginate(label, limit, fetch_page) do
+    do_paginate(label, limit, fetch_page, nil, [])
+  end
+
+  defp do_paginate(label, limit, fetch_page, cursor, accumulated) do
+    case fetch_page.(cursor) do
+      {:ok, items, page_info} ->
+        all_items = accumulated ++ items
+        has_next_page = e(page_info, "hasNextPage", false)
+        end_cursor = e(page_info, "endCursor", nil)
+
+        debug(
+          %{
+            page_size: length(items),
+            has_next_page: has_next_page,
+            accumulated_so_far: length(accumulated),
+            cursor: cursor
+          },
+          "GitHub pagination info for #{label}"
+        )
+
+        if has_next_page && end_cursor && length(all_items) < limit do
+          do_paginate(label, limit, fetch_page, end_cursor, all_items)
+        else
+          stop_paginating(
+            label,
+            cond do
+              !has_next_page -> "no more pages"
+              !end_cursor -> "no cursor"
+              true -> "hit safety limit (#{length(all_items)} >= #{limit})"
+            end,
+            all_items
+          )
+        end
+
+      {:halt, items} ->
+        stop_paginating(label, "reached the end of the window", accumulated ++ items)
+
+      :error ->
+        accumulated
+    end
+  end
+
+  defp stop_paginating(label, reason, items) do
+    debug(%{reason: reason, final_count: length(items)}, "Stopping pagination for #{label}")
+    items
+  end
+
   defp fetch_github_issues(org, closed_after, closed_before \\ nil) do
     # Use explicit issue type in query with pagination
     query_string =
@@ -338,162 +453,81 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
 
     debug(query_string, "GitHub Issues Query (with closed_before)")
 
-    fetch_github_issues_paginated(query_string, nil, [])
+    fetch_github_issues_paginated(query_string)
   end
 
-  defp fetch_github_issues_paginated(query_string, cursor, accumulated_issues) do
-    cursor_param = if cursor, do: ", after: \"#{cursor}\"", else: ""
+  @issue_fields """
+  ... on Issue {
+    number
+    # createdAt
+    closedAt
+    title
+    url
+    # bodyText
+    repository {
+      name
+    }
+    author {
+      login
+    }
+    issueType {
+      name
+    }
+    milestone {
+      title
+    }
+    labels(first: 100) {
+      edges {
+        node {
+          name
+          color
+        }
+      }
+    }
+    assignees(first: 5) {
+      edges {
+        node {
+          login
+        }
+      }
+    }
+    comments(last: 100) {
+      edges {
+        node {
+          author {
+            login
+          }
+        }
+      }
+    }
+  }
+  """
 
-    with token when is_binary(token) and token != "" <-
-           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
-         {:ok, %{body: body}} <-
-           Neuron.query(
-             """
-             query {
-               search(first: 50, type: ISSUE, query: "#{query_string}"#{cursor_param}) {
-                 issueCount
-                 pageInfo {
-                   hasNextPage
-                   endCursor
-                 }
-                 edges {
-                   node {
-                     ... on Issue {
-                       number
-                       # createdAt
-                       closedAt
-                       title
-                       url
-                       # bodyText
-                       repository {
-                         name
-                       }
-                       author {
-                         login
-                       }
-                       issueType {
-                         name
-                       }
-                       milestone {
-                         title
-                       }
-                       labels(first: 100) {
-                         edges {
-                           node {
-                             name
-                             color
-                           }
-                         }
-                       }
-                       assignees(first: 5) {
-                         edges {
-                           node {
-                             login
-                           }
-                         }
-                       }
-                       comments(last: 100) {
-                         edges {
-                           node {
-                             author {
-                               login
-                             }
-                           }
-                         }
-                       }
-                     }
-                   }
-                 }
-               }
-             }
-             """,
-             nil,
-             url: "https://api.github.com/graphql",
-             headers: [{"authorization", "Bearer #{token}"}]
+  defp fetch_github_issues_paginated(query_string) do
+    # Reasonable upper limit to avoid runaway pagination
+    paginate("issues", 500, fn cursor ->
+      case github_query(
+             search_query(query_string, cursor, @issue_fields),
+             "Error fetching issues"
            ) do
-      case (is_binary(body) and Jason.decode(body)) || {:ok, body} do
         {:ok, parsed_body} ->
-          total_count = e(parsed_body, "data", "search", "issueCount", 0)
-          raw_issues = e(parsed_body, "data", "search", "edges", [])
-          page_info = e(parsed_body, "data", "search", "pageInfo", %{})
-          has_next_page = e(page_info, "hasNextPage", false)
-          end_cursor = e(page_info, "endCursor", nil)
+          search = e(parsed_body, "data", "search", %{})
+          debug(e(search, "issueCount", 0), "Total issues matching the query")
 
-          debug(
-            %{
-              total_count: total_count,
-              page_size: length(raw_issues),
-              has_next_page: has_next_page,
-              accumulated_so_far: length(accumulated_issues),
-              cursor: cursor
-            },
-            "GitHub Issues pagination info"
-          )
-
-          # Process current page
-          current_page_issues =
-            raw_issues
+          issues =
+            e(search, "edges", [])
             |> Enum.map(&e(&1, "node", &1))
             # Mark as issue
             |> Enum.map(&Map.put(&1, "type", "issue"))
             # Filter out automated items
             |> Enum.reject(&is_automated_item?/1)
 
-          all_issues = accumulated_issues ++ current_page_issues
+          {:ok, issues, e(search, "pageInfo", %{})}
 
-          # Decide whether to continue pagination
-          # Reasonable upper limit to avoid runaway pagination
-          should_continue =
-            has_next_page &&
-              end_cursor &&
-              length(all_issues) < 500
-
-          if should_continue do
-            debug(
-              %{
-                continuing: true,
-                next_cursor: end_cursor,
-                total_accumulated: length(all_issues)
-              },
-              "Continuing pagination for issues"
-            )
-
-            fetch_github_issues_paginated(query_string, end_cursor, all_issues)
-          else
-            debug(
-              %{
-                stopping: true,
-                reason:
-                  cond do
-                    !has_next_page ->
-                      "no more pages (#{length(raw_issues)})"
-
-                    !end_cursor ->
-                      "no cursor"
-
-                    length(all_issues) >= 1000 ->
-                      "hit safety limit (#{length(all_issues)} >= 1000)"
-
-                    true ->
-                      "unknown"
-                  end,
-                final_count: length(all_issues)
-              },
-              "Stopping pagination for issues"
-            )
-
-            all_issues
-          end
-
-        {:error, error} ->
-          debug(error, "Failed to parse JSON response")
-          accumulated_issues
+        _ ->
+          :error
       end
-    else
-      e ->
-        debug(e, "Error fetching issues")
-        accumulated_issues
-    end
+    end)
   end
 
   defp add_pr_contributors_to_issues(org, issues, issue_numbers) do
@@ -555,242 +589,108 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
       "Fetching connected PRs for issue"
     )
 
-    with token when is_binary(token) and token != "" <-
-           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
-         {:ok, %{body: body}} <-
-           Neuron.query(
-             """
-             query {
-               resource(url: "#{issue_url}") {
-                 ... on Issue {
-                   timelineItems(itemTypes: [CONNECTED_EVENT, DISCONNECTED_EVENT, CROSS_REFERENCED_EVENT, CLOSED_EVENT, REFERENCED_EVENT], first: 50) {
-                     nodes {
-                       ... on ConnectedEvent {
-                         subject {
-                           ... on PullRequest {
-                             number
-                             title
-                             url
-                             author {
-                               login
-                             }
-                             commits(first: 10) {
-                               edges {
-                                 node {
-                                   commit {
-                                     author {
-                                       user {
-                                         login
-                                       }
-                                     }
-                                   }
-                                 }
-                               }
-                             }
+    case github_query(
+           """
+           query {
+             resource(url: "#{issue_url}") {
+               ... on Issue {
+                 timelineItems(itemTypes: [CONNECTED_EVENT, DISCONNECTED_EVENT, CROSS_REFERENCED_EVENT, CLOSED_EVENT, REFERENCED_EVENT], first: 50) {
+                   nodes {
+                     ... on ConnectedEvent {
+                       subject {
+                         #{@pr_fields}
+                       }
+                     }
+                     ... on DisconnectedEvent {
+                       subject {
+                         #{@pr_fields}
+                       }
+                     }
+                     ... on CrossReferencedEvent {
+                       source {
+                         #{@pr_fields}
+                       }
+                     }
+                     ... on ReferencedEvent {
+                       commit {
+                         oid
+                         message
+                         url
+                         author {
+                           user {
+                             login
                            }
                          }
                        }
-                       ... on DisconnectedEvent {
-                         subject {
-                           ... on PullRequest {
-                             number
-                             title
-                             url
-                             author {
-                               login
-                             }
-                             commits(first: 10) {
-                               edges {
-                                 node {
-                                   commit {
-                                     author {
-                                       user {
-                                         login
-                                       }
-                                     }
-                                   }
-                                 }
-                               }
-                             }
-                           }
-                         }
-                       }
-                       ... on CrossReferencedEvent {
-                         source {
-                           ... on PullRequest {
-                             number
-                             title
-                             url
-                             author {
-                               login
-                             }
-                             commits(first: 10) {
-                               edges {
-                                 node {
-                                   commit {
-                                     author {
-                                       user {
-                                         login
-                                       }
-                                     }
-                                   }
-                                 }
-                               }
-                             }
-                           }
-                         }
-                       }
-                       ... on ReferencedEvent {
-                         commit {
-                           oid
-                           message
-                           url
-                           author {
-                             user {
-                               login
-                             }
-                           }
-                         }
-                       }
-                       ... on ClosedEvent {
-                         closer {
-                           ... on PullRequest {
-                             number
-                             title
-                             url
-                             author {
-                               login
-                             }
-                             commits(first: 10) {
-                               edges {
-                                 node {
-                                   commit {
-                                     author {
-                                       user {
-                                         login
-                                       }
-                                     }
-                                   }
-                                 }
-                               }
-                             }
-                           }
-                         }
+                     }
+                     ... on ClosedEvent {
+                       closer {
+                         #{@pr_fields}
                        }
                      }
                    }
                  }
                }
              }
-             """,
-             nil,
-             url: "https://api.github.com/graphql",
-             headers: [{"authorization", "Bearer #{token}"}]
-           ) do
-      case (is_binary(body) and Jason.decode(body)) || {:ok, body} do
-        {:ok, parsed_body} ->
-          debug(parsed_body, "Timeline response for issue ##{issue_number}")
+           }
+           """,
+           "Error fetching timeline for issue ##{issue_number}"
+         ) do
+      {:ok, parsed_body} ->
+        debug(parsed_body, "Timeline response for issue ##{issue_number}")
 
-          timeline_nodes = e(parsed_body, "data", "resource", "timelineItems", "nodes", [])
-          debug(length(timeline_nodes), "Timeline nodes found for issue ##{issue_number}")
+        timeline_nodes = e(parsed_body, "data", "resource", "timelineItems", "nodes", [])
+        debug(length(timeline_nodes), "Timeline nodes found for issue ##{issue_number}")
 
-          {prs, commits} =
-            timeline_nodes
-            |> Enum.reduce({[], []}, fn node, {acc_prs, acc_commits} ->
-              # Extract PRs and commits from different event types
-              items = []
+        {prs, commits} =
+          timeline_nodes
+          |> Enum.reduce({[], []}, fn node, {acc_prs, acc_commits} ->
+            # Connected and Disconnected events carry `subject`, CrossReferenced carries `source`,
+            # Closed carries `closer`, and Referenced carries `commit`
+            all_items =
+              ["subject", "source", "closer", "commit"]
+              |> Enum.map(&e(node, &1, nil))
+              |> Enum.filter(&timeline_item?/1)
 
-              # ConnectedEvent
-              connected_item = e(node, "subject", nil)
+            # Separate PRs and commits
+            node_prs = all_items |> Enum.filter(&Map.has_key?(&1, "number"))
+            node_commits = all_items |> Enum.filter(&Map.has_key?(&1, "oid"))
 
-              connected_items =
-                if connected_item &&
-                     (Map.has_key?(connected_item, "number") ||
-                        Map.has_key?(connected_item, "oid")),
-                   do: [connected_item],
-                   else: []
+            debug(
+              %{
+                node_prs: length(node_prs),
+                node_commits: length(node_commits),
+                total: length(all_items)
+              },
+              "Items found in timeline node for issue ##{issue_number}"
+            )
 
-              # DisconnectedEvent
-              disconnected_item = e(node, "subject", nil)
+            {acc_prs ++ node_prs, acc_commits ++ node_commits}
+          end)
 
-              disconnected_items =
-                if disconnected_item &&
-                     (Map.has_key?(disconnected_item, "number") ||
-                        Map.has_key?(disconnected_item, "oid")),
-                   do: [disconnected_item],
-                   else: []
+        filtered_prs =
+          prs |> Enum.reject(&is_automated_item?/1) |> Enum.uniq_by(&e(&1, "number", nil))
 
-              # CrossReferencedEvent
-              cross_ref_source = e(node, "source", nil)
+        filtered_commits = commits |> Enum.uniq_by(&e(&1, "oid", nil))
 
-              cross_ref_items =
-                if cross_ref_source &&
-                     (Map.has_key?(cross_ref_source, "number") ||
-                        Map.has_key?(cross_ref_source, "oid")),
-                   do: [cross_ref_source],
-                   else: []
+        debug(
+          %{
+            total_prs: length(filtered_prs),
+            total_commits: length(filtered_commits)
+          },
+          "Final counts for issue ##{issue_number}"
+        )
 
-              # ReferencedEvent (commits)
-              referenced_commit = e(node, "commit", nil)
+        %{prs: filtered_prs, commits: filtered_commits}
 
-              referenced_commits =
-                if referenced_commit && Map.has_key?(referenced_commit, "oid"),
-                  do: [referenced_commit],
-                  else: []
-
-              # ClosedEvent
-              closer = e(node, "closer", nil)
-
-              closer_items =
-                if closer && (Map.has_key?(closer, "number") || Map.has_key?(closer, "oid")),
-                  do: [closer],
-                  else: []
-
-              all_items =
-                items ++
-                  connected_items ++
-                  disconnected_items ++ cross_ref_items ++ referenced_commits ++ closer_items
-
-              # Separate PRs and commits
-              node_prs = all_items |> Enum.filter(&Map.has_key?(&1, "number"))
-              node_commits = all_items |> Enum.filter(&Map.has_key?(&1, "oid"))
-
-              debug(
-                %{
-                  node_prs: length(node_prs),
-                  node_commits: length(node_commits),
-                  total: length(all_items)
-                },
-                "Items found in timeline node for issue ##{issue_number}"
-              )
-
-              {acc_prs ++ node_prs, acc_commits ++ node_commits}
-            end)
-
-          filtered_prs =
-            prs |> Enum.reject(&is_automated_item?/1) |> Enum.uniq_by(&e(&1, "number", nil))
-
-          filtered_commits = commits |> Enum.uniq_by(&e(&1, "oid", nil))
-
-          debug(
-            %{
-              total_prs: length(filtered_prs),
-              total_commits: length(filtered_commits)
-            },
-            "Final counts for issue ##{issue_number}"
-          )
-
-          %{prs: filtered_prs, commits: filtered_commits}
-
-        {:error, error} ->
-          debug(error, "Failed to parse timeline JSON for issue ##{issue_number}")
-          %{prs: [], commits: []}
-      end
-    else
-      e ->
-        debug(e, "Error fetching timeline for issue ##{issue_number}")
+      _ ->
         %{prs: [], commits: []}
     end
+  end
+
+  # Timeline events for a union member we did not ask for come back as an empty object
+  defp timeline_item?(item) do
+    is_map(item) and (Map.has_key?(item, "number") or Map.has_key?(item, "oid"))
   end
 
   defp get_pr_contributors(pr) do
@@ -864,19 +764,96 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     |> Enum.map(&Map.put(&1, "type", "commit"))
   end
 
-  defp get_repository_list(issues) do
-    # Extract unique repository names from issues
-    repos =
+  defp get_repository_list(org, issues, pushed_after) do
+    # Issues are nearly all filed in one repo while commits are spread across the org, so scope the commit search to the org repos this app ships as deps rather than inferring it from issues
+    dep_names = app_dep_names()
+
+    dep_repos =
+      fetch_org_repos(org, pushed_after)
+      |> Enum.filter(&(&1 in dep_names))
+
+    # Extract unique repository names from issues, in case one of them is not a dep
+    issue_repos =
       issues
       |> Enum.map(&e(&1, "repository", "name", nil))
       |> Enum.filter(&(&1 != nil))
-      |> Enum.uniq()
 
-    # Always include bonfire-app as fallback
-    unique_repos = (repos ++ ["bonfire-app"]) |> Enum.uniq()
+    # Always include bonfire-app, which is the app itself rather than one of its deps
+    unique_repos = (dep_repos ++ issue_repos ++ ["bonfire-app"]) |> Enum.uniq()
 
+    debug(length(unique_repos), "Repository count for commit fetching")
     debug(unique_repos, "Repository list for commit fetching")
     unique_repos
+  end
+
+  # Deps the app ships from its own multirepo. Their repo names match their dep names, as assumed by `Bonfire.Mixer.bonfire_ext_pattern/3`.
+  defp app_dep_names do
+    Utils.maybe_apply(Bonfire.Mixer, :deps_names_for, [:bonfire], fallback_return: [])
+    |> List.wrap()
+    |> debug("Dep names to match against the org's repos")
+  end
+
+  defp fetch_org_repos(org, pushed_after) do
+    # Reasonable upper limit to avoid runaway pagination
+    paginate("org repositories", 300, fn cursor ->
+      case github_query(
+             """
+             query {
+               organization(login: "#{org}") {
+                 repositories(first: 100, orderBy: {field: PUSHED_AT, direction: DESC}#{cursor_param(cursor)}) {
+                   totalCount
+                   pageInfo {
+                     hasNextPage
+                     endCursor
+                   }
+                   nodes {
+                     name
+                     pushedAt
+                     isArchived
+                   }
+                 }
+               }
+             }
+             """,
+             "Error fetching repositories for org #{org}"
+           ) do
+        {:ok, parsed_body} ->
+          repositories = e(parsed_body, "data", "organization", "repositories", %{})
+          debug(e(repositories, "totalCount", 0), "Total repositories in the org")
+
+          active = e(repositories, "nodes", []) |> Enum.reject(&e(&1, "isArchived", false))
+          in_window = Enum.filter(active, &repo_pushed_since?(&1, pushed_after))
+          names = in_window |> Enum.map(&e(&1, "name", nil)) |> Enum.filter(& &1)
+
+          if length(in_window) < length(active) do
+            # Repos come back most-recently-pushed first, so the first one outside the window
+            # means every repo on every later page is outside it too
+            {:halt, names}
+          else
+            {:ok, names, e(repositories, "pageInfo", %{})}
+          end
+
+        _ ->
+          :error
+      end
+    end)
+  end
+
+  # Repos with no push date, or with no window to compare against, are kept so that the
+  # commit query (which filters by date itself) gets the final say
+  defp repo_pushed_since?(_repo, nil), do: true
+
+  defp repo_pushed_since?(repo, pushed_after) do
+    case e(repo, "pushedAt", nil) do
+      nil ->
+        true
+
+      pushed_at ->
+        case Date.from_iso8601(String.slice(pushed_at, 0, 10)) do
+          {:ok, date} -> Date.compare(date, Date.from_iso8601!(pushed_after)) != :lt
+          _ -> true
+        end
+    end
   end
 
   defp fetch_all_recent_commits(org, committed_after, committed_before, repo_list) do
@@ -889,18 +866,6 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   end
 
   defp fetch_commits_from_repo(org, repo_name, committed_after, committed_before \\ nil) do
-    fetch_commits_from_repo_paginated(org, repo_name, committed_after, committed_before, nil, [])
-  end
-
-  defp fetch_commits_from_repo_paginated(
-         org,
-         repo_name,
-         committed_after,
-         committed_before,
-         cursor,
-         accumulated_commits
-       ) do
-    cursor_param = if cursor, do: ", after: \"#{cursor}\"", else: ""
     since_param = "since: \"#{committed_after}T00:00:00Z\""
 
     until_param =
@@ -908,17 +873,16 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
         do: ", until: \"#{committed_before}T23:59:59Z\"",
         else: ""
 
-    with token when is_binary(token) and token != "" <-
-           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
-         {:ok, %{body: body}} <-
-           Neuron.query(
+    # Reasonable upper limit for commits per repo
+    paginate("commits in #{repo_name}", 2000, fn cursor ->
+      case github_query(
              """
              query {
                repository(owner: "#{org}", name: "#{repo_name}") {
                  defaultBranchRef {
                    target {
                      ... on Commit {
-                       history(first: 50, #{since_param}#{until_param}#{cursor_param}) {
+                       history(first: 50, #{since_param}#{until_param}#{cursor_param(cursor)}) {
                          pageInfo {
                            hasNextPage
                            endCursor
@@ -940,101 +904,23 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                }
              }
              """,
-             nil,
-             url: "https://api.github.com/graphql",
-             headers: [{"authorization", "Bearer #{token}"}]
+             "Error fetching commits from #{repo_name}"
            ) do
-      case (is_binary(body) and Jason.decode(body)) || {:ok, body} do
         {:ok, parsed_body} ->
           history =
             e(parsed_body, "data", "repository", "defaultBranchRef", "target", "history", %{})
 
-          commits = e(history, "nodes", [])
-          page_info = e(history, "pageInfo", %{})
-          has_next_page = e(page_info, "hasNextPage", false)
-          end_cursor = e(page_info, "endCursor", nil)
-
-          debug(
-            %{
-              repo: repo_name,
-              page_size: length(commits),
-              has_next_page: has_next_page,
-              accumulated_so_far: length(accumulated_commits),
-              cursor: cursor
-            },
-            "GitHub Commits pagination info"
-          )
-
-          # Filter current page
-          filtered_commits =
-            commits
+          commits =
+            e(history, "nodes", [])
             |> Enum.reject(&is_automated_commit?/1)
             |> Enum.reject(&is_merge_commit?/1)
 
-          all_commits = accumulated_commits ++ filtered_commits
+          {:ok, commits, e(history, "pageInfo", %{})}
 
-          # Decide whether to continue pagination
-          # Reasonable upper limit for commits per repo
-          should_continue =
-            has_next_page &&
-              end_cursor &&
-              length(all_commits) < 2000
-
-          if should_continue do
-            debug(
-              %{
-                continuing: true,
-                next_cursor: end_cursor,
-                total_accumulated: length(all_commits),
-                repo: repo_name
-              },
-              "Continuing pagination for commits"
-            )
-
-            fetch_commits_from_repo_paginated(
-              org,
-              repo_name,
-              committed_after,
-              committed_before,
-              end_cursor,
-              all_commits
-            )
-          else
-            debug(
-              %{
-                stopping: true,
-                reason:
-                  cond do
-                    !has_next_page ->
-                      "no more pages (#{length(commits)})"
-
-                    !end_cursor ->
-                      "no cursor"
-
-                    length(all_commits) >= 2000 ->
-                      "hit safety limit (#{length(all_commits)} >= 2000)"
-
-                    true ->
-                      "unknown"
-                  end,
-                final_count: length(all_commits),
-                repo: repo_name
-              },
-              "Stopping pagination for commits"
-            )
-
-            all_commits
-          end
-
-        {:error, error} ->
-          debug(error, "Failed to parse commits JSON response for #{repo_name}")
-          accumulated_commits
+        _ ->
+          :error
       end
-    else
-      e ->
-        debug(e, "Error fetching commits from #{repo_name}")
-        accumulated_commits
-    end
+    end)
   end
 
   # Filter out automated commits and generic ones
@@ -1285,52 +1171,37 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     }
     """
 
-    with token when is_binary(token) and token != "" <-
-           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
-         {:ok, %{body: body}} <-
-           Neuron.query(
-             query,
-             nil,
-             url: "https://api.github.com/graphql",
-             headers: [{"authorization", "Bearer #{token}"}]
-           ) do
-      case (is_binary(body) and Jason.decode(body)) || {:ok, body} do
-        {:ok, parsed_body} ->
-          data = e(parsed_body, "data", %{})
+    case github_query(query, "Error fetching issue batch") do
+      {:ok, parsed_body} ->
+        data = e(parsed_body, "data", %{})
 
-          issue_numbers
-          |> Enum.with_index()
-          |> Enum.map(fn {issue_number, index} ->
-            issue_data = e(data, "issue#{index}", "issue", nil)
+        issue_numbers
+        |> Enum.with_index()
+        |> Enum.map(fn {issue_number, index} ->
+          issue_data = e(data, "issue#{index}", "issue", nil)
 
-            if issue_data do
-              debug(
-                %{
-                  number: issue_number,
-                  title: e(issue_data, "title", "") |> String.slice(0, 50),
-                  state: e(issue_data, "state", "")
-                },
-                "Fetched missing issue"
-              )
+          if issue_data do
+            debug(
+              %{
+                number: issue_number,
+                title: e(issue_data, "title", "") |> String.slice(0, 50),
+                state: e(issue_data, "state", "")
+              },
+              "Fetched missing issue"
+            )
 
-              # Transform to match our expected format
-              issue_data
-              |> Map.put("repository", %{"name" => repo})
-              |> Map.put("type", "issue")
-            else
-              debug(issue_number, "Failed to fetch missing issue")
-              nil
-            end
-          end)
-          |> Enum.filter(&(&1 != nil))
+            # Transform to match our expected format
+            issue_data
+            |> Map.put("repository", %{"name" => repo})
+            |> Map.put("type", "issue")
+          else
+            debug(issue_number, "Failed to fetch missing issue")
+            nil
+          end
+        end)
+        |> Enum.filter(&(&1 != nil))
 
-        {:error, error} ->
-          debug(error, "Failed to parse batch issue fetch response")
-          []
-      end
-    else
-      e ->
-        debug(e, "Error fetching issue batch")
+      _ ->
         []
     end
   end
@@ -1454,149 +1325,57 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
 
     debug(query_string, "GitHub PRs Query (with merged_before)")
 
-    fetch_all_merged_prs_paginated(query_string, nil, [])
+    fetch_all_merged_prs_paginated(query_string)
   end
 
-  defp fetch_all_merged_prs_paginated(query_string, cursor, accumulated_prs) do
-    cursor_param = if cursor, do: ", after: \"#{cursor}\"", else: ""
+  @merged_pr_fields """
+  #{@pr_fields}
+  ... on PullRequest {
+    mergedAt
+    milestone {
+      title
+    }
+    labels(first: 100) {
+      edges {
+        node {
+          name
+          color
+        }
+      }
+    }
+    assignees(first: 5) {
+      edges {
+        node {
+          login
+        }
+      }
+    }
+  }
+  """
 
-    with token when is_binary(token) and token != "" <-
-           System.get_env("GITHUB_TOKEN") || {:error, "missing GITHUB_TOKEN in env"},
-         {:ok, %{body: body}} <-
-           Neuron.query(
-             """
-             query {
-               search(first: 50, type: ISSUE, query: "#{query_string}"#{cursor_param}) {
-                 issueCount
-                 pageInfo {
-                   hasNextPage
-                   endCursor
-                 }
-                 edges {
-                   node {
-                     ... on PullRequest {
-                       number
-                       title
-                       url
-                       mergedAt
-                       author {
-                         login
-                       }
-                       milestone {
-                         title
-                       }
-                       labels(first: 100) {
-                         edges {
-                           node {
-                             name
-                             color
-                           }
-                         }
-                       }
-                       assignees(first: 5) {
-                         edges {
-                           node {
-                             login
-                           }
-                         }
-                       }
-                       commits(first: 10) {
-                         edges {
-                           node {
-                             commit {
-                               author {
-                                 user {
-                                   login
-                                 }
-                               }
-                             }
-                           }
-                         }
-                       }
-                     }
-                   }
-                 }
-               }
-             }
-             """,
-             nil,
-             url: "https://api.github.com/graphql",
-             headers: [{"authorization", "Bearer #{token}"}]
+  defp fetch_all_merged_prs_paginated(query_string) do
+    # Reasonable upper limit for PRs
+    paginate("PRs", 500, fn cursor ->
+      case github_query(
+             search_query(query_string, cursor, @merged_pr_fields),
+             "Error fetching PRs"
            ) do
-      case (is_binary(body) and Jason.decode(body)) || {:ok, body} do
         {:ok, parsed_body} ->
-          total_count = e(parsed_body, "data", "search", "issueCount", 0)
-          raw_prs = e(parsed_body, "data", "search", "edges", [])
-          page_info = e(parsed_body, "data", "search", "pageInfo", %{})
-          has_next_page = e(page_info, "hasNextPage", false)
-          end_cursor = e(page_info, "endCursor", nil)
+          search = e(parsed_body, "data", "search", %{})
+          debug(e(search, "issueCount", 0), "Total PRs matching the query")
 
-          debug(
-            %{
-              total_count: total_count,
-              page_size: length(raw_prs),
-              has_next_page: has_next_page,
-              accumulated_so_far: length(accumulated_prs),
-              cursor: cursor
-            },
-            "GitHub PRs pagination info"
-          )
-
-          # Process current page
-          current_page_prs =
-            raw_prs
+          prs =
+            e(search, "edges", [])
             |> Enum.map(&e(&1, "node", &1))
             # Filter out automated items
             |> Enum.reject(&is_automated_item?/1)
 
-          all_prs = accumulated_prs ++ current_page_prs
+          {:ok, prs, e(search, "pageInfo", %{})}
 
-          # Decide whether to continue pagination
-          # Reasonable upper limit for PRs
-          should_continue =
-            has_next_page &&
-              end_cursor &&
-              length(all_prs) < 500
-
-          if should_continue do
-            debug(
-              %{
-                continuing: true,
-                next_cursor: end_cursor,
-                total_accumulated: length(all_prs)
-              },
-              "Continuing pagination for PRs"
-            )
-
-            fetch_all_merged_prs_paginated(query_string, end_cursor, all_prs)
-          else
-            debug(
-              %{
-                stopping: true,
-                reason:
-                  cond do
-                    !has_next_page -> "no more pages (#{length(raw_prs)})"
-                    !end_cursor -> "no cursor"
-                    length(all_prs) >= 500 -> "hit safety limit (#{length(all_prs)} >= 500)"
-                    true -> "unknown"
-                  end,
-                final_count: length(all_prs)
-              },
-              "Stopping pagination for PRs"
-            )
-
-            all_prs
-          end
-
-        {:error, error} ->
-          debug(error, "Failed to parse PR JSON response")
-          accumulated_prs
+        _ ->
+          :error
       end
-    else
-      e ->
-        debug(e, "Error fetching PRs")
-        accumulated_prs
-    end
+    end)
   end
 
   defp prepare_sections(issues, anchors) do
