@@ -29,7 +29,35 @@ defmodule Bonfire.Common.ObanPresets do
   def baseline, do: env_limits()
 
   @impl Calm
-  def normalize_value(_queue, limit), do: Types.maybe_to_pos_integer(limit)
+  def normalize_value(_queue, limit),
+    do: Types.maybe_to_pos_integer(limit) |> Types.maybe_clamp(1, max_queue_limit())
+
+  @doc """
+  Ceiling for any single queue's concurrency, defaulting to the Ecto pool size (config
+  `:max_queue_limit`).
+
+  A running job holds a DB connection for its whole duration, so concurrency above the pool buys no  throughput: the extra workers just queue for a checkout and time out. 
+
+  Oban has no aggregate cap of its own, limits are per queue and the total is simply their sum, so the bound has to live here.
+  """
+  def max_queue_limit, do: Config.get([__MODULE__, :max_queue_limit]) || pool_size()
+
+  defp pool_size do
+    Bonfire.Common.Repo.config()[:pool_size] || 10
+  rescue
+    # config may not be readable this early in boot; fall back to Ecto's own default
+    _ -> 10
+  end
+
+  @doc """
+  `{total, pool_size}` when the effective limits add up to more concurrency than the DB pool can serve, otherwise `nil`. Clamping each queue individually still lets N queues oversubscribe together, so this is the check that catches it. For the admin UI to warn on.
+  """
+  def oversubscribed do
+    total = effective_limits() |> Map.values() |> Enum.sum()
+    pool = max_queue_limit()
+
+    if total > pool, do: {total, pool}
+  end
 
   # a prioritised group = its queues at the turbo level, on top of the preset
   @impl Calm
@@ -158,6 +186,8 @@ defmodule Bonfire.Common.ObanPresets do
   def apply_limits(limits \\ effective_limits())
 
   def apply_limits(limits) when is_map(limits) and map_size(limits) > 0 do
+    warn_if_oversubscribed(limits)
+
     for name <- running_instances(), {queue, limit} <- limits do
       case Oban.scale_queue(name, queue: queue, limit: limit) do
         :ok ->
@@ -174,6 +204,33 @@ defmodule Bonfire.Common.ObanPresets do
   end
 
   def apply_limits(_), do: :ok
+
+  @doc """
+  Drop the admin's saved throughput intent and put every managed queue back to its env-configured
+  limit, live.
+  """
+  def reset_to_defaults(opts \\ []) do
+    opts = Keyword.merge([scope: :instance, skip_boundary_check: true], opts)
+
+    for key <- [@keys[:preset], @keys[:values], @keys[:toggles]] do
+      Bonfire.Common.Settings.delete([__MODULE__, key], opts)
+    end
+
+    # `Settings.delete/2` nests the module under its OTP app, so the save hook that would normally call `apply_current/0` doesn't match on the way through, so do it here
+    apply_current()
+  end
+
+  # the limits being applied, not `effective_limits/0`: `apply_preset/1` scales to a preset that isn't the stored one, and it's what's about to run that matters
+  defp warn_if_oversubscribed(limits) do
+    total = limits |> Map.values() |> Enum.sum()
+    pool = max_queue_limit()
+
+    if total > pool do
+      Logger.warning(
+        "ObanPresets: queue limits total #{total} against a DB pool of #{pool}. Each running job holds a connection, so the excess will queue for checkouts and time out rather than adding throughput."
+      )
+    end
+  end
 
   # all Oban instances that are actually running (main + test-instance), so it's a safe no-op
   # when Oban isn't started (e.g. test env with queues disabled)

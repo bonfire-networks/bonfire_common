@@ -2,7 +2,7 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
   @moduledoc """
   Admin-tunable instance performance settings, as a `Bonfire.Common.Settings.Calm` consumer (plan: postgres-ops-tuning.md › C2) — currently the **Postgres layer**: reload-safe server settings applied live via a whitelisted `ALTER SYSTEM SET` + `pg_reload_conf()` applier.
 
-  The tunables live in a config **knob registry** (`:knob_registry`) with per-knob metadata: `layer:`, `context:` (`:user`/`:sighup` apply on reload; `:postmaster` persists but needs a DB restart — surfaced, never auto-restarted), `type:` (`:int` | `:bool` | `:real`), `bounds:` (ints clamp into them), `tiers:` (an ordered ladder powering the `{:step, n}` transform — how "work_mem one tier up" works). Presets and Level-2 override toggles are transforms over the BOOT BASELINE (a `pg_settings` snapshot taken on first use — boot config stays the single source of truth; presets only express intent on top).
+  The tunables live in a config **knob registry** (`:knob_registry`) with per-knob metadata: `layer:`, `context:` (`:user`/`:sighup` apply on reload; `:postmaster` persists but needs a DB restart — surfaced, never auto-restarted), `type:` (`:int` | `:bool` | `:real`), `bounds:` (ints clamp into them), `tiers:` (an ordered ladder powering the `{:step, n}` transform — how "work_mem one tier up" works). Presets and Level-2 override toggles are transforms over the BOOT BASELINE (a `pg_settings` snapshot taken on first use, after each applier has cleared its own previous writes via `reset_managed/1` so what's read is the deploy's config and not the last run's output, so boot config stays the single source of truth; presets only express intent on top, and re-applying the same preset on every boot lands on the same value).
 
   `apply_current/0` computes the effective values and hands the applier only the DIFF vs what was last applied (initially the baseline), so unchanged knobs are never re-set. The applier is swappable via config `:applier` (tests use a mock; the default is `#{inspect(__MODULE__)}.PostgresApplier`).
 
@@ -40,15 +40,24 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
         baseline
 
       _ ->
-        # each layer's applier reads its own knobs' boot values
+        # each layer's applier clears its own previous writes, then reads its knobs' boot values
         baseline =
           Enum.reduce(appliers(), %{}, fn {layer, applier}, acc ->
-            Map.merge(acc, applier.read_baseline(layer_registry(layer)))
+            registry = layer_registry(layer)
+            maybe_reset_managed(applier, registry)
+            Map.merge(acc, applier.read_baseline(registry))
           end)
 
         if baseline != %{}, do: put_baseline(baseline)
         baseline
     end
+  end
+
+  # A layer whose writes OUTLIVE the app has to undo them before it can read a baseline, or it reads back its own last output and every preset compounds on restart (`ALTER SYSTEM` persists in postgresql.auto.conf, which Postgres loads at startup). Layers whose projections are runtime-only (Logger level, app env) are rebuilt from config each boot and so never need it.
+  defp maybe_reset_managed(applier, registry) do
+    if registry != [] and Code.ensure_loaded?(applier) and
+         function_exported?(applier, :reset_managed, 1),
+       do: applier.reset_managed(registry)
   end
 
   defp layer_registry(layer),
@@ -231,6 +240,23 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
     end
   end
 
+  @doc """
+  Drop the admin's saved intent and put every managed knob back to what the deploy configures.
+
+  Deleting the settings is not enough on its own: `ALTER SYSTEM` writes outlive the app, so the knobs would keep their last applied values. Re-deriving the baseline is what clears them, since `PostgresApplier.reset_managed/1` runs on the way (see `baseline/0`).
+  """
+  def reset_to_defaults(opts \\ []) do
+    opts = Keyword.merge([scope: :instance, skip_boundary_check: true], opts)
+
+    for key <- [@keys[:preset], @keys[:values], @keys[:toggles]] do
+      Bonfire.Common.Settings.delete([__MODULE__, key], opts)
+    end
+
+    # `Settings.delete/2` nests the module under its OTP app, so the save hook that would normally call `apply_current/0` doesn't match on the way through, so do it here
+    reset_baseline()
+    apply_current()
+  end
+
   defp apply_changes(changes) when changes == %{}, do: :ok
 
   defp apply_changes(changes) do
@@ -390,6 +416,58 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
       end
     rescue
       _ -> false
+    end
+
+    @doc """
+    Clear this layer's own previous writes, so the baseline read that follows reports what the  DEPLOY configured (command line, then postgresql.conf, then the compiled default) rather than
+    the last run's output.
+
+    `ALTER SYSTEM` persists in postgresql.auto.conf and Postgres loads that at startup, so without this a `{:scale, 2.0}` preset scales a number that already includes the previous boot's scaling, and every restart ratchets the knob up until it hits its bound.
+
+    Note this claims ownership of the registry's knobs: a value set on one of them directly (a `psql` session, say) is cleared on the next boot too. Anything outside the registry is untouched.
+
+    Only registry-whitelisted names reach the statement, as in `build_statement/3`.
+    """
+    def reset_managed(registry) do
+      names = for {knob, spec} <- registry, spec[:layer] == :postgres, do: to_string(knob)
+
+      if names != [] and available?() do
+        Enum.each(names, &Repo.query("ALTER SYSTEM RESET #{&1}", [], timeout: 10_000))
+        Repo.query("SELECT pg_reload_conf()", [], timeout: 5_000)
+        await_reset(names)
+      end
+
+      :ok
+    rescue
+      e ->
+        Logger.warning(
+          "InstanceTuning: could not clear previous writes before reading the baseline: #{inspect(e)}"
+        )
+
+        :ok
+    end
+
+    # `pg_settings` serves a value per backend, refreshed only when that backend handles the SIGHUP from `pg_reload_conf/0`, so reading straight after the reset can still report what we just cleared. Wait for these knobs to stop being sourced from postgresql.auto.conf first.
+    defp await_reset(names, tries \\ 40) do
+      case Repo.query(
+             "SELECT count(*) FROM pg_settings WHERE name = ANY($1) AND sourcefile LIKE '%auto.conf'",
+             [names],
+             timeout: 5_000
+           ) do
+        {:ok, %{rows: [[0]]}} ->
+          :ok
+
+        _ when tries > 0 ->
+          Process.sleep(25)
+          await_reset(names, tries - 1)
+
+        _ ->
+          Logger.warning(
+            "InstanceTuning: postgresql.auto.conf still in force after a reload, so the baseline may include a previous run's values"
+          )
+
+          :ok
+      end
     end
 
     @doc """

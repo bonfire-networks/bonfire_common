@@ -181,4 +181,50 @@ defmodule Bonfire.Common.ObanPresetsTest do
       assert ObanPresets.apply_current() == :ok
     end
   end
+
+  describe "concurrency is bounded by what the DB can actually serve" do
+    setup do
+      # a known ceiling, so these don't depend on the repo's configured pool
+      Config.put([ObanPresets, :max_queue_limit], 20)
+      on_exit(fn -> Config.delete([ObanPresets, :max_queue_limit]) end)
+      :ok
+    end
+
+    test "a per-queue limit is clamped to the ceiling" do
+      [queue | _] = ObanPresets.managed_queues()
+
+      assert ObanPresets.normalize_value(queue, 500) == 20
+      assert ObanPresets.normalize_value(queue, 5) == 5
+      assert ObanPresets.normalize_value(queue, 0) == nil
+      assert ObanPresets.normalize_value(queue, "not a number") == nil
+    end
+
+    test "the stored override is clamped on the way in, not just on display" do
+      [queue | _] = ObanPresets.managed_queues()
+
+      Config.put([ObanPresets, :preset], :custom)
+      Config.put([ObanPresets, :queues], %{queue => 500})
+
+      assert ObanPresets.effective_limits()[queue] == 20
+    end
+
+    test "queues that only oversubscribe together are still caught" do
+      # each within the ceiling, so the per-queue clamp lets both through. `:custom` takes its
+      # effective limits from the overrides alone, so this needs no change to `:managed_queues`
+      # (that key is global config, and narrowing it here leaks into the rest of the suite)
+      queues = ObanPresets.managed_queues() |> Enum.take(2)
+      Config.put([ObanPresets, :preset], :custom)
+      Config.put([ObanPresets, :queues], Map.new(queues, &{&1, 15}))
+
+      assert {30, 20} = ObanPresets.oversubscribed()
+    end
+
+    test "nothing to report when the limits fit the pool" do
+      queues = ObanPresets.managed_queues() |> Enum.take(2)
+      Config.put([ObanPresets, :preset], :custom)
+      Config.put([ObanPresets, :queues], Map.new(queues, &{&1, 5}))
+
+      refute ObanPresets.oversubscribed()
+    end
+  end
 end
