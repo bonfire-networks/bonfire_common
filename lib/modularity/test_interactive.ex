@@ -247,6 +247,9 @@ defmodule Bonfire.Common.Test.Interactive do
   def setup_test_repo(tags) do
     repo = repo()
 
+    # Logger is asynchronous, and plenty of work under test runs in spawned processes (Oban jobs, Tasks), so messages they queue can still be in flight when the test ends, and are then dropped rather than captured or printed. That makes a log line explaining a decision appear in one run and not the next, worse than no log at all, because its absence gets read as evidence that the code path never ran. `Logger.flush/0` blocks until everything queued before it has been processed.
+    ExUnit.Callbacks.on_exit(&Logger.flush/0)
+
     if GenServer.whereis(repo) do
       Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Fake, :clear_caches, [])
 
