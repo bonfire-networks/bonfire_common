@@ -12,6 +12,7 @@ defmodule Bonfire.Common.EnvConfig do
 
   """
   use Want.Type
+  # NOTE: possible alternative lib: https://github.com/phcurado/zoi
 
   @doc """
   Casts environment variables into keyword list(s) or map(s).
