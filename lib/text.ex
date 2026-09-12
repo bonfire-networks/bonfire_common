@@ -394,6 +394,38 @@ defmodule Bonfire.Common.Text do
 
   def unwrap_markdown_autolinks(text), do: text
 
+  @doc ~S"""
+  Removes editor-added escapes for ampersands and underscores inside Markdown URLs so link detection can recognise them. Leaves ordinary text and code untouched.
+
+  ## Examples
+
+      iex> normalise_markdown_urls(~S(https://www.youtube.com/watch?v=17MBllYf6OY\&start\_radio=1))
+      "https://www.youtube.com/watch?v=17MBllYf6OY&start_radio=1"
+
+      iex> normalise_markdown_urls(~S(keep \_literal\_ and `https://example.com/a\_b`))
+      ~S(keep \_literal\_ and `https://example.com/a\_b`)
+  """
+  def normalise_markdown_urls(text) when is_binary(text) do
+    maybe_replace(text, "\\", fn text ->
+      # Skip code before matching URLs; unescaping the whole body changes literal Markdown.
+      protected = ~r/^[ ]{0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^[ ]{0,3}\1[^\n]*(?:\n|$)|\z)|(`+)[^`]*?\2|^(?: {4}|\t)[^\n]*/ms
+
+      protected
+      |> Regex.split(text, include_captures: true, trim: false)
+      |> Enum.map_every(2, fn prose ->
+        Regex.replace(~r{https?://[^\s<>`"']+}, prose, fn url ->
+          String.replace(url, ["\\&", "\\_"], fn
+            "\\&" -> "&"
+            "\\_" -> "_"
+          end)
+        end)
+      end)
+      |> Enum.join()
+    end)
+  end
+
+  def normalise_markdown_urls(text), do: text
+
   defp unwrap_autolinks(text) do
     text
     |> Regex.replace(~r/<(http[^>]+)>/, ..., " \\1 ")
