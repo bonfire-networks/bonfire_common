@@ -627,7 +627,7 @@ defmodule Bonfire.Common.Needles do
 
       # |> IO.inspect
     else
-      if is_list(opts) && Keyword.get(opts, :skip_boundary_check) do
+      if Keyword.get(opts, :skip_boundary_check) == true do
         debug(
           "Needle: Attempting a generic query with NO boundary check (because of opts.skip_boundary_check) on #{inspect(schema_or_query)} with filters: #{inspect(filters)}"
         )
