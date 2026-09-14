@@ -408,7 +408,8 @@ defmodule Bonfire.Common.Text do
   def normalise_markdown_urls(text) when is_binary(text) do
     maybe_replace(text, "\\", fn text ->
       # Skip code before matching URLs; unescaping the whole body changes literal Markdown.
-      protected = ~r/^[ ]{0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^[ ]{0,3}\1[^\n]*(?:\n|$)|\z)|(`+)[^`]*?\2|^(?: {4}|\t)[^\n]*/ms
+      protected =
+        ~r/^[ ]{0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^[ ]{0,3}\1[^\n]*(?:\n|$)|\z)|(`+)[^`]*?\2|^(?: {4}|\t)[^\n]*/ms
 
       protected
       |> Regex.split(text, include_captures: true, trim: false)

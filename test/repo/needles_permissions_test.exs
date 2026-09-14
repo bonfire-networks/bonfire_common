@@ -32,7 +32,10 @@ defmodule Bonfire.Common.NeedlesPermissionsTest do
 
   test "admins option does not grant delete access to another ordinary user", context do
     assert lookup(context.post, context.other, skip_boundary_check: :admins) == nil
-    assert %PostContent{id: id} = lookup(context.post, context.owner, skip_boundary_check: :admins)
+
+    assert %PostContent{id: id} =
+             lookup(context.post, context.owner, skip_boundary_check: :admins)
+
     assert id == context.post.id
   end
 

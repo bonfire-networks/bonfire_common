@@ -541,6 +541,9 @@ defmodule Bonfire.Common.E do
   def handle_fallback(object, keys, "", fallback),
     do: handle_fallback(object, keys, nil, fallback)
 
+  def handle_fallback(object, keys, [], fallback),
+    do: handle_fallback(object, keys, nil, fallback)
+
   def handle_fallback(object, keys, %Ecto.Association.NotLoaded{}, :nil!) do
     Untangle.err(object, "Required value not found for keys #{inspect(keys)} in object")
     nil
