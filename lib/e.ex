@@ -342,6 +342,14 @@ defmodule Bonfire.Common.E do
       iex> ed(%{a: %{b: nil}}, :a, :b, "fallback")
       "fallback"
 
+      An empty list counts as absent, like `nil` and `""`. Callers gate on these with a plain truthiness test, and `[]` is truthy in Elixir, so returning it would have them treat "no recipients" or "no tags" as "some".
+
+      iex> ed(%{a: %{b: []}}, :a, :b, "fallback")
+      "fallback"
+
+      iex> ed(%{a: []}, :a, "fallback")
+      "fallback"
+
       iex> ed(%{a: %{b: %{c: "value"}}}, :a, :b, :c, "fallback")
       "value"
 
