@@ -142,7 +142,8 @@ defmodule Bonfire.Common.Enums do
 
   def get_in_access_keys!(%schema{} = map, keys, last_fallback) when is_map(map) do
     if Extend.module_behaviour?(schema, Access) do
-      case try_access(fn -> get_in(map, keys) end) do
+      # log only when the caller did NOT say `:empty`, which means "a miss is expected here". The fallback itself stays `nil` so the error atoms below keep reaching their own branches, since `UndefinedFunctionError` retries rather than falling back
+      case try_access(fn -> get_in(map, keys) end, nil, last_fallback != :empty) do
         nil ->
           last_fallback
 
@@ -175,26 +176,33 @@ defmodule Bonfire.Common.Enums do
     try_access(fn -> get_in_access_keys!(map, keys, last_fallback) end, last_fallback)
   end
 
-  defp try_access(fun, error_fallback \\ nil) do
+  # Rescuing is the ORDINARY path here, not an exception: traversing heterogeneous data is what this
+  # function is for, and each rescue below names a shape that legitimately turns up, so these log at
+  # `debug`. `log?` is separate from `error_fallback` because a caller passing `:empty` is saying "a
+  # miss is expected, stay quiet" while still needing the error atoms to reach their own branches
+  # upstream, `UndefinedFunctionError` in particular retries rather than falling back.
+  defp try_access(fun, error_fallback \\ nil, log? \\ nil) do
+    log? = if is_nil(log?), do: error_fallback != :empty, else: log?
+
     fun.()
   rescue
     e in BadMapError ->
       # eg. an element in the tree is not a map
-      if error_fallback != :empty, do: warn(e)
+      if log?, do: debug(e)
       error_fallback || BadMapError
 
     e in FunctionClauseError ->
-      if error_fallback != :empty, do: warn(e)
+      if log?, do: debug(e)
       error_fallback || FunctionClauseError
 
     e in ArgumentError ->
       # eg. `Access.get/3` on a list that isn't a keyword list, which is how a JSON-LD array arrives
-      if error_fallback != :empty, do: warn(e)
+      if log?, do: debug(e)
       error_fallback || ArgumentError
 
     e in UndefinedFunctionError ->
       # eg. function MyStruct.fetch/2 is undefined (does not implement the Access behaviour)
-      if error_fallback != :empty, do: warn(e)
+      if log?, do: debug(e)
       error_fallback || UndefinedFunctionError
   end
 
