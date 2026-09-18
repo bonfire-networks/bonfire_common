@@ -111,6 +111,21 @@ defmodule Bonfire.Common.Utils do
   )
 
   @doc """
+  Whether to show features, options, or UI whose backend isn't built yet, so work-in-progress markup can ship hidden rather than commented out. Drop the check from a section once that section works.
+
+  Defaults to `false`, and is set to `true` in dev and test config. To override:
+
+      # globally at runtime, eg. from an IEx session on a running instance
+      Bonfire.Common.Config.put(:show_unimplemented, false)
+
+      # for the current process and its descendants only (avoids the global leak in tests)
+      Process.put([:bonfire, :show_unimplemented], false)
+  """
+  # NOTE: `Config.get/2` is a macro, and requiring Config here would make a compile-time cycle (dev then recompiles in a loop), so call the function the macro expands to
+  def show_unimplemented?,
+    do: Bonfire.Common.Config.__get__(:show_unimplemented, false, :bonfire)
+
+  @doc """
   Converts a map, user, socket, tuple, etc, to a keyword list for standardised use as function options.
   """
   defdelegate to_options(user_or_socket_or_opts), to: Bonfire.Common.Opts
