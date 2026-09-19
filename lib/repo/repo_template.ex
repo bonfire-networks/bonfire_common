@@ -51,6 +51,7 @@ defmodule Bonfire.Common.RepoTemplate do
           iex> transact_with(fn -> {:error, "failure"} end)
           ** (Ecto.RollbackError) Rolling back the DB transaction, error reason: failure
 
+      A `Postgrex.Error` raised inside the fun is logged and returned as `{:error, exception}`, with nothing it wrote left behind, since `transaction/1` rolls back as the exception passes through it. The one exception is running nested inside someone else's transaction: Postgres has already aborted that one, so the error is re-raised to unwind it rather than handed back to a caller who would keep querying a dead transaction. This is the path statement-level writes take, since Ecto turns a constraint violation into `Ecto.ConstraintError` only when it has a changeset constraint to match it against, so `insert_all/3` and `update_all/2` surface the raw error instead.
       """
       @spec transact_with(fun :: (-> {:ok, any} | {:error, any})) ::
               {:ok, any} | {:error, any}
@@ -73,9 +74,15 @@ defmodule Bonfire.Common.RepoTemplate do
         )
       rescue
         exception in Postgrex.Error ->
-          error(exception, "Postgrex error, rolling back")
-          rollback("transact_with_unexpected_case")
-          handle_postgrex_exception(exception, __STACKTRACE__)
+          if in_transaction?() do
+            # nested in someone else's transaction, which Postgres has already aborted: handing back an error tuple would let the caller keep querying a dead transaction, so let it unwind
+            error(exception, "Postgrex error, aborting the enclosing transaction")
+            reraise exception, __STACKTRACE__
+          else
+            # our own transaction, already rolled back on the way out of `transaction/1`, so answer as this function promises to rather than raising
+            error(exception, "Postgrex error, transaction was rolled back")
+            {:error, exception}
+          end
       end
 
       # def transact_with(fun, opts) do
