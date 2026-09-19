@@ -106,4 +106,48 @@ defmodule Bonfire.Common.Testing do
 
     :ok
   end
+
+  @doc """
+  Runs a function and counts the database queries it made, returning `{result, count}`.
+
+  For a test that has to pin work as batched: assert the count stays the same as the number of
+  records grows, and an N+1 reintroduced later fails the test rather than only showing up as
+  slowness in production.
+
+  Counts queries made in the calling process only, since telemetry handlers are global and a
+  LiveView or a `Task` running alongside would otherwise be counted too.
+
+      {targets, queries} = count_queries(fn -> FanOut.targets(recipients, activity) end)
+      assert queries == 2
+  """
+  def count_queries(fun) when is_function(fun, 0) do
+    repo = Bonfire.Common.Config.repo()
+    event = repo.config()[:telemetry_prefix] ++ [:query]
+    counting_for = self()
+    handler_id = {__MODULE__, :count_queries, make_ref()}
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, _metadata, _config ->
+        if self() == counting_for, do: send(counting_for, {handler_id, :query})
+      end,
+      nil
+    )
+
+    try do
+      result = fun.()
+      {result, drain_query_count(handler_id, 0)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_query_count(handler_id, count) do
+    receive do
+      {^handler_id, :query} -> drain_query_count(handler_id, count + 1)
+    after
+      0 -> count
+    end
+  end
 end

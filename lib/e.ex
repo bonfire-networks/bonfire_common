@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.Common.E do
-  @moduledoc "Helper to extract data nested in an object"
+  @moduledoc """
+  Helper to extract data nested in an object.
+
+  Two ways in, and the difference matters: `e/2` and up are **macros** that compile the keys into a `Pathex` path, while `ed/2` and up are plain functions that walk the data at runtime.
+
+  Reach for `e` by default. Reach for `ed` in two cases:
+
+  - **The keys you look up with might not match the keys in the data**, in either direction: an atom over a string-keyed map, or a string over an atom-keyed one. `ed` tries both, `e` looks up only what you wrote, so `e(%{"title" => "hi"}, :title, nil)` and `e(%{title: "hi"}, "title", nil)` are both nil where `ed` finds the value. A mismatch is the norm for anything that has been through JSON: a decoded request body, an Oban job's arguments, a webhook payload.
+
+  - **The key is not known until runtime.** `e` needs its keys written in the code, since it compiles them; a key held in a variable is `ed`'s job.
+  """
 
   require Pathex
   import Untangle
@@ -22,9 +32,23 @@ defmodule Bonfire.Common.E do
   Extracts a value from a map or other data structure, or returns a fallback if not present or empty.
   If additional arguments are provided, it searches for nested data structures, with the last argument always being the fallback.
 
+  A macro, so the keys are compiled into a `Pathex` path and looked up exactly as written. An atom key therefore does not find a string key: `e(%{"title" => "hi"}, :title, nil)` is nil. Use `ed/3` for a map that may have string keys, such as an Oban job's arguments or a decoded request body, and for a key that is only known at runtime.
+
   ## Examples
 
       iex> e(%{key: "value"}, :key, "fallback")
+      "value"
+
+      iex> e(%{"key" => "value"}, :key, "fallback")
+      "fallback"
+
+      iex> e(%{key: "value"}, "key", "fallback")
+      "fallback"
+
+      iex> ed(%{"key" => "value"}, :key, "fallback")
+      "value"
+
+      iex> ed(%{key: "value"}, "key", "fallback")
       "value"
 
       iex> e(%{key: nil}, :key, "fallback")
