@@ -50,6 +50,29 @@ defmodule Bonfire.Common.PubSub do
   end
 
   @doc """
+  Stop receiving what is broadcast to a topic, for a subscription this process no longer needs.
+
+  Takes no socket, unlike `subscribe/2`: a subscription belongs to the process, so there is nothing to check before dropping it, and dropping one that was never taken is not an error.
+  """
+  def unsubscribe(topics) when is_list(topics) do
+    Enum.each(topics, &unsubscribe/1)
+  end
+
+  def unsubscribe(topic) when is_binary(topic) and topic != "" do
+    debug(topic, "unsubscribed")
+
+    Config.endpoint_module().unsubscribe(topic)
+  end
+
+  def unsubscribe(topic) do
+    with topic when is_binary(topic) and topic != "" <- Types.maybe_to_string(topic) do
+      unsubscribe(topic)
+    else
+      _ -> debug(topic, "no topic to unsubscribe from")
+    end
+  end
+
+  @doc """
   Broadcast some data for realtime updates, for example to a feed or thread
   """
   def broadcast(topics, payload) when is_list(topics) do
