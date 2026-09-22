@@ -118,6 +118,40 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
+  Returns the lowercased domain part of an email address, or nil when there isn't one.
+
+  ## Examples
+
+      iex> email_domain("Alice@Example.COM")
+      "example.com"
+
+      iex> email_domain("not-an-email")
+      nil
+  """
+  def email_domain(email) when is_binary(email) do
+    case String.split(email, "@", parts: 2) do
+      [_local, domain] when domain != "" -> domain |> String.trim() |> String.downcase()
+      _ -> nil
+    end
+  end
+
+  def email_domain(_), do: nil
+
+  @doc """
+  Normalizes a raw domain entry so it matches `email_domain/1` output: trims, drops a leading `@`, downcases.
+
+  ## Examples
+
+      iex> normalize_domain("  @Example.COM ")
+      "example.com"
+  """
+  def normalize_domain(domain) when is_binary(domain) do
+    domain |> String.trim() |> String.trim_leading("@") |> String.downcase()
+  end
+
+  def normalize_domain(other), do: other
+
+  @doc """
   Generates a *unique* random string.
 
   "Unique" means that this function will not return the same string more than once on the current BEAM runtime, meaning until the application is next restarted.

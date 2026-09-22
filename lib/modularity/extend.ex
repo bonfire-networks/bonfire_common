@@ -516,11 +516,36 @@ defmodule Bonfire.Common.Extend do
       when is_atom(module_or_otp_app) do
     case maybe_extension_loaded(module_or_otp_app) do
       otp_app when otp_app == module_or_otp_app ->
-        # debug("is it actually a loaded application?")
-        if application_loaded?(module_or_otp_app), do: module_or_otp_app, else: nil
+        # is it a loaded application, or a known extension name that just isn't compiled into this
+        # flavour? (the latter lets config for an absent extension still resolve to its own app)
+        if application_loaded?(module_or_otp_app) or known_extension?(module_or_otp_app),
+          do: module_or_otp_app,
+          else: nil
 
       otp_app ->
         otp_app
+    end
+  end
+
+  @doc """
+  Whether `module_or_otp_app` names a Bonfire extension / OTP app that this flavour knows about, even one not compiled into the current build.
+
+  Backed by the curated `known_extension_names` list (the aggregate of `deps_prefixes` in the top-level `mix.exs`, threaded to runtime via `Bonfire.Application.project`). This is how `maybe_extension_loaded!/1` recognises an extension by name when its app isn't loaded, so config keyed on that app still resolves to it rather than nesting under the top-level app. NOT exhaustive: only names listed in some `deps_prefixes` group are covered.
+  """
+  def known_extension?(module_or_otp_app) when is_atom(module_or_otp_app) do
+    to_string(module_or_otp_app) in known_extensions()
+  end
+
+  @doc "The list of known extension / app names as strings (see `known_extension?/1`)."
+  def known_extensions, do: project_metadata(:known_extension_names, []) |> List.wrap()
+
+  # Reads a key from the top-level app's compile-time project metadata (a baked module attribute, so release-safe). Shared by the `required_deps` and `known_extension_names` readers. Deliberately avoids any `bonfire_common` module (only builtins + the cross-app `Bonfire.Application`): it sits on the `Config.get` -> `keys_tree` path, which core modules evaluate at compile time, so pulling in e.g. `Utils` here would deadlock the compiler.
+  def project_metadata(key, default \\ nil) do
+    if Code.ensure_loaded?(Bonfire.Application) and
+         function_exported?(Bonfire.Application, :project, 0) do
+      Bonfire.Application.project() |> List.wrap() |> Keyword.get(key, default)
+    else
+      default
     end
   end
 

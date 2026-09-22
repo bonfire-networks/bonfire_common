@@ -132,6 +132,12 @@ Config.get([:bonfire, :ui, :theme], "default")
 Config.get_ext(:bonfire_me, :profile_fields, [])
 ```
 
+### Getting config for an extension that may be absent
+
+`Config.get([:some_extension, :key])` resolves the first key to that extension's OTP app, as long as the app is loaded (whether the extension is enabled or disabled). An extension that isn't compiled into the current flavour leaves no trace to detect it by, so resolution can't tell its app name from an ordinary config namespace and nests the key under the top-level app instead.
+
+If you read config keyed on an extension that some flavours exclude, add its app name to a `deps_prefixes` group in the top-level `mix.exs`. Those names are threaded to runtime as `known_extension_names` and consulted by `Bonfire.Common.Extend.maybe_extension_loaded!/1`, so the key still resolves to the extension's own app. This list is curated, not exhaustive: it only helps for names you add.
+
 ### Module Configuration
 
 Retrieve module configurations:

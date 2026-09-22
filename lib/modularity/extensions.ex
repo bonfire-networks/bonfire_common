@@ -11,7 +11,7 @@ defmodule Bonfire.Common.Extensions do
   import Untangle
   use Bonfire.Common.E
   alias Bonfire.Common.Utils
-  # alias Bonfire.Common.Extend
+  alias Bonfire.Common.Extend
 
   # import Mix.Dep, only: [loaded: 1, format_dep: 1, format_status: 1, check_lock: 1]
 
@@ -72,11 +72,8 @@ defmodule Bonfire.Common.Extensions do
     deps = all_deps()
 
     required_deps =
-      Utils.maybe_apply(Bonfire.Application, :required_deps, [],
-        fallback_fun: fn ->
-          raise "Expected a `Bonfire.Application` module to list dependencies"
-        end
-      )
+      Extend.project_metadata(:required_deps) ||
+        raise "Expected a `Bonfire.Application` module to list dependencies"
 
     # TODO: refactor using `Enum.split_with/2`
 
