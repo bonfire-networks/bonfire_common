@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Import2alias do
 
     # Mix.Task.rerun("compile.elixir", args)
     deps = Bonfire.Mixer.deps_names_for(:bonfire)
-    # |> IO.inspect()
+    # 
 
     Mix.Tasks.Bonfire.Extension.Compile.try_compile(deps, args)
 

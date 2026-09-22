@@ -56,7 +56,6 @@ defmodule Releaser.VersionUtils do
         # |> IO.inspect
         Regex.run(version_line_regex(), contents) |> Enum.fetch!(2)
       end
-      |> IO.inspect()
 
     Version.parse!(version)
   end

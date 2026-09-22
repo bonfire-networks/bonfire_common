@@ -82,7 +82,7 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
 
     def simple_copy(source_path, dest_path, opts) do
       # source_path
-      # |> IO.inspect()
+      # 
 
       if opts[:force] do
         IO.puts(

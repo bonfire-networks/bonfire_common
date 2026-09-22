@@ -26,7 +26,7 @@ defmodule Bonfire.Common.Testing do
     )
 
     # ExUnit.configuration()
-    # |> IO.inspect()
+    # 
 
     # Code.put_compiler_option(:nowarn_unused_vars, true)
 
@@ -102,7 +102,7 @@ defmodule Bonfire.Common.Testing do
     end
 
     # ExUnit.configuration()
-    # |> IO.inspect()
+    # 
 
     :ok
   end
