@@ -350,7 +350,7 @@ defmodule Bonfire.Common.Settings do
             not Ecto.assoc_loaded?(current_user.settings)) or
          (is_struct(current_account) and Map.has_key?(current_account, :settings) and
             not Ecto.assoc_loaded?(current_account.settings)) do
-      warn(
+      notice(
         otp_app,
         "You should pass a current_user and/or current_account (with settings assoc preloaded) in `opts` depending on what scope of Settings you want for OTP app",
         trace_limit: 7
