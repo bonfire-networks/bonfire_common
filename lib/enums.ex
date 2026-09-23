@@ -1330,6 +1330,38 @@ defmodule Bonfire.Common.Enums do
     not_a_map
   end
 
+  @doc """
+  Params as a form would send them: keys written as input names (`"ui[theme][name]"`) nested into maps, as a browser's form submission is.
+
+  For params that arrive flat, such as the values of a button that saves on click (`phx-value-<input name>`), so they can go wherever a form's params go. Keys that are not input names are kept as they are, and merged with the nested ones.
+
+  ## Examples
+
+      iex> as_form_params(%{"notifications[email][react]" => "true", "scope" => "user"})
+      %{"notifications" => %{"email" => %{"react" => "true"}}, "scope" => "user"}
+
+      iex> as_form_params(%{"a" => %{"b" => "1"}, "a[c]" => "2"})
+      %{"a" => %{"b" => "1", "c" => "2"}}
+
+      iex> as_form_params(%{"plain" => "1"})
+      %{"plain" => "1"}
+  """
+  def as_form_params(params) when is_map(params) do
+    {input_names, rest} =
+      Enum.split_with(params, fn {key, value} ->
+        is_binary(key) and String.contains?(key, "[") and is_binary(value)
+      end)
+
+    case input_names do
+      [] ->
+        params
+
+      input_names ->
+        # the decoder a form submission goes through, so nesting cannot differ from a form's
+        deep_merge(Map.new(rest), input_names |> URI.encode_query() |> Plug.Conn.Query.decode())
+    end
+  end
+
   @doc "Takes a data structure and converts any keys in maps to (previously defined) atoms, recursively. By default any unknown string keys will be discarded. It can optionally also convert string values to known atoms as well."
   def input_to_atoms(
         data,
