@@ -532,7 +532,8 @@ defmodule Bonfire.Common.Repo.Preload do
         {preload_schema, preloads},
         opts
       ) do
-    object_schema = Bonfire.Common.Types.object_type(object)
+    # compared against a schema, so ask for one: without `only_schemas` a group's pointer answers `:group`, which never equals `Bonfire.Classify.Category`
+    object_schema = Bonfire.Common.Types.object_type(object, only_schemas: true)
 
     if object_schema == preload_schema do
       debug(preload_schema, "resolving Pointer before applying preloads")
@@ -545,6 +546,11 @@ defmodule Bonfire.Common.Repo.Preload do
 
       # TODO: make one preload per type to avoid n+1
     else
+      debug(
+        {object_schema, object.table_id, object.id},
+        "pointer is not a #{inspect(preload_schema)}, so not following it"
+      )
+
       object
     end
   end
@@ -579,7 +585,7 @@ defmodule Bonfire.Common.Repo.Preload do
         opts
       )
       when is_atom(preload_schema) do
-    object_schema = Bonfire.Common.Types.object_type(object)
+    object_schema = Bonfire.Common.Types.object_type(object, only_schemas: true)
 
     if object_schema == preload_schema do
       if Needle.is_needle?(object_schema, [:virtual]) do
