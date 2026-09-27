@@ -564,7 +564,7 @@ defmodule Bonfire.Common.Text do
   #   maybe_markdown_to_html(" "<>content, opts) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
   def maybe_markdown_to_html("<" <> _ = content, _opts) do
-    warn("skipping processing of content that starts with an HTML tag")
+    debug("skipping processing of content that starts with an HTML tag")
     content
   end
 
