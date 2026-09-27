@@ -31,6 +31,29 @@ defmodule Bonfire.Common.TestSummary do
   end
 
   def handle_cast({:suite_finished, times_us}, config) do
+    summarise(times_us)
+    {:noreply, config}
+  end
+
+  def handle_cast({:sigquit, _test_or_test_module}, config) do
+    IO.puts("Suite interrupted")
+
+    # an interrupted run may never reach the `ExUnit.after_suite/1` callback that sets the exit code (`Bonfire.Common.Testing.configure_start_test/1`), so this one still halts here
+    case summarise(nil) do
+      0 -> :ok
+      failed_count -> System.halt(min(failed_count, 255))
+    end
+
+    {:noreply, config}
+  end
+
+  def handle_cast(_event, config) do
+    # IO.inspect(opts, label: "Other test event")
+    {:noreply, config}
+  end
+
+  # prints what failed and returns how many
+  defp summarise(times_us) do
     # select_all = :ets.fun2ms(&(&1))
     # :ets.select(@ets_table_name, select_all)
     failed_tests =
@@ -56,23 +79,14 @@ defmodule Bonfire.Common.TestSummary do
 
     # |> IO.inspect(label: "failed_tests")
 
-    if failed_count > 0 do
-      code = min(failed_count, 255)
-      IO.puts("Exiting with code #{code} due to #{failed_count} failed tests")
-      System.halt(min(failed_count, 255))
-    end
+    # Not halted here: formatters are told the suite finished by a cast each, so halting in this one killed the VM while `ExUnit.CLIFormatter` could still be printing its failures, and with them each failed test's captured log. The exit code is set once every formatter is done, by the `ExUnit.after_suite/1` callback in `Bonfire.Common.Testing.configure_start_test/1`
+    # if failed_count > 0 do
+    #   code = min(failed_count, 255)
+    #   IO.puts("Exiting with code #{code} due to #{failed_count} failed tests")
+    #   System.halt(min(failed_count, 255))
+    # end
 
-    {:noreply, config}
-  end
-
-  def handle_cast({:sigquit, _test_or_test_module}, config) do
-    IO.puts("Suite interrupted")
-    handle_cast({:suite_finished, nil}, config)
-  end
-
-  def handle_cast(_event, config) do
-    # IO.inspect(opts, label: "Other test event")
-    {:noreply, config}
+    failed_count
   end
 
   def handle_test(%{state: nil} = test, _config),

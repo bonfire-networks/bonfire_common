@@ -1,7 +1,7 @@
 defmodule Bonfire.Common.Errors do
   @moduledoc "Helpers for handling error messages and exceptions"
 
-  import Untangle, except: [format_stacktrace_entry: 1, format_location: 2, format_location: 1]
+  import Untangle
   require Logger
   import Bonfire.Common.Extend
   alias Bonfire.Common.Utils
@@ -186,7 +186,7 @@ defmodule Bonfire.Common.Errors do
         String.length(to_string(msg_text)) + String.length(to_string(formatted_stacktrace)) + 8
 
       Logger.error(
-        "#{msg_text} - #{slice_to_log_limit(exception_banner, reserved: reserved)}\n#{formatted_stacktrace}",
+        "#{msg_text} - #{sliced_banner(exception_banner, reserved)}\n#{formatted_stacktrace}",
         limit: :infinity,
         printable_limit: :infinity
       )
@@ -213,7 +213,7 @@ defmodule Bonfire.Common.Errors do
       String.length(to_string(msg_text)) + String.length(to_string(formatted_stacktrace)) + 8
 
     Logger.error(
-      "#{msg_text} - #{slice_to_log_limit(exception_banner || exception, reserved: reserved)}\n#{formatted_stacktrace}",
+      "#{msg_text} - #{sliced_banner(exception_banner || exception, reserved)}\n#{formatted_stacktrace}",
       limit: :infinity,
       printable_limit: :infinity
     )
@@ -262,9 +262,34 @@ defmodule Bonfire.Common.Errors do
     end
   end
 
+  @ip_headers ~w(x-forwarded-for x-real-ip forwarded cf-connecting-ip true-client-ip x-client-ip)
+
+  @doc """
+  Sentry `before_send` callback that removes client IP addresses from every event, whichever integration captured it: `user.ip_address` (set by `Sentry.LiveViewHook`), `REMOTE_ADDR` (set by `Sentry.PlugContext`), and the proxy headers that carry the same address.
+  """
+  def sentry_before_send(%{request: request, user: user} = event) do
+    %{
+      event
+      | user: if(is_map(user), do: Map.delete(user, :ip_address), else: user),
+        request: sentry_strip_request_ip(request)
+    }
+  end
+
+  def sentry_before_send(event), do: event
+
+  defp sentry_strip_request_ip(%{env: env, headers: headers} = request) do
+    %{
+      request
+      | env: if(is_map(env), do: Map.delete(env, "REMOTE_ADDR"), else: env),
+        headers: if(is_map(headers), do: Map.drop(headers, @ip_headers), else: headers)
+    }
+  end
+
+  defp sentry_strip_request_ip(request), do: request
+
   def debug_banner_with_trace(kind, exception, stacktrace, opts \\ []) do
     exception = if exception, do: debug_banner(kind, exception, stacktrace, opts)
-    stacktrace = if stacktrace, do: format_stacktrace(stacktrace, opts)
+    stacktrace = if stacktrace, do: format_stacktrace(stacktrace, stacktrace_opts(opts))
     {exception, stacktrace}
   end
 
@@ -357,157 +382,26 @@ defmodule Bonfire.Common.Errors do
     "** (EXIT from #{inspect(pid)}) " <> Exception.format_exit(reason)
   end
 
-  @doc """
-  Formats the stacktrace. A stacktrace must be given as an argument. If not, the stacktrace is retrieved from `Process.info/2`.
-
-  # TODO: consolidate/reuse with similar function in `Untangle`?
-
-  ## Examples
-
-      > format_stacktrace([{MyModule, :my_fun, 1, [file: 'my_file.ex', line: 42]}], [])
-      "my_file.ex:42: MyModule.my_fun/1"
-
-      > format_stacktrace(nil, [])
-      "stacktrace here..."
-  """
-  def format_stacktrace(trace \\ nil, opts \\ []) do
-    case trace || last_stacktrace() do
-      [] ->
-        "\n"
-
-      trace ->
-        if opts[:as_markdown] do
-          Enum.map_join(trace, "\n", &format_stacktrace_entry_sliced(&1, opts)) <> "\n"
-        else
-          Untangle.format_stacktrace(trace) <> "\n"
+  # An exception's banner (its type and message) is what says what went wrong, so it keeps up to half the log line's budget even when the stacktrace after it needs more. The line then exceeds the budget and Logger trims its tail, which is the deepest frames, the least useful end
+  defp sliced_banner(banner, reserved) do
+    slice_to_log_limit(banner,
+      reserved: reserved,
+      min:
+        case log_truncate_limit() do
+          limit when is_integer(limit) -> div(limit, 2)
+          _ -> nil
         end
-    end
+    )
   end
 
-  def last_stacktrace() do
-    case Process.info(self(), :current_stacktrace) do
-      {:current_stacktrace, t} -> Enum.drop(t, 3)
-    end
-  end
-
-  def format_stacktrace_entry_sliced(entry, opts),
-    do:
-      format_stacktrace_entry(
-        entry,
-        # |> IO.inspect(label: "eeee"),
-        opts
-      )
-      |> String.slice(0..200)
-
-  @doc """
-  Receives a stacktrace entry and formats it into a string.
-
-  ## Examples
-
-      iex> format_stacktrace_entry({MyModule, :my_fun, 1, [file: 'my_file.ex', line: 42]}, [])
-      "my_file.ex:42: MyModule.my_fun/1"
-
-      > format_stacktrace_entry({fn -> :ok end, 0, [file: 'another_file.ex', line: 7]}, [])
-      "another_file.ex:7: some_fun/2"
-  """
-  def format_stacktrace_entry(entry, opts \\ [])
-
-  # From Macro.Env.stacktrace
-  def format_stacktrace_entry({module, :__MODULE__, 0, location}, opts) do
-    format_location(location) <> module_maybe_link_to_code(module, opts) <> " (module)"
-  end
-
-  # From :elixir_compiler_*
-  def format_stacktrace_entry({_module, :__MODULE__, 1, location}, _opts) do
-    format_location(location) <> "(module)"
-  end
-
-  # From :elixir_compiler_*
-  def format_stacktrace_entry({_module, :__FILE__, 1, location}, _opts) do
-    format_location(location) <> "(file)"
-  end
-
-  def format_stacktrace_entry({module, fun, arity, location}, opts) do
-    with {mod, fun, mfa_formated} <- format_mfa(module, fun, arity) do
-      format_application(module) <>
-        mf_maybe_link_to_code(format_location(location), mod, fun, opts) <> mfa_formated
-    else
-      _ ->
-        format_application(module) <>
-          mf_maybe_link_to_code(format_location(location), module, fun, opts)
-    end
-  end
-
-  def format_stacktrace_entry({fun, arity, location}, _opts) do
-    format_location(location) <> Exception.format_fa(fun, arity)
-  end
-
-  @doc """
-  Receives a module, function, and arity and formats it as shown in stacktraces. The arity may also be a list of arguments.
-
-  Anonymous functions are reported as -func/arity-anonfn-count-, where func is the name of the enclosing function. Convert to "anonymous fn in func/arity"
-
-  ## Examples
-
-      iex> format_mfa(Foo, :bar, 1)
-      {"Foo", "bar", "Foo.bar/1"}
-
-      iex> format_mfa(Foo, :bar, [])
-      {"Foo", "bar", "Foo.bar()"}
-
-      iex> Exception.format_mfa(nil, :bar, [])
-      "nil.bar()"
-  """
-  def format_mfa(module, fun, arity) when is_atom(module) and is_atom(fun) do
-    if function_exported?(Macro, :inspect_atom, 2) do
-      mod = Macro.inspect_atom(:literal, module)
-
-      case Code.Identifier.extract_anonymous_fun_parent(fun) do
-        {outer_name, outer_arity} ->
-          fun = Macro.inspect_atom(:remote_call, outer_name)
-
-          {mod, fun,
-           "anonymous fn#{format_arity(arity)} in " <>
-             "#{mod}." <>
-             "#{fun}/#{outer_arity}"}
-
-        :error ->
-          fun = Macro.inspect_atom(:remote_call, fun)
-
-          {mod, fun,
-           "#{mod}." <>
-             "#{fun}#{format_arity(arity)}"}
-      end
-    end
-  end
-
-  defp format_arity(arity) when is_list(arity) do
-    inspected = for x <- arity, do: inspect(x)
-    "(#{Enum.join(inspected, ", ")})"
-  end
-
-  defp format_arity(arity) when is_integer(arity) do
-    "/" <> Integer.to_string(arity)
-  end
-
-  defp format_application(module) do
-    # We cannot use Application due to bootstrap issues
-    case :application.get_application(module) do
-      {:ok, app} ->
-        case :application.get_key(app, :vsn) do
-          {:ok, vsn} when is_list(vsn) ->
-            "" <> Atom.to_string(app) <> " " <> List.to_string(vsn) <> ": "
-
-          _ ->
-            "" <> Atom.to_string(app) <> ": "
-        end
-
-      :undefined ->
-        ""
-    end
-  end
-
-  def format_location(opts) when is_list(opts) do
-    Exception.format_file_line(Keyword.get(opts, :file), Keyword.get(opts, :line), " ")
+  # how `Untangle.format_stacktrace/2` lays a stacktrace out for where it is shown: in the in-app error view (`as_markdown`) each frame's location links to its code, frames are not indented (four spaces would make a markdown code block, where links don't render), and each is capped so one frame can't fill the view
+  defp stacktrace_opts(opts) do
+    if opts[:as_markdown],
+      do: [
+        indent: "",
+        link_to_code: &mf_maybe_link_to_code(&1, &2, &3, opts),
+        entry_max_length: 200
+      ],
+      else: []
   end
 end
