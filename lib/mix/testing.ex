@@ -88,19 +88,26 @@ defmodule Bonfire.Common.Testing do
     #     :ok
     # end)
 
-    try do
-      Application.put_env(:wallaby, :base_url, Bonfire.Web.Endpoint.url())
-      chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
+    wallaby_started? =
+      try do
+        Application.put_env(:wallaby, :base_url, Bonfire.Web.Endpoint.url())
+        chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
 
-      if chromedriver_path && File.exists?(chromedriver_path),
-        do: {:ok, _} = Application.ensure_all_started(:wallaby),
-        else:
-          IO.inspect("Note: Wallaby UI tests will not run because the chromedriver is missing")
-    rescue
-      e in RuntimeError ->
-        IO.warn("Could not set up Wallaby UI tests ")
-        IO.inspect(e)
-    end
+        if chromedriver_path && File.exists?(chromedriver_path) do
+          match?({:ok, _}, Application.ensure_all_started(:wallaby))
+        else
+          IO.puts("Note: Wallaby UI tests will not run because the chromedriver is missing")
+          false
+        end
+      rescue
+        e in RuntimeError ->
+          IO.warn("Could not set up Wallaby UI tests: #{Exception.message(e)}")
+          false
+      end
+
+    # browser tests can only run where Wallaby did start, so they're left out rather than each failing on a session it can't open
+    if not wallaby_started?,
+      do: ExUnit.configure(exclude: [:browser | ExUnit.configuration()[:exclude] || []])
 
     IO.puts("""
 

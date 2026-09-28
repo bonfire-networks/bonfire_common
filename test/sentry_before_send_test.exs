@@ -2,6 +2,8 @@ defmodule Bonfire.Common.SentryBeforeSendTest do
   use ExUnit.Case, async: true
   import Plug.Test
 
+  @moduletag :backend
+
   # the sentry dep is `only: [:dev, :prod]` in mix.exs, so its modules are not loaded in the test env
   @moduletag :skip
 
