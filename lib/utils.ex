@@ -113,6 +113,8 @@ defmodule Bonfire.Common.Utils do
   @doc """
   Whether to show features, options, or UI whose backend isn't built yet, so work-in-progress markup can ship hidden rather than commented out. Drop the check from a section once that section works.
 
+  For developers, not users. A feature that WORKS but is not yet stable belongs behind the `:experimental_features_enabled` setting instead, which users and admins can opt into.
+
   Defaults to `false`, and is set to `true` in dev and test config. To override:
 
       # globally at runtime, eg. from an IEx session on a running instance
