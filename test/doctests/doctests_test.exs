@@ -3,7 +3,11 @@ defmodule Bonfire.Common.DocsTest do
   use Bonfire.Common.Utils
   alias Needle.Pointer
 
-  Bonfire.Common.Config.put(:test_key, "test_value")
+  # per test process, since these run async
+  setup do
+    Process.put([:bonfire, :test_key], "test_value")
+    :ok
+  end
 
   doctest Bonfire.Common.Utils, import: true
 

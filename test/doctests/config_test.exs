@@ -2,7 +2,11 @@ defmodule Bonfire.Common.ConfigTest do
   use Bonfire.Common.DataCase, async: true
   use Bonfire.Common.Utils
 
-  Bonfire.Common.Config.put(:test_key, "test_value")
+  # per test process, since these run async
+  setup do
+    Process.put([:bonfire, :test_key], "test_value")
+    :ok
+  end
 
   doctest Bonfire.Common.Opts, import: false
   doctest Bonfire.Common.Config, import: true
