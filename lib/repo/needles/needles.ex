@@ -676,17 +676,22 @@ defmodule Bonfire.Common.Needles do
   end
 
   def query(schema, filters, opts) when is_atom(schema) and is_list(filters) do
-    case Bonfire.Common.QueryModule.maybe_query(schema, [
-           filters(schema, filters, opts),
-           opts
-         ]) do
-      %Ecto.Query{} = query ->
-        debug("Needle: using the QueryModule associated with #{schema}")
+    # a schema with no query module of its own (an `Edge`, a `Media`) is the normal case, answered by the generic query without asking around for one and warning that there's none
+    with module when not is_nil(module) <-
+           Bonfire.Common.QueryModule.known_query_module(schema),
+         true <-
+           Code.ensure_loaded?(module) and
+             (function_exported?(module, :query, 2) or
+                function_exported?(module, :query_paginated, 2)),
+         %Ecto.Query{} = query <-
+           Bonfire.Common.QueryModule.maybe_query(schema, [
+             filters(schema, filters, opts),
+             opts
+           ]) do
+      debug("Needle: using the QueryModule associated with #{schema}")
 
-        query
-
-      # |> IO.inspect
-
+      query
+    else
       _ ->
         generic_query(schema, filters, opts)
     end

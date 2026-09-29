@@ -79,10 +79,20 @@ defmodule Bonfire.Common.QueryModule do
   end
 
   def apply_error(error, args) do
-    warn(error, "could not query with args: #{inspect(args)} ")
+    # without the request's context (the Dataloader, the current user), which made this several kilobytes per line and says nothing about why the query failed
+    warn(error, "could not query with args: #{inspect(without_context(args))} ")
 
     nil
   end
+
+  defp without_context(args) when is_list(args) do
+    if Keyword.keyword?(args),
+      do: Keyword.delete(args, :context),
+      else: Enum.map(args, &without_context/1)
+  end
+
+  defp without_context(%{} = args) when not is_struct(args), do: Map.delete(args, :context)
+  defp without_context(args), do: args
 
   @doc "Get a Queryable identified by name or id."
   def query_module(query) when is_binary(query) or is_atom(query) do
@@ -107,6 +117,20 @@ defmodule Bonfire.Common.QueryModule do
   def query_modules(modules) do
     Enum.map(modules, &Map.get(modules(), &1))
   end
+
+  @doc "The query module for a schema, or nil, without warning: for callers where a schema having none is normal and a generic query follows (`Bonfire.Common.Needles.query/3`, which every Dataloader association goes through)."
+  def known_query_module(schema) when is_atom(schema) do
+    case query_module(schema) do
+      {:ok, module} ->
+        module
+
+      _ ->
+        if Code.ensure_loaded?(schema) and function_exported?(schema, :query_module, 0),
+          do: schema.query_module()
+    end
+  end
+
+  def known_query_module(_), do: nil
 
   def maybe_query_module(query) do
     with {:ok, module} <- query_module(query) do
