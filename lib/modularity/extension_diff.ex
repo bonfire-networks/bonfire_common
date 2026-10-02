@@ -36,6 +36,11 @@ defmodule Bonfire.Common.Extensions.Diff do
         error(other)
         {:error, "Could not generate latest diff."}
     end
+  rescue
+    # a git command failed (eg. the path isn't a git repo), `git!/5` puts git's own message in the exception
+    e in RuntimeError ->
+      error(e, "Could not generate the diff")
+      {:error, Exception.message(e)}
   catch
     :throw, {:error, :invalid_diff} ->
       {:error, l("Invalid diff.")}
@@ -59,11 +64,13 @@ defmodule Bonfire.Common.Extensions.Diff do
   """
   def repo_latest_diff(ref_or_branch, repo_path, msg \\ nil) when is_binary(repo_path) do
     path_diff = tmp_path(Regex.replace(~r/[^a-z0-9_]+/i, repo_path, "_"))
+    # local changes are staged into a throwaway index, so the repo's own index is never touched
+    path_index = path_diff <> ".index"
 
     with :ok <- git_fetch(repo_path),
-         :ok <- git_pre_configure(repo_path),
-         :ok <- git_add_all(repo_path),
-         :ok <- git_generate_diff(ref_or_branch, repo_path, path_diff),
+         :ok <- git_add_all(repo_path, path_index),
+         :ok <- git_generate_diff(ref_or_branch, repo_path, path_diff, path_index),
+         _ <- File.rm(path_index),
          {:ok, diff} <- parse_repo_latest_diff(path_diff) do
       {:ok, msg, diff}
     else
@@ -141,10 +148,11 @@ defmodule Bonfire.Common.Extensions.Diff do
     {:ok, stream}
   end
 
-  def git_pre_configure(repo_path) do
-    # Enable better diffing
-    git!(["config", "core.attributesfile", "../../config/.gitattributes"], repo_path)
-  end
+  # NOTE: this wrote to the repo's .git/config permanently, `git_generate_diff/4` now passes the same setting for that one command with `-c`
+  # def git_pre_configure(repo_path) do
+  #   # Enable better diffing
+  #   git!(["config", "core.attributesfile", "../../config/.gitattributes"], repo_path)
+  # end
 
   def git_fetch(repo_path) do
     # Fetch remote data
@@ -152,9 +160,13 @@ defmodule Bonfire.Common.Extensions.Diff do
     git!(["fetch", "--force", "--quiet"], repo_path)
   end
 
-  def git_add_all(repo_path) do
-    # Add local changes for diffing purposes
-    git!(["add", "."], repo_path)
+  @doc "Stages all local changes (including new files) for diffing, into the index file at `path_index` rather than the repo's own index."
+  def git_add_all(repo_path, path_index) do
+    env = [{"GIT_INDEX_FILE", path_index}]
+
+    with :ok <- git!(["read-tree", "HEAD"], repo_path, nil, root(), env) do
+      git!(["add", "--all"], repo_path, nil, root(), env)
+    end
   end
 
   @doc """
@@ -170,22 +182,28 @@ defmodule Bonfire.Common.Extensions.Diff do
 
       > Bonfire.Common.Extensions.Diff.git_generate_diff("main", "./", "./data/test_output.patch")
   """
-  def git_generate_diff(ref_or_branch, repo_path, path_output, extra_opt \\ "--cached") do
+  def git_generate_diff(ref_or_branch, repo_path, path_output, path_index) do
     git!(
       [
         "-c",
         "core.quotepath=false",
         "-c",
         "diff.algorithm=histogram",
+        # Enable better diffing
+        "-c",
+        "core.attributesfile=../../config/.gitattributes",
         "diff",
         #  "--no-index", # specify if we're diffing a repo or two paths
-        # optionally diff staged changes (older git versions don't support the equivalent --staged)
-        extra_opt,
+        # diff the changes staged by `git_add_all/2` (older git versions don't support the equivalent --staged)
+        "--cached",
         "--no-color",
-        "--output=#{path_output}",
-        ref_or_branch
-      ],
-      repo_path
+        "--output=#{path_output}"
+        # without a ref (eg. for local extensions) this diffs against HEAD
+      ] ++ List.wrap(ref_or_branch),
+      repo_path,
+      nil,
+      root(),
+      [{"GIT_INDEX_FILE", path_index}]
     )
   end
 
@@ -198,16 +216,17 @@ defmodule Bonfire.Common.Extensions.Diff do
     - `into`: Optional destination for command output (defaults to standard output)
     - `original_cwd`: The original working directory.
   """
-  def git!(args, repo_path \\ ".", into \\ default_into(), original_cwd \\ root())
+  def git!(args, repo_path \\ ".", into \\ nil, original_cwd \\ root(), env \\ [])
       when is_list(args) and is_binary(repo_path) and is_binary(original_cwd) do
     args = ["-C", Path.join(original_cwd, repo_path)] ++ args
 
     debug("Run command: git #{Enum.join(args, " ")}")
 
-    # original_cwd 
+    # original_cwd
     # |> debug("cwd")
 
-    opts = [into: into, stderr_to_stdout: true]
+    # output is always captured (`nil` means return `:ok` rather than the output), so a failure can include git's message
+    opts = [into: into || "", stderr_to_stdout: true, env: env]
     # |> cmd_opts()
 
     case System.cmd("git", args, opts) do
@@ -226,12 +245,13 @@ defmodule Bonfire.Common.Extensions.Diff do
       {:error, l("Could not read the code file(s).")}
   end
 
-  defp default_into() do
-    case Mix.shell() do
-      Mix.Shell.IO -> IO.stream(:stdio, :line)
-      _ -> ""
-    end
-  end
+  # NOTE: streaming to stdout hid git's error message from the raised error (and `Mix.shell/0` isn't available in releases), `git!/5` now always captures
+  # defp default_into() do
+  #   case Mix.shell() do
+  #     Mix.Shell.IO -> IO.stream(:stdio, :line)
+  #     _ -> ""
+  #   end
+  # end
 
   # Attempt to set the current working directory by default.
   # This addresses an issue changing the working directory when executing from
@@ -244,7 +264,9 @@ defmodule Bonfire.Common.Extensions.Diff do
   # end
 
   def tmp_path(prefix) do
-    Path.join([System.tmp_dir!(), "bonfire_repos", prefix <> Text.unique_string()])
+    dir = Path.join(System.tmp_dir!(), "bonfire_repos")
+    File.mkdir_p!(dir)
+    Path.join(dir, prefix <> Text.unique_string())
   end
 
   def root, do: Bonfire.Common.Config.get(:root_path)

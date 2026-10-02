@@ -33,15 +33,16 @@ want = "~> 1.18.0"
 
 # earmark = "~> 1.4.46" # handle markdown (deprecated)
 # earmark_parser = "~> 1.4.37" # parse markdown (we can let earmark specify the version)
-mdex = "~> 0.13.2" # handle markdown 
+mdex = "~> 0.14.1" # handle markdown
 
 # syntax highlighting
-lumis = "~> 0.1" 
+lumis = "~> 0.10"
 # bundles of tree sitter parsers
 lumis_wasm_bundle_web = "~> 0.1"
 lumis_wasm_bundle_web_extra = "~> 0.1"
 lumis_wasm_bundle_backend = "~> 0.1"
 lumis_wasm_bundle_system = "~> 0.1"
+lumis_wasm_toml = "~> 0.26" # for extensions' deps.* files
 
 opentelemetry_api = "~> 1.4"
 decorator = "~> 1.4 # function decorator helper

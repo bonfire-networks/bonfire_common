@@ -331,4 +331,57 @@ defmodule Bonfire.Common.Text.Test do
                Text.extract_urls_from_html(html, include_mentions: true)
     end
   end
+
+  describe "code block syntax highlighting" do
+    test "keeps highlight classes through the sanitizer, with no inline styles" do
+      html =
+        Bonfire.Common.Text.maybe_markdown_to_html("```elixir\ndefmodule A do\nend\n```")
+
+      assert html =~ ~s(<span class="l-keyword)
+      refute html =~ "style="
+    end
+
+    test "mask_markdown_code returns text without code unchanged" do
+      text = ~s(no code here, just "quotes" & <b>tags</b> and @mentions)
+
+      assert {^text, unmask} = Bonfire.Common.Text.mask_markdown_code(text)
+      assert unmask.(text) == text
+    end
+
+    test "mask_markdown_code restores many code spans, including tokens that share a prefix" do
+      text = Enum.map_join(0..11, " and ", &"`code #{&1} < \"x\"`")
+
+      {masked, unmask} = Bonfire.Common.Text.mask_markdown_code(text)
+
+      refute masked =~ "`"
+      assert unmask.(masked) == text
+    end
+
+    test "code_syntax with line numbers makes each line linkable without JS" do
+      html =
+        Bonfire.Common.Text.code_syntax("defmodule A do\n  :ok\nend", "lib/a.ex",
+          line_numbers: true,
+          highlight_lines: %{lines: [2], class: "l-highlighted"}
+        )
+
+      assert html =~
+               ~s(<span id="L1" class="l-line" data-line="1"><a href="#L1" class="l-line-number")
+
+      assert html =~
+               ~s(<span id="L2" class="l-line l-highlighted" data-line="2"><a href="#L2" class="l-line-number l-line-number-highlighted")
+
+      assert html =~ ~s(<span id="L3" class="l-line" data-line="3">)
+      refute html =~ ~s(<span class="l-line-number)
+    end
+
+    test "code_syntax highlights a source file with the same classes, keeping the `highlight` layout class" do
+      html =
+        Bonfire.Common.Text.code_syntax(~s|defmodule A do\n  IO.puts("x < y")\nend|, "lib/a.ex")
+
+      assert html =~ ~r/<pre class="[^"]*\bhighlight\b/
+      assert html =~ ~s(<span class="l-keyword)
+      assert html =~ "&quot;x &lt; y&quot;" or html =~ ~s("x &lt; y")
+      refute html =~ "&amp;"
+    end
+  end
 end

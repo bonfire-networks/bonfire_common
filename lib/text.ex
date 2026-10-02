@@ -692,10 +692,10 @@ defmodule Bonfire.Common.Text do
              # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
 
              #  NOTE: unsafe_ should be set to true so the sanitizer is given raw HTML to sanitize
+             # classes rather than inline styles (which the sanitizer strips), coloured per theme by `Bonfire.UI.Common.CodeTheme`
              syntax_highlight: [
                engine: :lumis,
-               formatter: {:html_inline, theme: "catppuccin_latte"}
-               # TODO: auto-set appropriate theme based on user's daisy theme, see https://autumnus.dev
+               formatter: :html_linked
              ]
            ]
            # |> Keyword.merge(opts)
@@ -709,9 +709,7 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp markdown_as_html(processor, content, opts) when processor in [Earmark, Makedown] do
-    # NOTE: Makedown is a wrapper around Earmark and Makeup to support syntax highlighting of code blocks
-
+  defp markdown_as_html(Earmark = processor, content, opts) do
     case [
            # inner_html: true,
            escape: false,
@@ -765,6 +763,89 @@ defmodule Bonfire.Common.Text do
       e ->
         error(e)
         nil
+    end
+  end
+
+  @doc """
+  Replaces each code span and code block in Markdown with an opaque token, so that processing meant for prose (sanitizing, mentions and hashtags, emoji, link rewriting...) can't alter code. Returns the masked text and a function that puts the original code back.
+
+      iex> {masked, unmask} = mask_markdown_code("say `a < \\"b\\"` @you")
+      iex> masked =~ "`"
+      false
+      iex> unmask.(masked)
+      "say `a < \\"b\\"` @you"
+  """
+  def mask_markdown_code(markdown) when is_binary(markdown) and markdown != "" do
+    # only parse when something could start code: backticks, `~~~` fences, or 4-space/tab indentation
+    if String.contains?(markdown, ["`", "~~~", "    ", "\t"]),
+      do: do_mask_markdown_code(markdown),
+      else: {markdown, & &1}
+  end
+
+  def mask_markdown_code(other), do: {other, & &1}
+
+  defp do_mask_markdown_code(markdown) do
+    case markdown_code_ranges(markdown) do
+      [] ->
+        {markdown, & &1}
+
+      ranges ->
+        prefix = "bfcode#{System.unique_integer([:positive])}x"
+
+        # replace from the end so earlier byte offsets stay valid
+        {masked, codes} =
+          ranges
+          |> Enum.sort(:desc)
+          |> Enum.with_index()
+          |> Enum.reduce({markdown, %{}}, fn {{from, to}, i}, {text, codes} ->
+            token = "#{prefix}#{i}x"
+            <<before::binary-size(from), code::binary-size(to - from), rest::binary>> = text
+            {before <> token <> rest, Map.put(codes, token, code)}
+          end)
+
+        tokens = Map.keys(codes)
+
+        {masked,
+         fn
+           text when is_binary(text) -> String.replace(text, tokens, &Map.fetch!(codes, &1))
+           other -> other
+         end}
+    end
+  end
+
+  # Byte ranges `{from, to}` of code in Markdown: inline spans including their backticks, and code blocks as whole lines (so fences, indentation and any `> ` or list prefix are included).
+  defp markdown_code_ranges(markdown) do
+    with true <- Extend.module_enabled?(MDEx),
+         {:ok, doc} <- MDEx.parse_document(markdown) do
+      line_starts =
+        [0 | for({pos, _} <- :binary.matches(markdown, "\n"), do: pos + 1)]
+        |> List.to_tuple()
+
+      line_start = fn line -> elem(line_starts, line - 1) end
+
+      line_end = fn line ->
+        if line < tuple_size(line_starts),
+          do: elem(line_starts, line) - 1,
+          else: byte_size(markdown)
+      end
+
+      for node <- doc, match?(%MDEx.Code{}, node) or match?(%MDEx.CodeBlock{}, node) do
+        %{start: {start_line, start_col}, end: {end_line, end_col}} = node.sourcepos
+
+        case node do
+          %MDEx.Code{} ->
+            {line_start.(start_line) + start_col - 1, line_start.(end_line) + end_col}
+
+          %MDEx.CodeBlock{} ->
+            # an end column of 0 means the block ended with the previous line
+            {line_start.(start_line),
+             line_end.(if end_col == 0, do: end_line - 1, else: end_line)}
+        end
+      end
+    else
+      e ->
+        warn(e, "Could not find code in markdown, so it won't be protected from processing")
+        []
     end
   end
 
@@ -856,17 +937,23 @@ defmodule Bonfire.Common.Text do
   defp md_tag_text(_), do: []
 
   @doc """
-  Highlights code using Makeup or falls back to Phoenix.HTML if unsupported.
+  Highlights a source file with Lumis (language detected from the filename), using the same classes as markdown code blocks so it's coloured per theme by `Bonfire.UI.Common.CodeTheme`. Falls back to Phoenix.HTML if Lumis isn't available.
+
+  `opts` are extra options for the Lumis `:html_linked` formatter, e.g. `line_numbers: true` or `structure: :inline`. With `line_numbers: true` each line also gets an `id="L<n>"` and its number becomes a `#L<n>` link, so lines can be linked to and styled with `:target` without JS.
 
   ## Examples
 
-      > code_syntax("defmodule Test {}", "test.ex")
-      #=> "<pre><code class=\"highlight\">defmodule Test {}</code></pre>"
+      > code_syntax("defmodule Test do end", "test.ex")
+      #=> "<pre class=\"lumis highlight\"><code class=\"language-elixir\" ...><span class=\"l-keyword-function\">defmodule</span> ..."
   """
-  def code_syntax(text, filename) do
-    # TODO: https://github.com/bonfire-networks/bonfire-app/issues/1205
-    if makeup_supported?(filename) do
-      Makeup.highlight(text)
+  def code_syntax(text, filename, opts \\ []) do
+    if Extend.module_enabled?(Lumis) do
+      Lumis.highlight!(text,
+        formatter:
+          {:html_linked,
+           Keyword.merge([language: code_language(filename), pre_class: "highlight"], opts)}
+      )
+      |> maybe_anchor_code_lines(opts[:line_numbers])
     else
       Phoenix.HTML.Tag.content_tag(:pre, Phoenix.HTML.Tag.content_tag(:code, text),
         class: "highlight"
@@ -874,28 +961,29 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp makeup_supported?(filename) do
-    (Extend.module_enabled?(Makeup) and
-       Path.extname(filename) in [
-         ".ex",
-         ".exs",
-         ".sface",
-         ".heex",
-         ".erl",
-         ".hrl",
-         ".escript",
-         ".json",
-         ".js",
-         ".html",
-         ".htm",
-         ".diff",
-         ".sql",
-         ".gql",
-         ".graphql"
-       ]) ||
-      filename in ["rebar.config", "rebar.config.script"] ||
-      String.ends_with?(filename, ".app.src")
+  # Lumis guesses the language from the filename, but extensions' `deps.hex`, `deps.git` and `deps.path` are TOML under extensions it doesn't know
+  defp code_language(filename) when is_binary(filename) do
+    if Path.basename(filename) in ["deps.hex", "deps.git", "deps.path"],
+      do: "toml",
+      else: filename
   end
+
+  defp code_language(filename), do: filename
+
+  # Lumis only marks lines with `data-line`, so add the `id` that `#L<n>` links and `:target` need, and turn each line number into such a link
+  defp maybe_anchor_code_lines(html, true) do
+    html
+    |> String.replace(
+      ~r/<span class="l-line([^"]*)" data-line="(\d+)">/,
+      ~s(<span id="L\\2" class="l-line\\1" data-line="\\2">)
+    )
+    |> String.replace(
+      ~r/<span class="(l-line-number[^"]*)" aria-hidden="true">(\d+)<\/span>/,
+      ~s(<a href="#L\\2" class="\\1" aria-hidden="true" tabindex="-1">\\2</a>)
+    )
+  end
+
+  defp maybe_anchor_code_lines(html, _), do: html
 
   @doc """
   Sanitizes HTML content to ensure it is safe.
