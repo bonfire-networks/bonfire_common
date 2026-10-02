@@ -693,6 +693,7 @@ defmodule Bonfire.Common.Text do
 
              #  NOTE: unsafe_ should be set to true so the sanitizer is given raw HTML to sanitize
              syntax_highlight: [
+               engine: :lumis,
                formatter: {:html_inline, theme: "catppuccin_latte"}
                # TODO: auto-set appropriate theme based on user's daisy theme, see https://autumnus.dev
              ]
