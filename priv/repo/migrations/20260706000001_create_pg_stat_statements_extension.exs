@@ -29,6 +29,9 @@ defmodule Bonfire.Repo.Migrations.CreatePgStatStatementsExtension do
     EXCEPTION
       WHEN insufficient_privilege THEN
         RAISE NOTICE 'could not drop pg_stat_statements (insufficient privilege)';
+      -- eg. YugabyteDB ships the extension with its own views on top, so it was never ours to drop
+      WHEN dependent_objects_still_exist THEN
+        RAISE NOTICE 'not dropping pg_stat_statements, since other objects depend on it';
     END
     $$;
     """)

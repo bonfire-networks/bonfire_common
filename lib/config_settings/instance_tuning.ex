@@ -212,10 +212,17 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuning do
 
   # ── apply ────────────────────────────────────────────────────────────────────
 
+  @doc "Whether the Postgres layer can be tuned: YugabyteDB doesn't support the `ALTER SYSTEM` it relies on."
+  def postgres_layer_supported?, do: System.get_env("DB_ADAPTER") != "yugabyte"
+
   @doc "The live applier module per layer (config `:appliers`; swappable for tests/managed DBs)."
   def appliers do
     Config.get([__MODULE__, :appliers],
-      postgres: __MODULE__.PostgresApplier,
+      postgres:
+        if(postgres_layer_supported?(),
+          do: __MODULE__.PostgresApplier,
+          else: __MODULE__.DisabledApplier
+        ),
       elixir: __MODULE__.ElixirApplier
     )
   end
