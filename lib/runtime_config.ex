@@ -114,11 +114,20 @@ defmodule Bonfire.Common.RuntimeConfig do
           if config_env() == :test, do: max(base_size, 20), else: max(base_size, min_safe_size)
       end
 
-    #  use lighter advisory locks for migrations, allowing concurrent indexing?
-    migration_lock =
-      if System.get_env("DB_MIGRATE_INDEXES_CONCURRENTLY") != "false",
+    if System.get_env("DB_ADAPTER") == "yugabyte" do
+      # YugabyteDB table locks are experimental (off by default) but advisory locks are on, and non-concurrent indexes select the advisory migration lock below
+      System.put_env("DB_MIGRATE_INDEXES_CONCURRENTLY", "false")
+    end
+
+    migration_lock = if System.get_env("DB_MIGRATION_LOCKS") in @no? do
+      System.put_env("DB_MIGRATE_INDEXES_CONCURRENTLY", "false")
+      false
+    else
+      # use lighter advisory locks for migrations, allowing concurrent indexing?
+      if System.get_env("DB_MIGRATE_INDEXES_CONCURRENTLY") in @no?,
         do: :pg_advisory_lock,
         else: :table_lock
+      end
 
     IO.puts(
       "Note: Starting database connection pool of #{pool_size} with #{migration_lock} migration lock for #{database}"
