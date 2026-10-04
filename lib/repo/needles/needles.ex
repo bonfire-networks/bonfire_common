@@ -70,6 +70,13 @@ defmodule Bonfire.Common.Needles do
       {:ok, pointer}
   end
 
+  # an already loaded object comes back as passed (keeping its preloads), once the same boundary query its id would go through finds it, so holding the struct gets past no check
+  def get(%{id: id} = object, opts) when is_struct(object) and is_binary(id) do
+    if [id: id] |> pointer_query(opts) |> repo().exists?(),
+      do: {:ok, object},
+      else: {:error, :not_found}
+  end
+
   # def get([%Pointer{}|_] = pointers, opts) do
   #   do_follow!(pointers, opts)
   # end

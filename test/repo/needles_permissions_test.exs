@@ -55,6 +55,35 @@ defmodule Bonfire.Common.NeedlesPermissionsTest do
     end
   end
 
+  describe "get/2 given an already loaded object" do
+    test "returns that same object to a viewer the boundaries allow", context do
+      assert {:ok, got} =
+               Needles.get(context.post, current_user: context.owner, verbs: [:delete])
+
+      assert got == context.post, "the object passed in comes back as loaded, not re-fetched"
+    end
+
+    test "refuses it to a viewer the boundaries refuse, as for its id", context do
+      assert {:error, :not_found} =
+               Needles.get(context.post.id, current_user: context.other, verbs: [:delete]),
+             "control: the id is refused to this viewer"
+
+      assert {:error, :not_found} =
+               Needles.get(context.post, current_user: context.other, verbs: [:delete]),
+             "holding the loaded object must not get past the check its id gets"
+    end
+
+    test "decides the same as its id, for each viewer", context do
+      for {user, label} <- [{context.owner, "owner"}, {context.other, "other"}] do
+        opts = [current_user: user, verbs: [:delete]]
+
+        assert match?({:ok, _}, Needles.get(context.post.id, opts)) ==
+                 match?({:ok, _}, Needles.get(context.post, opts)),
+               "the id and the loaded object answer differently for the #{label}"
+      end
+    end
+  end
+
   defp lookup(post, user, opts) do
     PostContent
     |> Needles.query([id: post.id], Keyword.merge(opts, current_user: user, verbs: [:delete]))
