@@ -11,7 +11,11 @@ defmodule Bonfire.Common.Settings.Calm.InstanceTuningPostgresTest do
   @moduletag db_sandbox: false
 
   if not Bonfire.Common.Settings.Calm.InstanceTuning.postgres_layer_supported?(),
-    do: @moduletag(skip: "Postgres-layer tuning is disabled on YugabyteDB, which doesn't support ALTER SYSTEM")
+    do:
+      @moduletag(
+        skip:
+          "Postgres-layer tuning is disabled on YugabyteDB, which doesn't support ALTER SYSTEM"
+      )
 
   alias Bonfire.Common.Config
   alias Bonfire.Common.Repo

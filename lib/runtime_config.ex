@@ -119,14 +119,15 @@ defmodule Bonfire.Common.RuntimeConfig do
       System.put_env("DB_MIGRATE_INDEXES_CONCURRENTLY", "false")
     end
 
-    migration_lock = if System.get_env("DB_MIGRATION_LOCKS") in @no? do
-      System.put_env("DB_MIGRATE_INDEXES_CONCURRENTLY", "false")
-      false
-    else
-      # use lighter advisory locks for migrations, allowing concurrent indexing?
-      if System.get_env("DB_MIGRATE_INDEXES_CONCURRENTLY") in @no?,
-        do: :pg_advisory_lock,
-        else: :table_lock
+    migration_lock =
+      if System.get_env("DB_MIGRATION_LOCKS") in @no? do
+        System.put_env("DB_MIGRATE_INDEXES_CONCURRENTLY", "false")
+        false
+      else
+        # use lighter advisory locks for migrations, allowing concurrent indexing?
+        if System.get_env("DB_MIGRATE_INDEXES_CONCURRENTLY") in @no?,
+          do: :pg_advisory_lock,
+          else: :table_lock
       end
 
     IO.puts(
