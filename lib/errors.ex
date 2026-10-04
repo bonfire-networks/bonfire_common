@@ -266,7 +266,13 @@ defmodule Bonfire.Common.Errors do
 
   @doc """
   Sentry `before_send` callback that removes client IP addresses from every event, whichever integration captured it: `user.ip_address` (set by `Sentry.LiveViewHook`), `REMOTE_ADDR` (set by `Sentry.PlugContext`), and the proxy headers that carry the same address.
+
+  It also drops `Bonfire.Fail` and `Bonfire.Fail.Auth` exceptions with a 4xx status (eg. not found or unauthorized), since these are expected outcomes rather than bugs.
   """
+  def sentry_before_send(%{original_exception: %struct{status: status}})
+      when struct in [Bonfire.Fail, Bonfire.Fail.Auth] and is_integer(status) and status < 500,
+      do: false
+
   def sentry_before_send(%{request: request, user: user} = event) do
     %{
       event

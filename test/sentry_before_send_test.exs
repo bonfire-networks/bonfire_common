@@ -47,4 +47,25 @@ defmodule Bonfire.Common.SentryBeforeSendTest do
     assert event.user == %{id: "user_1"}
     assert event.request.url == "https://example.local/feed/hashtag"
   end
+
+  test "drops a Bonfire.Fail not found" do
+    exception = Bonfire.Fail.fail(:not_found)
+    assert exception.status == 404
+
+    refute Sentry.Event.transform_exception(exception, []) |> before_send()
+  end
+
+  test "drops a Bonfire.Fail.Auth" do
+    exception = Bonfire.Fail.Auth.exception(:needs_login)
+    assert exception.status == 401
+
+    refute Sentry.Event.transform_exception(exception, []) |> before_send()
+  end
+
+  test "keeps a Bonfire.Fail with a 5xx status" do
+    exception = %Bonfire.Fail{code: :unknown, message: "boom", status: 500}
+
+    assert %Sentry.Event{original_exception: ^exception} =
+             Sentry.Event.transform_exception(exception, []) |> before_send()
+  end
 end

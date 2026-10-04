@@ -9,7 +9,8 @@ defmodule Bonfire.Common.HTTP.Connection do
     adapter = Application.get_env(:tesla, :adapter) || {Tesla.Adapter.Finch, name: Bonfire.Finch}
 
     Tesla.client(
-      [Tesla.Middleware.Telemetry],
+      # refuses requests to private/reserved addresses, as URLs may come from users or remote servers
+      [Tesla.Middleware.Telemetry, Bonfire.Common.HTTP.SSRF],
       adapter_options(adapter, Keyword.get(opts, :adapter, []))
     )
   end
@@ -25,7 +26,8 @@ defmodule Bonfire.Common.HTTP.Connection do
     base_options = [
       connect_timeout: 10_000,
       recv_timeout: 20_000,
-      follow_redirect: true,
+      # redirects followed inside the adapter would skip the SSRF check on each hop (`Bonfire.Common.HTTP.SSRF`), and the default Finch adapter doesn't follow them either
+      follow_redirect: false,
       pool: :bonfire_common,
       ssl_options:
         default_http_ssl_options(opts[:ssl_options] || [], adapter_options[:ssl_options] || [])

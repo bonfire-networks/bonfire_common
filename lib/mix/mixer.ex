@@ -33,7 +33,7 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
       (config[:deps] || config)
       |> Enum.filter(
-        &(include_dep?(deps_subtype, &1, config[:deps_prefixes][deps_subtype]) ||
+        &(include_dep?(deps_subtype, &1, deps_prefixes(deps_subtype, config)) ||
             in_multirepo?(&1, prefixes, extensions))
       )
     end
@@ -109,6 +109,14 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
 
     def deps_prefixes(nil, config),
       do: multirepo_prefixes(config)
+
+    # every group's names, so the `update` group only has to list the ones in no other group
+    def deps_prefixes(:update, config),
+      do:
+        (config[:deps_prefixes] || mix_config()[:deps_prefixes])
+        |> Keyword.values()
+        |> List.flatten()
+        |> Enum.uniq()
 
     def deps_prefixes(type, config),
       do: (config[:deps_prefixes] || mix_config()[:deps_prefixes])[type] || []
@@ -297,12 +305,26 @@ if not Code.ensure_loaded?(Bonfire.Mixer) do
       |> or_unused()
     end
 
+    # Also deps that are only pulled in by other deps (e.g. `faviconic` via `bonfire_files` when `WITH_CLONES=0`), which aren't in the top-level deps the prefixes are otherwise matched against
+    defp locked_deps_matching(prefixes, lockfile \\ "mix.lock") do
+      if File.exists?(lockfile) do
+        Mix.Dep.Lock.read(lockfile)
+        |> Map.keys()
+        |> Enum.map(&Atom.to_string/1)
+        |> Enum.filter(&String.starts_with?(&1, prefixes))
+      else
+        []
+      end
+    end
+
     defp or_unused(""), do: " --unused"
     defp or_unused(deps), do: deps
 
     def deps_to_update(config) do
-      deps(config, :update)
-      |> deps_names()
+      (deps_names_list(deps(config, :update), false) ++
+         locked_deps_matching(deps_prefixes(:update, config)))
+      |> Enum.uniq()
+      |> Enum.join(" ")
 
       # |> log(
       #   "Running Bonfire #{version(config)} at #{System.get_env("HOSTNAME", "localhost")} in #{Mix.env()} environment. You can run `just mix bonfire.deps.update` to update these extensions and dependencies"
