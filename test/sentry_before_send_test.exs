@@ -1,11 +1,10 @@
+# the sentry dep is `only: [:dev, :prod]` in mix.exs, so its modules are not loaded in the test env, and this module can't even compile without them (`%Sentry.Event{}` is a compile-time struct), so it's only defined where Sentry is loaded
+if Code.ensure_loaded?(Sentry.Event) do
 defmodule Bonfire.Common.SentryBeforeSendTest do
   use ExUnit.Case, async: true
   import Plug.Test
 
   @moduletag :backend
-
-  # the sentry dep is `only: [:dev, :prod]` in mix.exs, so its modules are not loaded in the test env
-  @moduletag :skip
 
   setup do
     on_exit(fn -> Sentry.Context.clear_all() end)
@@ -68,4 +67,5 @@ defmodule Bonfire.Common.SentryBeforeSendTest do
     assert %Sentry.Event{original_exception: ^exception} =
              Sentry.Event.transform_exception(exception, []) |> before_send()
   end
+end
 end
