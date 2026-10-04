@@ -752,6 +752,14 @@ defmodule Bonfire.Common.RuntimeConfig do
       ]
   end
 
+  @doc """
+  Tags that skip a test in CI only: `@tag Bonfire.Common.RuntimeConfig.skip_in_ci("why")`.
+
+  In CI it's ExUnit's own `skip:` tag, which still applies when the run filters by `--only` (an include filter wins over every exclude filter, so an exclude-based `:skip_ci` tag would not, see `ExUnit.Filters.eval/4`). Outside CI it's no tag at all rather than `skip: false`, since an `--exclude skip` filter matches any test that has the key, whatever its value.
+  """
+  def skip_in_ci(reason \\ "test skipped in CI"),
+    do: if(System.get_env("CI") in @yes?, do: [skip: reason], else: [])
+
   def skip_test_tags(extras \\ []) do
     chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
 
