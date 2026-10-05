@@ -55,7 +55,10 @@ defmodule Bonfire.Common.Testing do
         if opts[:migrate] do
           Mix.Task.run("ecto.create")
           Mix.Task.run("ecto.migrate")
-          EctoSparkles.Migrator.migrate_repo(repo, continue_on_error: true)
+
+          EctoSparkles.Migrator.migrate_repo(repo,
+            migration_error_callback_fn: &warn_migration_failed/4
+          )
         end
 
         # Ecto.Adapters.SQL.Sandbox.mode(repo, :manual)
@@ -69,7 +72,7 @@ defmodule Bonfire.Common.Testing do
           do:
             Bonfire.Common.TestInstanceRepo.apply(fn ->
               EctoSparkles.Migrator.migrate_repo(Bonfire.Common.TestInstanceRepo,
-                continue_on_error: true
+                migration_error_callback_fn: &warn_migration_failed/4
               )
 
               # nil
@@ -167,5 +170,10 @@ defmodule Bonfire.Common.Testing do
     after
       0 -> count
     end
+  end
+
+  # setting up a test database carries on past a failed migration, so one broken migration shows as failing tests rather than no test run
+  defp warn_migration_failed(version, desc, error, _stacktrace) do
+    IO.warn("Migration #{version} (#{desc}) failed: #{inspect(error)}")
   end
 end
