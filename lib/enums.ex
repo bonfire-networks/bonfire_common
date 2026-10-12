@@ -2020,6 +2020,21 @@ defmodule Bonfire.Common.Enums do
   end
 
   @doc """
+  The strict sibling of `first_ok_or_error/1`: the first result, but only when EVERY result is an `{:ok, _}`, else an `{:error, _}` listing what failed (as `all_oks_or_error/1` does). Use to combine several operations that all have to succeed for the whole to count, while still returning one operation's result rather than a list.
+
+  ## Examples
+
+      iex> Bonfire.Common.Enums.first_ok_if_all_ok([{:ok, 1}, {:ok, 2}])
+      {:ok, 1}
+
+      iex> Bonfire.Common.Enums.first_ok_if_all_ok([{:ok, 1}, {:error, "b"}])
+      {:error, ["b"]}
+  """
+  def first_ok_if_all_ok(results) when is_list(results) do
+    with {:ok, _} <- all_oks_or_error(results), do: List.first(results)
+  end
+
+  @doc """
   Checks if there are any `:ok` tuples in the enumerable.
 
   ## Examples
