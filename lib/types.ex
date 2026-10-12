@@ -794,6 +794,12 @@ defmodule Bonfire.Common.Types do
 
       iex> object_type(:some_atom)
       :some_atom
+
+      iex> object_type("&group@example.local")
+      :group
+
+      iex> object_type("!group@example.local")
+      :group
   """
   def object_type(object, opts \\ [])
 
@@ -840,6 +846,9 @@ defmodule Bonfire.Common.Types do
   def object_type("&" <> _, opts) do
     if !opts[:only_schemas], do: :group, else: Bonfire.Classify.Category
   end
+
+  # how the threadiverse names a group
+  def object_type("!" <> rest, opts), do: object_type("&" <> rest, opts)
 
   # TODO: make config-driven or auto-generate by code (eg. TypeService?)
 
