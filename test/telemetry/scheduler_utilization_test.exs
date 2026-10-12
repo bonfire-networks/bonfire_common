@@ -15,10 +15,13 @@ defmodule Bonfire.Common.Telemetry.SchedulerUtilizationTest do
     handler_id = {__MODULE__, ref}
     test = self()
 
+    # handlers run in the emitting process, and the app's own `:telemetry_poller` emits `[:vm, :cpu]` every 10s, so only forward what this test's process emitted
     :telemetry.attach(
       handler_id,
       [:vm, :cpu],
-      fn _event, measurements, _meta, _config -> send(test, {ref, measurements}) end,
+      fn _event, measurements, _meta, _config ->
+        if self() == test, do: send(test, {ref, measurements})
+      end,
       nil
     )
 
