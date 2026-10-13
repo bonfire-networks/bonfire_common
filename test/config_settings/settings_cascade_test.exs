@@ -207,4 +207,46 @@ defmodule Bonfire.Common.SettingsCascadeTest do
       assert Settings.do_get_in(branch, [:missing_key], :default) == :default
     end
   end
+
+  describe "an app's config with a string key, merged with a user's settings" do
+    # An instance setting stored under a module that was since renamed loads with its key still a string, as the old module's atom no longer exists. That makes the app's config an invalid keyword list, and a user with any settings for the same app must not make every config default disappear.
+    @stale_key "Elixir.Bonfire.Common.SettingsCascadeTest.RenamedAway"
+
+    setup do
+      Application.put_env(@test_otp_app, @stale_key, include: [users: true])
+      on_exit(fn -> Application.delete_env(@test_otp_app, @stale_key) end)
+    end
+
+    test "still returns the Config value the user hasn't overridden" do
+      user_with_unrelated_settings = %{
+        id: "test_user_stale_config_key",
+        settings: %Bonfire.Data.Identity.Settings{
+          json: %{@test_otp_app => %{ui: %{theme: "dark"}}}
+        }
+      }
+
+      assert Settings.__get__(
+               [@test_module, :location],
+               nil,
+               current_user: user_with_unrelated_settings,
+               otp_app: @test_otp_app
+             ) == "Default City"
+    end
+
+    test "still returns the user's own setting" do
+      user_with_location = %{
+        id: "test_user_stale_config_key_override",
+        settings: %Bonfire.Data.Identity.Settings{
+          json: %{@test_otp_app => %{@test_module => %{location: "User City"}}}
+        }
+      }
+
+      assert Settings.__get__(
+               [@test_module, :location],
+               nil,
+               current_user: user_with_location,
+               otp_app: @test_otp_app
+             ) == "User City"
+    end
+  end
 end

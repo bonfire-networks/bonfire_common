@@ -795,17 +795,18 @@ defmodule Bonfire.Common.Enums do
     end
   end
 
+  # A list of pairs merges as a map even when it is not a valid keyword list: one string key (eg. a setting stored under a module that was since renamed) must not make the whole list disappear from the merge.
   def merge_as_map(%{} = left, right, opts) when is_list(right) do
-    if Keyword.keyword?(right) do
-      merge_as_map(left, Enum.into(right, %{}), opts)
+    if pairs?(right) do
+      merge_as_map(left, Map.new(right), opts)
     else
       left
     end
   end
 
   def merge_as_map(left, %{} = right, opts) when is_list(left) do
-    if Keyword.keyword?(left) do
-      merge_as_map(Enum.into(left, %{}), right, opts)
+    if pairs?(left) do
+      merge_as_map(Map.new(left), right, opts)
     else
       right
     end
@@ -814,6 +815,8 @@ defmodule Bonfire.Common.Enums do
   def merge_as_map(_left, right, _) do
     right
   end
+
+  defp pairs?(list), do: Enum.all?(list, &match?({_, _}, &1))
 
   @doc "Merges two `Ecto` changesets. If both changesets have a prepare field, the function concatenates the values of the prepare fields. Either way it also calls `Ecto.Changeset.merge/2` operation."
   def merge_changesets(%Ecto.Changeset{prepare: p1} = cs1, %Ecto.Changeset{prepare: p2} = cs2)
