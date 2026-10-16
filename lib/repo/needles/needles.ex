@@ -56,7 +56,7 @@ defmodule Bonfire.Common.Needles do
   def get(id, opts) when is_binary(id), do: one(id, opts) ~> get(opts)
 
   def get(%Pointer{} = pointer, opts) do
-    with %{id: _} = obj <- follow!(pointer, opts) do
+    with %{id: _} = obj <- follow!(pointer, opening(opts)) do
       {:ok, obj}
     else
       e ->
@@ -72,7 +72,7 @@ defmodule Bonfire.Common.Needles do
 
   # an already loaded object comes back as passed (keeping its preloads), once the same boundary query its id would go through finds it, so holding the struct gets past no check
   def get(%{id: id} = object, opts) when is_struct(object) and is_binary(id) do
-    if [id: id] |> pointer_query(opts) |> repo().exists?(),
+    if [id: id] |> pointer_query(opening(opts)) |> repo().exists?(),
       do: {:ok, object},
       else: {:error, :not_found}
   end
@@ -102,9 +102,12 @@ defmodule Bonfire.Common.Needles do
   # TODO: boundary check by default in one and many?
   def one(filters, opts),
     do:
-      pointer_query(filters, opts)
+      pointer_query(filters, opening(opts))
       |> debug("one query")
       |> repo().single()
+
+  # one object is OPENED, so it is checked for `:read` unless the caller asks otherwise; many are LISTED, which the boundary query's own default (`:see`) is for
+  defp opening(opts), do: opts |> Utils.to_options() |> Keyword.put_new(:verbs, [:read])
 
   @doc """
   Retrieves a single object based on the provided filters with bang.
@@ -116,7 +119,7 @@ defmodule Bonfire.Common.Needles do
       %Pointer{id: "some_id", ...}
   """
   def one!(filters, opts \\ []),
-    do: pointer_query(filters, opts) |> repo().one!()
+    do: pointer_query(filters, opening(opts)) |> repo().one!()
 
   @doc """
   Checks if an object exists based on the given filters.
