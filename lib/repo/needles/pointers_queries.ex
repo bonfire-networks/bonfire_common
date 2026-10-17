@@ -14,17 +14,23 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
   @behaviour Bonfire.Common.QueryModule
   def schema_module, do: Pointer
 
-  def query_incl_deleted(), do: from(p in Pointer, as: :main_object)
+  def query_base, do: from(p in Pointer, as: :main_object)
+  def query_incl_deleted(), do: query_base()
+
+  @doc "Pointers, without deleted ones unless `deleted: true`, and without future-dated (scheduled) ones unless `include_scheduled: true`. Each opt lifts only its own filter."
+  def query_base(opts) do
+    query_base()
+    |> maybe_filter_deleted(opts)
+    |> repo().maybe_filter_out_future_ulids(opts)
+  end
+
+  defp maybe_filter_deleted(query, opts) do
+    if opts[:deleted], do: query, else: where(query, [p], is_nil(p.deleted_at))
+  end
 
   def query(pointer_or_filters \\ Pointer)
 
-  def query(Pointer) do
-    query_incl_deleted()
-    |> where([p], is_nil(p.deleted_at))
-    |> repo().maybe_filter_out_future_ulids()
-
-    # TODO: add filter to opt-in to including deleted ones
-  end
+  def query(Pointer), do: query_base([])
 
   def query(filters), do: filter(query(Pointer), filters)
 
@@ -87,6 +93,14 @@ defmodule Bonfire.Common.Needles.Pointers.Queries do
     tables = Needle.Tables.ids!(tables)
     where(q, [main_object: p], p.table_id in ^tables)
   end
+
+  # deleted ones are left out unless `deleted: true`
+  def filter(q, {:deleted, true}), do: q
+  def filter(q, {:deleted, false}), do: where(q, [main_object: p], is_nil(p.deleted_at))
+
+  # future-dated (scheduled) ones are left out unless `scheduled: true`
+  def filter(q, {:scheduled, true}), do: q
+  def filter(q, {:scheduled, false}), do: repo().maybe_filter_out_future_ulids(q)
 
   # what fields
   def filter(q, {:select, fields}) when is_list(fields) do

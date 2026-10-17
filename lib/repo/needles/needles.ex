@@ -241,13 +241,7 @@ defmodule Bonfire.Common.Needles do
   def query_base(pointer_or_filters \\ Pointer)
   def query_base(:include_deleted), do: Queries.query_incl_deleted()
 
-  def query_base(opts) when is_list(opts) do
-    if opts[:deleted] || opts[:include_scheduled] do
-      Queries.query_incl_deleted()
-    else
-      Queries.query(Pointer)
-    end
-  end
+  def query_base(opts) when is_list(opts), do: Queries.query_base(opts)
 
   def query_base(pointer_or_filters), do: Queries.query(pointer_or_filters)
 
