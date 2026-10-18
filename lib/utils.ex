@@ -1157,6 +1157,26 @@ defmodule Bonfire.Common.Utils do
   end
 
   @doc """
+  Runs `fun` while holding a lock on `key`, and returns what `fun` returns. A process calling this with a `key` that another process holds waits until that process is done, so work on the same thing (eg. creating a record only if it does not exist yet) is done by one process at a time, while work on different keys runs in parallel.
+
+  The lock is held by the BEAM (with `:global.trans/2`) rather than the database, so it holds no DB connection or transaction while waiting, and covers all connected nodes (but not nodes that are not clustered together). It is released when `fun` returns or raises.
+
+  A `nil` key runs `fun` without a lock, since there is nothing to serialise on.
+
+  ## Examples
+
+      iex> Utils.with_lock({:my_resource, 1}, fn -> :done end)
+      :done
+
+      iex> Utils.with_lock(nil, fn -> :done end)
+      :done
+  """
+  def with_lock(nil, fun) when is_function(fun, 0), do: fun.()
+
+  def with_lock(key, fun) when is_function(fun, 0),
+    do: :global.trans({key, self()}, fun)
+
+  @doc """
   Checks if the given value is `nil`, an empty enumerable, or an empty string.
 
   ## Parameters
