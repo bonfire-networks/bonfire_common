@@ -67,7 +67,7 @@ defmodule Bonfire.Common.ContextModule do
         args,
         fallback_fun
       ) do
-    maybe_apply(Bonfire.Common.Types.object_type(object), fun, args, fallback_fun)
+    maybe_apply(Bonfire.Common.Types.object_type_schema(object), fun, args, fallback_fun)
   end
 
   def maybe_apply(

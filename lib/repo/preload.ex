@@ -457,7 +457,7 @@ defmodule Bonfire.Common.Repo.Preload do
   end
 
   defp concrete_pointer_schema(pointer) do
-    Bonfire.Common.Types.object_type(pointer, only_schemas: true) || Needle.Pointer
+    Bonfire.Common.Types.object_type_schema(pointer) || Needle.Pointer
   end
 
   def maybe_preloads_per_nested_schema(%{edges: edges} = page, path, schema_and_or_preloads, opts) do
@@ -533,7 +533,7 @@ defmodule Bonfire.Common.Repo.Preload do
         opts
       ) do
     # compared against a schema, so ask for one: without `only_schemas` a group's pointer answers `:group`, which never equals `Bonfire.Classify.Category`
-    object_schema = Bonfire.Common.Types.object_type(object, only_schemas: true)
+    object_schema = Bonfire.Common.Types.object_type_schema(object)
 
     if object_schema == preload_schema do
       debug(preload_schema, "resolving Pointer before applying preloads")
@@ -585,7 +585,7 @@ defmodule Bonfire.Common.Repo.Preload do
         opts
       )
       when is_atom(preload_schema) do
-    object_schema = Bonfire.Common.Types.object_type(object, only_schemas: true)
+    object_schema = Bonfire.Common.Types.object_type_schema(object)
 
     if object_schema == preload_schema do
       if Needle.is_needle?(object_schema, [:virtual]) do

@@ -11,6 +11,10 @@ defmodule Bonfire.Common.Repo.Delete do
   @doc """
   Marks an entry as deleted in the database.
 
+  Sets the entry's own `deleted_at` when its schema has one. Otherwise marks its Needle pointer deleted, which for a virtual is the whole soft delete.
+
+  Warning: for a pointable (a schema with its own table, eg. `Bonfire.Classify.Category`), marking the pointer deleted makes Needle's trigger DELETE the record from that table, so its own fields are LOST (mixins hang off the pointer and survive). `restore_soft_deleted/2` restores it by recreating the record, from the fields it is given (see Needle's README, "Pointables").
+
   ## Examples
 
       iex> soft_delete(some_entry)
@@ -36,7 +40,7 @@ defmodule Bonfire.Common.Repo.Delete do
   def soft_delete!(it), do: do_soft_delete(it) |> deletion_result!()
 
   @doc """
-  Marks an entry as not deleted.
+  Marks an entry as not deleted. For a soft-deleted pointable, which has lost its record, use `restore_soft_deleted/2`.
 
   ## Examples
 
@@ -51,6 +55,59 @@ defmodule Bonfire.Common.Repo.Delete do
       deletion_result(
         repo().update(soft_delete_changeset(it, :deleted_at, nil, "was already un-deleted"))
       )
+
+  @doc """
+  Restores what `soft_delete/1` deleted, `{schema, id}`, whichever way it was deleted:
+
+  - deleted through its pointer, a virtual: clears the pointer's `deleted_at`, which is all its record is
+  - deleted through its pointer, a pointable: clears the pointer's `deleted_at` and recreates its record from `fields` (its own columns other than the id), since Needle deleted the record. Its mixins hang off the pointer and were never deleted.
+  - deleted through its own `deleted_at` column: clears that (`fields` are not needed)
+
+  ## Examples
+
+      iex> restore_soft_deleted({Bonfire.Classify.Category, id}, %{type: :group})
+      {:ok, %Bonfire.Classify.Category{}}
+
+      iex> restore_soft_deleted({Bonfire.Data.Social.Post, id})
+      {:ok, %Bonfire.Data.Social.Post{}}
+  """
+  def restore_soft_deleted({schema, id}, fields \\ %{}) when is_atom(schema) do
+    id = uid!(id)
+
+    repo().transact_with(fn ->
+      with {:ok, pointer} <-
+             Bonfire.Common.Needles.one(id, skip_boundary_check: true, deleted: true) do
+        # which `deleted_at` was set says how it was deleted, not whether the schema has a column of its own (a pointable can have one and still have been deleted through its pointer)
+        if pointer.deleted_at do
+          with {:ok, _} <- undelete(pointer) do
+            case Needle.Util.role(schema) do
+              # the pointable's insert trigger adds its pointer `on conflict do nothing`, so the one just restored stays as it is
+              :pointable ->
+                schema
+                |> struct(Map.put(fields, :id, id))
+                |> repo().insert()
+
+              _virtual ->
+                get_restored(schema, id)
+            end
+          end
+        else
+          with {:ok, record} <- get_restored(schema, id) do
+            if :deleted_at in schema.__schema__(:fields),
+              do: undelete(record),
+              else: {:ok, record}
+          end
+        end
+      end
+    end)
+  end
+
+  defp get_restored(schema, id) do
+    case repo().get(schema, id) do
+      nil -> {:error, :not_found}
+      record -> {:ok, record}
+    end
+  end
 
   defp do_soft_delete(it), do: repo().update(soft_delete_changeset(it))
 

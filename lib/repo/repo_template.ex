@@ -564,7 +564,7 @@ defmodule Bonfire.Common.RepoTemplate do
         case opts[:return] do
           :query -> query
           :stream -> many_stream(query, opts)
-          _ -> all(query, opts)
+          _ -> all(query, drop_query_dsl_opts(opts))
         end
       rescue
         exception in Postgrex.Error ->
@@ -573,6 +573,21 @@ defmodule Bonfire.Common.RepoTemplate do
         e in RuntimeError ->
           error(e, "Could not fetch list from database")
           []
+      end
+
+      # Callers pass their context opts (eg. `preload: :object_profile`) along to `many/2`, but Ecto raises on these keys in `Repo.all` opts because they look like query DSL. The query has already been built from them by this point.
+      @query_dsl_opts [
+        :where,
+        :preload,
+        :order_by,
+        :limit,
+        :group_by,
+        :distinct,
+        :select,
+        :update
+      ]
+      defp drop_query_dsl_opts(opts) do
+        Enum.reject(opts, fn {key, _} -> key in @query_dsl_opts end)
       end
 
       @doc """

@@ -692,7 +692,8 @@ defmodule Bonfire.Common.URIs do
   defp type_segment(module, actor, opts) do
     # e.g. a Pointer: resolve the concrete type from table_id and retry once (`type != module`
     # guards against looping when object_type returns the module we already failed to match)
-    case Types.object_type(actor) do
+    # the schema: a category pointer is otherwise `:group`, which matches no clause above, so a group or topic got its username URL instead of its id one
+    case Types.object_type_schema(actor) do
       type when is_atom(type) and not is_nil(type) and type != module ->
         type_segment(type, actor, opts)
 

@@ -775,7 +775,18 @@ defmodule Bonfire.Common.Types do
   end
 
   @doc """
-  Takes an object, module name, or string, and returns the type of the object. 
+  The schema module of an object, for callers that match the result against schemas (eg. `when type in [Bonfire.Classify.Category, …]`, a context module lookup, a query): unlike `object_type/2`, which gives `:group` for a group (and for any category pointer, topics included), this always gives `Bonfire.Classify.Category`.
+
+  ## Examples
+
+      iex> object_type_schema(%Bonfire.Classify.Category{type: :group})
+      Bonfire.Classify.Category
+  """
+  def object_type_schema(object, opts \\ []),
+    do: object_type(object, Keyword.put(opts, :only_schemas, true))
+
+  @doc """
+  Takes an object, module name, or string, and returns the type of the object.
 
   The function uses various patterns to match different object types (such as associations, Pointables, edges/verbs, etc.). If none of the patterns match, the function returns nil.
 
