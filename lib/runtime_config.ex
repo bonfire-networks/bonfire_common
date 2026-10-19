@@ -11,6 +11,9 @@ defmodule Bonfire.Common.RuntimeConfig do
   @yes? ~w(true yes 1)
   @no? ~w(false no none 0)
 
+  def url_with_database(url, database) when is_binary(url) and is_binary(database),
+    do: url |> URI.parse() |> Map.put(:path, "/" <> database) |> URI.to_string()
+
   def config do
     import Config
 
@@ -70,21 +73,6 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     maybe_repo_ipv6 = if System.get_env("ECTO_IPV6") in @yes?, do: [:inet6], else: []
 
-    repo_connection_config =
-      if db_url do
-        [
-          url: db_url,
-          socket_options: maybe_repo_ipv6
-        ]
-      else
-        [
-          username: pg_username,
-          password: pg_pw || "postgres",
-          hostname: pg_host,
-          socket_options: maybe_repo_ipv6
-        ]
-      end
-
     database =
       case config_env() do
         :test ->
@@ -96,6 +84,22 @@ defmodule Bonfire.Common.RuntimeConfig do
         _ ->
           System.get_env("POSTGRES_DB") || System.get_env("CLOUDRON_POSTGRESQL_DATABASE") ||
             "bonfire"
+      end
+
+    repo_connection_config =
+      if db_url do
+        [
+          # Ecto applies the url after the other options, so its database would win over the test one.
+          url: if(config_env() == :test, do: url_with_database(db_url, database), else: db_url),
+          socket_options: maybe_repo_ipv6
+        ]
+      else
+        [
+          username: pg_username,
+          password: pg_pw || "postgres",
+          hostname: pg_host,
+          socket_options: maybe_repo_ipv6
+        ]
       end
 
     pool_size =
