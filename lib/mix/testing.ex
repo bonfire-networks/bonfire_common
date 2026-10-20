@@ -172,6 +172,30 @@ defmodule Bonfire.Common.Testing do
     end
   end
 
+  @doc """
+  Runs a function with an extension (OTP app) disabled at instance level, as `Process.put([otp_app, :modularity], :disabled)` does in the calling process, and restores it afterwards, also if the function raises.
+
+  The process's cached modularity value for that extension is cleared before and after: it is cached per process, so a value computed earlier in the test would win over the `Process.put`, and the disabled value would outlive the call.
+
+  Only the calling process sees the extension as disabled, but whatever the function triggers in shared caches (the behaviour registry, the module maps) is built while it is disabled. That is the point: a test for a lookup that must not stay stale after the extension is enabled again.
+
+      with_extension_disabled(:bonfire_poll, fn -> Extend.module_enabled?(Bonfire.Poll.Questions) end)
+      # => false
+  """
+  def with_extension_disabled(otp_app, fun) when is_atom(otp_app) and is_function(fun, 0) do
+    key = [otp_app, :modularity]
+
+    Bonfire.Common.Extend.clear_modularity_cache(otp_app)
+    Process.put(key, :disabled)
+
+    try do
+      fun.()
+    after
+      Process.delete(key)
+      Bonfire.Common.Extend.clear_modularity_cache(otp_app)
+    end
+  end
+
   # setting up a test database carries on past a failed migration, so one broken migration shows as failing tests rather than no test run
   defp warn_migration_failed(version, desc, error, _stacktrace) do
     IO.warn("Migration #{version} (#{desc}) failed: #{inspect(error)}")

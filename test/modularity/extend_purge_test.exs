@@ -1,8 +1,6 @@
 defmodule Bonfire.Common.Extend.PurgeTest do
   @moduledoc """
-  Purging is an enforcement rather than a predicate: the code goes, and so do the processes that
-  were running it. Both halves are asserted on process death, since `Code.ensure_loaded?/1` would
-  reload the module from disk in `:interactive` mode and pass for the wrong reason.
+  Purging is an enforcement rather than a predicate: the code goes, and so do the processes that were running it. Both halves are asserted on process death, since `Code.ensure_loaded?/1` would reload the module from disk in `:interactive` mode and pass for the wrong reason.
   """
 
   # not async: purging is global to the VM

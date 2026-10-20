@@ -31,8 +31,9 @@ defmodule Bonfire.Common.Settings do
   alias Bonfire.Common.Extend
   use Bonfire.Common.Config
 
+  # Disabled: load hooks are declared by modules implementing `Bonfire.Common.SettingsHookModule` now, not accumulated here at compile time (this module cannot name the extensions that own the settings).
   # Accumulate hook paths at compile time
-  Module.register_attribute(__MODULE__, :hook_paths, accumulate: true)
+  # Module.register_attribute(__MODULE__, :hook_paths, accumulate: true)
 
   @doc """
   Get settings value for a config key (optionally from a specific OTP app or Bonfire extension)
@@ -465,21 +466,27 @@ defmodule Bonfire.Common.Settings do
     if delete_key = opts[:delete_key] do
       Config.delete(delete_key, opts[:otp_app])
     else
-      Config.put_tree(new_data, already_prepared: true)
+      # Config never re-runs load hooks on read, so what goes in is the hooked copy (the database keeps the raw data)
+      new_data
+      |> Bonfire.Common.SettingsHookModule.apply_hooks()
+      |> Config.put_tree(already_prepared: true)
       |> debug("put in config")
     end
   end
 
+  # the stored data as written, without load hooks: this is what gets merged and persisted by `upsert`
   defp settings_data(%{json: %{} = json_data} = _settings) when json_data != %{} do
-    prepare_from_json(json_data)
+    json_data
   end
 
   defp settings_data(_) do
     []
   end
 
+  # only the hooks of the app being read run (a read for any other app costs a table lookup), so an unrelated `Settings.get` no longer pays for them
   defp settings_data_for_app(settings, otp_app) do
     settings_data(settings)
+    |> Bonfire.Common.SettingsHookModule.apply_hooks(otp_app)
     |> e(otp_app, nil)
   end
 
@@ -489,6 +496,8 @@ defmodule Bonfire.Common.Settings do
   def load_instance_settings() do
     maybe_fetch(instance_scope(), preload: true)
     |> settings_data()
+    # runs once, as the settings go into Config, which never re-runs hooks on read
+    |> Bonfire.Common.SettingsHookModule.apply_hooks()
   end
 
   defp maybe_fetch(scope, opts \\ [])
@@ -530,19 +539,25 @@ defmodule Bonfire.Common.Settings do
       # end
 
       scope_id ->
-        case scope do
-          %{settings: %Ecto.Association.NotLoaded{}} ->
-            maybe_fetch(scope_id, opts ++ [recursing: true]) ||
-              maybe_warn_not_fetched(scope, opts[:recursing])
+        settings =
+          case scope do
+            %{settings: %Ecto.Association.NotLoaded{}} ->
+              maybe_fetch(scope_id, opts ++ [recursing: true]) ||
+                maybe_warn_not_fetched(scope, opts[:recursing])
 
-          %{settings: settings} ->
-            settings
+            %{settings: settings} ->
+              settings
 
-          _ ->
-            maybe_fetch(scope_id, opts ++ [recursing: true]) ||
-              maybe_warn_not_fetched(scope, opts[:recursing])
-        end
-        |> info("settings maybe_fetched for #{scope_id}")
+            _ ->
+              maybe_fetch(scope_id, opts ++ [recursing: true]) ||
+                maybe_warn_not_fetched(scope, opts[:recursing])
+          end
+
+        # Logs the scope id only. This used to pipe the settings into `info/2`, which printed the user's whole settings struct on every `Settings.get`: where the log level is `info` that costs more the more the user has stored (eg. a long list of keywords), many times per page.
+        # |> info("settings maybe_fetched for #{scope_id}")
+        info(scope_id, "settings maybe_fetched for")
+
+        settings
     end
   end
 
@@ -980,9 +995,11 @@ defmodule Bonfire.Common.Settings do
     # new_data
     # |> debug("new settings")
 
+    # Disabled: the existing data was passed through `prepare_from_json/1`, which ran the load hooks, and the merged result was persisted. A hook's output (eg. a compiled keyword pattern, a node-local reference) cannot be encoded as JSON, so saving any setting raised for a user whose stored data had a hooked path. What is persisted is what was written.
+    # existing_data
+    # |> prepare_from_json()
+    # |> debug("upsert existing_data prepared")
     existing_data
-    |> prepare_from_json()
-    |> debug("upsert existing_data prepared")
     |> do_upsert(
       settings,
       ...,
@@ -1109,52 +1126,54 @@ defmodule Bonfire.Common.Settings do
     end
   end
 
-  defp prepare_from_json(settings) do
-    settings
-    # |> JsonSerde.Deserializer.deserialize(..., ...)
-    # ~> debug("deserialized")
-    # ~> input_to_atoms(
-    #   discard_unknown_keys: true,
-    #   values: false,
-    #   also_discard_unknown_nested_keys: false
-    # )
-    # |> debug("to_atoms")
-    |> apply_loaded_hooks()
-  end
-
-  @doc """
-  Applies registered hooks to settings after loading from DB.
-  Only iterates over paths that have hooks defined (compiled at build time).
-  """
-  defp apply_loaded_hooks(settings) when is_map(settings) do
-    all_hook_paths()
-    |> debug("applying hooks")
-    |> Enum.reduce(settings, fn path, acc ->
-      case get_in(acc, path) do
-        nil -> acc
-        value -> put_in(acc, path, loaded_setting_hook(path, value))
-      end
-    end)
-  end
-
-  defp apply_loaded_hooks(settings), do: settings
-
-  # Hook definitions - each one registers its path at compile time
-  @hook_paths [:activity_pub, :mrf_keyword]
-  defp loaded_setting_hook([:activity_pub, :mrf_keyword], value) when is_list(value) do
-    Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
-  end
-
-  # @hook_paths [:bonfire_boundaries, :filter_keywords]
-  # defp loaded_setting_hook([:bonfire_boundaries, :filter_keywords], value) when is_list(value) do
+  # Disabled: load hooks are declared by modules implementing `Bonfire.Common.SettingsHookModule` and run by `SettingsHookModule.apply_hooks/2`, on reads only and per otp_app. The code below ran the one hard-coded hook (`BlockKeywords.settings_load_hook_process/1`, which this module cannot name without depending on the extension) over the whole stored data, on every `Settings.get`, and on the data `upsert` persisted.
+  # defp prepare_from_json(settings) do
+  #   settings
+  #   # |> JsonSerde.Deserializer.deserialize(..., ...)
+  #   # ~> debug("deserialized")
+  #   # ~> input_to_atoms(
+  #   #   discard_unknown_keys: true,
+  #   #   values: false,
+  #   #   also_discard_unknown_nested_keys: false
+  #   # )
+  #   # |> debug("to_atoms")
+  #   |> apply_loaded_hooks()
+  # end
+  #
+  # @doc """
+  # Applies registered hooks to settings after loading from DB.
+  # Only iterates over paths that have hooks defined (compiled at build time).
+  # """
+  # defp apply_loaded_hooks(settings) when is_map(settings) do
+  #   all_hook_paths()
+  #   |> debug("applying hooks")
+  #   |> Enum.reduce(settings, fn path, acc ->
+  #     case get_in(acc, path) do
+  #       nil -> acc
+  #       value -> put_in(acc, path, loaded_setting_hook(path, value))
+  #     end
+  #   end)
+  # end
+  #
+  # defp apply_loaded_hooks(settings), do: settings
+  #
+  # # Hook definitions - each one registers its path at compile time
+  # @hook_paths [:activity_pub, :mrf_keyword]
+  # defp loaded_setting_hook([:activity_pub, :mrf_keyword], value)
+  #      when is_list(value) or is_map(value) do
   #   Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
   # end
-
-  # Fallback for unmatched paths (shouldn't normally be called since we only iterate registered paths)
-  defp loaded_setting_hook(_path, value), do: value
-
-  # Returns all registered hook paths (generated at compile time)
-  defp all_hook_paths, do: @hook_paths
+  #
+  # # @hook_paths [:bonfire_boundaries, :filter_keywords]
+  # # defp loaded_setting_hook([:bonfire_boundaries, :filter_keywords], value) when is_list(value) do
+  # #   Bonfire.Boundaries.BlockKeywords.settings_load_hook_process(value)
+  # # end
+  #
+  # # Fallback for unmatched paths (shouldn't normally be called since we only iterate registered paths)
+  # defp loaded_setting_hook(_path, value), do: value
+  #
+  # # Returns all registered hook paths (generated at compile time)
+  # defp all_hook_paths, do: @hook_paths
 
   def instance_scope,
     do:

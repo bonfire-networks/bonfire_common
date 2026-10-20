@@ -167,9 +167,25 @@ defmodule Bonfire.Common.ExtensionBehaviour do
     |> ModuleAnalyzer.modules_only()
   end
 
-  @doc "Runs/applies a given function name on each of a list of given modules, returning a map (listing the modules with their result as value) and vice versa (listing the results as key with their calling module as value). It also caches the result on first run."
+  @doc """
+  Runs/applies a given function name on each of a list of given modules, returning a map (listing the modules with their result as value) and vice versa (listing the results as key with their calling module as value). It also caches the result on first run.
+
+  The result is what the modules declare, with no check of whether a module is enabled. Extensions are enabled and disabled at runtime (at instance level, and for a single user), so that check belongs where the result is used (see `Bonfire.Common.Extend.module_enabled?/2`): a cached map must not keep whatever the first caller happened to find.
+
+  Cached in `:persistent_term`, one term per callback and list of modules, set once and then left alone: replacing or erasing a persistent term triggers a global garbage collection of every process, adding a new one does not. A different list of modules (an extension loaded, a test planting modules) is a different key, so there is nothing to invalidate; the term of a list that is no longer used stays, which is small. The price is that a change to what a callback returns, with the same modules (a code reload in development), is not picked up until restart.
+  """
   def apply_modules_cached(modules, fun) do
-    Cache.maybe_apply_cached({__MODULE__, :apply_modules}, [modules, fun])
+    key = {__MODULE__, :declared, fun, modules}
+
+    case :persistent_term.get(key, :not_built) do
+      :not_built ->
+        result = apply_modules(modules, fun)
+        :persistent_term.put(key, result)
+        result
+
+      result ->
+        result
+    end
   end
 
   @doc """
@@ -202,9 +218,9 @@ defmodule Bonfire.Common.ExtensionBehaviour do
   end
 
   defp apply_module(module, fun) do
-    case Utils.maybe_apply(module, fun) do
+    case declared(module, fun) do
       {:error, e} ->
-        warn(e, "could not find function or module `#{module}.#{fun}/0`")
+        warn(e, "could not run `#{module}.#{fun}/0`")
         []
 
       ret when is_list(ret) and ret != [] ->
@@ -214,9 +230,17 @@ defmodule Bonfire.Common.ExtensionBehaviour do
       ret when not is_nil(ret) ->
         [{module, ret}, {ret, module}]
 
-      e ->
-        warn(e, "could not find valid info with `#{module}.#{fun}/0`")
+      nil ->
+        # most modules implement few of the callbacks
+        debug("`#{module}.#{fun}/0` is not defined, or returns nil")
         []
+    end
+  end
+
+  # The callback itself, not through `Utils.maybe_apply/3`: that runs it only for an enabled module, which would leave out of the cached map every module that is disabled at the time it is first built.
+  defp declared(module, fun) do
+    if Code.ensure_loaded?(module) and function_exported?(module, fun, 0) do
+      apply(module, fun, [])
     end
   end
 
