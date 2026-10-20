@@ -11,6 +11,13 @@ defmodule Bonfire.Common.SettingsGetLogTest do
 
   alias Bonfire.Common.Settings
 
+  # CI runs at `notice` (`TEST_LOG_LEVEL` in .github/workflows/test.yaml), where no `info` event is emitted at all and the capture below would be empty: the level this is about has to be set here
+  setup do
+    level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: level) end)
+  end
+
   test "reading a setting does not log what the user has stored" do
     stored = %{
       bonfire_social: %{some_key: 1},
