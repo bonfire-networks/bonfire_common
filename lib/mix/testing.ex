@@ -42,7 +42,9 @@ defmodule Bonfire.Common.Testing do
     end)
 
     ExUnit.start()
-    Repatch.setup()
+
+    # `enable_global` lets a test patch with `mode: :global`, for code run by processes it does not start (the HTTP server's and Oban's in a dance test); it changes nothing for a test that does not ask for it, and one that does must be `async: false`
+    Repatch.setup(enable_global: true)
 
     if System.get_env("TEST_WITH_MNEME") != "no",
       do: Mneme.start(),

@@ -44,6 +44,13 @@ defmodule Bonfire.Common.Simulation do
   def content_type(), do: Faker.File.mime_type()
   @doc "Picks a name"
   def name(), do: Faker.Company.name()
+
+  @doc "A random word of at least `min_length` characters (3 by default), so it can be used as a name: `Faker.Lorem.word/0` can return \"a\", which a profile name or a username refuses."
+  def word(min_length \\ 3) do
+    word = Faker.Lorem.word()
+    if String.length(word) >= min_length, do: word, else: word(min_length)
+  end
+
   @doc "Generates a random password string"
   def password(), do: Base.encode32(Faker.random_bytes(10), pad: false)
   @doc "Generates a random date of birth based on an age range of 18-99"
