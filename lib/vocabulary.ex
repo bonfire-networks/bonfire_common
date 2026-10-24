@@ -175,7 +175,9 @@ defmodule Bonfire.Common.Vocabulary do
   def options(kind) do
     presets =
       for id <- preset_ids(kind),
-          do: {to_string(id), phrase(preset_for(kind, id), :title, fallback: false) || to_string(id)}
+          do:
+            {to_string(id),
+             phrase(preset_for(kind, id), :title, fallback: false) || to_string(id)}
 
     presets ++ [{to_string(@custom), l("Custom…")}]
   end

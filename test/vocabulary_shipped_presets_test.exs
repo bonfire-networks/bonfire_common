@@ -9,7 +9,8 @@ defmodule Bonfire.Common.VocabularyShippedPresetsTest do
   alias Bonfire.Common.Vocabulary
 
   # the built-in presets only, whatever an instance's own config adds
-  defp declared_kinds, do: for(kind <- Vocabulary.kinds(), Vocabulary.built_in(kind) != %{}, do: kind)
+  defp declared_kinds,
+    do: for(kind <- Vocabulary.kinds(), Vocabulary.built_in(kind) != %{}, do: kind)
 
   test "every kind has a default preset, named like itself" do
     for kind <- declared_kinds() do
@@ -28,7 +29,9 @@ defmodule Bonfire.Common.VocabularyShippedPresetsTest do
   end
 
   test "every phrase is text" do
-    for kind <- declared_kinds(), {id, phrases} <- Vocabulary.built_in(kind), {key, text} <- phrases do
+    for kind <- declared_kinds(),
+        {id, phrases} <- Vocabulary.built_in(kind),
+        {key, text} <- phrases do
       assert is_binary(text) and text != "",
              "#{inspect(kind)} preset #{inspect(id)}: #{inspect(key)} is #{inspect(text)}"
     end
