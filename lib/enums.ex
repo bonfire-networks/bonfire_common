@@ -697,7 +697,8 @@ defmodule Bonfire.Common.Enums do
   end
 
   def deep_merge(left, right, opts) when is_map(left) or is_map(right) do
-    merge_as_map(left, right, opts ++ [on_conflict: :deep_merge])
+    # `put_new`, not appended: a caller's own `on_conflict` still wins, and the opts don't grow by one entry per level of nesting
+    merge_as_map(left, right, Keyword.put_new(opts, :on_conflict, :deep_merge))
   end
 
   def deep_merge(left, right, opts) when is_list(left) and is_list(right) do
