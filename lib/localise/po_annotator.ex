@@ -79,6 +79,15 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     :ok
   end
 
+  @doc """
+  Writes every pending annotation to disk now, and returns once they are written.
+
+  Writes are normally delayed until a file has been quiet for a few seconds, and nothing writes the rest when the VM halts. Call this at the end of a test suite, so the annotations of the pages it rendered are not lost.
+  """
+  def flush do
+    if Process.whereis(__MODULE__), do: GenServer.call(__MODULE__, :flush, :timer.seconds(60)), else: :ok
+  end
+
   # GenServer callbacks
 
   def init(_) do
@@ -155,6 +164,26 @@ defmodule Bonfire.Common.Localise.POAnnotator do
       ["extensions", _extension_name, rest] -> rest
       _ -> relative
     end
+  end
+
+  # a call is handled after every cast already in the mailbox, so all patches sent before `flush/0` are in `dirty_files` by now
+  def handle_call(:flush, _from, state) do
+    for pot_file <- state.dirty_files do
+      case Process.get({:write_timer, pot_file}) do
+        nil -> :ok
+        timer_ref -> Process.cancel_timer(timer_ref)
+      end
+
+      case Map.get(state.parsed_cache, pot_file) do
+        %Expo.Messages{} = messages ->
+          File.write!(pot_file, IO.iodata_to_binary(Expo.PO.compose(messages)))
+
+        _ ->
+          warn(pot_file, "No parsed messages found in POT file, cannot flush")
+      end
+    end
+
+    {:reply, :ok, %{state | dirty_files: MapSet.new(), pending_writes: %{}}}
   end
 
   def handle_info({:write_file, pot_file}, state) do

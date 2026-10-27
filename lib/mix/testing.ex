@@ -31,14 +31,19 @@ defmodule Bonfire.Common.Testing do
     # Code.put_compiler_option(:nowarn_unused_vars, true)
 
     # the exit code for failed tests, set here rather than by a formatter: ExUnit runs this only once every formatter has finished, so the failures `ExUnit.CLIFormatter` prints (each with its captured log) are never cut off by the halt
-    ExUnit.after_suite(fn
-      %{failures: failures} when failures > 0 ->
-        code = min(failures, 255)
-        IO.puts("Exiting with code #{code} due to #{failures} failed tests")
-        System.halt(code)
+    ExUnit.after_suite(fn result ->
+      # first, before any halt below: translation annotations are written after a delay, so the last ones of the run would be lost (no-op unless `BONFIRE_POT_URL_BASE` made the strings record their pages)
+      Bonfire.Common.Localise.POAnnotator.flush()
 
-      _ ->
-        :ok
+      case result do
+        %{failures: failures} when failures > 0 ->
+          code = min(failures, 255)
+          IO.puts("Exiting with code #{code} due to #{failures} failed tests")
+          System.halt(code)
+
+        _ ->
+          :ok
+      end
     end)
 
     ExUnit.start()
