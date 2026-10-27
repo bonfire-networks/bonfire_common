@@ -33,7 +33,12 @@ defmodule Bonfire.Common.Testing do
     # the exit code for failed tests, set here rather than by a formatter: ExUnit runs this only once every formatter has finished, so the failures `ExUnit.CLIFormatter` prints (each with its captured log) are never cut off by the halt
     ExUnit.after_suite(fn result ->
       # first, before any halt below: translation annotations are written after a delay, so the last ones of the run would be lost (no-op unless `BONFIRE_POT_URL_BASE` made the strings record their pages)
-      Bonfire.Common.Localise.POAnnotator.flush()
+      # a failed flush only loses annotations: say so, but do not change the exit code of a passing suite
+      try do
+        Bonfire.Common.Localise.POAnnotator.flush()
+      catch
+        :exit, reason -> IO.puts("POAnnotator flush failed, annotations lost: #{inspect(reason)}")
+      end
 
       case result do
         %{failures: failures} when failures > 0 ->

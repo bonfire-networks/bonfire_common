@@ -85,7 +85,9 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   Writes are normally delayed until a file has been quiet for a few seconds, and nothing writes the rest when the VM halts. Call this at the end of a test suite, so the annotations of the pages it rendered are not lost.
   """
   def flush do
-    if Process.whereis(__MODULE__), do: GenServer.call(__MODULE__, :flush, :timer.seconds(60)), else: :ok
+    if Process.whereis(__MODULE__),
+      do: GenServer.call(__MODULE__, :flush, to_timeout(minute: 5)),
+      else: :ok
   end
 
   # GenServer callbacks
@@ -100,7 +102,9 @@ defmodule Bonfire.Common.Localise.POAnnotator do
        # pot_file => timer_ref
        pending_writes: %{},
        # Track which files have changes pending
-       dirty_files: MapSet.new()
+       dirty_files: MapSet.new(),
+       # {pot_file, {msgid, file, line}} of entries already warned about as missing
+       warned: MapSet.new()
      }}
   end
 
@@ -140,12 +144,19 @@ defmodule Bonfire.Common.Localise.POAnnotator do
               {:noreply, unchanged_state}
           end
         else
-          # Entry doesn't exist yet (maybe new translation)
-          warn(
-            "You might want to run `just mix gettext.extract` as an entry was not found: \"#{msgid}\" at #{url} from #{relative_file}:#{line} in POT file #{pot_file}"
-          )
+          # Entry doesn't exist yet (maybe new translation, or a path that does not match the references)
+          # Once per entry: this runs on every render of the string, so a mismatch would otherwise log millions of times in a test suite
+          warned_key = {pot_file, entry_key}
 
-          {:noreply, new_state}
+          if MapSet.member?(new_state.warned, warned_key) do
+            {:noreply, new_state}
+          else
+            warn(
+              "You might want to run `just mix gettext.extract` as an entry was not found: \"#{msgid}\" at #{url} from #{relative_file}:#{line} in POT file #{pot_file}"
+            )
+
+            {:noreply, %{new_state | warned: MapSet.put(new_state.warned, warned_key)}}
+          end
         end
 
       {:error, reason} ->
@@ -159,9 +170,9 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     # Convert absolute path to relative, and handle extensions subdirectory
     relative = Path.relative_to_cwd(file)
 
-    # Remove "extensions/{extension_name}/" prefix if present
+    # Remove the "{extensions,deps,forks}/{extension_name}/" prefix if present: the .po references are relative to the extension, wherever it is installed (`deps/` on CI)
     case String.split(relative, "/", parts: 3) do
-      ["extensions", _extension_name, rest] -> rest
+      [dir, _extension_name, rest] when dir in ["extensions", "deps", "forks"] -> rest
       _ -> relative
     end
   end
