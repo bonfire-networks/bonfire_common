@@ -62,7 +62,14 @@ defmodule Bonfire.Common.Localise.POAnnotatorTest do
     log =
       ExUnit.CaptureLog.capture_log([level: :warning], fn ->
         for _ <- 1..3 do
-          POAnnotator.patch_async("Not extracted", domain, "lib/missing.ex", 9, @url_host, "/missing")
+          POAnnotator.patch_async(
+            "Not extracted",
+            domain,
+            "lib/missing.ex",
+            9,
+            @url_host,
+            "/missing"
+          )
         end
 
         :ok = POAnnotator.flush()

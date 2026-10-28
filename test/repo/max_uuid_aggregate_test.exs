@@ -64,7 +64,10 @@ defmodule Bonfire.Common.Repo.MaxUuidAggregateTest do
   describe "on a table the planner reads from the index by itself" do
     # 60 threads of 500 replies each, ids rising with insertion order as ULIDs do. This is the shape of a thread's latest-reply lookup: `max(id)` of the rows in one thread, apart from the thread's own entry
     setup do
-      Repo.query!("CREATE TEMP TABLE replied_like (id uuid PRIMARY KEY, thread_id uuid) ON COMMIT DROP")
+      Repo.query!(
+        "CREATE TEMP TABLE replied_like (id uuid PRIMARY KEY, thread_id uuid) ON COMMIT DROP"
+      )
+
       Repo.query!("CREATE INDEX replied_like_thread ON replied_like (thread_id)")
 
       Repo.query!("""
