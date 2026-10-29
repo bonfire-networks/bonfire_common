@@ -10,7 +10,15 @@ defmodule Bonfire.Common.HTTP.Connection do
 
     Tesla.client(
       # refuses requests to private/reserved addresses, as URLs may come from users or remote servers
-      [Tesla.Middleware.Telemetry, Bonfire.Common.HTTP.SSRF],
+      # then, next to the adapter, repeats a request whose TLS 1.3 handshake a server like h2o makes `:ssl` refuse (when the activity_pub library is there)
+      Enum.reject(
+        [
+          Tesla.Middleware.Telemetry,
+          Bonfire.Common.HTTP.SSRF,
+          Bonfire.Common.Extend.maybe_module(ActivityPub.Federator.HTTP.TLSFallback)
+        ],
+        &is_nil/1
+      ),
       adapter_options(adapter, Keyword.get(opts, :adapter, []))
     )
   end
