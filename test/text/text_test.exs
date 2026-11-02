@@ -384,4 +384,30 @@ defmodule Bonfire.Common.Text.Test do
       refute html =~ "&amp;"
     end
   end
+
+  describe "maybe_render_templated/2" do
+    test "renders variables and filters in a Liquid template" do
+      assert Bonfire.Common.Text.maybe_render_templated(
+               "Hello {{ name }}, {{ name | upcase }}!",
+               %{"name" => "World"}
+             ) == "Hello World, WORLD!"
+    end
+
+    test "renders a template whose quotes were HTML-escaped by the editor" do
+      assert Bonfire.Common.Text.maybe_render_templated(
+               "{% if name == &quot;World&quot; %}Hi {{ name }}{% endif %}",
+               %{"name" => "World"}
+             ) == "Hi World"
+    end
+
+    test "returns the content unchanged when the template can't be parsed" do
+      assert Bonfire.Common.Text.maybe_render_templated("Hello {{ name", %{"name" => "World"}) ==
+               "Hello {{ name"
+    end
+
+    test "returns content without template tags unchanged" do
+      assert Bonfire.Common.Text.maybe_render_templated("Hello name", %{"name" => "World"}) ==
+               "Hello name"
+    end
+  end
 end

@@ -785,6 +785,12 @@ defmodule Bonfire.Common.RuntimeConfig do
         do: skip,
         else: [:e2ee] ++ skip
 
+    # skip tests that use Bypass when it isn't in this build (it's only added with TEST_WITH_BYPASS, because it needs Ranch 1 and Cowboy)
+    skip =
+      if Code.ensure_loaded?(Bypass),
+        do: skip,
+        else: [:bypass] ++ skip
+
     # skip browser automation tests in CI
     skip =
       if ci? || is_nil(chromedriver_path),

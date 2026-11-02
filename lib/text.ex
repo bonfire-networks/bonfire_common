@@ -1446,10 +1446,17 @@ defmodule Bonfire.Common.Text do
       templated_content = templated_content |> String.replace(template_quote_regex(), "\"")
 
       with {:ok, template} <- Solid.parse(templated_content),
-           {:ok, rendered} <- Solid.render(template, data) do
+           {:ok, rendered, errors} <- Solid.render(template, data) do
+        # eg. an undefined filter, which renders as empty
+        if errors != [], do: warn(errors, "Errors while rendering the template")
+
         rendered
         |> to_string()
       else
+        {:error, errors, _partial} ->
+          error(errors, templated_content)
+          templated_content
+
         {:error, error} ->
           error(error, templated_content)
           templated_content

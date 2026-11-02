@@ -26,7 +26,7 @@ defmodule Bonfire.Common.MixProject do
           Mess.deps([
             {:assert_value, ">= 0.0.0", only: [:dev, :test]},
             {:zest, "~> 0.1", optional: true},
-            {:sentry, "~> 10.0", optional: true},
+            {:sentry, "~> 14.0", optional: true},
             {:dataloader, "~> 2.0", optional: true},
             {:floki, ">= 0.0.0", optional: true},
             {:versioce, "~> 2.0.0", only: :dev},
@@ -35,8 +35,8 @@ defmodule Bonfire.Common.MixProject do
               "~> 0.1",
               # git: "https://github.com/bonfire-networks/emote", 
               optional: true},
-            {:text, "~> 0.2.0", optional: true},
-            {:text_corpus_udhr, "~> 0.1.0", optional: true},
+            {:text, "~> 1.0", optional: true},
+            # {:text_corpus_udhr, "~> 0.1.0", optional: true}, # corpus for the n-gram language classifiers that text 0.3 removed
             {:bumblebee, "~> 0.8", optional: true},
             {:telemetry_metrics, "~> 1.0", optional: true},
             # needed for graphql client, eg github for changelog
