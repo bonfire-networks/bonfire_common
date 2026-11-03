@@ -1045,12 +1045,30 @@ defmodule Bonfire.Common.Text do
       HtmlSanitizeEx.strip_tags(content)
     else
       content
-      |> Phoenix.HTML.html_escape()
-      |> Phoenix.HTML.safe_to_string()
+      |> escape_html()
     end
   end
 
   def text_only(_content), do: nil
+
+  @doc """
+  Escapes text for putting into HTML, so it shows as written: unlike `text_only/1`, which takes HTML out, this keeps the text and makes it safe to show.
+
+      iex> escape_html("Only <b>members</b> & friends")
+      "Only &lt;b&gt;members&lt;/b&gt; &amp; friends"
+
+      iex> escape_html(:ok)
+      "ok"
+  """
+  def escape_html(nil), do: nil
+
+  def escape_html(""), do: nil
+
+  def escape_html(text) when is_binary(text),
+    do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+  def escape_html(text),
+    do: text |> to_string() |> escape_html()
 
   @doc """
   Collapses any run of whitespace (incl. newlines/tabs) into a single space and trims.

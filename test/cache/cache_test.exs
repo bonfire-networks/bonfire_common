@@ -64,5 +64,20 @@ defmodule Bonfire.Common.CacheTest do
       # …and is then cached
       assert normal == cached(f, key)
     end
+
+    test "an entry that goes while it is being read is computed again, never returned as nil" do
+      key = "cache_entry_gone_mid_read:#{System.unique_integer([:positive])}"
+
+      # an entry expiring is the same as another process removing it: it can go between finding the key and reading its value
+      remover =
+        Task.async(fn ->
+          Enum.each(1..20_000, fn _ -> Cache.remove(key) end)
+        end)
+
+      results = for _ <- 1..20_000, do: cached(fn -> :computed end, key)
+      Task.await(remover, 30_000)
+
+      assert Enum.reject(results, &(&1 == :computed)) == []
+    end
   end
 end

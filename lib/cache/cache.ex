@@ -300,41 +300,37 @@ defmodule Bonfire.Common.Cache do
               debug(key, "getting from cache")
               # warn(key, "getting from cache", trace_limit: 100)
 
-              if opts[:check_env] == false or Config.env() != :dev do
-                elem(CacheBackend.get(backend, key, inner_opts), 1)
-              else
-                with {:error, e} <- CacheBackend.get(backend, key, inner_opts) do
-                  error(
-                    e,
-                    "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
-                  )
+              # the entry can expire or be removed between `has_key?` and `get`, which then reads it as `nil`: only a key still there means a cached `nil`, otherwise it's a miss
+              case CacheBackend.get(backend, key, inner_opts) do
+                {:ok, nil} ->
+                  case CacheBackend.has_key?(backend, key, inner_opts) do
+                    {:ok, true} ->
+                      nil
 
-                  val = maybe_apply_or_fun(module, fun, args, opts)
-                  CacheBackend.put(backend, key, val, Keyword.put(inner_opts, :expire, expire))
-                  val
-                else
-                  {:ok, val} -> val
-                end
+                    _ ->
+                      apply_and_put(module, fun, args, opts, backend, key, inner_opts, expire)
+                  end
+
+                {:error, e} = got ->
+                  if opts[:check_env] == false or Config.env() != :dev do
+                    elem(got, 1)
+                  else
+                    error(
+                      e,
+                      "DEV convenience: An error was cached, so we'll ignore it and try running the function again"
+                    )
+
+                    val = maybe_apply_or_fun(module, fun, args, opts)
+                    CacheBackend.put(backend, key, val, Keyword.put(inner_opts, :expire, expire))
+                    val
+                  end
+
+                got ->
+                  elem(got, 1)
               end
 
             {:ok, false} ->
-              with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
-                debug(key, "got an error, putting in cache with short TTL")
-
-                CacheBackend.put(
-                  backend,
-                  key,
-                  ret,
-                  Keyword.put(inner_opts, :expire, @error_cache_ttl)
-                )
-
-                ret
-              else
-                ret ->
-                  debug(key, "fetched and putting in cache for next time")
-                  CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, expire))
-                  ret
-              end
+              apply_and_put(module, fun, args, opts, backend, key, inner_opts, expire)
 
             {:error, e} ->
               error(e, "!! CACHE IS NOT WORKING !!")
@@ -354,6 +350,26 @@ defmodule Bonfire.Common.Cache do
     e in Cachex.ExecutionError ->
       error(e, "!! Error with the cache, fallback to [re-]running the function without cache !!")
       maybe_apply_or_fun(module, fun, args, opts)
+  end
+
+  defp apply_and_put(module, fun, args, opts, backend, key, inner_opts, expire) do
+    with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
+      debug(key, "got an error, putting in cache with short TTL")
+
+      CacheBackend.put(
+        backend,
+        key,
+        ret,
+        Keyword.put(inner_opts, :expire, @error_cache_ttl)
+      )
+
+      ret
+    else
+      ret ->
+        debug(key, "fetched and putting in cache for next time")
+        CacheBackend.put(backend, key, ret, Keyword.put(inner_opts, :expire, expire))
+        ret
+    end
   end
 
   @doc """
