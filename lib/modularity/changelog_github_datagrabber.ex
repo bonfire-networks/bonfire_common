@@ -21,15 +21,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   def get_versions(unreleased_to \\ "HEAD") do
     issues = fetch_issues()
 
-    anchors =
-      struct!(Anchors, %{
-        added: ["✨", "💡", "👷", "✅"],
-        changed: ["🚀", "💅", "🎨", "📝", "🌏", "⚡", "🚧"],
-        deprecated: ["♻️"],
-        removed: ["⚰️"],
-        fixed: ["🐛"],
-        security: ["🚨", "🔒"]
-      })
+    anchors = struct!(Anchors, Config.Changelog.anchors())
 
     version = prepare_version_data(issues, unreleased_to, anchors)
     {:ok, [version]}
@@ -39,15 +31,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   def get_version(version \\ "HEAD") do
     issues = fetch_issues()
 
-    anchors =
-      struct!(Anchors, %{
-        added: ["✨", "💡", "👷", "✅"],
-        changed: ["🚀", "💅", "🎨", "📝", "🌏", "⚡", "🚧"],
-        deprecated: ["♻️"],
-        removed: ["⚰️"],
-        fixed: ["🐛"],
-        security: ["🚨", "🔒"]
-      })
+    anchors = struct!(Anchors, Config.Changelog.anchors())
 
     version_struct = prepare_version_data(issues, version, anchors)
     {:ok, version_struct}
@@ -323,11 +307,22 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
       )
       |> filter_items_by_date(closed_after, closed_before)
 
+    # Open issues opened or updated in the window. Those referenced by a commit are already listed through the commit, as work in progress.
+    work_in_progress_numbers =
+      unreferenced_commits |> Enum.map(&e(&1, "matched_issue_number", nil)) |> MapSet.new()
+
+    open_issues_without_commit =
+      fetch_open_issues(org, closed_after, closed_before)
+      |> Enum.reject(&MapSet.member?(work_in_progress_numbers, e(&1, "number", nil)))
+      |> Enum.map(&Map.put(&1, "open_without_commit", true))
+
     debug(length(issues_with_pr_contributors), "Issues fetched")
     debug(length(unreferenced_prs), "Unreferenced PRs fetched")
     debug(length(unreferenced_commits), "Unreferenced commits fetched")
+    debug(length(open_issues_without_commit), "Open issues without commit fetched")
 
-    issues_with_pr_contributors ++ unreferenced_prs ++ unreferenced_commits
+    issues_with_pr_contributors ++
+      unreferenced_prs ++ unreferenced_commits ++ open_issues_without_commit
   end
 
   @github_graphql_url "https://api.github.com/graphql"
@@ -456,11 +451,23 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     fetch_github_issues_paginated(query_string)
   end
 
+  # `updated:` also matches issues opened in the window
+  defp fetch_open_issues(org, updated_after, updated_before) do
+    query_string =
+      "org:#{org} is:issue state:open updated:>#{updated_after}" <>
+        if updated_before, do: " updated:<#{updated_before}", else: ""
+
+    debug(query_string, "GitHub open issues query")
+
+    fetch_github_issues_paginated(query_string)
+  end
+
   @issue_fields """
   ... on Issue {
     number
     # createdAt
     closedAt
+    stateReason
     title
     url
     # bodyText
@@ -521,6 +528,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
             |> Enum.map(&Map.put(&1, "type", "issue"))
             # Filter out automated items
             |> Enum.reject(&is_automated_item?/1)
+            |> Enum.reject(&closed_without_fix?/1)
 
           {:ok, issues, e(search, "pageInfo", %{})}
 
@@ -1478,7 +1486,12 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
 
     result =
       cond do
-        # Work in progress takes precedence - commit references open issue
+        # Open issues come first, each in its own extra section (see `Bonfire.Common.Changelog.Formatter`), to check before a release. An open issue that no commit references:
+        e(item, "open_without_commit", false) ->
+          debug("matched: open issue without commit", "categorization_match")
+          ["🆕"]
+
+        # a commit that references an open issue
         is_work_in_progress ->
           debug("matched: work in progress", "categorization_match")
           ["🚧"]
@@ -2232,6 +2245,11 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   end
 
   defp is_bot?(_), do: false
+
+  # GitHub's close reason, for issues closed from the "Close as not planned" or "Close as duplicate" menu without a matching label. PRs have no close reason.
+  defp closed_without_fix?(issue) do
+    e(issue, "stateReason", nil) in ["NOT_PLANNED", "DUPLICATE"]
+  end
 
   # Filter out automated items (issues/PRs) by author, title patterns, or exclusion labels
   defp is_automated_item?(item) do
