@@ -538,6 +538,8 @@ defmodule Bonfire.Common.Text do
   Converts the input content from markdown to HTML if the markdown library is enabled.
   If the content starts with an HTML tag or if the markdown library is not enabled, it skips conversion.
 
+  Pass `hide_trailing_hashtags: true` to mark a last paragraph of only hashtag links `invisible` in the HTML (see `mark_trailing_hashtags/2`), as for a post's body.
+
       > Bonfire.Common.Text.maybe_markdown_to_html("*Hello World*", [])
       "<p><em>Hello World</em></p>"
 
@@ -563,12 +565,24 @@ defmodule Bonfire.Common.Text do
   # def maybe_markdown_to_html("<"<>_ = content, opts) do
   #   maybe_markdown_to_html(" "<>content, opts) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
-  def maybe_markdown_to_html("<" <> _ = content, _opts) do
+  def maybe_markdown_to_html("<" <> _ = content, opts) do
     debug("skipping processing of content that starts with an HTML tag")
-    content
+    maybe_mark_trailing_hashtags(content, opts)
   end
 
   def maybe_markdown_to_html(content, opts) do
+    {hide_trailing_hashtags?, opts} = Keyword.pop(opts, :hide_trailing_hashtags, false)
+
+    content
+    |> do_maybe_markdown_to_html(opts)
+    |> maybe_mark_trailing_hashtags(hide_trailing_hashtags: hide_trailing_hashtags?)
+  end
+
+  defp maybe_mark_trailing_hashtags(html, opts) do
+    if opts[:hide_trailing_hashtags], do: mark_trailing_hashtags(html), else: html
+  end
+
+  defp do_maybe_markdown_to_html(content, opts) do
     # debug(content, "input")
 
     if opts[:markdown_library] == :skip do
@@ -1052,6 +1066,26 @@ defmodule Bonfire.Common.Text do
   def text_only(_content), do: nil
 
   @doc """
+  Renders markdown (HTML stays as it is) and then takes the markup out, for a text shown clamped to a line or two, so `**bold**` reads "bold" and a link reads as its text. The text comes back unescaped, as a template escapes it.
+
+      iex> markdown_to_text("We read **slowly**, see [our list](https://example.local/list)")
+      "We read slowly, see our list"
+
+      iex> markdown_to_text("<p>Fish &amp; chips</p>")
+      "Fish & chips"
+
+      iex> markdown_to_text(nil)
+      nil
+  """
+  def markdown_to_text(content) do
+    case maybe_markdown_to_html(content) do
+      # parsed rather than stripped with `text_only/1` on the string, which leaves entities such as `&amp;` for the template to escape again
+      html when is_binary(html) -> html |> as_lazy_html() |> text_only() |> String.trim()
+      _ -> nil
+    end
+  end
+
+  @doc """
   Escapes text for putting into HTML, so it shows as written: unlike `text_only/1`, which takes HTML out, this keeps the text and makes it safe to show.
 
       iex> escape_html("Only <b>members</b> & friends")
@@ -1242,11 +1276,13 @@ defmodule Bonfire.Common.Text do
   defp link_tag(href, pre, post, _base),
     do: ~s(<a #{pre}href="#{href}"#{post}>)
 
-  def prepare_links_for_remote_render(content, format, base_url \\ nil)
+  def prepare_links_for_remote_render(content, format, base_url \\ nil, opts \\ [])
 
-  def prepare_links_for_remote_render(content, :markdown, base_url)
+  def prepare_links_for_remote_render(content, :markdown, base_url, opts)
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
+    # `hashtag_html: false` keeps hashtag links markdown, for where the result must stay pure markdown (eg. an AP object's `source`)
+    hashtag_html? = Keyword.get(opts, :hashtag_html, true)
 
     # every branch below needs a root-relative markdown link, so `](/` is a sound (and usually absent) pre-check
     maybe_replace(content, "](/", fn content ->
@@ -1255,7 +1291,7 @@ defmodule Bonfire.Common.Text do
         _, "!", alt, path ->
           "![#{alt}](#{base_url}/#{path})"
 
-        _, _, "#" <> _ = text, "hashtag/" <> _ = path ->
+        _, _, "#" <> _ = text, "hashtag/" <> _ = path when hashtag_html? ->
           ~s(<a class="hashtag" rel="tag ugc" href="#{base_url}/#{path}">#{text}</a>)
 
         _, _, text, path ->
@@ -1264,7 +1300,7 @@ defmodule Bonfire.Common.Text do
     end)
   end
 
-  def prepare_links_for_remote_render(content, :html, base_url)
+  def prepare_links_for_remote_render(content, :html, base_url, _opts)
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
 
@@ -1273,7 +1309,7 @@ defmodule Bonfire.Common.Text do
     end)
   end
 
-  def prepare_links_for_remote_render(content, _, _), do: content
+  def prepare_links_for_remote_render(content, _, _, _), do: content
 
   # keep old name as alias for call sites in pinned deps
   def make_links_absolute(content, format, base_url \\ nil),
@@ -1642,6 +1678,51 @@ defmodule Bonfire.Common.Text do
   end
 
   def mark_trailing_element(other, _tag, _class, _match_fn), do: other
+
+  @doc """
+  Marks the last paragraph of an HTML body `invisible` when it holds only links to hashtags on this instance (relative `/hashtag/…` or absolute under `base_url`), as Mastodon hides a trailing line of hashtags: the post stays tagged, but the line isn't shown under its text.
+
+  Takes and returns an HTML string, or an HTML tree for callers already working on one. A body with nothing to mark is returned as it came, not re-serialised.
+
+  ## Examples
+
+      iex> mark_trailing_hashtags(~s(<p>Hello</p>\\n<p><a href="/hashtag/test">#test</a></p>\\n))
+      ~s(<p>Hello</p>\\n<p class="invisible"><a href="/hashtag/test">#test</a></p>)
+
+      iex> mark_trailing_hashtags(~s(<p>Hello <a href="/hashtag/test">#test</a></p>))
+      ~s(<p>Hello <a href="/hashtag/test">#test</a></p>)
+  """
+  def mark_trailing_hashtags(html, base_url \\ nil)
+
+  def mark_trailing_hashtags(html, base_url) when is_binary(html) do
+    # most bodies have no hashtag at all, so skip parsing unless there's one to look at
+    if String.contains?(html, "/hashtag/") do
+      tree = as_html_tree(String.trim(html))
+      marked = mark_trailing_hashtags(tree, base_url)
+
+      if marked == tree, do: html, else: LazyHTML.Tree.to_html(marked)
+    else
+      html
+    end
+  end
+
+  def mark_trailing_hashtags(tree, base_url) when is_list(tree) do
+    local_hashtag_prefix = (base_url || URIs.base_url()) <> "/hashtag/"
+
+    mark_trailing_element(tree, "p", "invisible", fn
+      {"a", attrs, _} ->
+        case List.keyfind(attrs, "href", 0) do
+          {"href", "/hashtag/" <> _} -> true
+          {"href", href} -> String.starts_with?(href, local_hashtag_prefix)
+          _ -> false
+        end
+
+      _ ->
+        false
+    end)
+  end
+
+  def mark_trailing_hashtags(other, _base_url), do: other
 
   def as_html_tree(nil), do: nil
   def as_html_tree(tree) when is_list(tree), do: tree

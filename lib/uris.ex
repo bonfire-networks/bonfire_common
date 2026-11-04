@@ -73,6 +73,58 @@ defmodule Bonfire.Common.URIs do
   end
 
   @doc """
+  Whether a search query is a URL or a fediverse handle, so worth looking up on the fediverse rather than only searching for as words. A handle is typed with any of the prefixes used everywhere that reads one (`@` for people, `!`, `&` or `+` for groups), or with none when it is shaped like `name@host.tld`.
+
+  ## Examples
+
+      iex> handle_or_url?("https://lemmy.local/c/cooks")
+      true
+
+      iex> handle_or_url?("http://lemmy.local/c/cooks")
+      true
+
+      iex> handle_or_url?("@dave@mocked.local")
+      true
+
+      iex> handle_or_url?("!cooks@lemmy.local")
+      true
+
+      iex> handle_or_url?("&cooks@bonfire.local")
+      true
+
+      iex> handle_or_url?("+recipes@bonfire.local")
+      true
+
+      iex> handle_or_url?("cooks@lemmy.local")
+      true
+
+      iex> handle_or_url?("cooks@localhost")
+      false
+
+      iex> handle_or_url?("cooking club")
+      false
+
+      iex> handle_or_url?("me @ lemmy.local")
+      false
+  """
+  def handle_or_url?(q) when is_binary(q) do
+    String.starts_with?(q, ["http://", "https://", "@", "!", "&", "+"]) or bare_handle?(q)
+  end
+
+  def handle_or_url?(_), do: false
+
+  # `name@host.tld`: one `@`, something before it, a dotted host after it, and no spaces or slashes
+  defp bare_handle?(q) do
+    case String.split(q, "@") do
+      [name, host] when name != "" and host != "" ->
+        String.contains?(host, ".") and not String.contains?(q, [" ", "/"])
+
+      _ ->
+        false
+    end
+  end
+
+  @doc """
   Returns the path (URL on the local instance) for the given object/struct (eg. a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
 
   Returns the path (URL on the local instance) for the given object/struct (e.g., a User), view or schema module, or path name (atom defined in routes), along with optional arguments.
