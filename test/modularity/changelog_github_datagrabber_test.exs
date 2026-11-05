@@ -38,6 +38,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
     restore_env("CHANGES_CLOSED_BEFORE", nil)
 
     original_changelog_config = Application.get_env(:versioce, :changelog)
+
     Application.put_env(:versioce, :changelog,
       anchors: @anchors,
       extra_sections: ["work in progress": ["🚧"], "new issues": ["🆕"]],
@@ -96,7 +97,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
 
     # positive control: the completed issue is listed, outside both sections
     assert changelog =~ "Issue 1 [#1]"
-    refute (work_in_progress <> new_issues) =~ "#1]"
+    refute work_in_progress <> new_issues =~ "#1]"
   end
 
   # the bullet lines under a `### heading`, up to the next heading
@@ -110,10 +111,18 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
   defp restore_env(name, value) do
     original = System.get_env(name)
     if value, do: System.put_env(name, value), else: System.delete_env(name)
-    on_exit(fn -> if original, do: System.put_env(name, original), else: System.delete_env(name) end)
+
+    on_exit(fn ->
+      if original, do: System.put_env(name, original), else: System.delete_env(name)
+    end)
   end
 
-  defp json(data), do: %Tesla.Env{status: 200, headers: [{"content-type", "application/json"}], body: Jason.encode!(data)}
+  defp json(data),
+    do: %Tesla.Env{
+      status: 200,
+      headers: [{"content-type", "application/json"}],
+      body: Jason.encode!(data)
+    }
 
   defp issue_search_page do
     issues = [
@@ -149,7 +158,9 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
       "author" => %{"login" => "someone"},
       "issueType" => nil,
       "milestone" => nil,
-      "labels" => %{"edges" => Enum.map(labels, &%{"node" => %{"name" => &1, "color" => "ffffff"}})},
+      "labels" => %{
+        "edges" => Enum.map(labels, &%{"node" => %{"name" => &1, "color" => "ffffff"}})
+      },
       "assignees" => %{"edges" => []},
       "comments" => %{"edges" => []}
     }
@@ -174,7 +185,10 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
         "repository" => %{
           "defaultBranchRef" => %{
             "target" => %{
-              "history" => %{"pageInfo" => %{"hasNextPage" => false, "endCursor" => nil}, "nodes" => nodes}
+              "history" => %{
+                "pageInfo" => %{"hasNextPage" => false, "endCursor" => nil},
+                "nodes" => nodes
+              }
             }
           }
         }

@@ -1281,6 +1281,7 @@ defmodule Bonfire.Common.Text do
   def prepare_links_for_remote_render(content, :markdown, base_url, opts)
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
+
     # `hashtag_html: false` keeps hashtag links markdown, for where the result must stay pure markdown (eg. an AP object's `source`)
     hashtag_html? = Keyword.get(opts, :hashtag_html, true)
 
