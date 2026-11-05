@@ -103,21 +103,30 @@ defmodule Bonfire.Common.Testing do
     #     :ok
     # end)
 
-    wallaby_started? =
-      try do
-        Application.put_env(:wallaby, :base_url, Bonfire.Web.Endpoint.url())
-        chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
+    # Wallaby (and its pool of chromedrivers) only starts for a run that can and will run browser tests: they need the endpoint served (`PHX_SERVER=yes`, as `just test-ui-browser` sets), and a run that excludes `:browser` has none to run
+    browser_run? =
+      System.get_env("PHX_SERVER") in ["yes", "true", "1"] and
+        :browser not in List.wrap(ExUnit.configuration()[:exclude])
 
-        if chromedriver_path && File.exists?(chromedriver_path) do
-          match?({:ok, _}, Application.ensure_all_started(:wallaby))
-        else
-          IO.puts("Note: Wallaby UI tests will not run because the chromedriver is missing")
-          false
+    wallaby_started? =
+      if browser_run? do
+        try do
+          Application.put_env(:wallaby, :base_url, Bonfire.Web.Endpoint.url())
+          chromedriver_path = Bonfire.Common.Config.get([:wallaby, :chromedriver, :path])
+
+          if chromedriver_path && File.exists?(chromedriver_path) do
+            match?({:ok, _}, Application.ensure_all_started(:wallaby))
+          else
+            IO.puts("Note: Wallaby UI tests will not run because the chromedriver is missing")
+            false
+          end
+        rescue
+          e in RuntimeError ->
+            IO.warn("Could not set up Wallaby UI tests: #{Exception.message(e)}")
+            false
         end
-      rescue
-        e in RuntimeError ->
-          IO.warn("Could not set up Wallaby UI tests: #{Exception.message(e)}")
-          false
+      else
+        false
       end
 
     # browser tests can only run where Wallaby did start, so they're left out rather than each failing on a session it can't open
