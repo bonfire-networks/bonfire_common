@@ -117,11 +117,11 @@ defmodule Bonfire.Common.SettingsHookModuleTest do
       read = fn -> read(user, :activity_pub, [:mrf_keyword, :reject_compiled]) end
 
       # the positive first: the hook builds the compiled pattern while enabled
-      assert {_, _} = read.()
+      assert %{regex: %Regex{}} = read.()
 
       assert Bonfire.Common.Testing.with_extension_disabled(:bonfire_boundaries, read) == nil
 
-      assert {_, _} = read.()
+      assert %{regex: %Regex{}} = read.()
     end
   end
 end

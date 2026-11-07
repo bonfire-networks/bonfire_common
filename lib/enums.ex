@@ -1029,12 +1029,17 @@ defmodule Bonfire.Common.Enums do
 
     case maybe_keyword_new(object, force_top_level) do
       object when is_map(object) ->
-        debug(object, "not able to turn into keyword list, but still try with the children")
+        # a struct that can't be enumerated has no children to convert (eg. a compiled `Regex` in the instance's settings): it stays as it is
+        if is_struct(object) and is_nil(Enumerable.impl_for(object)) do
+          object
+        else
+          debug(object, "not able to turn into keyword list, but still try with the children")
 
-        Map.new(object, fn
-          {k, v} -> {k, maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)}
-          v -> maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)
-        end)
+          Map.new(object, fn
+            {k, v} -> {k, maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)}
+            v -> maybe_to_keyword_list(v, recursive_mode, force_recursive_levels?)
+          end)
+        end
 
       object when is_list(object) ->
         if Keyword.keyword?(object) do
