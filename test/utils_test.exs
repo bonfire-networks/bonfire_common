@@ -12,21 +12,15 @@ defmodule Bonfire.Common.UtilsTest do
     end
 
     test "gives up on a function that takes too long, and kills it" do
-      parent = self()
-
+      # the pid comes from the spawn, not from inside the function, because on a busy runner the timeout can expire before the function even starts
       assert {:error, :timeout} =
-               Utils.apply_task(
-                 :await,
-                 fn ->
-                   send(parent, {:running, self()})
-                   Process.sleep(:infinity)
-                 end,
-                 timeout: 50
+               Utils.apply_task(:await, fn -> Process.sleep(:infinity) end,
+                 timeout: 50,
+                 module: Bonfire.Common.PidReportingTask
                )
 
-      # the runaway process must actually be gone, otherwise it keeps burning CPU
-      # forever (which is what an unguarded `Task.await/2` timeout would leave behind)
-      assert_received {:running, pid}
+      # the runaway process must actually be gone, otherwise it keeps burning CPU forever (which is what an unguarded `Task.await/2` timeout would leave behind)
+      assert_received {:task_pid, pid}
       refute Process.alive?(pid)
     end
 
