@@ -706,17 +706,17 @@ defmodule Bonfire.Common.Utils do
     arity = length(args)
     opts = Opts.to_options(opts)
 
-    if opts[:force_module] == true or Extend.module_enabled?(module, opts) do
-      # debug(module, "module_enabled")
-
+    # `maybe_module/2` reads the `:modularity` setting and returns a replacement when the module is swapped rather than only whether it is disabled
+    if resolved_module =
+         if(opts[:force_module] == true, do: module, else: Extend.maybe_module(module, opts)) do
       available_funs =
         Enum.map(funs, fn
           f when is_atom(f) ->
-            if Kernel.function_exported?(module, f, arity), do: f
+            if Kernel.function_exported?(resolved_module, f, arity), do: f
 
           f ->
             f = Types.maybe_to_atom!(f)
-            if Kernel.function_exported?(module, f, arity), do: f
+            if Kernel.function_exported?(resolved_module, f, arity), do: f
         end)
         |> Enum.reject(&is_nil/1)
 
@@ -726,17 +726,17 @@ defmodule Bonfire.Common.Utils do
         # debug({fun, arity}, "function_exists")
 
         if opts[:no_argument_rescue] do
-          apply(module, fun, args)
+          apply(resolved_module, fun, args)
         else
           try do
-            apply(module, fun, args)
+            apply(resolved_module, fun, args)
             # |> debug("ran")
           rescue
             e in FunctionClauseError ->
               exception = Errors.debug_banner(:error, e, __STACKTRACE__)
 
               msg =
-                "A pattern matching error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}"
+                "A pattern matching error occurred when trying to maybe_apply #{resolved_module}.#{fun}/#{arity}"
 
               if opts[:on_error] == :ignore || opts[:fallback_fun] do
                 if opts[:on_error] == :err do
@@ -758,7 +758,7 @@ defmodule Bonfire.Common.Utils do
               exception = Errors.debug_banner(:error, e, __STACKTRACE__)
 
               msg =
-                "An argument error occurred when trying to maybe_apply #{module}.#{fun}/#{arity}"
+                "An argument error occurred when trying to maybe_apply #{resolved_module}.#{fun}/#{arity}"
 
               if opts[:ignore_errors] || opts[:fallback_fun] do
                 debug(exception, msg, stacktrace: __STACKTRACE__)
@@ -775,13 +775,13 @@ defmodule Bonfire.Common.Utils do
         end
       else
         maybe_apply_error(
-          "None of the functions #{inspect(funs)} are defined at #{module} with arity #{arity}",
+          "None of the functions #{inspect(funs)} are defined at #{resolved_module} with arity #{arity}",
           args,
           opts
         )
       end
     else
-      maybe_apply_error("No such module (#{module}) could be loaded.", args, opts)
+      maybe_apply_error("Module #{module} is not available or is disabled", args, opts)
     end
   end
 
