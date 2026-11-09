@@ -1,0 +1,12 @@
+{
+  "total": {"bonfire_common": 1000},
+  "translated": {
+    "ab": {"bonfire_common": 0},
+    "ac": {"bonfire_common": 60},
+    "ad": {"bonfire_common": 100},
+    "ae": {"bonfire_common": 310},
+    "af": {"bonfire_common": 950},
+    "ag": {"bonfire_common": 1000},
+    "ah": {"bonfire_common": 999}
+  }
+}

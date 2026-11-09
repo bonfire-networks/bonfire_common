@@ -1,0 +1,15 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Alpha"
+msgstr "Alfa"
+
+#, fuzzy
+msgid "Beta"
+msgstr "Beta aproximada"
+
+msgid "%{n} cat"
+msgid_plural "%{n} cats"
+msgstr[0] ""
+msgstr[1] ""

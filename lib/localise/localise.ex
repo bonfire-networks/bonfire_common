@@ -8,6 +8,7 @@ defmodule Bonfire.Common.Localise do
   alias Bonfire.Common.Utils
   alias Bonfire.Common.Types
   alias Bonfire.Common.Cache
+  alias Bonfire.Common.Localise.Gettext.Fallback
 
   defmacro __using__(_opts) do
     quote do
@@ -167,16 +168,20 @@ defmodule Bonfire.Common.Localise do
     # CLDR uses BCP47 format (e.g. "zh-TW") while Gettext uses POSIX format (e.g. "zh_TW").
     # Without this mapping, locales like zh-Hant/zh-TW won't find their Gettext translations.
     gettext_locale =
-      case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
-        {:ok, %{gettext_locale_name: name}} when not is_nil(name) ->
-          to_string(name)
+      requested_gettext_locale(locale) ||
+        case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
+          {:ok, %{gettext_locale_name: name}} when not is_nil(name) ->
+            to_string(name)
 
-        _ ->
-          to_string(locale)
-      end
+          _ ->
+            to_string(locale)
+        end
 
     # Sets the global Gettext locale for the current process.
     Gettext.put_locale(gettext_locale)
+
+    # the extra languages belong to the previous locale choice, so a caller that wants them stores them again with `put_fallback_extras/1`
+    Fallback.delete_extras()
 
     # change Gettext locale
     # Gettext.put_locale(Bonfire.Common.Localise.Gettext, to_string(locale))
@@ -184,6 +189,149 @@ defmodule Bonfire.Common.Localise do
     # change Gettext locale of extra deps
     # Enum.each(Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :extra_gettext], []), & Gettext.put_locale(&1, to_string(locale)) )
   end
+
+  @doc """
+  Returns the requested locale as a Gettext locale name (eg. `"fr_FR"` for `"fr-FR"`) if a catalogue with exactly that name exists, otherwise `nil`.
+
+  ex_cldr resolves `fr-FR` to `fr` for Gettext because both score the same and `fr` sorts first, so the user's regional choice would otherwise never reach the regional catalogue.
+  """
+  def requested_gettext_locale(%{requested_locale_name: name}) when not is_nil(name),
+    do: requested_gettext_locale(name)
+
+  def requested_gettext_locale(locale) when is_binary(locale) or is_atom(locale) do
+    name = locale |> to_string() |> String.replace("-", "_")
+
+    if name in Gettext.known_locales(Bonfire.Common.Localise.Gettext), do: name
+  end
+
+  def requested_gettext_locale(_), do: nil
+
+  @doc """
+  Switches the Gettext locale to the first of the `desired` locales that has a catalogue of exactly that name, as long as it is in the same language as the `chosen` locale (the one already set from the best match), so the CLDR locale and the language picked stay as ex_cldr resolved them.
+  """
+  def put_requested_gettext_locale(desired, chosen) do
+    language = locale_language(chosen)
+
+    found =
+      Enum.find_value(List.wrap(desired), fn d ->
+        with name when is_binary(name) <- requested_gettext_locale(d),
+             true <- locale_language(name) == language do
+          name
+        else
+          _ -> nil
+        end
+      end)
+
+    if found, do: Gettext.put_locale(found)
+    found
+  end
+
+  @doc "How many extra languages (see `put_fallback_extras/1`) a single missing string is tried in, counting only those that have a catalogue for its domain."
+  def max_fallback_extras, do: Bonfire.Common.Config.get([__MODULE__, :max_fallback_extras], 3)
+
+  @doc "The session key under which the `set_locale` plug keeps the browser's extra languages, for the LiveView on_mount to read."
+  def fallback_session_key, do: "fallback_locales"
+
+  @doc """
+  Stores, in the current process, the languages to try for a string that the current Gettext locale (and its base language) has not translated: the user's "Other languages I understand", the browser's `Accept-Language` extras and the instance's, in that order. `Bonfire.Common.Localise.Gettext` reads them on a miss.
+
+  Call it after the Gettext locale is set (`put_locale/1` clears them). An extra is dropped if ex_cldr does not know it, or if it has no Gettext catalogue at all, neither of its own nor for its base language (`de_CH` is kept for `de`). Then the list is deduped, left out where it repeats the current locale or its base (the base is always tried first), cut at the first English (the language of the msgids, so nothing after it can be reached) and at twice `max_fallback_extras/0`. An English current locale stores nothing. The cap is stored with the list, so a miss reads both at once.
+
+  Returns the locale names stored.
+  """
+  def put_fallback_extras(extras) do
+    extras
+    |> List.wrap()
+    |> Enum.map(&extra_gettext_name/1)
+    |> Enum.reject(&is_nil/1)
+    |> then(&Fallback.put_extras(Bonfire.Common.Localise.Gettext, &1, max_fallback_extras()))
+  end
+
+  # nil if ex_cldr does not know it
+  defp extra_gettext_name(nil), do: nil
+
+  defp extra_gettext_name(extra) when is_binary(extra) or is_atom(extra) do
+    case Bonfire.Common.Localise.Cldr.validate_locale(extra) do
+      {:ok, tag} ->
+        # for a language with no catalogue ex_cldr still names the closest Gettext locale it can find (eg. English for `zu`), which is not what the visitor reads, so a name in another language is no match
+        requested_gettext_locale(tag) ||
+          with name when not is_nil(name) <- tag.gettext_locale_name,
+               name = name |> to_string() |> String.replace("-", "_"),
+               true <- locale_language(name) == tag.language do
+            name
+          else
+            _ -> nil
+          end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp extra_gettext_name(%{} = tag), do: extra_gettext_name(tag.requested_locale_name)
+  defp extra_gettext_name(_), do: nil
+
+  @doc """
+  The languages in an `Accept-Language` header value, in weight order, as the names the visitor sent. Entries ex_cldr cannot parse are left out. The first is the visitor's main language, which `put_fallback_extras/1` drops as a repeat of the current locale.
+  """
+  def accept_language_extras(header) when is_binary(header) do
+    case Cldr.AcceptLanguage.parse(header, Bonfire.Common.Localise.Cldr) do
+      {:ok, languages} ->
+        for {quality, %{requested_locale_name: name}} <- languages,
+            is_float(quality) or is_integer(quality),
+            do: to_string(name)
+
+      _ ->
+        []
+    end
+  end
+
+  def accept_language_extras(_), do: []
+
+  # where the process keeps the browser's own extras (as sent), for the first render of a guest LiveView page, which runs in the process of the request
+  @browser_extras_key :bonfire_localise_browser_extras
+
+  @doc """
+  For the `set_locale` plug, after `Cldr.Plug.SetLocale`: stores the browser's `Accept-Language` languages, then the instance's, with `put_fallback_extras/1` for the controller page, and keeps the browser's (cut at twice `max_fallback_extras/0`) in the process, for `browser_extras_from_process/0`. It never writes the session, so a guest stays cookieless: see `put_browser_extras_in_session/1` for a logged-in user.
+  """
+  def put_fallback_extras_from_conn(%Plug.Conn{} = conn) do
+    browser = browser_extras(conn)
+
+    Process.put(@browser_extras_key, browser)
+    put_fallback_extras(browser ++ Bonfire.Common.Config.get([__MODULE__, :extra_locales], []))
+
+    conn
+  end
+
+  @doc "The browser's extras that `put_fallback_extras_from_conn/1` kept in this process: what the on_mount of a guest LiveView page reads, as a guest has no session to read them from (and the first render, which is all a guest page does, runs in the process of the request)."
+  def browser_extras_from_process, do: Process.get(@browser_extras_key, [])
+
+  @doc """
+  Writes the browser's `Accept-Language` extras to the session for the LiveView on_mount of a logged-in user (which does not see request headers), without choosing a locale. Only when they differ from what the session holds, so the session cookie is not rewritten on every response. Call it only for a request that has a login: a guest must get no session write.
+  """
+  def put_browser_extras_in_session(%Plug.Conn{} = conn) do
+    browser = browser_extras(conn)
+
+    if Map.has_key?(conn.private, :plug_session) and
+         Plug.Conn.get_session(conn, fallback_session_key()) |> List.wrap() != browser do
+      Plug.Conn.put_session(conn, fallback_session_key(), browser)
+    else
+      conn
+    end
+  end
+
+  defp browser_extras(conn) do
+    conn
+    |> Plug.Conn.get_req_header("accept-language")
+    |> List.first()
+    |> accept_language_extras()
+    |> Enum.take(2 * max_fallback_extras())
+  end
+
+  defp locale_language(%{language: language}) when is_binary(language), do: language
+
+  defp locale_language(locale),
+    do: locale |> to_string() |> String.split(["-", "_"]) |> List.first()
 
   defp valid_locale?(locale) do
     case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
@@ -217,6 +365,8 @@ defmodule Bonfire.Common.Localise do
       case Cldr.Locale.Match.best_match(filtered, supported: supported) do
         {:ok, best, _score} ->
           put_locale(best)
+          put_requested_gettext_locale(desired, best)
+          put_fallback_extras(desired)
           {:ok, best}
 
         e ->

@@ -837,6 +837,37 @@ defmodule Bonfire.Common.Settings do
     result
   end
 
+  # a user's language also fills their account's, if it has none
+  defp set_with_hooks(%{Bonfire.Common.Localise.Cldr => %{default_locale: locale}} = attrs, opts) do
+    result = do_set(attrs, opts)
+
+    with {:ok, _} <- result do
+      maybe_put_account_language(locale, check_scope(e(attrs, :scope, nil), opts), opts)
+    end
+
+    maybe_reset_caches(attrs)
+    result
+  end
+
+  # So the account-only pages (eg. the user picker after login) match the language the account's people use. Written once: an account that has a language keeps it, whoever changes theirs later. "Of its own" reads the account scope alone, as the merged read falls back to the instance default and cannot tell unset from set.
+  defp maybe_put_account_language(locale, {:current_user, _user}, opts) when not is_nil(locale) do
+    with %{} = account <- current_account(opts),
+         nil <-
+           get([Bonfire.Common.Localise.Cldr, :default_locale], nil,
+             current_account: account,
+             one_scope_only: true
+           ) do
+      put([Bonfire.Common.Localise.Cldr, :default_locale], locale,
+        current_account: account,
+        scope: :account
+      )
+    else
+      _ -> :skip
+    end
+  end
+
+  defp maybe_put_account_language(_locale, _scope, _opts), do: :skip
+
   defp set_with_hooks(attrs, opts) do
     result = do_set(attrs, opts)
     maybe_reset_caches(attrs)

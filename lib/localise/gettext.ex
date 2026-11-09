@@ -32,6 +32,33 @@ defmodule Bonfire.Common.Localise.Gettext do
       ])
     end
 
+  priv = Application.compile_env!(:bonfire_common, :localisation_path)
+
+  # the same catalogues the backend compiles (see `Gettext.Compiler`), so a fallback never points at a locale that was left out
+  allowed_locale_names = allowed_locales && Enum.map(allowed_locales, &to_string/1)
+
+  compiled_po_paths =
+    priv
+    |> Path.join("*/LC_MESSAGES/*.po")
+    |> Path.wildcard()
+    |> Enum.filter(fn path ->
+      locale = path |> Path.dirname() |> Path.dirname() |> Path.basename()
+      is_nil(allowed_locale_names) or locale in allowed_locale_names
+    end)
+
+  # `{locale, domain}` => base language to try when the regional locale has no translation, computed once here so a miss at runtime is a single function-clause lookup
+  # not given the instance's default locale: the chain skips the msgids' own language (English), which an instance defaulting to eg `fr` doesn't change
+  @fallback_parents (for {{locale, domain}, [parent]} <-
+                           Bonfire.Common.Localise.Gettext.Fallback.chains(compiled_po_paths) do
+                       {{locale, domain}, parent}
+                     end)
+
+  # every `{locale, domain}` that has a catalogue, so whether an extra language can answer for a domain is a function-clause match at runtime
+  @catalogues Map.keys(Bonfire.Common.Localise.Gettext.Fallback.chains(compiled_po_paths))
+
+  @extras_key Bonfire.Common.Localise.Gettext.Fallback.extras_key()
+  @guard_key Bonfire.Common.Localise.Gettext.Fallback.guard_key()
+
   # if Bonfire.Common.Config.env() == :dev do
   #   use PseudoGettext,
   #     otp_app: :bonfire_common,
@@ -53,6 +80,111 @@ defmodule Bonfire.Common.Localise.Gettext do
     split_module_by: [:locale, :domain]
 
   # end
+
+  for {{locale, domain}, parent} <- @fallback_parents do
+    defp fallback_parent(unquote(locale), unquote(domain)), do: unquote(parent)
+  end
+
+  defp fallback_parent(_locale, _domain), do: nil
+
+  @doc false
+  for {locale, domain} <- @catalogues do
+    def has_catalogue?(unquote(locale), unquote(domain)), do: true
+  end
+
+  def has_catalogue?(_locale, _domain), do: false
+
+  # Gettext has no locale fallback of its own, so a regional locale (`nl_NL`) is sent to its base language (`nl`) here, for what it has not translated itself, and then to the user's extra languages (see `Bonfire.Common.Localise.Gettext.Fallback.put_extras/2`). It returns `:default` even on a hit, so a caller that checks the tuple (eg. `Bonfire.Common.Vocabulary`) still sees a miss in the requested locale. The parent has no parent of its own, and a lookup in an extra language does not try the extras again (see `fallback_lookup/4`), so this cannot loop.
+  # With no parent and no extras, which is every miss in English, this costs one function-clause match and one `Process.get`.
+  def handle_missing_translation(locale, domain, msgctxt, msgid, bindings) do
+    parent = fallback_parent(locale, domain)
+    extras = fallback_extras()
+
+    if is_nil(parent) and is_nil(extras) do
+      super(locale, domain, msgctxt, msgid, bindings)
+    else
+      case fallback_lookup(
+             parent,
+             extras,
+             domain,
+             &lgettext(&1, domain, msgctxt, msgid, bindings)
+           ) do
+        {:ok, translated} -> {:default, translated}
+        nil -> super(locale, domain, msgctxt, msgid, bindings)
+        # the parent's own miss, already interpolated, as it was before the extras existed
+        other -> other
+      end
+    end
+  end
+
+  def handle_missing_plural_translation(
+        locale,
+        domain,
+        msgctxt,
+        msgid,
+        msgid_plural,
+        n,
+        bindings
+      ) do
+    parent = fallback_parent(locale, domain)
+    extras = fallback_extras()
+
+    if is_nil(parent) and is_nil(extras) do
+      super(locale, domain, msgctxt, msgid, msgid_plural, n, bindings)
+    else
+      lookup = &lngettext(&1, domain, msgctxt, msgid, msgid_plural, n, bindings)
+
+      case fallback_lookup(parent, extras, domain, lookup) do
+        {:ok, translated} -> {:default, translated}
+        nil -> super(locale, domain, msgctxt, msgid, msgid_plural, n, bindings)
+        other -> other
+      end
+    end
+  end
+
+  # `{[{locale, base}], cap}`, or nil when none are stored or when an extra is already being looked up (so its own miss does not try them again)
+  defp fallback_extras do
+    case Process.get(@extras_key) do
+      nil -> nil
+      extras -> if Process.get(@guard_key), do: nil, else: extras
+    end
+  end
+
+  # the parent first, then the extras in order: a hit, else the parent's own miss, else nil (no parent, nothing found in the extras)
+  defp fallback_lookup(parent, extras, domain, lookup) do
+    if extras, do: Process.put(@guard_key, true)
+
+    try do
+      case parent && lookup.(parent) do
+        {:ok, _} = hit -> hit
+        parent_miss -> (extras && lookup_extras(extras, domain, lookup)) || parent_miss
+      end
+    after
+      if extras, do: Process.delete(@guard_key)
+    end
+  end
+
+  defp lookup_extras({entries, cap}, domain, lookup),
+    do: lookup_extras(entries, cap, domain, lookup)
+
+  defp lookup_extras(_entries, 0, _domain, _lookup), do: nil
+  defp lookup_extras([], _cap, _domain, _lookup), do: nil
+
+  # an extra without a catalogue for the domain is not looked up and does not count towards the cap; its base language answers for it (`de_CH` -> `de`) when that has one
+  defp lookup_extras([{locale, base} | rest], cap, domain, lookup) do
+    target =
+      cond do
+        has_catalogue?(locale, domain) -> locale
+        base && has_catalogue?(base, domain) -> base
+        true -> nil
+      end
+
+    case target && lookup.(target) do
+      nil -> lookup_extras(rest, cap, domain, lookup)
+      {:ok, _} = hit -> hit
+      _ -> lookup_extras(rest, cap - 1, domain, lookup)
+    end
+  end
 end
 
 defmodule Bonfire.Common.Localise.Gettext.Helpers do

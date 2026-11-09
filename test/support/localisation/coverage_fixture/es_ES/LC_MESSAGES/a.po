@@ -1,0 +1,9 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Beta"
+msgstr "Beta"
+
+msgid "Removed from the source"
+msgstr "Quitado del origen"

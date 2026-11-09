@@ -1,0 +1,8 @@
+{
+  "total": {"bonfire_ui_common": 464, "bonfire_me": 320, "not_loaded_app": 1000},
+  "translated": {
+    "fr": {"bonfire_ui_common": 400, "bonfire_me": 200, "not_loaded_app": 1000},
+    "fr_FR": {"bonfire_ui_common": 410, "bonfire_me": 220, "not_loaded_app": 0},
+    "en": {"bonfire_ui_common": 464, "bonfire_me": 320, "not_loaded_app": 1000}
+  }
+}
