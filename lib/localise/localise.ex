@@ -167,18 +167,8 @@ defmodule Bonfire.Common.Localise do
     # Resolve the correct Gettext locale name from the CLDR locale tag.
     # CLDR uses BCP47 format (e.g. "zh-TW") while Gettext uses POSIX format (e.g. "zh_TW").
     # Without this mapping, locales like zh-Hant/zh-TW won't find their Gettext translations.
-    gettext_locale =
-      requested_gettext_locale(locale) ||
-        case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
-          {:ok, %{gettext_locale_name: name}} when not is_nil(name) ->
-            to_string(name)
-
-          _ ->
-            to_string(locale)
-        end
-
     # Sets the global Gettext locale for the current process.
-    Gettext.put_locale(gettext_locale)
+    Gettext.put_locale(gettext_locale_name(locale))
 
     # the extra languages belong to the previous locale choice, so a caller that wants them stores them again with `put_fallback_extras/1`
     Fallback.delete_extras()
@@ -188,6 +178,17 @@ defmodule Bonfire.Common.Localise do
 
     # change Gettext locale of extra deps
     # Enum.each(Bonfire.Common.Config.get([Bonfire.Common.Localise.Cldr, :extra_gettext], []), & Gettext.put_locale(&1, to_string(locale)) )
+  end
+
+  defp gettext_locale_name(locale) do
+    requested_gettext_locale(locale) ||
+      case Bonfire.Common.Localise.Cldr.validate_locale(locale) do
+        {:ok, %{gettext_locale_name: name}} when not is_nil(name) ->
+          to_string(name)
+
+        _ ->
+          to_string(locale)
+      end
   end
 
   @doc """
@@ -340,39 +341,65 @@ defmodule Bonfire.Common.Localise do
     end
   end
 
+  @doc """
+  Sets the two languages of a request from the `desired` ones, most wanted first. The chosen language (CLDR: dates, numbers, post translation) is the best match among every compiled language, and the text language (Gettext) is the best match among those with a translation catalogue, English if none: they differ only when the chosen language has no catalogue. Then stores the rest of `desired` as extras (see `put_fallback_extras/1`). Returns `{:ok, chosen}`.
+
+  `supported` is the list of languages with a catalogue.
+  """
   def put_best_locale_match(
         desired,
-        default \\ default_locale(),
-        supported \\ localisation_locales()
+        default \\ default_locale()
       )
       when is_list(desired) do
-    filtered =
-      desired
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-      |> Enum.map(&Bonfire.Common.Localise.Cldr.validate_locale(&1))
-      |> Enum.filter_map(
-        fn
-          {:ok, tag} -> true
-          _ -> false
-        end,
-        fn {:ok, tag} -> tag end
-      )
+    filtered = valid_locale_tags(desired)
 
     if filtered == [] do
       error_or_set_default_locale("No valid preferred locales", default)
     else
-      case Cldr.Locale.Match.best_match(filtered, supported: supported) do
-        {:ok, best, _score} ->
-          put_locale(best)
-          put_requested_gettext_locale(desired, best)
+      case Cldr.Locale.Match.best_match(filtered, supported: known_locales()) do
+        {:ok, chosen, _score} ->
+          put_locale(chosen)
+          put_text_locale(filtered, localisation_locales())
           put_fallback_extras(desired)
-          {:ok, best}
+          {:ok, chosen}
 
         e ->
           error_or_set_default_locale(e, default)
       end
     end
+  end
+
+  @doc """
+  Sets only the Gettext locale, to the best match of the `desired` locales among those with a translation catalogue (`supported`), or English if none match, and clears the extras as `put_locale/1` does. Returns the Gettext locale name.
+  """
+  def put_text_locale(desired, supported \\ localisation_locales()) when is_list(desired) do
+    tags = valid_locale_tags(desired)
+
+    name =
+      case tags != [] && Cldr.Locale.Match.best_match(tags, supported: supported) do
+        {:ok, best, _score} -> gettext_locale_name(best)
+        _ -> "en"
+      end
+
+    Gettext.put_locale(name)
+    Fallback.delete_extras()
+    put_requested_gettext_locale(tags, name)
+    name
+  end
+
+  # the validated CLDR tags of the locales, dropping blanks, repeats and those ex_cldr does not know
+  defp valid_locale_tags(locales) do
+    locales
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.map(&Bonfire.Common.Localise.Cldr.validate_locale(&1))
+    |> Enum.filter_map(
+      fn
+        {:ok, _tag} -> true
+        _ -> false
+      end,
+      fn {:ok, tag} -> tag end
+    )
   end
 
   defp error_or_set_default_locale(e, default) do
@@ -436,9 +463,13 @@ defmodule Bonfire.Common.Localise do
 
   @doc "Returns known locales paired with their localised display names, sorted alphabetically by display name."
   def known_locales_names_localised do
-    localisation_locales()
+    known_locales()
     |> locales_with_names()
   end
+
+  @doc "The language of the interface text, for the `lang` of the page's root element: the Gettext locale with `-` for `_` (`fr-FR` for `fr_FR`)."
+  def html_lang,
+    do: Gettext.get_locale(Bonfire.Common.Localise.Gettext) |> String.replace("_", "-")
 
   @doc "Config for the `Cldr.Plug.SetLocale` plug"
   def set_locale_config() do

@@ -1194,41 +1194,50 @@ defmodule Bonfire.Common.Text do
     iex> Bonfire.Common.Text.replace_links("<a href='/foo'>test</a>", %{"/baz" => "/qux"})
     [{"a", [{"href", "/foo"}], ["test"]}]
   """
-  def replace_links(input, replacements_map, fallback_match_fn \\ nil)
+  def replace_links(input, replacements_map, fallback_match_fn \\ nil, opts \\ [])
 
-  def replace_links(nil, _, _), do: nil
+  def replace_links(nil, _, _, _), do: nil
 
-  def replace_links(input, replacements_map, fallback_match_fn)
-      when is_map(replacements_map) and replacements_map != %{} do
-    input
-    |> as_html_tree()
-    |> LazyHTML.Tree.postwalk(fn
-      {"a", attrs, children} = node ->
-        case List.keyfind(attrs, "href", 0) do
-          {"href", href} ->
-            downcased = String.downcase(href)
+  def replace_links(input, replacements_map, fallback_match_fn, opts) do
+    # `base:` resolves relative hrefs against it (eg. a remote object's URL) in the same walk
+    base = opts[:base]
 
-            updated_attrs =
-              case Map.get(replacements_map, downcased) ||
-                     (is_function(fallback_match_fn) &&
-                        fallback_match_fn.(replacements_map, downcased)) do
-                nil -> attrs
-                false -> attrs
-                new_href -> List.keyreplace(attrs, "href", 0, {"href", new_href})
-              end
+    if (is_map(replacements_map) and replacements_map != %{}) or is_binary(base) do
+      input
+      |> as_html_tree()
+      |> LazyHTML.Tree.postwalk(fn
+        {"a", attrs, children} = node ->
+          case List.keyfind(attrs, "href", 0) do
+            {"href", href} ->
+              href = resolve_relative_link(href, base) || href
+              # the same normalisation callers use for the map's keys
+              normalised = URIs.normalise_for_comparison(href)
 
-            {"a", maybe_add_nofollow(updated_attrs, href), children}
+              new_href =
+                case is_map(replacements_map) &&
+                       (Map.get(replacements_map, normalised) ||
+                          (is_function(fallback_match_fn) &&
+                             fallback_match_fn.(replacements_map, normalised))) do
+                  nil -> href
+                  false -> href
+                  new_href -> new_href
+                end
 
-          nil ->
-            node
-        end
+              {"a",
+               maybe_add_nofollow(List.keyreplace(attrs, "href", 0, {"href", new_href}), href),
+               children}
 
-      node ->
-        node
-    end)
+            nil ->
+              node
+          end
+
+        node ->
+          node
+      end)
+    else
+      input
+    end
   end
-
-  def replace_links(input, _, _), do: input
 
   @doc """
   Prepares links in HTML content for local (browser) rendering: makes local links use
@@ -1285,18 +1294,28 @@ defmodule Bonfire.Common.Text do
     # `hashtag_html: false` keeps hashtag links markdown, for where the result must stay pure markdown (eg. an AP object's `source`)
     hashtag_html? = Keyword.get(opts, :hashtag_html, true)
 
-    # every branch below needs a root-relative markdown link, so `](/` is a sound (and usually absent) pre-check
-    maybe_replace(content, "](/", fn content ->
-      # Single pass: handles images, hashtag links (emitting HTML with class/rel for GH #1754), and regular links
-      Regex.replace(~r/(!?)\[([^\]]*)\]\(\/([^)]+)\)/, content, fn
-        _, "!", alt, path ->
-          "![#{alt}](#{base_url}/#{path})"
+    # every branch below needs a markdown link, so `](` is a sound pre-check
+    maybe_replace(content, "](", fn content ->
+      # Single pass: handles images, hashtag links (emitting HTML with class/rel for GH #1754), and regular links. `rest` keeps an optional link title.
+      Regex.replace(~r/(!?)\[([^\]]*)\]\(([^)\s]+)((?:\s[^)]*)?)\)/, content, fn
+        full, bang, text, target, rest ->
+          case resolve_relative_link(target, base_url) do
+            nil ->
+              full
 
-        _, _, "#" <> _ = text, "hashtag/" <> _ = path when hashtag_html? ->
-          ~s(<a class="hashtag" rel="tag ugc" href="#{base_url}/#{path}">#{text}</a>)
+            # only a root-relative `/hashtag/` link is one of our hashtags
+            url when bang == "" and hashtag_html? ->
+              case {text, target} do
+                {"#" <> _, "/hashtag/" <> _} ->
+                  ~s(<a class="hashtag" rel="tag ugc" href="#{url}">#{text}</a>)
 
-        _, _, text, path ->
-          "[#{text}](#{base_url}/#{path})"
+                _ ->
+                  "[#{text}](#{url}#{rest})"
+              end
+
+            url ->
+              "#{bang}[#{text}](#{url}#{rest})"
+          end
       end)
     end)
   end
@@ -1305,12 +1324,31 @@ defmodule Bonfire.Common.Text do
       when is_binary(content) and byte_size(content) > 10 do
     base_url = base_url || URIs.base_url()
 
-    maybe_replace(content, ~s(href="/), fn content ->
-      Regex.replace(~r/href="(\/[^"]*)"/, content, "href=\"#{base_url}\\1\"")
+    maybe_replace(content, ~s(href="), fn content ->
+      Regex.replace(~r/href="([^"]*)"/, content, fn full, href ->
+        case resolve_relative_link(href, base_url) do
+          nil -> full
+          url -> ~s(href="#{url}")
+        end
+      end)
     end)
   end
 
   def prepare_links_for_remote_render(content, _, _, _), do: content
+
+  # Resolves a link without a scheme (`x`, `/x`, `//host/x`) against `base` (RFC 3986), so it points to the same place wherever it is shown. Returns nil for links to leave as they are: absolute (incl. `mailto:`), in-page `#anchors`, and empty. Common absolute links match a clause head, so only the rest are parsed.
+  defp resolve_relative_link(_href, nil), do: nil
+  defp resolve_relative_link("https://" <> _, _base), do: nil
+  defp resolve_relative_link("http://" <> _, _base), do: nil
+  defp resolve_relative_link("#" <> _, _base), do: nil
+  defp resolve_relative_link("", _base), do: nil
+
+  defp resolve_relative_link(href, base) do
+    case URI.parse(href) do
+      %URI{scheme: nil} = uri -> base |> URI.merge(uri) |> URI.to_string()
+      _ -> nil
+    end
+  end
 
   # keep old name as alias for call sites in pinned deps
   def make_links_absolute(content, format, base_url \\ nil),

@@ -329,6 +329,33 @@ defmodule Bonfire.Common.Localise.LocaleFallbackTest do
     end
   end
 
+  # Afrikaans is compiled for dates and numbers in the test environment but has no translation catalogue
+  describe "a language with no catalogue" do
+    setup do
+      on_exit(fn -> Localise.put_locale("en") end)
+    end
+
+    test "control: af is compiled and has no catalogue" do
+      assert :af in Localise.known_locales()
+      refute "af" in Gettext.known_locales(Backend)
+    end
+
+    test "it is the chosen language, and the text language is the best match among those with a catalogue" do
+      assert {:ok, _} = Localise.put_best_locale_match(["af", "fr"])
+      assert Localise.get_locale_id() == :af
+      assert Gettext.get_locale(Backend) == "fr"
+    end
+
+    test "with no catalogue language wanted, the text language is English" do
+      # the global locale, as `Localise.put_locale/1` sets it
+      Gettext.put_locale("fr")
+      assert Gettext.get_locale(Backend) == "fr"
+      assert {:ok, _} = Localise.put_best_locale_match(["af"])
+      assert Localise.get_locale_id() == :af
+      assert Gettext.get_locale(Backend) == "en"
+    end
+  end
+
   describe "Fallback.chains/2" do
     @paths [
       "fr/LC_MESSAGES/a.po",

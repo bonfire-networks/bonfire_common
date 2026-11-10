@@ -297,6 +297,45 @@ defmodule Bonfire.Common.Text.Test do
     end
   end
 
+  describe "prepare_links_for_remote_render/4 resolves relative links against a post's URL" do
+    @base "https://origin.local/post/01ABC"
+
+    test "markdown path-relative links resolve against the object URL" do
+      md = "a [#research](hashtag/research) and a [page](notes/1) and ![pic](img/a.png)"
+
+      assert Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, @base) ==
+               "a [#research](https://origin.local/post/hashtag/research) and a [page](https://origin.local/post/notes/1) and ![pic](https://origin.local/post/img/a.png)"
+    end
+
+    test "markdown root-relative and protocol-relative links resolve against the object URL" do
+      md = "[some link](/some/path) and [other](//other.local/x)"
+
+      assert Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, @base) ==
+               "[some link](https://origin.local/some/path) and [other](https://other.local/x)"
+    end
+
+    test "markdown absolute, mailto and in-page links are left alone" do
+      md = "[a](https://else.local/x) [b](mailto:a@b.local) [c](#section) of some length"
+
+      assert Bonfire.Common.Text.prepare_links_for_remote_render(md, :markdown, @base) == md
+    end
+
+    test "html path-relative, root-relative and protocol-relative hrefs resolve against the object URL" do
+      html =
+        ~s(<a href="hashtag/research">#research</a> <a href="/x">x</a> <a href="//other.local/y">y</a>)
+
+      assert Bonfire.Common.Text.prepare_links_for_remote_render(html, :html, @base) ==
+               ~s(<a href="https://origin.local/post/hashtag/research">#research</a> <a href="https://origin.local/x">x</a> <a href="https://other.local/y">y</a>)
+    end
+
+    test "html absolute, mailto and in-page hrefs are left alone" do
+      html =
+        ~s(<a href="https://else.local/x">a</a> <a href="mailto:a@b.local">b</a> <a href="#s">c</a>)
+
+      assert Bonfire.Common.Text.prepare_links_for_remote_render(html, :html, @base) == html
+    end
+  end
+
   describe "extract_urls_from_html/2 mention/hashtag filtering" do
     alias Bonfire.Common.Text
 
