@@ -492,6 +492,11 @@ defmodule Bonfire.Common.URIs do
   """
   def canonical_url(object, opts \\ [])
 
+  # A link `Media` (eg. an ORCID or website link) is its own URL: its `path` is the external address, so it must not reach the `peered`/`created` clauses below, which would treat it as a local object and build a local URL. Matched by struct name since this extension cannot depend on the one defining it.
+  def canonical_url(%{__struct__: Bonfire.Files.Media, path: "http" <> _} = media, _opts) do
+    Bonfire.Common.Media.media_url(media)
+  end
+
   def canonical_url(%{canonical_uri: canonical_url}, _opts)
       when is_binary(canonical_url) do
     canonical_url

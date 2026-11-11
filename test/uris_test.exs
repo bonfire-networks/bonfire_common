@@ -103,6 +103,17 @@ defmodule Bonfire.Common.URIsTest do
     end
   end
 
+  describe "canonical_url/2 of a link Media" do
+    test "is its http path, even though the `peered` assoc is not loaded" do
+      url = "https://orcid.org/0000-0002-1825-0097"
+
+      media = %Bonfire.Files.Media{path: url, media_type: "orcid"}
+
+      assert %Ecto.Association.NotLoaded{} = media.peered
+      assert URIs.canonical_url(media) == url
+    end
+  end
+
   describe "versioned_static_path/1" do
     @moduletag :uris
 

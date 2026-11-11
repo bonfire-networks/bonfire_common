@@ -31,7 +31,7 @@ defmodule Bonfire.Common.Cache do
   ## Options
     * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
     * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
-    * `:expire` - Time in milliseconds until the cache entry expires (defaults to #{@default_cache_ttl}ms meaning 6 hours)
+    * `:expire` - Time in milliseconds until the cache entry expires (defaults to #{@default_cache_ttl}ms meaning 6 hours); pass `expire: nil` for an entry that never expires
 
   ## Examples
 
@@ -74,6 +74,30 @@ defmodule Bonfire.Common.Cache do
   """
   def get(key, opts \\ []),
     do: CacheBackend.get(opts[:cache_backend] || @default_backend, key, opts)
+
+  @doc """
+  Retrieves several values from the cache in one call.
+
+  Returns a map of the keys that hold a value to their values; keys that are missing (or hold `nil`) are left out. An empty list returns an empty map.
+
+  ## Options
+    * `:cache_backend` - The cache backend module to use (defaults to `Cachex`)
+    * `:cache_store` - The Cachex store atom (defaults to #{inspect(@default_store)}; ignored for Nebulex backends)
+
+  ## Examples
+
+      iex> Bonfire.Common.Cache.put("many_a", 1, async: false)
+      iex> Bonfire.Common.Cache.get_many(["many_a", "many_missing"])
+      %{"many_a" => 1}
+
+      iex> Bonfire.Common.Cache.get_many([])
+      %{}
+  """
+  def get_many(keys, opts \\ [])
+  def get_many([], _opts), do: %{}
+
+  def get_many(keys, opts) when is_list(keys),
+    do: CacheBackend.get_many(opts[:cache_backend] || @default_backend, keys, opts)
 
   @doc """
   Retrieves a value from the cache with the given key and unwraps the result.

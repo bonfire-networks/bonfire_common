@@ -46,6 +46,23 @@ defmodule Bonfire.Common.Cache.Backend do
     end
   end
 
+  @doc "Get several keys at once. Returns a map of the keys that hold a value (misses are left out). Cachex has no batched get, so its keys are read within a single `Cachex.execute!`; other backends are read key by key."
+  def get_many(Cachex, keys, opts) do
+    Cachex.execute!(opts[:cache_store] || @default_store, fn cache ->
+      collect_many(keys, &Cachex.get(cache, &1))
+    end)
+  end
+
+  def get_many(backend, keys, opts), do: collect_many(keys, &get(backend, &1, opts))
+
+  defp collect_many(keys, getter) do
+    for key <- keys,
+        {:ok, value} <- [getter.(key)],
+        not is_nil(value),
+        into: %{},
+        do: {key, value}
+  end
+
   @doc "Put a value with optional TTL (`opts[:expire]` in ms). Async by default — returns `:ok` immediately and writes in a background task. Pass `async: false` to block until the write completes (e.g. in tests)."
   def put(backend, key, val, opts) do
     if opts[:async] == false do
@@ -56,14 +73,22 @@ defmodule Bonfire.Common.Cache.Backend do
     end
   end
 
-  defp do_put(Cachex, key, val, opts),
-    do:
+  defp do_put(Cachex, key, val, opts) do
+    store = opts[:cache_store] || @default_store
+
+    put =
       Cachex.put(
-        opts[:cache_store] || @default_store,
+        store,
         key,
         val,
         Keyword.drop(opts, @bonfire_opts)
       )
+
+    # an explicit `expire: nil` means no TTL, but Cachex then applies the store's default expiration, so drop it
+    if Keyword.has_key?(opts, :expire) and is_nil(opts[:expire]), do: Cachex.persist(store, key)
+
+    put
+  end
 
   defp do_put(SimpleDiskCache, key, val, opts), do: SimpleDiskCache.put(key, val, opts)
 

@@ -6,6 +6,32 @@ defmodule Bonfire.Common.CacheTest do
 
   doctest Bonfire.Common.Cache, import: true
 
+  describe "get_many/2" do
+    test "returns the hits as a map and leaves out the misses" do
+      n = System.unique_integer([:positive])
+      a = "get_many_a:#{n}"
+      b = "get_many_b:#{n}"
+      missing = "get_many_missing:#{n}"
+      Cache.put(a, %{x: 1}, async: false)
+      Cache.put(b, "two", async: false)
+
+      assert Cache.get_many([a, b, missing]) == %{a => %{x: 1}, b => "two"}
+    end
+
+    test "returns an empty map for no keys or only misses" do
+      assert Cache.get_many([]) == %{}
+      assert Cache.get_many(["get_many_none:#{System.unique_integer([:positive])}"]) == %{}
+    end
+
+    test "an entry put with `expire: nil` has no TTL" do
+      key = "get_many_forever:#{System.unique_integer([:positive])}"
+      Cache.put(key, 1, async: false, expire: nil)
+
+      assert {:ok, nil} = Cachex.ttl(:bonfire_cache, key)
+      assert Cache.get_many([key]) == %{key => 1}
+    end
+  end
+
   describe "maybe_apply_cached/3 standard `:cache` verb" do
     # a fn whose result changes on every invocation, so a cached read (same value) is
     # distinguishable from a recompute (new value). `async: false` forces synchronous cache
