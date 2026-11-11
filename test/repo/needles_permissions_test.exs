@@ -3,6 +3,8 @@ defmodule Bonfire.Common.NeedlesPermissionsTest do
   require Bonfire.Common.Config
 
   alias Bonfire.Common.{Needles, QueryModule, Repo}
+  alias Bonfire.Common.Repo.Preload
+  alias Bonfire.Poll.Question
   alias Bonfire.Data.Social.PostContent
   alias Bonfire.Me.{Accounts, Fake, Users}
 
@@ -81,6 +83,53 @@ defmodule Bonfire.Common.NeedlesPermissionsTest do
                  match?({:ok, _}, Needles.get(context.post, opts)),
                "the id and the loaded object answer differently for the #{label}"
       end
+    end
+  end
+
+  # a pointable (a virtual like `Post` resolves in memory, with no query and so no boundary check)
+  describe "Preload.maybe_preloads_per_schema/3 given a bare Pointer" do
+    setup %{owner: owner} do
+      # a "mentions"-boundary question with no @mention is visible to its author only
+      {:ok, author_only} =
+        Bonfire.Poll.Fake.fake_question(%{}, current_user: owner, boundary: "mentions")
+
+      {:ok, public} = Bonfire.Poll.Fake.fake_question(%{}, current_user: owner)
+
+      {:ok, author_only: author_only, public: public}
+    end
+
+    test "follows it as the viewer, so an object only they may see resolves", context do
+      pointer = Repo.get!(Needle.Pointer, context.author_only.id)
+
+      assert %Question{id: id} =
+               Preload.maybe_preloads_per_schema(pointer, Question, current_user: context.owner)
+
+      assert id == context.author_only.id
+
+      assert %Question{peered: peered} =
+               Preload.maybe_preloads_per_schema(pointer, {Question, [:peered]},
+                 current_user: context.owner
+               ),
+             "the {schema, preloads} form follows as the viewer too"
+
+      refute match?(%Ecto.Association.NotLoaded{}, peered)
+
+      assert %Needle.Pointer{} =
+               Preload.maybe_preloads_per_schema(pointer, Question, current_user: context.other),
+             "another user still gets the unresolved pointer"
+    end
+
+    test "still resolves a public object for a guest", context do
+      pointer = Repo.get!(Needle.Pointer, context.public.id)
+
+      assert Bonfire.Common.Types.object_type_schema(pointer) == Question,
+             "control: the pointer's schema matches, so the follow clause is reached"
+
+      assert %Question{} = Needles.follow!(pointer),
+             "control: a guest may follow a public question directly"
+
+      assert %Question{} = Preload.maybe_preloads_per_schema(pointer, Question)
+      assert %Question{} = Preload.maybe_preloads_per_schema(pointer, {Question, [:peered]})
     end
   end
 

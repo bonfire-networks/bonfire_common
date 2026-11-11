@@ -18,6 +18,9 @@ defmodule Bonfire.Common.Repo.Preload do
   # alias Needle.Tables
   alias Bonfire.Common.Needles
 
+  # The opts a Pointer follow gets from the caller: who is looking and how to check boundaries. Other preload opts such as `filters_override` (which skips the boundary query) or `force` must not leak into it.
+  @follow_opts [:current_user, :current_account, :skip_boundary_check, :verbs]
+
   @doc """
   Preloads all associations for a given Ecto struct.
 
@@ -539,7 +542,7 @@ defmodule Bonfire.Common.Repo.Preload do
       debug(preload_schema, "resolving Pointer before applying preloads")
 
       object
-      |> Needles.follow!()
+      |> Needles.follow!(Keyword.take(opts, @follow_opts))
       |> debug("followed")
       |> try_repo_preload(preloads, opts)
       |> debug("preloads done")
@@ -594,7 +597,7 @@ defmodule Bonfire.Common.Repo.Preload do
         object
       else
         object
-        |> Needles.follow!()
+        |> Needles.follow!(Keyword.take(opts, @follow_opts))
         |> debug("followed")
       end
     else
