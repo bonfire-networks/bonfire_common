@@ -4,7 +4,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
 
   Open issues are listed apart from the rest, so they can be checked before they go in a release changelog: a commit in the window that references an open issue goes under "Work in progress", and an open issue that no commit references goes under "New issues".
 
-  The GitHub GraphQL API is mocked: the closed-issue search returns fixed issues, the open-issue search returns #10 and #20, the commit history of `bonfire-app` returns one commit that references #10, and every other query returns an empty result.
+  The GitHub GraphQL API is mocked: the closed-issue search returns fixed issues, the open-issue search returns #10 and #20, the commit histories of `bonfire-app` and `bonfire_common` each return one commit that references #10, and every other query returns an empty result.
   """
   # not async: sets OS environment variables and application config
   use ExUnit.Case, async: false
@@ -51,14 +51,21 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
         else: Application.delete_env(:versioce, :changelog)
     end)
 
+    mock_github(& &1)
+
+    :ok
+  end
+
+  # `order` is applied to every list GitHub returns, to serve the same data in another order
+  defp mock_github(order) do
     Tesla.Mock.mock(fn
       %{method: :post, url: "https://api.github.com/graphql", body: body} ->
         body = to_string(body)
 
         cond do
-          String.contains?(body, "is:issue state:closed") -> json(issue_search_page())
-          String.contains?(body, "is:issue state:open") -> json(open_issue_search_page())
-          String.contains?(body, "defaultBranchRef") -> json(commit_history(body))
+          String.contains?(body, "is:issue state:closed") -> json(issue_search_page(order))
+          String.contains?(body, "is:issue state:open") -> json(open_issue_search_page(order))
+          String.contains?(body, "defaultBranchRef") -> json(commit_history(body, order))
           String.contains?(body, "issue0: repository") -> json(open_issue_batch())
           true -> json(@empty_search)
         end
@@ -66,8 +73,6 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
       %{method: :get} ->
         json([])
     end)
-
-    :ok
   end
 
   test "an issue closed without a commit is listed, unless closed as not planned or duplicate" do
@@ -100,6 +105,28 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
     refute work_in_progress <> new_issues =~ "#1]"
   end
 
+  test "the changelog lists the oldest first, whatever order GitHub returns things in, so a new run only adds lines at the bottom" do
+    assert {:ok, [version]} = DataGrabber.get_versions()
+    changelog = Formatter.version_to_str(version)
+
+    mock_github(&Enum.reverse/1)
+    assert {:ok, [reversed_version]} = DataGrabber.get_versions()
+    assert Formatter.version_to_str(reversed_version) == changelog
+
+    # #5 was closed before #1
+    assert position(changelog, "Issue 5 [#5]") < position(changelog, "Issue 1 [#1]")
+
+    # the two "Add search filters #10" commits are one line, the older one first
+    assert section(changelog, "Work in progress") =~ ~r/`bbbbbbb`.*`aaaaaaa`/
+  end
+
+  defp position(changelog, text) do
+    case :binary.match(changelog, text) do
+      {position, _} -> position
+      :nomatch -> flunk("#{text} not in:\n#{changelog}")
+    end
+  end
+
   # the bullet lines under a `### heading`, up to the next heading
   defp section(changelog, heading) do
     case String.split(changelog, "### #{heading}\n", parts: 2) do
@@ -124,26 +151,37 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
       body: Jason.encode!(data)
     }
 
-  defp issue_search_page do
-    issues = [
-      issue(1, "COMPLETED", []),
-      issue(2, "NOT_PLANNED", []),
-      issue(3, "DUPLICATE", []),
-      issue(4, "COMPLETED", ["wontfix"])
-    ]
-
-    put_in(@empty_search, ["data", "search", "edges"], Enum.map(issues, &%{"node" => &1}))
-    |> put_in(["data", "search", "issueCount"], length(issues))
+  # #5 is in another repo, so commits are fetched from two repos, in the order their issues come
+  defp issue_search_page(order) do
+    search_page(
+      [
+        issue(1, "COMPLETED", []),
+        issue(2, "NOT_PLANNED", []),
+        issue(3, "DUPLICATE", []),
+        issue(4, "COMPLETED", ["wontfix"]),
+        issue(5, "COMPLETED", [])
+        |> Map.merge(%{
+          "closedAt" => "2026-10-05T12:00:00Z",
+          "repository" => %{"name" => "bonfire_common"}
+        })
+      ],
+      order
+    )
   end
 
   # #10 has a commit in the window, #20 has none
-  defp open_issue_search_page do
-    issues = [
-      issue(10, nil, []) |> Map.merge(%{"closedAt" => nil, "title" => "Search filters"}),
-      issue(20, nil, []) |> Map.put("closedAt", nil)
-    ]
+  defp open_issue_search_page(order) do
+    search_page(
+      [
+        issue(10, nil, []) |> Map.merge(%{"closedAt" => nil, "title" => "Search filters"}),
+        issue(20, nil, []) |> Map.put("closedAt", nil)
+      ],
+      order
+    )
+  end
 
-    put_in(@empty_search, ["data", "search", "edges"], Enum.map(issues, &%{"node" => &1}))
+  defp search_page(issues, order) do
+    put_in(@empty_search, ["data", "search", "edges"], order.(Enum.map(issues, &%{"node" => &1})))
     |> put_in(["data", "search", "issueCount"], length(issues))
   end
 
@@ -166,19 +204,20 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
     }
   end
 
-  # only bonfire-app has a commit, so the commit is not duplicated across repos
-  defp commit_history(body) do
+  # each repo has one commit for #10, the one in bonfire_common older
+  defp commit_history(body, order) do
     nodes =
-      if String.contains?(body, ~s(name: \\"bonfire-app\\")),
-        do: [
-          %{
-            "oid" => "abcdef1234567890",
-            "message" => "Add search filters #10",
-            "url" => "https://github.com/bonfire-networks/bonfire-app/commit/abcdef1234567890",
-            "author" => %{"user" => %{"login" => "someone"}}
-          }
-        ],
-        else: []
+      cond do
+        String.contains?(body, ~s(name: \\"bonfire-app\\")) ->
+          [commit("bonfire-app", "aaaaaaa1234567890", "2026-10-20T12:00:00Z")]
+
+        String.contains?(body, ~s(name: \\"bonfire_common\\")) ->
+          [commit("bonfire_common", "bbbbbbb1234567890", "2026-10-06T12:00:00Z")]
+
+        true ->
+          []
+      end
+      |> order.()
 
     %{
       "data" => %{
@@ -193,6 +232,16 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabberTest do
           }
         }
       }
+    }
+  end
+
+  defp commit(repo, oid, date) do
+    %{
+      "oid" => oid,
+      "committedDate" => date,
+      "message" => "Add search filters #10",
+      "url" => "https://github.com/bonfire-networks/#{repo}/commit/#{oid}",
+      "author" => %{"user" => %{"login" => "someone"}}
     }
   end
 

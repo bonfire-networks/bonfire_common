@@ -136,7 +136,49 @@ defmodule Bonfire.Common.Repo.Preload do
   defp try_repo_preload(%Ecto.Association.NotLoaded{}, _, _), do: nil
   defp try_repo_preload(%Ecto.Changeset{} = object, _, _), do: object
 
+  # An association field that already holds a plain map (as ValueFlows puts its agent maps in `creator`, or an activity's `subject`) counts as loaded and is left as it is: Ecto's preloader accepts only a struct there and raises on a map. A list holding one is preloaded one object at a time, so each keeps its own map, which costs one preload per object for that rare list instead of one batch.
   defp try_repo_preload(objects, preloads, opts)
+       when is_struct(objects) or is_list(objects) do
+    case preloads_around_plain_maps(objects, List.wrap(preloads)) do
+      :unchanged -> repo_preload(objects, preloads, opts)
+      {:skip, kept} -> repo_preload(objects, kept, opts)
+      :one_by_one -> Enum.map(objects, &try_repo_preload(&1, preloads, opts))
+    end
+  end
+
+  defp try_repo_preload(obj, preloads, opts), do: repo_preload(obj, preloads, opts)
+
+  defp preloads_around_plain_maps(%_{} = object, entries) do
+    case Enum.reject(entries, &holds_plain_map?(object, &1)) do
+      ^entries -> :unchanged
+      kept -> {:skip, kept}
+    end
+  end
+
+  defp preloads_around_plain_maps(objects, entries) when is_list(objects) do
+    if Enum.any?(objects, fn object ->
+         is_struct(object) and Enum.any?(entries, &holds_plain_map?(object, &1))
+       end),
+       do: :one_by_one,
+       else: :unchanged
+  end
+
+  defp preloads_around_plain_maps(_objects, _entries), do: :unchanged
+
+  defp holds_plain_map?(object, {assoc, _nested}) when is_atom(assoc),
+    do: holds_plain_map?(object, assoc)
+
+  defp holds_plain_map?(object, assoc) when is_atom(assoc) do
+    case Map.get(object, assoc) do
+      %_{} -> false
+      %{} -> true
+      _ -> false
+    end
+  end
+
+  defp holds_plain_map?(_object, _entry), do: false
+
+  defp repo_preload(objects, preloads, opts)
        when is_struct(objects) or is_list(objects) do
     debug(
       # preloads,
@@ -198,7 +240,7 @@ defmodule Bonfire.Common.Repo.Preload do
     end
   end
 
-  defp try_repo_preload(obj, preloads, _) do
+  defp repo_preload(obj, preloads, _) do
     err(preloads, "unsupported preloads, return original object(s)")
     obj
   end

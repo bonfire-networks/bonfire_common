@@ -321,8 +321,17 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
     debug(length(unreferenced_commits), "Unreferenced commits fetched")
     debug(length(open_issues_without_commit), "Open issues without commit fetched")
 
-    issues_with_pr_contributors ++
-      unreferenced_prs ++ unreferenced_commits ++ open_issues_without_commit
+    (issues_with_pr_contributors ++
+       unreferenced_prs ++ unreferenced_commits ++ open_issues_without_commit)
+    |> sort_oldest_first()
+  end
+
+  # GitHub returns search results and repos in an order that changes between runs, so sort by date, the URL breaking ties. A later run then only adds lines at the bottom of each section, and the generated file changes only where something happened.
+  defp sort_oldest_first(items) do
+    Enum.sort_by(items, fn item ->
+      {item_closed_date(item) || e(item, "committedDate", nil) || e(item, "createdAt", nil) ||
+         "", e(item, "url", "")}
+    end)
   end
 
   @github_graphql_url "https://api.github.com/graphql"
@@ -465,7 +474,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
   @issue_fields """
   ... on Issue {
     number
-    # createdAt
+    createdAt
     closedAt
     stateReason
     title
@@ -897,6 +906,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
                          }
                          nodes {
                            oid
+                           committedDate
                            message
                            url
                            author {
@@ -982,7 +992,10 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
           single_commit
 
         multiple_commits ->
-          # Multiple commits with same title - merge them
+          # Multiple commits with same title - merge them, oldest first so that the line only grows at its end
+          multiple_commits =
+            Enum.sort_by(multiple_commits, &{e(&1, "committedDate", ""), e(&1, "oid", "")})
+
           first_commit = List.first(multiple_commits)
 
           # Collect all commit SHAs and URLs
@@ -1897,7 +1910,7 @@ defmodule Bonfire.Common.Changelog.Github.DataGrabber do
             "Item went to OTHER section - no anchor match"
           )
 
-          Map.update(acc, :other, [text], &([text] ++ &1))
+          Map.update(acc, :other, [text], &(&1 ++ [text]))
 
         section ->
           debug(
