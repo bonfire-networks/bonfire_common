@@ -44,7 +44,9 @@ defmodule Bonfire.Common.MixProject do
             # for extension install + mix tasks that do patching 
             {:igniter, "~> 0.7", optional: true},
             # for encryption
-            {:cloak, "~> 1.1.4", optional: true}
+            {:cloak, "~> 1.1.4", optional: true},
+            # QR codes (`Bonfire.Common.QRCode`)
+            {:eqrcode, "~> 0.2.1", optional: true}
           ])
       ]
   end

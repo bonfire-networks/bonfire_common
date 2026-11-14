@@ -902,6 +902,19 @@ defmodule Bonfire.Common.Types do
            ],
       do: Bonfire.Articles.Article
 
+  # events are native when `bonfire_gatherings` is on; otherwise the name maps to no table, so filters match it against the json of events stored as APActivities
+  def object_type(type, _opts)
+      when type in [
+             "Event",
+             "event",
+             "events",
+             :Event,
+             :event,
+             :events
+           ] do
+    if module_enabled?(Bonfire.Gatherings.Event), do: Bonfire.Gatherings.Event
+  end
+
   def object_type(type, opts)
       when type in [
              Bonfire.Classify.Category,

@@ -704,4 +704,133 @@ defmodule Bonfire.Common.DatesTimes do
       _ -> nil
     end
   end
+
+  @doc """
+  A moment as the clock reads where it happens: `%{iso: …, local: …, offset: …}`, where `local` is the wall time (kept in a UTC-labelled `DateTime`, so formatting shows it as is) and `offset` the seconds from UTC, as `format_range/2` and `chip_parts/1` take. With no known IANA `timezone` (or no time zone database), the wall time is UTC.
+
+      iex> wall_time(~U[2030-06-01 17:00:00Z], "Europe/Paris").local
+      ~U[2030-06-01 19:00:00Z]
+
+      iex> wall_time(~U[2030-06-01 17:00:00Z], nil).offset
+      0
+  """
+  def wall_time(datetime, timezone \\ nil)
+
+  def wall_time(%DateTime{} = utc, timezone) do
+    offset =
+      with zone when is_binary(zone) <- timezone,
+           true <- Code.ensure_loaded?(Tzdata.TimeZoneDatabase),
+           {:ok, zoned} <- DateTime.shift_zone(utc, zone, Tzdata.TimeZoneDatabase) do
+        zoned.utc_offset + zoned.std_offset
+      else
+        _ -> 0
+      end
+
+    %{iso: DateTime.to_iso8601(utc), local: DateTime.add(utc, offset, :second), offset: offset}
+  end
+
+  def wall_time(_, _), do: nil
+
+  @doc """
+  A concise, human-readable date/time range, from `wall_time/2` maps (moved from the event card, `Bonfire.UI.Social.Activity.EventActivityStreamsLive`).
+
+  Collapses redundancy: the date appears once when start and end share a day, and the offset is shown once at the end. Examples:
+
+      "Mon, Jun 8, 2026 · 1:00 PM – 3:00 PM (GMT+2)"   # same day
+      "Mon, Jun 8, 2026 · 1:00 PM → Tue, Jun 9, 2026 · 9:00 AM (GMT+2)"  # multi-day
+      "Mon, Jun 8, 2026 · 1:00 PM (GMT+2)"             # no end time
+  """
+  def format_range(start_t, end_t \\ nil)
+
+  def format_range(%{local: s} = start_t, nil) do
+    "#{date_at(s)} (#{gmt_label(start_t.offset)})"
+  end
+
+  def format_range(%{local: s} = start_t, %{local: e}) do
+    body =
+      if DateTime.to_date(s) == DateTime.to_date(e) do
+        "#{date_at(s)} – #{time_only(e)}"
+      else
+        "#{date_at(s)} → #{date_at(e)}"
+      end
+
+    "#{body} (#{gmt_label(start_t.offset)})"
+  end
+
+  def format_range(_, _), do: nil
+
+  defp date_at(dt), do: "#{format(dt, format: "EEE, MMM d, y")} · #{time_only(dt)}"
+
+  defp time_only(dt), do: format(dt, format: "h:mm a")
+
+  defp gmt_label(0), do: "GMT"
+
+  defp gmt_label(offset) do
+    sign = if offset < 0, do: "-", else: "+"
+    abs_offset = abs(offset)
+    hours = div(abs_offset, 3600)
+    minutes = rem(div(abs_offset, 60), 60)
+
+    if minutes == 0 do
+      "GMT#{sign}#{hours}"
+    else
+      "GMT#{sign}#{hours}:#{minutes |> Integer.to_string() |> String.pad_leading(2, "0")}"
+    end
+  end
+
+  @doc """
+  The day a `wall_time/2` map falls on, as a heading for the things on that day (locale-aware): `"Friday, September 20, 2030"`.
+  """
+  def format_day(%{local: local}), do: format(local, format: "EEEE, MMMM d, y")
+  def format_day(_), do: nil
+
+  @doc """
+  Whether a span of `wall_time/2` maps is a whole day (or days): it starts at midnight, and has no end or ends at a midnight.
+  """
+  def all_day?(%{local: s}, nil), do: midnight?(s)
+  def all_day?(%{local: s}, %{local: e}), do: midnight?(s) and midnight?(e)
+  def all_day?(_, _), do: false
+
+  defp midnight?(dt), do: {dt.hour, dt.minute, dt.second} == {0, 0, 0}
+
+  @doc """
+  The times of a span of `wall_time/2` maps, without its day (for under a heading that gives it, see `format_day/1`): `"8:00 AM – 9:00 AM (GMT)"`, an end on a later day with its date (`"7:00 PM → Sat, Sep 21 · 2:00 AM (GMT)"`), or nil for a whole day (`all_day?/2`), which the caller says as it likes.
+  """
+  # `with_offset: false` leaves out the offset, for a caller that shows it apart (`offset_label/1`)
+  def format_time_range(start_t, end_t \\ nil, opts \\ [])
+
+  def format_time_range(%{local: s} = start_t, end_t, opts) do
+    offset = if opts[:with_offset] == false, do: "", else: " (#{gmt_label(start_t.offset)})"
+
+    cond do
+      all_day?(start_t, end_t) ->
+        nil
+
+      is_nil(end_t) ->
+        "#{time_only(s)}#{offset}"
+
+      DateTime.to_date(s) == DateTime.to_date(end_t.local) ->
+        "#{time_only(s)} – #{time_only(end_t.local)}#{offset}"
+
+      true ->
+        "#{time_only(s)} → #{format(end_t.local, format: "EEE, MMM d")} · #{time_only(end_t.local)}#{offset}"
+    end
+  end
+
+  def format_time_range(_, _, _), do: nil
+
+  @doc "The offset from UTC of a `wall_time/2` map, as `format_range/2` shows it: `\"GMT+2\"`."
+  def offset_label(%{offset: offset}), do: gmt_label(offset)
+  def offset_label(_), do: nil
+
+  @doc "Short calendar-chip parts of a `wall_time/2` map (locale-aware): `%{weekday: \"Mon\", day: \"8\", month: \"Jun\"}`."
+  def chip_parts(%{local: local}) do
+    %{
+      weekday: format(local, format: "EEE"),
+      day: format(local, format: "d"),
+      month: format(local, format: "MMM")
+    }
+  end
+
+  def chip_parts(_), do: nil
 end
