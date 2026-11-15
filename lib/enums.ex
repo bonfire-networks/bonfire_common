@@ -1398,10 +1398,11 @@ defmodule Bonfire.Common.Enums do
     )
   end
 
+  @doc false
   def naughty_to_atoms!(data, _opts \\ []) do
     debug(
       data,
-      "WARNING: only do this with enums who's keys are defined in the code (not user generated or coming from an HTTP request or socket, etc) !"
+      "WARNING: only do this with enums whose keys are defined in the code (not user generated or coming from an HTTP request or socket, etc) !"
     )
 
     input_to_atoms(data, false, false, false, true, false, false)
@@ -1437,7 +1438,8 @@ defmodule Bonfire.Common.Enums do
     :maps.filter(
       fn k, _v -> is_atom(k) and not is_nil(k) end,
       data
-      |> Map.drop(["_csrf_token", "_persistent_id"])
+      # `__struct__` would let client input forge a struct
+      |> Map.drop(["_csrf_token", "_persistent_id", "__struct__"])
       |> Map.new(fn {k, v} ->
         {
           Types.maybe_to_atom_or_module(k, force, to_snake),
@@ -1478,7 +1480,7 @@ defmodule Bonfire.Common.Enums do
          values_to_integers
        ) do
     data
-    |> Map.drop(["_csrf_token"])
+    |> Map.drop(["_csrf_token", "__struct__"])
     |> Map.new(fn {k, v} ->
       {
         Types.maybe_to_atom_or_module(k, force, to_snake) || k,
@@ -1629,19 +1631,32 @@ defmodule Bonfire.Common.Enums do
         true = _values_to_integers
       )
       when is_binary(v) do
-    Types.maybe_to_integer(v, nil) || Types.maybe_to_module(v, force) || Types.maybe_to_atom(v) ||
-      v
+    Types.maybe_to_integer(v, nil) || value_to_atom(v, force)
   end
 
   def input_to_value(v, _, true = _including_values, _, force, _to_snake, _values_to_integers)
       when is_binary(v) do
-    Types.maybe_to_module(v, force) || Types.maybe_to_atom(v) || v
+    value_to_atom(v, force)
   end
 
   def input_to_value(v, _, _, _, _, _, true = _values_to_integers) when is_binary(v),
     do: Types.maybe_to_integer(v, nil) || v
 
   def input_to_value(v, _, _, _, _, _, _), do: v
+
+  # a value only becomes a module when `force` is true (code-defined input), otherwise a string naming a module stays a string, so client input cannot forge a module reference
+  defp value_to_atom(v, force) do
+    mod = if force == true, do: Types.maybe_to_module(v, force)
+
+    mod ||
+      case Types.maybe_to_atom(v) do
+        atom when is_atom(atom) and not is_nil(atom) ->
+          if String.starts_with?(Atom.to_string(atom), "Elixir."), do: v, else: atom
+
+        other ->
+          other
+      end || v
+  end
 
   @doc """
   Takes a data structure and recursively converts any known keys to atoms and then tries to

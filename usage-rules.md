@@ -150,6 +150,10 @@ config = Config.for_module(Bonfire.Common)
 ext_config = Config.for_extension(:bonfire_social)
 ```
 
+### Settings Written From Client Input
+
+`Settings.set/2` and `Settings.put/3` store values from the client as plain data: string values never become modules, `"__struct__"` keys are dropped, and `"__data_type__"` is reserved by JsonSerde (which marks atoms, tuples and structs in stored settings), so a client-sent key with that name is dropped. The `scope` from the client is only a selector (`user`, `account`, `instance` or an object id), and an object id needs permission to `:configure` that object.
+
 ## URL and Path Generation
 
 Use URIs module for consistent URL handling:

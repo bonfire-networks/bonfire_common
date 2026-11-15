@@ -606,14 +606,16 @@ defmodule Bonfire.Common.Settings do
 
   ## Options
     * `:otp_app` - Specifies the OTP application for which to set settings. If not specified, it decides where to put it using the same logic as `get/3`.
-    * `:scope` - Defines the scope for settings (e.g., `:user`, `:account`, or `:instance`).
+    * `:scope` - Defines the scope for settings (e.g., `:user`, `:account`, or `:instance`). An object (such as a group) or its id needs a `current_user` that can `:configure` it, or `skip_boundary_check: true`.
+
+  Note: `"__data_type__"` is reserved by `JsonSerde`, so a map key with that name in the value is dropped before storing.
   """
   def put(keys, value, opts \\ [])
 
   def put(keys, value, opts) when is_list(keys) do
     # keys = Config.keys_tree(keys) # Note: doing this in set/2 instead
     # |> debug("Putting settings for")
-    Enums.map_put_in(keys, value)
+    Enums.map_put_in(keys, drop_data_type_markers(value))
     |> debug("map_put_in")
     |> input_to_atoms(
       discard_unknown_keys: true,
@@ -637,6 +639,7 @@ defmodule Bonfire.Common.Settings do
     keys
     |> debug("Putting settings for")
     |> Enums.map_put_in(value)
+    |> drop_form_keys(true)
     |> debug("send to hooks")
     # |> maybe_to_keyword_list(true)
     # |> debug("maybe_to_keyword_list")
@@ -644,6 +647,25 @@ defmodule Bonfire.Common.Settings do
   end
 
   def put_raw(key, value, opts), do: put_raw([key], value, opts)
+
+  # keys that Phoenix forms add and that are never settings (`put/3` and `set/2` drop them through `input_to_atoms`): `_csrf_token` at every level, `_persistent_id` at the top
+  defp drop_form_keys(%{} = map, _top?) when is_struct(map), do: map
+
+  defp drop_form_keys(%{} = map, top?) do
+    drop =
+      if top?,
+        do: ["_csrf_token", "_persistent_id", :_csrf_token, :_persistent_id],
+        else: ["_csrf_token", :_csrf_token]
+
+    map
+    |> Map.drop(drop)
+    |> Map.new(fn {key, value} -> {key, drop_form_keys(value, false)} end)
+  end
+
+  defp drop_form_keys(list, _top?) when is_list(list),
+    do: Enum.map(list, &drop_form_keys(&1, false))
+
+  defp drop_form_keys(other, _top?), do: other
 
   def delete(key_tree, opts \\ [])
 
@@ -671,6 +693,8 @@ defmodule Bonfire.Common.Settings do
 
   This function accepts a map or keyword list of settings to be updated. It determines the appropriate scope and updates the settings accordingly.
 
+  Note: `"__data_type__"` is reserved by `JsonSerde` to mark atoms, tuples and structs in stored settings. A map key with that name in the given settings (as `put/3` and `set/2` take from the client) is dropped before storing.
+
   ## Examples
 
       > {:ok, %Bonfire.Data.Identity.Settings{}} = set(%{some_key: "value", another_key: "another_value"}, skip_boundary_check: true, scope: :instance)
@@ -686,6 +710,7 @@ defmodule Bonfire.Common.Settings do
 
   def set(attrs, opts) when is_map(attrs) do
     attrs
+    |> drop_data_type_markers()
     |> input_to_atoms(
       discard_unknown_keys: true,
       values: true,
@@ -702,6 +727,18 @@ defmodule Bonfire.Common.Settings do
     |> debug("send to hooks")
     |> set_with_hooks(to_options(opts))
   end
+
+  # `"__data_type__"` is JsonSerde's own marker, so a client-sent key with that name is dropped
+  defp drop_data_type_markers(%{} = map) when not is_struct(map) do
+    map
+    |> Map.drop(["__data_type__"])
+    |> Map.new(fn {k, v} -> {k, drop_data_type_markers(v)} end)
+  end
+
+  defp drop_data_type_markers(list) when is_list(list),
+    do: Enum.map(list, &drop_data_type_markers/1)
+
+  defp drop_data_type_markers(other), do: other
 
   @doc """
   Resets settings for the instance scope.
@@ -752,12 +789,14 @@ defmodule Bonfire.Common.Settings do
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
-      :everyone_may_see_read
+      :everyone_may_see_read,
+      skip_boundary_check: true
     )
 
     Bonfire.Boundaries.Controlleds.add_acls(
       current_user,
-      :everyone_may_read
+      :everyone_may_read,
+      skip_boundary_check: true
     )
 
     result = do_set(attrs, opts)
@@ -773,12 +812,14 @@ defmodule Bonfire.Common.Settings do
 
     Bonfire.Boundaries.Controlleds.remove_acls(
       current_user,
-      :everyone_may_read
+      :everyone_may_read,
+      skip_boundary_check: true
     )
 
     Bonfire.Boundaries.Controlleds.add_acls(
       current_user,
-      :everyone_may_see_read
+      :everyone_may_see_read,
+      skip_boundary_check: true
     )
 
     result = do_set(attrs, opts)
@@ -937,24 +978,59 @@ defmodule Bonfire.Common.Settings do
         {:current_user, current_user}
 
       %schema{} = scope when schema == Bonfire.Data.Identity.Account ->
-        {:current_account, scope}
+        if id(scope) == id(current_account),
+          do: {:current_account, scope},
+          else: authorize_object_scope(scope, {:current_account, scope}, opts)
 
       %schema{} = scope when schema == Bonfire.Data.Identity.User ->
-        {:current_user, scope}
+        if id(scope) == id(current_user),
+          do: {:current_user, scope},
+          else: authorize_object_scope(scope, {:current_user, scope}, opts)
 
+      %_{} = object ->
+        authorize_object_scope(object, object, opts)
+
+      # a plain map can only come from the client, never a valid scope
       object when is_map(object) ->
-        object
+        fail({:unauthorized, l("to change these settings.")})
+
+      id when is_binary(id) ->
+        cond do
+          not Types.is_uid?(id) -> default_scope(current_user, current_account)
+          id == id(current_user) -> {:current_user, current_user}
+          id == id(current_account) -> {:current_account, current_account}
+          true -> authorize_object_scope(id, id, opts)
+        end
 
       _ ->
-        if current_user do
-          {:current_user, current_user}
-        else
-          if current_account do
-            {:current_account, current_account}
-          end
-        end
+        default_scope(current_user, current_account)
     end
     |> debug("computed scope to set")
+  end
+
+  defp default_scope(current_user, current_account) do
+    if current_user do
+      {:current_user, current_user}
+    else
+      if current_account do
+        {:current_account, current_account}
+      end
+    end
+  end
+
+  # An object (or its id) other than the current user or account as the scope needs a current user with permission to configure it, or an explicit `skip_boundary_check: true` from server-side code. Having no user is not enough, since a guest has none.
+  defp authorize_object_scope(object, scope, opts) do
+    current_user = current_user(opts)
+
+    if e(opts, :skip_boundary_check, nil) ||
+         (current_user &&
+            maybe_apply(Bonfire.Boundaries, :can?, [current_user, :configure, object],
+              fallback_return: false
+            ) == true) do
+      scope
+    else
+      fail({:unauthorized, l("to change these settings.")})
+    end
   end
 
   defp fail(reason) do

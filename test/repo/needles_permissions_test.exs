@@ -42,7 +42,7 @@ defmodule Bonfire.Common.NeedlesPermissionsTest do
   end
 
   test "admins option allows an instance administrator to load another user's object", context do
-    {:ok, admin} = Users.make_admin(context.other)
+    {:ok, admin} = Users.make_admin(context.other, skip_boundary_check: true)
     assert Accounts.is_admin?(admin)
 
     assert %PostContent{id: id} = lookup(context.post, admin, skip_boundary_check: :admins)
