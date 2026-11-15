@@ -784,6 +784,22 @@ defmodule Bonfire.Common.DatesTimes do
   def format_day(%{local: local}), do: format(local, format: "EEEE, MMMM d, y")
   def format_day(_), do: nil
 
+  @doc "Today, Tomorrow or Yesterday for a `wall_time/2` map, in its offset; else nil."
+  def relative_day(wall_time, now \\ DateTime.utc_now())
+
+  def relative_day(%{local: local, offset: offset}, %DateTime{} = now) do
+    today = now |> DateTime.add(offset || 0, :second) |> DateTime.to_date()
+
+    case Date.diff(DateTime.to_date(local), today) do
+      0 -> l("Today")
+      1 -> l("Tomorrow")
+      -1 -> l("Yesterday")
+      _ -> nil
+    end
+  end
+
+  def relative_day(_, _), do: nil
+
   @doc """
   Whether a span of `wall_time/2` maps is a whole day (or days): it starts at midnight, and has no end or ends at a midnight.
   """
