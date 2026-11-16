@@ -50,6 +50,10 @@ defmodule Bonfire.Common.HTTP.Connection do
     {Tesla.Adapter.Hackney, final_options}
   end
 
+  # Finch is used through an adapter that can stop reading at the `:max_body_bytes` option, which is otherwise the same adapter
+  def adapter_options({Tesla.Adapter.Finch, base_opts}, opts),
+    do: {Bonfire.Common.HTTP.CappedFinch, Keyword.merge(base_opts, opts)}
+
   def adapter_options({adapter, base_opts}, opts), do: {adapter, Keyword.merge(base_opts, opts)}
   # a bare adapter module that takes no options (e.g. `Tesla.Mock` in tests) must be passed
   # through as-is: returning `opts` here would drop the adapter, leaving Tesla with no adapter

@@ -40,6 +40,7 @@ defmodule Bonfire.Common.HTTP do
         end
 
       {max_body_bytes, processed_options} = Keyword.pop(processed_options, :max_body_bytes)
+      max_body_bytes = max_body_bytes || max_body_bytes()
 
       final_options = process_sni_options(processed_options, url)
 
@@ -50,6 +51,16 @@ defmodule Bonfire.Common.HTTP do
 
       params = Keyword.get(adapter_options, :params, [])
 
+      # the adapter stops reading the response at the limit
+      client =
+        adapter_options
+        |> Keyword.update(
+          :adapter,
+          [max_body_bytes: max_body_bytes],
+          fn adapter_opts -> Keyword.put(adapter_opts, :max_body_bytes, max_body_bytes) end
+        )
+        |> Connection.new()
+
       %{}
       |> RequestBuilder.method(method)
       |> RequestBuilder.headers(headers)
@@ -58,7 +69,7 @@ defmodule Bonfire.Common.HTTP do
       |> RequestBuilder.add_param(:body, :body, body)
       |> RequestBuilder.add_param(:query, :query, params)
       |> Enum.into([])
-      |> (&Tesla.request(Connection.new(adapter_options), &1)).()
+      |> (&Tesla.request(client, &1)).()
       |> cap_body(max_body_bytes)
     rescue
       e in Tesla.Mock.Error ->
@@ -72,10 +83,12 @@ defmodule Bonfire.Common.HTTP do
     end
   end
 
-  # An answer over the limit is an error, as the URL may come from a user or a remote server and answer with whatever it likes. The limit is the `:max_body_bytes` option of the request, else `config :bonfire_common, :http, max_body_bytes: …`.
-  defp cap_body({:ok, %{body: body}} = result, max_body_bytes) when is_binary(body) do
-    max = max_body_bytes || Bonfire.Common.Config.get([:http, :max_body_bytes], 10 * 1024 * 1024)
+  @doc "The size over which a response body is refused: the `:max_body_bytes` option of a request, else `config :bonfire_common, :http, max_body_bytes: …` (10 MB by default)."
+  def max_body_bytes,
+    do: Bonfire.Common.Config.get([:http, :max_body_bytes], 10 * 1024 * 1024)
 
+  # An answer over the limit is an error, as the URL may come from a user or a remote server and answer with whatever it likes. The adapter stops reading at the limit (`Bonfire.Common.HTTP.CappedFinch`); this covers the adapters that cannot, and answers that arrived whole.
+  defp cap_body({:ok, %{body: body}} = result, max) when is_binary(body) do
     if byte_size(body) > max do
       error(max, "The response body is over the size limit")
       {:error, :body_too_large}

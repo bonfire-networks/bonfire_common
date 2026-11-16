@@ -974,7 +974,7 @@ defmodule Bonfire.Common.Text do
   end
 
   defp build_sanitizer_classes do
-    own = ["hashtag", "mention", "u-url", "h-card", "invisible"]
+    own = ["hashtag", "mention", "u-url", "h-card", "invisible", "ellipsis"]
 
     {code_langs, code_tokens} =
       if Extend.module_enabled?(Lumis),
