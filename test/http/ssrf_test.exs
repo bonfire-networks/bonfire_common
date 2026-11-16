@@ -36,6 +36,46 @@ defmodule Bonfire.Common.HTTP.SSRFTest do
     assert_received {:hit, "http://10.0.0.1:7700/indexes"}
   end
 
+  describe "a name that resolves to both a public and a private address" do
+    # the resolver is called once per family: `:inet` answers A records, `:inet6` AAAA records
+    defp resolve_with(a, aaaa) do
+      previous = Application.get_env(:bonfire_common, :ssrf)
+
+      Application.put_env(:bonfire_common, :ssrf,
+        resolver: fn
+          _name, :inet, _timeout -> a
+          _name, :inet6, _timeout -> aaaa
+        end
+      )
+
+      on_exit(fn -> Application.put_env(:bonfire_common, :ssrf, previous) end)
+    end
+
+    test "is requested when every address is public (control)" do
+      resolve_with(
+        {:ok, [{93, 184, 216, 34}]},
+        {:ok, [{0x2606, 0x2800, 0x220, 1, 0x248, 0x1893, 0x25C8, 0x1946}]}
+      )
+
+      assert {:ok, %{status: 200}} = HTTP.get("http://dual.example.com/page")
+      assert_received {:hit, "http://dual.example.com/page"}
+    end
+
+    test "is never requested when its AAAA record is a private address" do
+      resolve_with({:ok, [{93, 184, 216, 34}]}, {:ok, [{0, 0, 0, 0, 0, 0, 0, 1}]})
+
+      refute match?({:ok, _}, HTTP.get("http://dual.example.com/page"))
+      refute_received {:hit, _}
+    end
+
+    test "is never requested when its AAAA record is an IPv4-mapped private address" do
+      resolve_with({:ok, [{93, 184, 216, 34}]}, {:ok, [{0, 0, 0, 0, 0, 0xFFFF, 0x0A00, 0x0001}]})
+
+      refute match?({:ok, _}, HTTP.get("http://dual.example.com/page"))
+      refute_received {:hit, _}
+    end
+  end
+
   test "the allowlist covers one port, not the whole host" do
     Process.put(:ssrf_allow_hosts, ["10.0.0.1:80"])
 

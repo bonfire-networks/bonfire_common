@@ -662,12 +662,15 @@ defmodule Bonfire.Common.Text do
                      # nil preserves Linkify-generated rel (tag ugc / nofollow noopener ugc);
                      # ammonia forbids rel in generic_attributes so we allow it per-tag on <a> below
                      link_rel: Keyword.get(opts, :link_rel, nil),
-                     # needed for MFM?
-                     generic_attribute_prefixes: ["data-"],
-                     generic_attributes: ["class"] ++ Keyword.get(opts, :generic_attributes, []),
+                     # only the `data-` attributes our own markup uses: any other would let a post reach the hooks of our scripts
+                     generic_attributes:
+                       ["data-tag", "data-user", "data-emoji", "data-line"] ++
+                         Keyword.get(opts, :generic_attributes, []),
+                     # only the classes our own markup uses, per tag (see `sanitizer_classes/0`): any other class would let a post use our styles
+                     allowed_classes: sanitizer_classes(),
                      add_tag_attributes:
                        Map.merge(
-                         %{"a" => ["class", "rel"]},
+                         %{"a" => ["rel"]},
                          Keyword.get(opts, :add_tag_attributes, %{})
                        ),
                      url_schemes: [
@@ -950,6 +953,69 @@ defmodule Bonfire.Common.Text do
   defp md_tag_text(texts) when is_list(texts), do: texts
   defp md_tag_text(_), do: []
 
+  @sanitizer_classes_key {__MODULE__, :sanitizer_classes}
+  @sanitizer_classes_default_themes %{"light" => "bamboo_light", "dark" => "bamboo_vulgaris"}
+
+  @doc """
+  The CSS classes the HTML sanitiser keeps, per tag (ammonia's `allowed_classes` takes exact names, no wildcards): the classes our own markup uses (mentions, hashtags, emoji), and the ones the code highlighter emits.
+
+  The highlighter's lists are generated from Lumis rather than kept by hand: `language-*` from every language id and alias Lumis knows, and `l-*` from the highlight scopes of the code themes in use (scope `keyword.function` becomes class `l-keyword-function`), plus `l-line` and `l-line-number`. Built on first use and cached in `:persistent_term`, so a sanitise call only reads it.
+  """
+  def sanitizer_classes do
+    case :persistent_term.get(@sanitizer_classes_key, nil) do
+      nil ->
+        classes = build_sanitizer_classes()
+        :persistent_term.put(@sanitizer_classes_key, classes)
+        classes
+
+      classes ->
+        classes
+    end
+  end
+
+  defp build_sanitizer_classes do
+    own = ["hashtag", "mention", "u-url", "h-card", "invisible"]
+
+    {code_langs, code_tokens} =
+      if Extend.module_enabled?(Lumis),
+        do: {lumis_language_classes(), lumis_token_classes()},
+        else: {[], []}
+
+    %{
+      "a" => own,
+      "p" => own,
+      "div" => own,
+      "span" => own ++ code_tokens,
+      "img" => ["emoji"],
+      "pre" => ["lumis", "highlight"],
+      "code" => code_langs
+    }
+  end
+
+  defp lumis_language_classes do
+    Lumis.Languages.available()
+    |> Enum.flat_map(&[&1.id | &1.aliases])
+    |> Enum.uniq()
+    |> Enum.map(&"language-#{&1}")
+  end
+
+  defp lumis_token_classes do
+    themes = Config.get([:ui, :code_themes], @sanitizer_classes_default_themes)
+
+    scopes =
+      (Map.values(@sanitizer_classes_default_themes) ++ Map.values(themes))
+      |> Enum.uniq()
+      |> Enum.flat_map(fn name ->
+        case Lumis.Theme.get(name) do
+          %{highlights: highlights} -> Map.keys(highlights)
+          _ -> []
+        end
+      end)
+
+    (["l-line", "l-line-number"] ++ Enum.map(scopes, &("l-" <> String.replace(&1, ".", "-"))))
+    |> Enum.uniq()
+  end
+
   @doc """
   Highlights a source file with Lumis (language detected from the filename), using the same classes as markdown code blocks so it's coloured per theme by `Bonfire.UI.Common.CodeTheme`. Falls back to Phoenix.HTML if Lumis isn't available.
 
@@ -1028,7 +1094,8 @@ defmodule Bonfire.Common.Text do
     if Extend.module_enabled?(Bonfire.Common.Text.SanitizeHTML) do
       Bonfire.Common.Text.SanitizeHTML.sanitize(content)
     else
-      content
+      # no sanitiser: the text is escaped, never passed on as HTML
+      escape_html(content) || content
     end
   end
 
@@ -1163,11 +1230,17 @@ defmodule Bonfire.Common.Text do
           emoji ->
             label = e(emoji, :label, nil) || text
 
-            " <img alt='#{label}' title='#{label}' class='emoji' data-emoji='#{text}' src='#{e(emoji, :url, nil) || Media.emoji_url(emoji)}' /> "
+            case emoji_src(e(emoji, :url, nil) || Media.emoji_url(emoji)) do
+              nil ->
+                text
+
+              src ->
+                " <img alt='#{escape_attr(label)}' title='#{escape_attr(label)}' class='emoji' data-emoji='#{escape_attr(text)}' src='#{escape_attr(src)}' /> "
+            end
         end
 
       ["", family, icon, ""] ->
-        " <img alt='#{text}' title='#{text}' class='emoji' src='https://api.iconify.design/#{family}/#{icon}.svg' /> "
+        " <img alt='#{escape_attr(text)}' title='#{escape_attr(text)}' class='emoji' src='#{escape_attr("https://api.iconify.design/#{family}/#{icon}.svg")}' /> "
 
       #     "<span iconify='#{family}:#{icon}' class='iconify' aria-hidden='true'>
       #   <img class='hidden' alt='#{text}' title='#{text}' src='https://api.iconify.design/#{family}/#{icon}.svg' onerror=\"this.src='https://api.iconify.design/ooui/article-not-found-ltr.svg'\" />
@@ -1176,6 +1249,27 @@ defmodule Bonfire.Common.Text do
         text
     end
   end
+
+  # Emoji images are built as markup after sanitising, so every value placed in an attribute is escaped and `src` is limited to an http(s) address or a local path.
+  defp escape_attr(value) do
+    value |> to_string() |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+  end
+
+  defp emoji_src("//" <> _), do: nil
+  defp emoji_src("/" <> _ = path), do: path
+
+  defp emoji_src(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and is_binary(host) and host != "" ->
+        url
+
+      _ ->
+        nil
+    end
+  end
+
+  defp emoji_src(_), do: nil
 
   @doc """
   Replaces the href attribute of <a> tags in HTML input using a replacements map.

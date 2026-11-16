@@ -176,6 +176,110 @@ defmodule Bonfire.Common.Text.Test do
     end
   end
 
+  # a post may carry only the classes and `data-` attributes our own markup uses: any other class would let it use our styles (Tailwind classes that cover the screen with a fake dialog), any other `data-` attribute would let it reach our scripts' hooks
+  describe "sanitizer classes and data attributes" do
+    alias Bonfire.Common.Text
+
+    # led by a word: `sanitize: true` is not applied to input that starts with `<` (its own finding), and these tests are about what the sanitiser keeps
+    defp sanitize(html), do: Text.maybe_markdown_to_html("word " <> html, sanitize: true)
+
+    test "the classes and data attributes our own markup uses are kept (control)" do
+      for html <- [
+            ~s(<a href="https://x.local/tag/a" class="hashtag" data-tag="a" rel="tag ugc">#a</a>),
+            ~s(<a href="https://x.local/@b" class="u-url mention" data-user="b">@b</a>),
+            ~s(<span class="h-card">b</span>),
+            ~s(<span class="invisible">https://</span>),
+            ~s(<img src="https://x.local/e.png" class="emoji" data-emoji=":e:" alt=":e:">),
+            ~s(<span class="l-keyword" data-line="3">def</span>)
+          ] do
+        result = sanitize(html)
+
+        for [_, value] <- Regex.scan(~r/(?:class|data-[a-z]+)="([^"]*)"/, html) do
+          assert result =~ value, "#{inspect(value)} was dropped from #{html}: #{result}"
+        end
+      end
+    end
+
+    test "other classes are dropped" do
+      result = sanitize(~s(<code class="fixed inset-0 z-50">x</code>))
+
+      refute result =~ "fixed"
+      refute result =~ "inset-0"
+      refute result =~ "z-50"
+    end
+
+    test "other classes are dropped from an element whose own class is kept" do
+      result = sanitize(~s(<a href="https://x.local/tag/a" class="hashtag fixed inset-0">#a</a>))
+
+      assert result =~ "hashtag"
+      refute result =~ "fixed"
+      refute result =~ "inset-0"
+    end
+
+    test "other data attributes are dropped" do
+      result =
+        sanitize(
+          ~s(<span data-tag="a" data-phx-link="redirect" data-evil="1" data-x-on-click="y">z</span>)
+        )
+
+      assert result =~ ~s(data-tag="a")
+      refute result =~ "data-phx-link"
+      refute result =~ "data-evil"
+      refute result =~ "data-x-on-click"
+    end
+  end
+
+  describe "maybe_sane_html/1 with no sanitiser" do
+    alias Bonfire.Common.Text
+
+    @payload "<img src=x onerror=alert(1)>"
+
+    test "sanitises when the sanitiser is enabled (control)" do
+      result = Text.maybe_sane_html("<p>ok</p>" <> @payload)
+
+      assert result =~ "<p>ok</p>"
+      refute result =~ "onerror"
+    end
+
+    test "escapes the text when the sanitiser is disabled, so it never comes back as HTML" do
+      Process.put({:modularity_cache, Bonfire.Common.Text.SanitizeHTML}, :disabled)
+
+      result = Text.maybe_sane_html(@payload)
+
+      refute result =~ ~r/<img/i
+      assert result =~ "&lt;img"
+    end
+  end
+
+  describe "SanitizeHTML classes and data attributes" do
+    alias Bonfire.Common.Text
+
+    test "the classes our own markup uses are kept (control)" do
+      for html <- [
+            ~s(<span class="invisible">x</span>),
+            ~s(<span class="mention">x</span>),
+            ~s(<span class="h-card">x</span>),
+            ~s(<span class="hashtag">x</span>)
+          ] do
+        assert Text.maybe_sane_html(html) == html
+      end
+    end
+
+    test "other classes are dropped" do
+      result = Text.maybe_sane_html(~s(<span class="fixed inset-0 z-50">x</span>))
+
+      refute result =~ "fixed"
+      refute result =~ "z-50"
+    end
+
+    test "other data attributes are dropped" do
+      result = Text.maybe_sane_html(~s(<span data-evil="1" data-phx-link="redirect">x</span>))
+
+      refute result =~ "data-evil"
+      refute result =~ "data-phx-link"
+    end
+  end
+
   describe "replace_links/3" do
     alias Bonfire.Common.Text
 
@@ -378,6 +482,59 @@ defmodule Bonfire.Common.Text.Test do
 
       assert html =~ ~s(<span class="l-keyword)
       refute html =~ "style="
+    end
+
+    test "a highlighted code block keeps its l-* and language-* classes through the sanitizer (control)" do
+      code = "defmodule A do\n  def f(x), do: {:ok, \"s\" <> x} # c\nend"
+      raw = Lumis.highlight!(code, language: "elixir", formatter: :html_linked)
+      html = Bonfire.Common.Text.maybe_markdown_to_html("```elixir\n#{code}\n```")
+
+      classes = fn html ->
+        ~r/class="([^"]*)"/
+        |> Regex.scan(html)
+        |> Enum.flat_map(fn [_, c] -> String.split(c) end)
+        |> MapSet.new()
+      end
+
+      assert MapSet.size(classes.(raw)) > 5
+      assert html =~ "language-elixir"
+      assert html =~ ~r/<pre class="[^"]*\blumis\b/
+      # no class the highlighter emitted is dropped
+      assert MapSet.difference(classes.(raw), classes.(html)) |> MapSet.to_list() == []
+    end
+
+    test "the generated class lists cover what the highlighter emits" do
+      lists = Bonfire.Common.Text.sanitizer_classes()
+      allowed = MapSet.new(lists["span"] ++ lists["pre"] ++ lists["code"])
+
+      snippets = [
+        {"elixir",
+         "defmodule A do\n  @moduledoc \"d\"\n  def f(x, y) when is_atom(x), do: {:ok, ~r/a/ <> \"s#{1}\"} # c\nend"},
+        {"javascript", "const f = (a) => { return a.b?.c ?? [1, 2.5, 'x', `t${a}`]; } // c"},
+        {"rust", "fn main() { let x: &str = \"s\"; println!(\"{}\", x); } // c"},
+        {"python", "@dec\nclass A:\n    def f(self, x=1): return f\"{x}\"  # c"},
+        {"html", "<div class=\"a\" id=b>t</div><!-- c -->"},
+        {"css", "a:hover > .b { color: #fff; margin: 1px !important; }"},
+        {"bash", "for i in $(ls); do echo \"$i\" | grep -v x; done # c"},
+        {"json", "{\"a\": [1, true, null]}"},
+        {"markdown", "# h\n\n*em* **b** `c` [l](u)\n\n- i"}
+      ]
+
+      emitted =
+        for {lang, code} <- snippets,
+            html =
+              Lumis.highlight!(code,
+                language: lang,
+                formatter: {:html_linked, line_numbers: true}
+              ),
+            [_, c] <- Regex.scan(~r/class="([^"]*)"/, html),
+            class <- String.split(c),
+            into: MapSet.new(),
+            do: class
+
+      assert MapSet.size(emitted) > 10
+      missing = MapSet.difference(emitted, allowed) |> MapSet.to_list()
+      assert missing == [], "highlighter classes not in the sanitiser lists: #{inspect(missing)}"
     end
 
     test "mask_markdown_code returns text without code unchanged" do

@@ -4,6 +4,7 @@ defmodule Bonfire.Common.HTTP do
   """
   import Untangle
   import Bonfire.Common.Opts
+  require Bonfire.Common.Config
   alias Bonfire.Common.HTTP.Connection
   alias Bonfire.Common.HTTP.RequestBuilder
   alias Bonfire.Common.Cache
@@ -38,6 +39,8 @@ defmodule Bonfire.Common.HTTP do
             to_options(options)
         end
 
+      {max_body_bytes, processed_options} = Keyword.pop(processed_options, :max_body_bytes)
+
       final_options = process_sni_options(processed_options, url)
 
       # Remove url and headers from final_options since they're handled separately
@@ -56,6 +59,7 @@ defmodule Bonfire.Common.HTTP do
       |> RequestBuilder.add_param(:query, :query, params)
       |> Enum.into([])
       |> (&Tesla.request(Connection.new(adapter_options), &1)).()
+      |> cap_body(max_body_bytes)
     rescue
       e in Tesla.Mock.Error ->
         error(e, "Test mock HTTP error")
@@ -67,6 +71,20 @@ defmodule Bonfire.Common.HTTP do
         error(e, "HTTP request exited")
     end
   end
+
+  # An answer over the limit is an error, as the URL may come from a user or a remote server and answer with whatever it likes. The limit is the `:max_body_bytes` option of the request, else `config :bonfire_common, :http, max_body_bytes: …`.
+  defp cap_body({:ok, %{body: body}} = result, max_body_bytes) when is_binary(body) do
+    max = max_body_bytes || Bonfire.Common.Config.get([:http, :max_body_bytes], 10 * 1024 * 1024)
+
+    if byte_size(body) > max do
+      error(max, "The response body is over the size limit")
+      {:error, :body_too_large}
+    else
+      result
+    end
+  end
+
+  defp cap_body(result, _max_body_bytes), do: result
 
   defp process_request_options(options) do
     try do

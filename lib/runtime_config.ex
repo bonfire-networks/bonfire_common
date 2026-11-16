@@ -19,7 +19,10 @@ defmodule Bonfire.Common.RuntimeConfig do
 
     # One-shot startup tasks, run once per boot (after instance Settings are loaded into Config) by `Bonfire.Common.StartupTasks`. Keyword list so any extension can register its own task module (deep-merges across `config` declarations; set a module to `false` to unregister).
     config :bonfire_common, Bonfire.Common.StartupTasks,
-      run: [id_cutoffs: Bonfire.Common.Settings.IdCutoffs]
+      run: [
+        id_cutoffs: Bonfire.Common.Settings.IdCutoffs,
+        metadata_endpoint_check: Bonfire.Common.HTTP.MetadataEndpointCheck
+      ]
 
     test_instance = System.get_env("TEST_INSTANCE")
 

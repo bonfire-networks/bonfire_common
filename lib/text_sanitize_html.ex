@@ -5,7 +5,7 @@ if Code.ensure_loaded?(HtmlSanitizeEx) do
     allow_tag_with_this_attribute_values("a", "target", ["_blank"])
     allow_tag_with_this_attribute_values("a", "rel", ["noopener", "noreferrer", "nofollow"])
 
-    @allow_classes ["invisible", "mention", "hashtag", "h-card"]
+    @allow_classes ["invisible", "mention", "hashtag", "h-card", "u-url"]
 
     # p and span are already allowed by markdown_html, so only need attribute values
     allow_tag_with_this_attribute_values("p", "class", @allow_classes)
