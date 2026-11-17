@@ -156,23 +156,27 @@ defmodule Bonfire.Common.Testing do
   records grows, and an N+1 reintroduced later fails the test rather than only showing up as
   slowness in production.
 
-  Counts queries made in the calling process only, since telemetry handlers are global and a
-  LiveView or a `Task` running alongside would otherwise be counted too.
+  Counts the queries made in the calling process and in the processes it started with `Task` (those whose `$callers` include the calling process), since work the function hands to a `Task.async` is still work it caused. Queries from any other process, such as a LiveView or another test running alongside, are not counted, since telemetry handlers are global. Pass `include_tasks: false` to count the calling process only.
 
       {targets, queries} = count_queries(fn -> FanOut.targets(recipients, activity) end)
       assert queries == 2
+
+      {_, own_queries} = count_queries(fn -> run() end, include_tasks: false)
   """
-  def count_queries(fun) when is_function(fun, 0) do
+  def count_queries(fun, opts \\ []) when is_function(fun, 0) and is_list(opts) do
     repo = Bonfire.Common.Config.repo()
     event = repo.config()[:telemetry_prefix] ++ [:query]
     counting_for = self()
+    include_tasks? = Keyword.get(opts, :include_tasks, true)
     handler_id = {__MODULE__, :count_queries, make_ref()}
 
     :telemetry.attach(
       handler_id,
       event,
       fn _event, _measurements, _metadata, _config ->
-        if self() == counting_for, do: send(counting_for, {handler_id, :query})
+        if self() == counting_for or
+             (include_tasks? and counting_for in List.wrap(Process.get(:"$callers"))),
+           do: send(counting_for, {handler_id, :query})
       end,
       nil
     )

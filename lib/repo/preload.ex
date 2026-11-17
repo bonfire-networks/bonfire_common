@@ -7,6 +7,7 @@ defmodule Bonfire.Common.Repo.Preload do
   import Bonfire.Common.Config, only: [repo: 0]
   # alias Bonfire.Common.Utils
   alias Bonfire.Common.Cache
+  alias Bonfire.Common.Enums
 
   use Bonfire.Common.Repo
 
@@ -249,15 +250,7 @@ defmodule Bonfire.Common.Repo.Preload do
   # at all (Ecto requires a homogeneous list), so split it per schema, recover each subset, and
   # reassemble in the original order; a homogeneous batch goes straight to the prune-and-retry path.
   defp recover_preload(objects, preloads, true = _heterogeneous?, opts) do
-    objects
-    |> Enum.with_index()
-    |> Enum.group_by(fn {obj, _i} -> object_schema(obj) end)
-    |> Enum.flat_map(fn {_schema, entries} ->
-      {objs, idxs} = Enum.unzip(entries)
-      Enum.zip(recover_preload_batch(objs, preloads, opts), idxs)
-    end)
-    |> Enum.sort_by(&elem(&1, 1))
-    |> Enum.map(&elem(&1, 0))
+    Enums.map_grouped(objects, &object_schema/1, &recover_preload_batch(&1, preloads, opts))
   end
 
   defp recover_preload(objects, preloads, _not_heterogeneous?, opts),
@@ -301,15 +294,11 @@ defmodule Bonfire.Common.Repo.Preload do
   defp preload_pruned([], _preloads, _opts), do: []
 
   defp preload_pruned(objects, preloads, opts) when is_list(objects) do
-    objects
-    |> Enum.with_index()
-    |> Enum.group_by(fn {object, _index} -> preload_shape(object, preloads) end)
-    |> Enum.flat_map(fn {_shape, indexed_objects} ->
-      {grouped_objects, indexes} = Enum.unzip(indexed_objects)
-      Enum.zip(preload_pruned_batch(grouped_objects, preloads, opts), indexes)
-    end)
-    |> Enum.sort_by(&elem(&1, 1))
-    |> Enum.map(&elem(&1, 0))
+    Enums.map_grouped(
+      objects,
+      &preload_shape(&1, preloads),
+      &preload_pruned_batch(&1, preloads, opts)
+    )
   end
 
   defp preload_pruned(object, preloads, opts),

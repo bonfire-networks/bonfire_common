@@ -2,13 +2,14 @@ defmodule Bonfire.Common.Testing.CountQueriesTest do
   @moduledoc """
   `count_queries/1` counts the queries a function made, so a test can pin work as batched.
 
-  It counts the calling process only: telemetry handlers are global, so a LiveView or a `Task`
-  querying at the same time would otherwise be counted and the assertion would be flaky rather
-  than wrong, which is worse.
+  It counts the calling process and the tasks it started (unless `include_tasks: false`), and no
+  other process: telemetry handlers are global, so a LiveView or another test querying at the
+  same time would otherwise be counted and the assertion would be flaky rather than wrong, which
+  is worse.
   """
   use Bonfire.Common.DataCase, async: false
 
-  import Bonfire.Common.Testing, only: [count_queries: 1]
+  import Bonfire.Common.Testing, only: [count_queries: 1, count_queries: 2]
 
   alias Bonfire.Common.Repo
   alias Bonfire.Data.Identity.User
@@ -34,12 +35,48 @@ defmodule Bonfire.Common.Testing.CountQueriesTest do
     {_, count} =
       count_queries(fn ->
         # emitted directly rather than by querying, so the other process needs no sandbox ownership
-        Task.async(fn -> :telemetry.execute(event, %{total_time: 0}, %{}) end) |> Task.await()
+        me = self()
+        # a plain spawn has no `$callers`, unlike a `Task`
+        spawn(fn ->
+          :telemetry.execute(event, %{total_time: 0}, %{})
+          send(me, :emitted)
+        end)
+
+        assert_receive :emitted
 
         one_query()
       end)
 
     assert count == 1, "only the counted process's own query should be counted"
+  end
+
+  test "counts a query made in a task the function started" do
+    event = Bonfire.Common.Config.repo().config()[:telemetry_prefix] ++ [:query]
+
+    {_, count} =
+      count_queries(fn ->
+        Task.async(fn -> :telemetry.execute(event, %{total_time: 0}, %{}) end) |> Task.await()
+
+        one_query()
+      end)
+
+    assert count == 2, "the task's query and the process's own query should both be counted"
+  end
+
+  test "does not count a query made in a task the function started with include_tasks: false" do
+    event = Bonfire.Common.Config.repo().config()[:telemetry_prefix] ++ [:query]
+
+    {_, count} =
+      count_queries(
+        fn ->
+          Task.async(fn -> :telemetry.execute(event, %{total_time: 0}, %{}) end) |> Task.await()
+
+          one_query()
+        end,
+        include_tasks: false
+      )
+
+    assert count == 1, "only the process's own query should be counted"
   end
 
   test "counts the queries even when the function raises" do

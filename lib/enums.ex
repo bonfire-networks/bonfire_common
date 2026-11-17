@@ -113,6 +113,48 @@ defmodule Bonfire.Common.Enums do
   """
   def ids(objects), do: id(objects) |> List.wrap()
 
+  @doc """
+  Groups `list` by `key_fn` (called on each item), calls `fun` once per group with that group's items, and returns the results in the order of `list`. Groups run in order of first appearance.
+
+  `fun` takes a list and must return a list of the same length, in the same order. A list with one group, which is the common case, calls `fun` once with the whole list. An empty list does not call `fun`.
+
+  Groups run in order of first appearance, and results come back in input order (here the evens first, because `2` comes first):
+
+        iex> map_grouped([2, 1, 3], &rem(&1, 2), fn group -> Enum.map(group, &{group, &1}) end)
+        [{[2], 2}, {[1, 3], 1}, {[1, 3], 3}]
+
+  One group means one call with the whole list (each result holds the list `fun` received):
+
+        iex> map_grouped([1, 3, 5], &rem(&1, 2), fn group -> Enum.map(group, &{group, &1}) end)
+        [{[1, 3, 5], 1}, {[1, 3, 5], 3}, {[1, 3, 5], 5}]
+
+        iex> map_grouped([], & &1, fn _group -> raise "not called" end)
+        []
+  """
+  def map_grouped(list, key_fn, fun)
+      when is_list(list) and is_function(key_fn, 1) and is_function(fun, 1) do
+    groups =
+      list
+      |> Enum.with_index()
+      |> Enum.group_by(fn {item, _index} -> key_fn.(item) end)
+      |> Map.values()
+
+    case groups do
+      [_] ->
+        fun.(list)
+
+      groups ->
+        groups
+        |> Enum.sort_by(fn [{_, first_index} | _] -> first_index end)
+        |> Enum.flat_map(fn group ->
+          {items, indexes} = Enum.unzip(group)
+          Enum.zip(indexes, fun.(items))
+        end)
+        |> Enum.sort_by(fn {index, _result} -> index end)
+        |> Enum.map(fn {_index, result} -> result end)
+    end
+  end
+
   @doc "Takes an enumerable object and converts it to a map. If it is not an enumerable, a map is created with the data under a fallback key (`:data` by default)."
   def map_new(data, fallback_key \\ :data) do
     if Enumerable.impl_for(data),
