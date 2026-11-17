@@ -263,8 +263,7 @@ defmodule Bonfire.Common.Test.Interactive do
       if wrap_test_in_transaction_and_rollback do
         :ok = Ecto.Adapters.SQL.Sandbox.checkout(repo, sandbox: true)
 
-        # non-async sandboxed tests share one owned connection so spawned processes can see
-        # the wrapping transaction; async tests keep per-process ownership for isolation
+        # non-async sandboxed tests share one owned connection so spawned processes can see the wrapping transaction; async tests keep per-process ownership for isolation
         if !tags[:async] do
           info("Running Ecto in shared mode")
           Ecto.Adapters.SQL.Sandbox.mode(repo, {:shared, self()})

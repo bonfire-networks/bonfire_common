@@ -10,7 +10,7 @@ defmodule Bonfire.Common.Localise.POAnnotator do
 
   ## How it works
 
-  `l/4` and `lc/4` expand to include a call to `maybe_patch_pot_with_url_ast/4`, which is a no-op unless **both** conditions hold: the env is `:dev` or `:test`, and `BONFIRE_POT_URL_BASE` is set. When active, each render looks up the current page from the process tree (`:bonfire_current_url`) and casts to this GenServer, which batches edits and rewrites the .po file after a few seconds of inactivity (`@after_seconds_inactivity`), keeping at most `@default_max_urls` URLs per entry. Parsing and composition go through `Expo` rather than string munging, so existing entries and comments survive.
+  `l/4` and `lc/4` expand to include a call to `maybe_patch_pot_with_url_ast/4`, which is a no-op unless the env's own variable is set when the caller compiles: `BONFIRE_POT_URL_BASE_DEV` in `:dev` (for annotating while browsing), `BONFIRE_POT_URL_BASE` in `:test` (set by CI, so local test runs don't pay for it). When active, each render looks up the current page from the process tree (`:bonfire_current_url`) and casts to this GenServer, which batches edits and rewrites the .po file after a few seconds of inactivity (`@after_seconds_inactivity`), keeping at most `@default_max_urls` URLs per entry. Parsing and composition go through `Expo` rather than string munging, so existing entries and comments survive.
 
   ## What this means in practice
 
@@ -27,10 +27,13 @@ defmodule Bonfire.Common.Localise.POAnnotator do
   @after_seconds_inactivity 5000
   @comment_prefix " URLs: "
 
-  # Helper to patch POT files with runtime URL context (dev only)
+  # Helper to patch POT files with runtime URL context (dev and test only)
   def maybe_patch_pot_with_url_ast(msgid, domain, file, line) do
-    if Config.env() in [:dev, :test] do
-      if url_host = System.get_env("BONFIRE_POT_URL_BASE") do
+    case url_base(Config.env()) do
+      nil ->
+        quote do: :ok
+
+      url_host ->
         # debug(msgid, "Will annotate POT file with URL host #{url_host} at #{(file)}:#{(line)} ")
         quote do
           case Bonfire.Common.Localise.POAnnotator.get_process_current_url() do
@@ -48,9 +51,13 @@ defmodule Bonfire.Common.Localise.POAnnotator do
               )
           end
         end
-      end
-    end || quote do: :ok
+    end
   end
+
+  # each env has its own switch: annotating in dev while browsing doesn't make every local test run pay for it too
+  defp url_base(:dev), do: System.get_env("BONFIRE_POT_URL_BASE_DEV")
+  defp url_base(:test), do: System.get_env("BONFIRE_POT_URL_BASE")
+  defp url_base(_), do: nil
 
   @doc """
   Helper to get current URL from runtime context
@@ -97,8 +104,12 @@ defmodule Bonfire.Common.Localise.POAnnotator do
      %{
        # pot_file => %Expo.Messages{}
        parsed_cache: %{},
-       # pot_file => MapSet of {msgid, file, line}
+       # pot_file => %{{msgid, file, line} => [position in the messages list]}
        lookup_cache: %{},
+       # {pot_file, {msgid, file, line}, url} already handled: every render casts, so a repeat must cost no more than this lookup
+       seen: MapSet.new(),
+       # {pot_file, {msgid, file, line}} whose URL comment is at the cap, so no further URL can change it
+       full: MapSet.new(),
        # pot_file => timer_ref
        pending_writes: %{},
        # Track which files have changes pending
@@ -115,33 +126,39 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     # Normalize the file path to match what's in POT files
     relative_file = normalize_file_path(file)
     entry_key = {msgid, relative_file, line}
+    seen_key = {pot_file, entry_key, url}
 
+    if MapSet.member?(state.seen, seen_key) or MapSet.member?(state.full, {pot_file, entry_key}) do
+      {:noreply, state}
+    else
+      handle_patch(pot_file, entry_key, seen_key, url_host, url, state)
+    end
+  end
+
+  defp handle_patch(pot_file, {msgid, relative_file, line} = entry_key, seen_key, url_host, url, state) do
     # Ensure file is loaded and parsed
     case ensure_file_parsed(pot_file, state) do
       {:ok, new_state} ->
         # Check if this entry exists
-        lookup = Map.get(new_state.lookup_cache, pot_file, MapSet.new())
+        lookup = Map.get(new_state.lookup_cache, pot_file, %{})
 
-        if MapSet.member?(lookup, entry_key) do
+        if positions = Map.get(lookup, entry_key) do
           # Entry exists, check if URL needs to be added/updated
-          case update_entry_url_if_changed(
-                 new_state,
-                 pot_file,
-                 msgid,
-                 relative_file,
-                 line,
-                 url_host,
-                 url
-               ) do
-            {:changed, updated_state} ->
+          {result, updated_state} =
+            update_entry_url_if_changed(new_state, pot_file, entry_key, positions, url_host, url)
+
+          updated_state = %{updated_state | seen: MapSet.put(updated_state.seen, seen_key)}
+
+          case result do
+            :changed ->
               # Only schedule write if something actually changed
               schedule_write(pot_file)
               dirty_files = MapSet.put(updated_state.dirty_files, pot_file)
               {:noreply, %{updated_state | dirty_files: dirty_files}}
 
-            {:unchanged, unchanged_state} ->
+            :unchanged ->
               # No changes needed
-              {:noreply, unchanged_state}
+              {:noreply, updated_state}
           end
         else
           # Entry doesn't exist yet (maybe new translation, or a path that does not match the references)
@@ -276,23 +293,23 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
+  # {msgid, file, line} => positions of the messages it refers to, so a patch updates those directly instead of walking every message
   defp build_lookup_cache(%Expo.Messages{messages: messages}) do
     messages
-    |> Enum.flat_map(fn message ->
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {message, position}, acc ->
       case message do
-        %Expo.Message.Singular{msgid: msgid_parts, references: references} ->
-          msgid = IO.iodata_to_binary(msgid_parts)
-          build_lookup_keys(msgid, references)
-
-        %Expo.Message.Plural{msgid: msgid_parts, references: references} ->
-          msgid = IO.iodata_to_binary(msgid_parts)
-          build_lookup_keys(msgid, references)
+        %{msgid: msgid_parts, references: references}
+        when is_struct(message, Expo.Message.Singular) or is_struct(message, Expo.Message.Plural) ->
+          msgid_parts
+          |> IO.iodata_to_binary()
+          |> build_lookup_keys(references)
+          |> Enum.reduce(acc, &Map.update(&2, &1, [position], fn positions -> [position | positions] end))
 
         _ ->
-          []
+          acc
       end
     end)
-    |> MapSet.new()
   end
 
   defp build_lookup_keys(msgid, references) do
@@ -313,67 +330,33 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
-  defp update_entry_url_if_changed(state, pot_file, msgid, file, line, url_host, url) do
+  # updates only the messages the entry's references point to; also records the entry as full once it holds the max number of URLs, so later patches for it return before reaching here
+  defp update_entry_url_if_changed(state, pot_file, entry_key, positions, url_host, url) do
     case Map.get(state.parsed_cache, pot_file) do
       %Expo.Messages{messages: messages} = expo_messages ->
-        # Find the matching message and check if it needs updating
-        {updated_messages, changed?} =
-          Enum.map_reduce(messages, false, fn message, acc_changed ->
-            case message do
-              %Expo.Message.Singular{msgid: msgid_parts, references: references} = msg ->
-                current_msgid = IO.iodata_to_binary(msgid_parts)
+        max_urls = Config.get(:pot_max_urls_per_entry, @default_max_urls)
 
-                # Check if this message matches our target
-                if current_msgid == msgid and
-                     Enum.any?(references, fn
-                       {ref_file, ref_line} ->
-                         ref_file == file and ref_line == line
+        {updated_messages, changed?, full?} =
+          Enum.reduce(positions, {messages, false, true}, fn position, {msgs, changed?, full?} ->
+            msg = Enum.at(msgs, position)
 
-                       [{ref_file, ref_line}] ->
-                         ref_file == file and ref_line == line
-                     end) do
-                  # Check if URL comment needs updating
-                  case update_url_comments_if_needed(msg.extracted_comments, url_host, url) do
-                    {:changed, updated_comments} ->
-                      updated_msg = %{msg | extracted_comments: updated_comments}
-                      {updated_msg, true}
+            {msgs, changed?, comments} =
+              case update_url_comments_if_needed(msg.extracted_comments, url_host, url) do
+                {:changed, updated_comments} ->
+                  {List.replace_at(msgs, position, %{msg | extracted_comments: updated_comments}),
+                   true, updated_comments}
 
-                    {:unchanged, _} ->
-                      {msg, acc_changed}
-                  end
-                else
-                  {msg, acc_changed}
-                end
+                {:unchanged, comments} ->
+                  {msgs, changed?, comments}
+              end
 
-              %Expo.Message.Plural{msgid: msgid_parts, references: references} = msg ->
-                current_msgid = IO.iodata_to_binary(msgid_parts)
-
-                # Check if this plural message matches our target
-                if current_msgid == msgid and
-                     Enum.any?(references, fn
-                       {ref_file, ref_line} ->
-                         ref_file == file and ref_line == line
-
-                       [{ref_file, ref_line}] ->
-                         ref_file == file and ref_line == line
-                     end) do
-                  # Check if URL comment needs updating
-                  case update_url_comments_if_needed(msg.extracted_comments, url_host, url) do
-                    {:changed, updated_comments} ->
-                      updated_msg = %{msg | extracted_comments: updated_comments}
-                      {updated_msg, true}
-
-                    {:unchanged, _} ->
-                      {msg, acc_changed}
-                  end
-                else
-                  {msg, acc_changed}
-                end
-
-              _ ->
-                {message, acc_changed}
-            end
+            {msgs, changed?, full? and length(existing_urls(comments)) >= max_urls}
           end)
+
+        state =
+          if full?,
+            do: %{state | full: MapSet.put(state.full, {pot_file, entry_key})},
+            else: state
 
         if changed? do
           updated_expo_messages = %{expo_messages | messages: updated_messages}
@@ -388,38 +371,65 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
+  @doc """
+  Combines several annotated copies of the same `.po` into one: each entry gets the URLs found in any copy (the first copy's first), capped at the same number as when annotating. Everything else comes from the first copy.
+
+  CI spreads the test suite over several jobs, and each annotates only the strings its own tests rendered, so their copies are merged before being pushed to translators (see `mix bonfire.localise.merge_annotations`).
+  """
+  def merge_annotations([%Expo.Messages{} = first | rest]) do
+    max_urls = Config.get(:pot_max_urls_per_entry, @default_max_urls)
+    urls_in_rest = Enum.map(rest, &urls_by_message/1)
+
+    messages =
+      Enum.map(first.messages, fn message ->
+        key = message_key(message)
+
+        case existing_urls(message.extracted_comments) ++
+               Enum.flat_map(urls_in_rest, &Map.get(&1, key, [])) do
+          [] ->
+            message
+
+          urls ->
+            urls = urls |> Enum.uniq() |> Enum.take(max_urls)
+
+            other_comments =
+              Enum.reject(message.extracted_comments, &String.starts_with?(&1, @comment_prefix))
+
+            %{message | extracted_comments: [@comment_prefix <> Enum.join(urls, " ") | other_comments]}
+        end
+      end)
+
+    %{first | messages: messages}
+  end
+
+  defp urls_by_message(%Expo.Messages{messages: messages}) do
+    Map.new(messages, &{message_key(&1), existing_urls(&1.extracted_comments)})
+  end
+
+  defp message_key(%{msgid: msgid} = message), do: {Map.get(message, :msgctxt), IO.iodata_to_binary(msgid)}
+
+  # the URLs in an entry's URL comment line(s); merges them if there are somehow several lines
+  defp existing_urls(extracted_comments) when is_list(extracted_comments) do
+    extracted_comments
+    |> Enum.filter(&String.starts_with?(&1, @comment_prefix))
+    |> Enum.flat_map(fn line ->
+      line
+      |> String.replace_prefix(@comment_prefix, "")
+      |> String.split(" ")
+      |> Enum.reject(&(&1 == ""))
+    end)
+  end
+
+  defp existing_urls(_), do: []
+
   defp update_url_comments_if_needed(extracted_comments, url_host, new_url)
        when is_list(extracted_comments) and extracted_comments != [] do
     max_urls = Config.get(:pot_max_urls_per_entry, @default_max_urls)
 
     new_url = "#{url_host}#{new_url}"
 
-    # Find existing URL comment line
-    {url_comment_lines, other_comments} =
-      Enum.split_with(extracted_comments, &String.starts_with?(&1, @comment_prefix))
-
-    # Extract existing URLs from the single URL comment line
-    existing_urls =
-      case url_comment_lines do
-        [] ->
-          []
-
-        [url_line] ->
-          url_line
-          |> String.replace_prefix(@comment_prefix, "")
-          |> String.split(" ")
-          |> Enum.reject(&(&1 == ""))
-
-        # If somehow there are multiple URL comment lines, merge them
-        multiple_lines ->
-          multiple_lines
-          |> Enum.flat_map(fn line ->
-            line
-            |> String.replace_prefix(@comment_prefix, "")
-            |> String.split(" ")
-            |> Enum.reject(&(&1 == ""))
-          end)
-      end
+    other_comments = Enum.reject(extracted_comments, &String.starts_with?(&1, @comment_prefix))
+    existing_urls = existing_urls(extracted_comments)
 
     # Check if new URL is already present
     if length(existing_urls) == max_urls or new_url in existing_urls do

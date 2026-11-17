@@ -47,15 +47,16 @@ defmodule Bonfire.Common.ModuleToggleLookupsTest do
              end)
     end
 
-    # A characterisation of a known limit, not a wanted behaviour: the per-process modularity cache is keyed by module only ([extend.ex `get_modularity/2`]), so the first check in a process decides, whoever it was for.
-    test "a check without a user earlier in the same process decides for later per-user checks" do
+    # the per-process modularity cache is keyed by scope, so the first check in a process doesn't decide for other users or scopes
+    test "a check without a user earlier in the same process does not decide for later per-user checks" do
       disabled_for =
         user_with_settings("toggle_user_off", %{bonfire_posts: %{modularity: :disabled}})
 
-      assert in_fresh_process(fn ->
-               Extend.module_enabled?(Bonfire.Posts)
-               Extend.module_enabled?(Bonfire.Posts, current_user: disabled_for)
-             end)
+      assert {true, false} =
+               in_fresh_process(fn ->
+                 {Extend.module_enabled?(Bonfire.Posts),
+                  Extend.module_enabled?(Bonfire.Posts, current_user: disabled_for)}
+               end)
     end
   end
 end
