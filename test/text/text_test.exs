@@ -242,7 +242,7 @@ defmodule Bonfire.Common.Text.Test do
     end
 
     test "escapes the text when the sanitiser is disabled, so it never comes back as HTML" do
-      Process.put({:modularity_cache, Bonfire.Common.Text.SanitizeHTML}, :disabled)
+      Process.put([:bonfire_common, Bonfire.Common.Text.SanitizeHTML, :modularity], :disabled)
 
       result = Text.maybe_sane_html(@payload)
 

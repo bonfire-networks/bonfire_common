@@ -86,14 +86,21 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
     end
   end
 
+  # the cache holds one entry per scope, so look for any of them
+  defp cached?(module_or_extension) do
+    Enum.any?(Process.get_keys(), &match?({:modularity_cache, ^module_or_extension, _}, &1))
+  end
+
   describe "clear_modularity_cache/1" do
     test "clears cache for a specific module" do
       # Prime the cache by calling maybe_module
       Extend.maybe_module(Bonfire.Common)
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) != :not_cached
+      Extend.maybe_module(Bonfire.Common.Text)
+      assert cached?(Bonfire.Common)
 
       Extend.clear_modularity_cache(Bonfire.Common)
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) == :not_cached
+      refute cached?(Bonfire.Common)
+      assert cached?(Bonfire.Common.Text)
     end
   end
 
@@ -103,13 +110,13 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
       Extend.maybe_module(Bonfire.Common)
       Extend.maybe_module(Bonfire.Common.Text)
 
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) != :not_cached
-      assert Process.get({:modularity_cache, Bonfire.Common.Text}, :not_cached) != :not_cached
+      assert cached?(Bonfire.Common)
+      assert cached?(Bonfire.Common.Text)
 
       Extend.clear_modularity_cache()
 
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) == :not_cached
-      assert Process.get({:modularity_cache, Bonfire.Common.Text}, :not_cached) == :not_cached
+      refute cached?(Bonfire.Common)
+      refute cached?(Bonfire.Common.Text)
     end
   end
 
@@ -123,7 +130,7 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
     test "modularity change via Settings.put resets process cache", %{user: user} do
       # Prime cache
       Extend.maybe_module(Bonfire.Common)
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) != :not_cached
+      assert cached?(Bonfire.Common)
 
       # Change a modularity setting via Settings.put
       Bonfire.Common.Settings.put(
@@ -134,8 +141,8 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
         skip_boundary_check: true
       )
 
-      # Cache for that module should be updated with the new value
-      assert Process.get({:modularity_cache, Bonfire.Common}, :not_cached) == :disabled
+      # Cache for that module is cleared, so the next lookup reads the new value in its own scope
+      refute cached?(Bonfire.Common)
     after
       Bonfire.Common.Settings.delete(
         [:bonfire_common, Bonfire.Common, :modularity],
@@ -143,6 +150,53 @@ defmodule Bonfire.Common.ExtendModularityCacheTest do
         skip_boundary_check: true
       )
 
+      Extend.clear_modularity_cache()
+    end
+  end
+
+  describe "user-scoped modularity and the process cache" do
+    setup do
+      account = Bonfire.Me.Fake.fake_account!()
+
+      disabler =
+        Bonfire.Common.Utils.current_user(
+          Bonfire.Common.Settings.put([Bonfire.Common.Text, :modularity], :disabled,
+            current_user: Bonfire.Me.Fake.fake_user!(account)
+          )
+        )
+
+      other = Bonfire.Me.Fake.fake_user!(account)
+      {:ok, disabler: disabler, other: other}
+    end
+
+    test "a lookup without a user does not hide the user's disable", %{disabler: disabler} do
+      Extend.clear_modularity_cache()
+
+      assert Extend.maybe_module(Bonfire.Common.Text) == Bonfire.Common.Text
+      assert Extend.maybe_module(Bonfire.Common.Text, current_user: disabler) == nil
+    after
+      Extend.clear_modularity_cache()
+    end
+
+    test "one user's disable does not leak to another user", %{
+      disabler: disabler,
+      other: other
+    } do
+      Extend.clear_modularity_cache()
+
+      assert Extend.maybe_module(Bonfire.Common.Text, current_user: disabler) == nil
+      assert Extend.maybe_module(Bonfire.Common.Text, current_user: other) == Bonfire.Common.Text
+    after
+      Extend.clear_modularity_cache()
+    end
+
+    test "a user-scoped put does not leak into lookups without a user", %{other: other} do
+      Bonfire.Common.Settings.put([Bonfire.Common.Text, :modularity], :disabled,
+        current_user: other
+      )
+
+      assert Extend.maybe_module(Bonfire.Common.Text) == Bonfire.Common.Text
+    after
       Extend.clear_modularity_cache()
     end
   end

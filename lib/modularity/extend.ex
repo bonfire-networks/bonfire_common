@@ -311,9 +311,26 @@ defmodule Bonfire.Common.Extend do
   end
 
   defp get_modularity(module_or_extension, opts) do
-    process_cache({:modularity_cache, module_or_extension}, fn ->
-      do_get_modularity(module_or_extension, opts)
-    end)
+    process_cache(
+      {:modularity_cache, module_or_extension, modularity_cache_scope(opts)},
+      fn ->
+        do_get_modularity(module_or_extension, opts)
+      end
+    )
+  end
+
+  # Same branches as `do_get_modularity/2`: the value depends on where it is read from (Config, instance, account or user settings), so lookups for different users or scopes in one process must not share a cached value.
+  defp modularity_cache_scope(opts) do
+    case Keyword.pop(opts, :otp_app) do
+      {otp_app, []} ->
+        {otp_app, :config}
+
+      {otp_app, opts} ->
+        case Utils.current_user_id(opts) do
+          nil -> {otp_app, opts[:scope] || :instance, Utils.current_account_id(opts)}
+          user_id -> {otp_app, opts[:scope], user_id}
+        end
+    end
   end
 
   defp process_cache(key, compute_fn) do
@@ -424,9 +441,14 @@ defmodule Bonfire.Common.Extend do
     end
   end
 
-  @doc "Clears the Process-level modularity cache for a specific module or extension."
+  @doc "Clears the Process-level modularity cache for a specific module or extension, for every scope."
   def clear_modularity_cache(module_or_extension) when is_atom(module_or_extension) do
-    Process.delete({:modularity_cache, module_or_extension})
+    Process.get_keys()
+    |> Enum.each(fn
+      {:modularity_cache, ^module_or_extension, _} = key -> Process.delete(key)
+      _ -> :ok
+    end)
+
     :ok
   end
 
@@ -434,21 +456,18 @@ defmodule Bonfire.Common.Extend do
   def clear_modularity_cache do
     Process.get_keys()
     |> Enum.each(fn
-      {:modularity_cache, _} = key -> Process.delete(key)
+      {:modularity_cache, _, _} = key -> Process.delete(key)
       _ -> :ok
     end)
 
     :ok
   end
 
-  @doc "Sets the Process-level modularity cache for a module/extension to a new value, or clears it if value is nil."
-  def reset_modularity_cache(module_or_extension, value)
+  @doc "Clears the Process-level modularity cache for a module/extension after its modularity changed, so the next lookup reads the new value in its own scope."
+  def reset_modularity_cache(module_or_extension, _value)
       when is_atom(module_or_extension) do
-    case value do
-      # NOTE: should we still cache nil values to avoid repeated checks for non-disabled modules?
-      nil -> Process.delete({:modularity_cache, module_or_extension})
-      _ -> Process.put({:modularity_cache, module_or_extension}, value)
-    end
+    # the scope of the write is not known here, so caching `value` would leak it into lookups for other scopes
+    clear_modularity_cache(module_or_extension)
   end
 
   @doc """
