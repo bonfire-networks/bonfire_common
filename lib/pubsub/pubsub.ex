@@ -6,11 +6,10 @@ defmodule Bonfire.Common.PubSub do
   use Bonfire.Common.Config
 
   @doc """
-  Subscribe to something for realtime updates, like a feed or thread
+  Subscribe to something for realtime updates, like a feed or thread.
+
+  It is recommended to use `subscribe_once/2` instead, so that a view does not subscribe again and receive the same broadcast twice.
   """
-
-  # def subscribe(topics, socket \\ nil)
-
   def subscribe(topics, opts) when is_list(topics) do
     Enum.each(topics, &subscribe(&1, opts))
   end
@@ -38,6 +37,26 @@ defmodule Bonfire.Common.PubSub do
     end
   end
 
+  @doc """
+  Like `subscribe/2`, but once per process: a repeat call for the same topic (eg. from a component's next update) does nothing, so the process never gets the same broadcast twice.
+  """
+  def subscribe_once(topics, opts) when is_list(topics) do
+    Enum.each(topics, &subscribe_once(&1, opts))
+  end
+
+  def subscribe_once(topic, opts) when is_binary(topic) and topic != "" do
+    key = {__MODULE__, :subscribed, topic}
+
+    if !Process.get(key) and socket_connected_or_user?(opts) do
+      do_subscribe(topic)
+      Process.put(key, true)
+    end
+
+    :ok
+  end
+
+  def subscribe_once(topic, _opts), do: debug(topic, "no topic to subscribe to")
+
   defp do_subscribe(topic) when is_binary(topic) and topic != "" do
     debug(topic, "subscribed")
 
@@ -61,6 +80,9 @@ defmodule Bonfire.Common.PubSub do
   def unsubscribe(topic) when is_binary(topic) and topic != "" do
     debug(topic, "unsubscribed")
 
+    # so a later `subscribe_once/2` can subscribe again
+    Process.delete({__MODULE__, :subscribed, topic})
+
     Config.endpoint_module().unsubscribe(topic)
   end
 
@@ -68,7 +90,7 @@ defmodule Bonfire.Common.PubSub do
     with topic when is_binary(topic) and topic != "" <- Types.maybe_to_string(topic) do
       unsubscribe(topic)
     else
-      _ -> debug(topic, "no topic to unsubscribe from")
+      _ -> error(topic, "no topic to unsubscribe from")
     end
   end
 
