@@ -135,7 +135,14 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     end
   end
 
-  defp handle_patch(pot_file, {msgid, relative_file, line} = entry_key, seen_key, url_host, url, state) do
+  defp handle_patch(
+         pot_file,
+         {msgid, relative_file, line} = entry_key,
+         seen_key,
+         url_host,
+         url,
+         state
+       ) do
     # Ensure file is loaded and parsed
     case ensure_file_parsed(pot_file, state) do
       {:ok, new_state} ->
@@ -304,7 +311,10 @@ defmodule Bonfire.Common.Localise.POAnnotator do
           msgid_parts
           |> IO.iodata_to_binary()
           |> build_lookup_keys(references)
-          |> Enum.reduce(acc, &Map.update(&2, &1, [position], fn positions -> [position | positions] end))
+          |> Enum.reduce(
+            acc,
+            &Map.update(&2, &1, [position], fn positions -> [position | positions] end)
+          )
 
         _ ->
           acc
@@ -395,7 +405,10 @@ defmodule Bonfire.Common.Localise.POAnnotator do
             other_comments =
               Enum.reject(message.extracted_comments, &String.starts_with?(&1, @comment_prefix))
 
-            %{message | extracted_comments: [@comment_prefix <> Enum.join(urls, " ") | other_comments]}
+            %{
+              message
+              | extracted_comments: [@comment_prefix <> Enum.join(urls, " ") | other_comments]
+            }
         end
       end)
 
@@ -406,7 +419,8 @@ defmodule Bonfire.Common.Localise.POAnnotator do
     Map.new(messages, &{message_key(&1), existing_urls(&1.extracted_comments)})
   end
 
-  defp message_key(%{msgid: msgid} = message), do: {Map.get(message, :msgctxt), IO.iodata_to_binary(msgid)}
+  defp message_key(%{msgid: msgid} = message),
+    do: {Map.get(message, :msgctxt), IO.iodata_to_binary(msgid)}
 
   # the URLs in an entry's URL comment line(s); merges them if there are somehow several lines
   defp existing_urls(extracted_comments) when is_list(extracted_comments) do

@@ -151,4 +151,44 @@ defmodule Bonfire.Common.URIsTest do
       assert URIs.versioned_static_path(url_path) =~ ~r"^#{Regex.escape(url_path)}\?v=\d+$"
     end
   end
+
+  describe "base_url/0 before the endpoint is started" do
+    # never started, so `struct_url/0` raises as the main endpoint does during the startup migrations
+    defmodule NotStartedEndpoint do
+      use Phoenix.Endpoint, otp_app: :bonfire
+    end
+
+    import ExUnit.CaptureLog
+    require Bonfire.Common.Config
+
+    setup do
+      Process.put(:phoenix_endpoint_module, NotStartedEndpoint)
+      on_exit(fn -> Application.delete_env(:bonfire, NotStartedEndpoint) end)
+    end
+
+    test "uses the scheme and port of the endpoint's url config" do
+      Application.put_env(:bonfire, NotStartedEndpoint,
+        url: [host: "localhost", port: 4000, scheme: "http"]
+      )
+
+      log = capture_log(fn -> assert URIs.base_url() == "http://localhost:4000" end)
+      refute log =~ "could not get struct_url from endpoint"
+    end
+
+    test "uses the endpoint's url config on https port 443" do
+      Application.put_env(:bonfire, NotStartedEndpoint,
+        url: [host: "example.local", port: 443, scheme: "https"]
+      )
+
+      log = capture_log(fn -> assert URIs.base_url() == "https://example.local" end)
+      refute log =~ "could not get struct_url from endpoint"
+    end
+
+    test "without url config, guesses https and the configured host, and logs the error" do
+      host = Bonfire.Common.Config.get(:host) || System.get_env("HOSTNAME", "localhost")
+
+      log = capture_log(fn -> assert URIs.base_url() == "https://" <> host end)
+      assert log =~ "could not get struct_url from endpoint"
+    end
+  end
 end

@@ -823,12 +823,20 @@ defmodule Bonfire.Common.URIs do
     if endpoint != main_endpoint_module do
       base_uri(main_endpoint_module)
     else
-      error(e, msg)
+      # the endpoint's url config is set before it starts (eg. during the startup migrations), and `base_url/1` formats any of its scheme/host/port
+      url = Application.get_env(Common.Config.top_level_otp_app(), endpoint)[:url]
 
-      %URI{
-        scheme: "https",
-        host: Common.Config.get(:host) || System.get_env("HOSTNAME", "localhost")
-      }
+      if is_binary(url[:host]) do
+        debug(e, "#{msg}, using the endpoint's url config")
+        struct(URI, url |> Map.new() |> Map.take([:scheme, :host, :port]))
+      else
+        error(e, msg)
+
+        %URI{
+          scheme: "https",
+          host: Common.Config.get(:host) || System.get_env("HOSTNAME", "localhost")
+        }
+      end
     end
   end
 
