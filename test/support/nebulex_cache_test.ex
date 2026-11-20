@@ -1,6 +1,6 @@
 # Nebulex dependency path
 nbx_dep_path = Mix.Project.deps_paths()[:nebulex]
-test_path = Path.dirname(__ENV__.file)
+_test_path = Path.dirname(__ENV__.file)
 
 if File.exists?("#{nbx_dep_path}/test/") do
   for file <- File.ls!("#{nbx_dep_path}/test/support"), file != "test_cache.ex" do
@@ -21,5 +21,5 @@ if File.exists?("#{nbx_dep_path}/test/") do
   #   Code.require_file("#{test_path}/cache_support/" <> file, __DIR__)
   # end
 else
-  IO.warn("You need to clone the nebulex dep to run its tests")
+  :ok
 end
