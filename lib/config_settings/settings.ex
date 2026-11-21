@@ -953,23 +953,28 @@ defmodule Bonfire.Common.Settings do
   def check_scope(scope \\ nil, opts) do
     current_user = current_user(opts)
     current_account = current_account(opts)
-    # FIXME: do we need to associate each setting key to a verb? (eg. :describe)
-    is_admin_or_skip =
-      e(opts, :skip_boundary_check, nil) ||
-        maybe_apply(Bonfire.Boundaries, :can?, [current_account, :configure, :instance],
-          fallback_return: false
-        )
 
     case maybe_to_atom(scope || e(opts, :scope, nil))
          |> debug("scope specified to set") do
-      :instance when is_admin_or_skip == true ->
-        {:instance, instance_scope()}
-
       :instance ->
-        fail(
-          {:unauthorized,
-           l("to change instance settings.") <> " " <> l("Please contact an admin.")}
-        )
+        # FIXME: do we need to associate each setting key to a verb? (eg. :describe)
+        # asked only for the instance scope, as an admin action: an account whose admin flag isn't loaded is an error in tests rather than a refusal
+        is_admin_or_skip =
+          e(opts, :skip_boundary_check, nil) ||
+            maybe_apply(
+              Bonfire.Boundaries,
+              :can?,
+              [current_account, :configure, :instance, [ensure_admin_check: true]],
+              fallback_return: false
+            )
+
+        if is_admin_or_skip == true,
+          do: {:instance, instance_scope()},
+          else:
+            fail(
+              {:unauthorized,
+               l("to change instance settings.") <> " " <> l("Please contact an admin.")}
+            )
 
       :account ->
         {:current_account, current_account}
