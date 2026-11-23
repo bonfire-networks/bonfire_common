@@ -73,6 +73,53 @@ defmodule Bonfire.Common.URIs do
   end
 
   @doc """
+  Whether a free-text name (eg. of a place) looks like a web address: it has a scheme (`scheme://`), starts with `www.`, or is a single word (no spaces) containing a dot.
+
+  ## Examples
+
+      iex> true == looks_like_url?("https://meet.jit.si/abc")
+      iex> true == looks_like_url?("zoom.us/j/123")
+      iex> false == looks_like_url?("St. Mary's Hall")
+      iex> false == looks_like_url?("The Mansion, Totnes")
+  """
+  def looks_like_url?(name) when is_binary(name) do
+    name = String.trim(name)
+
+    name != "" and not String.match?(name, ~r/\s/) and
+      (String.contains?(name, "://") or String.starts_with?(String.downcase(name), "www.") or
+         String.contains?(name, "."))
+  end
+
+  def looks_like_url?(_), do: false
+
+  @doc """
+  The `http(s)` link to open for a name that `looks_like_url?/1` (`https://` is added to one with no scheme), or `nil` if it is not one or has another scheme.
+
+  ## Examples
+
+      iex> "https://zoom.us/j/123" == web_link("zoom.us/j/123")
+      iex> "http://a.b/c" == web_link("http://a.b/c")
+      iex> nil == web_link("ftp://a.b/c")
+      iex> nil == web_link("Online")
+  """
+  def web_link(name) when is_binary(name) do
+    if looks_like_url?(name) do
+      name = String.trim(name)
+      url = if String.contains?(name, "://"), do: name, else: "https://" <> name
+
+      case URI.parse(url) do
+        %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and is_binary(host) ->
+          if String.contains?(host, "."), do: url
+
+        _ ->
+          nil
+      end
+    end
+  end
+
+  def web_link(_), do: nil
+
+  @doc """
   Whether a search query is a URL or a fediverse handle, so worth looking up on the fediverse rather than only searching for as words. A handle is typed with any of the prefixes used everywhere that reads one (`@` for people, `!`, `&` or `+` for groups), or with none when it is shaped like `name@host.tld`.
 
   ## Examples

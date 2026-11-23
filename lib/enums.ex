@@ -114,6 +114,20 @@ defmodule Bonfire.Common.Enums do
   def ids(objects), do: id(objects) |> List.wrap()
 
   @doc """
+  Picks one item of a list from a seed (eg. an object's id): the same seed always gives the same item, with the seeds spread over the items. `nil` for an empty list.
+
+      iex> pick_by_hash([:a, :b, :c], "seed") == pick_by_hash([:a, :b, :c], "seed")
+      true
+
+      iex> pick_by_hash([], "seed")
+      nil
+  """
+  def pick_by_hash([], _seed), do: nil
+
+  def pick_by_hash(list, seed) when is_list(list),
+    do: Enum.at(list, :erlang.phash2(seed, length(list)))
+
+  @doc """
   Groups `list` by `key_fn` (called on each item), calls `fun` once per group with that group's items, and returns the results in the order of `list`. Groups run in order of first appearance.
 
   `fun` takes a list and must return a list of the same length, in the same order. A list with one group, which is the common case, calls `fun` once with the whole list. An empty list does not call `fun`.

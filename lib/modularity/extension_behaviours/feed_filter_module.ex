@@ -8,6 +8,8 @@ defmodule Bonfire.Common.FeedFilterModule do
   Lives in `bonfire_common` (not `bonfire_social`) for that second reason: `bonfire_social` depends on `bonfire_tag`, so a registry inside the feed loader's own extension would be unreachable from the extensions that most need it. Same reasoning as `Bonfire.Common.ReindexModule`.
 
   A module implements `maybe_filter/3` for the keys it knows and returns the query untouched for everything else, since every registered module is offered every filter. The key itself is declared separately, as a field on `Bonfire.Social.FeedFilters` through `Exto` (`config :bonfire_social, Bonfire.Social.FeedFilters, field: [...]`), because a struct's fields have to exist when it compiles. Both halves are needed: a key with no module here validates and then filters nothing.
+
+  The control that edits the filter in the feed filters editor is a third, separate declaration, `Bonfire.UI.Common.FeedFilterControlModule`, in `bonfire_ui_common`, which this extension cannot depend on. The two are tied by the filter key.
   """
   @behaviour Bonfire.Common.ExtensionBehaviour
   use Bonfire.Common.Utils, only: []
