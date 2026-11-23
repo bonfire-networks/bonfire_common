@@ -433,18 +433,51 @@ defmodule Bonfire.Common.Config do
           next.(E.ed(data, key, []))
 
         :get_and_update, data, next ->
-          data = Keyword.new(data || [])
-          value = Keyword.get(data, key, [])
+          data = config_level(data)
+
+          value =
+            case List.keyfind(data, key, 0) do
+              {_, value} -> value
+              nil -> []
+            end
 
           case next.(value) do
-            {get, update} -> {get, Keyword.put(data, key, update)}
-            :pop -> {value, Keyword.delete(data, key)}
+            {get, update} -> {get, List.keystore(data, key, 0, {key, update})}
+            :pop -> {value, List.keydelete(data, key, 0)}
           end
       end
     end
 
     Enum.map(keys, fn k -> access_nil.(k) end)
   end
+
+  # a config level as `{key, value}` pairs. It can be stored as a map, or with string keys (instance settings saved or loaded while a key's atom didn't exist yet, eg. a custom widget's id): each string key becomes its atom when there is one, else stays a string, and a key stored both ways ends up once
+  defp config_level(nil), do: []
+
+  defp config_level(data) when is_map(data) or is_list(data) do
+    if Keyword.keyword?(data) do
+      data
+    else
+      Enum.reduce(data, [], fn
+        {key, value}, acc ->
+          key = existing_atom_or_string(key)
+          List.keystore(acc, key, 0, {key, value})
+
+        _, acc ->
+          acc
+      end)
+    end
+  end
+
+  defp config_level(_), do: []
+
+  defp existing_atom_or_string(key) when is_binary(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> key
+  end
+
+  defp existing_atom_or_string(key), do: key
 
   @doc """
   Deletes the configuration value for a key in a specific OTP app or extension.

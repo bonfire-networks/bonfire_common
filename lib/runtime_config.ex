@@ -24,6 +24,13 @@ defmodule Bonfire.Common.RuntimeConfig do
         metadata_endpoint_check: Bonfire.Common.HTTP.MetadataEndpointCheck
       ]
 
+    # How big an uploaded zip for an import may be, checked by `Bonfire.Common.Import.Zip` before anything is extracted: the total uncompressed size (`IMPORT_ARCHIVE_LIMIT`, in MB) and the number of files in it.
+    config :bonfire_common, Bonfire.Common.Import,
+      max_archive_size:
+        (System.get_env("IMPORT_ARCHIVE_LIMIT", "5000") |> String.to_integer()) * 1_000_000,
+      max_archive_entries:
+        System.get_env("IMPORT_ARCHIVE_MAX_ENTRIES", "100000") |> String.to_integer()
+
     test_instance = System.get_env("TEST_INSTANCE")
 
     # Which database a test run gets. The invariant: an UNSANDBOXED run must never share a database with a sandboxed one. Unsandboxed runs COMMIT, so anything they leave behind stays visible to every later sandboxed test, surfacing as failures that are perfectly reproducible and look exactly like code bugs (see the `sql_sandbox` condition in `config/test.exs`: the sandbox is on only when NEITHER var is set).
