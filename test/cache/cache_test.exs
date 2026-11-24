@@ -6,6 +6,22 @@ defmodule Bonfire.Common.CacheTest do
 
   doctest Bonfire.Common.Cache, import: true
 
+  # a hook can remove a key where no cache runs (eg. a settings hook during `mix ecto.migrate`): there is nothing to evict, so it isn't an error
+  describe "remove/2" do
+    test "removing from a cache store that isn't running removes nothing, without an error" do
+      assert {:ok, false} = Cache.remove("any key", cache_store: :a_cache_store_never_started)
+    end
+
+    # the control: a running store removes the key
+    test "removing from the running cache store removes the key" do
+      key = "remove_running:#{System.unique_integer([:positive])}"
+      Cache.put(key, 1, async: false)
+
+      assert {:ok, true} = Cache.remove(key)
+      assert Cache.get_many([key]) == %{}
+    end
+  end
+
   describe "get_many/2" do
     test "returns the hits as a map and leaves out the misses" do
       n = System.unique_integer([:positive])

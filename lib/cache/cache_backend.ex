@@ -102,8 +102,14 @@ defmodule Bonfire.Common.Cache.Backend do
     )
   end
 
-  @doc "Delete a single key."
-  def delete(Cachex, key, opts), do: Cachex.del(opts[:cache_store] || @default_store, key)
+  @doc "Delete a single key. A Cachex store that isn't running (eg. during `mix ecto.migrate`, where Cachex isn't started at all, so asking it raises) has nothing to delete: `{:ok, false}`."
+  def delete(Cachex, key, opts) do
+    store = opts[:cache_store] || @default_store
+
+    # Cachex registers each store's supervisor under the store's name
+    if Process.whereis(store), do: Cachex.del(store, key), else: {:ok, false}
+  end
+
   def delete(SimpleDiskCache, key, opts), do: SimpleDiskCache.delete(key, opts)
   def delete(mod, key, opts), do: mod.delete!(key, nebulex_opts(opts))
 
