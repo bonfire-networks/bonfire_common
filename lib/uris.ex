@@ -73,6 +73,33 @@ defmodule Bonfire.Common.URIs do
   end
 
   @doc """
+  Whether a text is nothing but an http(s) URL, eg. a title that is just its link. Stricter than `valid_url?/1`, which takes any scheme-less text with a dot in it as a domain, which a sentence can be.
+
+  ## Examples
+
+      iex> url_only?(" https://example.com/page ")
+      true
+
+      iex> url_only?("Info session in The Netherlands.")
+      false
+
+      iex> url_only?("see https://example.com/page")
+      false
+  """
+  def url_only?(text) when is_binary(text) do
+    text = String.trim(text)
+
+    not String.match?(text, ~r/\s/) and
+      match?(
+        %URI{scheme: scheme, host: host}
+        when scheme in ["http", "https"] and host not in [nil, ""],
+        URI.parse(text)
+      )
+  end
+
+  def url_only?(_), do: false
+
+  @doc """
   Whether a free-text name (eg. of a place) looks like a web address: it has a scheme (`scheme://`), starts with `www.`, or is a single word (no spaces) containing a dot.
 
   ## Examples
