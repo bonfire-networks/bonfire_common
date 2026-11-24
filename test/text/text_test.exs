@@ -477,6 +477,30 @@ defmodule Bonfire.Common.Text.Test do
         assert [{:html, ^html}] = Text.markdown_parts(html, MapSet.new([@u2]), []), html
       end
     end
+
+    test "cuts at an image alone in its paragraph" do
+      html = ~s(<p>a</p><p><img src="#{@u1}" alt="A cover"></p><p>b</p>)
+
+      assert [{:html, "<p>a</p>"}, {:url, @u1}, {:html, "<p>b</p>"}] =
+               Text.markdown_parts(html, MapSet.new([@u1]), [])
+    end
+
+    test "cuts at a bare image between paragraphs" do
+      html = ~s(<p>a</p><img src="#{@u1}"/><p>b</p>)
+
+      assert [{:html, "<p>a</p>"}, {:url, @u1}, {:html, "<p>b</p>"}] =
+               Text.markdown_parts(html, MapSet.new([@u1]), [])
+    end
+
+    test "doesn't cut an image in a sentence, in a quote, or not in the set" do
+      for html <- [
+            ~s(<p>see <img src="#{@u1}"> here</p>),
+            ~s(<blockquote><p><img src="#{@u1}"></p></blockquote>),
+            ~s(<p>a</p><p><img src="#{@u2}"></p>)
+          ] do
+        assert [{:html, ^html}] = Text.markdown_parts(html, MapSet.new([@u1]), []), html
+      end
+    end
   end
 
   # a post may carry only the classes and `data-` attributes our own markup uses: any other class would let it use our styles (Tailwind classes that cover the screen with a fake dialog), any other `data-` attribute would let it reach our scripts' hooks

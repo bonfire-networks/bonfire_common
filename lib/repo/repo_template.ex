@@ -85,6 +85,19 @@ defmodule Bonfire.Common.RepoTemplate do
           end
       end
 
+      @doc """
+      As `transact_with/2`, holding a lock on `key` (any term) until the transaction ends, so callers with the same key take turns while others don't wait: eg. two jobs that would each find or make the same record. A Postgres transaction-level advisory lock, on a hash of `key`.
+      """
+      def transact_with_lock(key, fun, opts \\ []) when is_function(fun, 0) do
+        transact_with(
+          fn ->
+            sql("SELECT pg_advisory_xact_lock($1)", [:erlang.phash2(key)])
+            fun.()
+          end,
+          opts
+        )
+      end
+
       # def transact_with(fun, opts) do
       #   transaction(fn ->
       #     case fun.() do

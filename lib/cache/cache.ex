@@ -376,7 +376,10 @@ defmodule Bonfire.Common.Cache do
       maybe_apply_or_fun(module, fun, args, opts)
   end
 
+  # writes synchronously: an async write still in flight when the caller then resets or refreshes the key would land afterwards and put the stale value back
   defp apply_and_put(module, fun, args, opts, backend, key, inner_opts, expire) do
+    inner_opts = Keyword.put(inner_opts, :async, false)
+
     with {:error, _e} = ret <- maybe_apply_or_fun(module, fun, args, opts) do
       debug(key, "got an error, putting in cache with short TTL")
 

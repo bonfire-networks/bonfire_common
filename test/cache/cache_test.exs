@@ -92,6 +92,18 @@ defmodule Bonfire.Common.CacheTest do
       assert cached(f, key) != before
     end
 
+    # as callers use it, without `async: false`: a miss's write must have landed before the call returns, else a reset right after can run first and the late write puts the stale value back
+    test ":reset right after a miss is not undone by that miss's write" do
+      f = counter_fun()
+      key = "cache_verb_reset_after_miss:#{System.unique_integer([:positive])}"
+      default_cached = fn extra -> Cache.maybe_apply_cached(f, [], [cache_key: key] ++ extra) end
+
+      before = default_cached.([])
+      default_cached.(cache: :reset)
+
+      assert default_cached.([]) != before
+    end
+
     test "cache: false bypasses the cache (recomputes every call, never writes)" do
       f = counter_fun()
       key = "cache_verb_bypass:#{System.unique_integer([:positive])}"

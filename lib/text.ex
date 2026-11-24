@@ -723,7 +723,7 @@ defmodule Bonfire.Common.Text do
   def markdown_parts(markdown, _urls, opts), do: [{:html, maybe_markdown_to_html(markdown, opts)}]
 
   @doc """
-  The HTML twin of `markdown_parts/3`, for a body that isn't markdown (a remote post, an import), with the same return: cut at each link to a URL in `urls` that is alone in a top-level paragraph (`<p><a href="url">…</a></p>`, whatever the link holds, eg. Mastodon's `<span>`s), or is a bare top-level `<a>` (as an imported embed can leave it). A link in a sentence, ending a paragraph, or in a quote or list isn't cut.
+  The HTML twin of `markdown_parts/3`, for a body that isn't markdown (a remote post, an import), with the same return: cut at each link or image to a URL in `urls` that is alone in a top-level paragraph (`<p><a href="url">…</a></p>`, whatever the link holds, eg. Mastodon's `<span>`s, or `<p><img src="url"></p>`), or is a bare top-level `<a>` or `<img>` (as an imported embed can leave it). One in a sentence, ending a paragraph, or in a quote or list isn't cut.
 
   Each part is the body's own HTML, whole elements, as stored; only the last gets `maybe_markdown_to_html/2`'s treatment of an HTML body (hiding trailing hashtags when asked). Without a cut it's one part, as `maybe_markdown_to_html/2` gives. A regex pass, no parse.
 
@@ -734,12 +734,12 @@ defmodule Bonfire.Common.Text do
 
   def html_parts(html, urls, opts) when is_binary(html) and html != "" do
     {parts, rest} =
-      Regex.scan(~r{<a\s[^>]*>.*?</a>}s, html, return: :index)
+      Regex.scan(~r{<a\s[^>]*>.*?</a>|<img\s[^>]*>}s, html, return: :index)
       |> Enum.reduce({[], 0}, fn [{start, length}], {parts, from} ->
         with true <- start >= from,
              url when is_binary(url) <-
-               placed_link_url(binary_part(html, start, length), urls),
-             {cut_start, cut_end} <- own_line_link_range(html, start, start + length),
+               placed_url(binary_part(html, start, length), urls),
+             {cut_start, cut_end} <- own_line_range(html, start, start + length),
              true <- cut_start >= from do
           {[{:url, url}, {:html, binary_part(html, from, cut_start - from)} | parts], cut_end}
         else
@@ -766,9 +766,9 @@ defmodule Bonfire.Common.Text do
 
   def html_parts(html, _urls, opts), do: [{:html, maybe_markdown_to_html(html, opts)}]
 
-  # the URL of a link (`<a …>…</a>`) when it's one of `urls`, compared as the HTML stores it (`&amp;`) or decoded
-  defp placed_link_url(link, urls) do
-    with [_, href] <- Regex.run(~r{^<a\s[^>]*?href="([^"]*)"}, link) do
+  # the URL of a link (`<a href>`) or image (`<img src>`) when it's one of `urls`, compared as the HTML stores it (`&amp;`) or decoded
+  defp placed_url(element, urls) do
+    with [_, href] <- Regex.run(~r{^<(?:a\s[^>]*?href|img\s[^>]*?src)="([^"]*)"}, element) do
       decoded = HtmlEntities.decode(href)
 
       cond do
@@ -779,8 +779,8 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  # where to cut for the link from `start` to `stop`: its whole paragraph when it's alone in a top-level `<p>`, itself when it's a bare top-level link, else nil
-  defp own_line_link_range(html, start, stop) do
+  # where to cut for the link or image from `start` to `stop`: its whole paragraph when it's alone in a top-level `<p>`, itself when it's bare at the top level, else nil
+  defp own_line_range(html, start, stop) do
     before = binary_part(html, 0, start)
     after_link = binary_part(html, stop, byte_size(html) - stop)
 
