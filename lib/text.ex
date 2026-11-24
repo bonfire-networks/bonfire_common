@@ -625,108 +625,340 @@ defmodule Bonfire.Common.Text do
     end
   end
 
-  defp markdown_as_html(MDEx, content, opts) do
-    with {sanitize?, opts} <- Keyword.pop(opts, :sanitize, true),
-         {:ok, html} <-
-           [
-             parse: [
-               smart: false,
-               relaxed_tasklist_matching: true,
-               relaxed_autolinks: true
-             ],
-             extension: [
-               strikethrough: true,
-               tasklist: true,
-               # can't use because things @ mentions are emails
-               autolink: false,
-               table: true,
-               tagfilter: true,
-               header_id_prefix: ""
-               #  shortcodes: true # NOTE: not needed because we use smile lib
-             ],
-             render: [
-               hardbreaks: true,
-               # unsafe_: opts[:__unsafe__],
-               # Allow rendering of raw HTML and potentially dangerous links?
-               unsafe_: opts[:__unsafe__] || sanitize? != false,
-               # Escape raw HTML instead of clobbering it.
-               escape: sanitize? == false and !opts[:__unsafe__]
-             ],
-             sanitize:
-               cond do
-                 is_list(sanitize?) ->
-                   sanitize?
+  @doc """
+  The URLs that stand alone in a top-level paragraph of `markdown`, in order: an image (`![](url)`), a link (`[text](url)`, which is how Linkify stores a bare URL), or a bare URL. This is where media placed in a body sits. A URL in a sentence, a list, a quote or code isn't one.
 
-                 sanitize? ->
-                   [
-                     # nil preserves Linkify-generated rel (tag ugc / nofollow noopener ugc);
-                     # ammonia forbids rel in generic_attributes so we allow it per-tag on <a> below
-                     link_rel: Keyword.get(opts, :link_rel, nil),
-                     # only the `data-` attributes our own markup uses: any other would let a post reach the hooks of our scripts
-                     generic_attributes:
-                       ["data-tag", "data-user", "data-emoji", "data-line"] ++
-                         Keyword.get(opts, :generic_attributes, []),
-                     # only the classes our own markup uses, per tag (see `sanitizer_classes/0`): any other class would let a post use our styles
-                     allowed_classes: sanitizer_classes(),
-                     add_tag_attributes:
-                       Map.merge(
-                         %{"a" => ["rel"]},
-                         Keyword.get(opts, :add_tag_attributes, %{})
-                       ),
-                     url_schemes: [
-                       "ftp",
-                       "ftps",
-                       "geo",
-                       "http",
-                       "https",
-                       "irc",
-                       "ircs",
-                       "magnet",
-                       "mailto",
-                       "news",
-                       "nntp",
-                       "openpgp4fpr",
-                       "sip",
-                       "sms",
-                       "smsto",
-                       "tel",
-                       "url",
-                       "webcal",
-                       "wtai",
-                       "xmpp"
-                     ],
-                     url_relative:
-                       case opts[:url_base] do
-                         false -> :deny
-                         nil -> :passthrough
-                         url_base -> {:rewrite_with_base, url_base}
-                       end
-                   ]
+      > Bonfire.Common.Text.standalone_urls("Intro\\n\\n![](https://example.com/a.png)\\n\\nsee https://example.com/b here")
+      ["https://example.com/a.png"]
+  """
+  def standalone_urls(markdown) when is_binary(markdown) and markdown != "" do
+    case parse_markdown_document(markdown, []) do
+      {:ok, doc} ->
+        for %MDEx.Paragraph{} = paragraph <- doc.nodes,
+            {:url, url} <- paragraph_pieces(paragraph, :any),
+            do: url
 
-                 true ->
-                   nil
-               end,
-             # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
+      _ ->
+        []
+    end
+  end
 
-             #  NOTE: unsafe_ should be set to true so the sanitizer is given raw HTML to sanitize
-             # classes rather than inline styles (which the sanitizer strips), coloured per theme by `Bonfire.UI.Common.CodeTheme`
-             syntax_highlight: [
-               engine: :lumis,
-               formatter: :html_linked
-             ]
-           ]
-           # |> Keyword.merge(opts)
-           #  |> debug("md_opts")
-           |> MDEx.to_html(content, ...) do
+  def standalone_urls(_), do: []
+
+  @doc "The source URL of every image in `body`, in order: `![](url)` anywhere in markdown (not in code), or `<img src>` in HTML (a body that starts with `<`)."
+  def image_urls("<" <> _ = html) do
+    if Extend.module_enabled?(LazyHTML) do
       html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("img[src]")
+      |> LazyHTML.attribute("src")
     else
+      []
+    end
+  end
+
+  def image_urls(markdown) when is_binary(markdown) and markdown != "" do
+    case parse_markdown_document(markdown, []) do
+      {:ok, doc} -> for %MDEx.Image{url: url} <- doc, do: url
+      _ -> []
+    end
+  end
+
+  def image_urls(_), do: []
+
+  @doc """
+  Renders `markdown` as `maybe_markdown_to_html/2` does, but cut at each standalone URL (see `standalone_urls/1`) that is in `urls`: `{:html, html}` for each part between, and `{:url, url}` for each cut, in order, so a caller can render a component where each URL sits. The body is parsed once, so a reference link defined in another part still resolves.
+
+  Without such a URL (or for HTML, or with another markdown library) it's one `{:html, html}` part, the same as `maybe_markdown_to_html/2` gives.
+  """
+  def markdown_parts(markdown, urls, opts \\ [])
+
+  def markdown_parts(markdown, urls, opts) when is_binary(markdown) and markdown != "" do
+    with false <- Enum.empty?(urls),
+         false <- String.starts_with?(markdown, "<"),
+         MDEx <- markdown_library(opts),
+         {:ok, doc} <- parse_markdown_document(markdown, opts),
+         pieces = Enum.flat_map(doc.nodes, &node_pieces(&1, urls)),
+         true <- Enum.any?(pieces, &match?({:url, _}, &1)) do
+      {hide_trailing_hashtags?, opts} = Keyword.pop(opts, :hide_trailing_hashtags, false)
+
+      render_run = fn
+        [], parts ->
+          parts
+
+        run, parts ->
+          [{:html, markdown_as_html(MDEx, %{doc | nodes: Enum.reverse(run)}, opts)} | parts]
+      end
+
+      {parts, run} =
+        Enum.reduce(pieces, {[], []}, fn
+          {:url, url}, {parts, run} -> {[{:url, url} | render_run.(run, parts)], []}
+          {:node, node}, {parts, run} -> {parts, [node | run]}
+        end)
+
+      case render_run.(run, parts) do
+        [{:html, last} | rest] ->
+          [
+            {:html,
+             maybe_mark_trailing_hashtags(last, hide_trailing_hashtags: hide_trailing_hashtags?)}
+            | rest
+          ]
+
+        parts ->
+          parts
+      end
+      |> Enum.reverse()
+    else
+      _ -> [{:html, maybe_markdown_to_html(markdown, opts)}]
+    end
+  end
+
+  def markdown_parts(markdown, _urls, opts), do: [{:html, maybe_markdown_to_html(markdown, opts)}]
+
+  # a top-level node as pieces: `{:node, node}` to render, `{:url, url}` where the body places media. Only a paragraph can hold a cut: a list, a quote or code never does
+  defp node_pieces(%MDEx.Paragraph{} = paragraph, urls) do
+    for piece <- paragraph_pieces(paragraph, urls) do
+      case piece do
+        {:url, url} -> {:url, url}
+        {:nodes, nodes} -> {:node, %{paragraph | nodes: nodes}}
+      end
+    end
+  end
+
+  defp node_pieces(node, _urls), do: [{:node, node}]
+
+  # A paragraph cut at each media URL (in `urls`, or any with `:any`) that ends a line: alone on its line, or after a label ("Blog post: https://…"). The text before the URL stays, as its own paragraph. The URL's own text is dropped (the media shows it) unless it's a named link ("[the post](url)"). A URL in the middle of a line isn't cut.
+  defp paragraph_pieces(%MDEx.Paragraph{nodes: nodes}, urls) do
+    nodes
+    |> Enum.chunk_while(
+      [],
+      fn
+        %{__struct__: break} = node, line when break in [MDEx.SoftBreak, MDEx.LineBreak] ->
+          {:cont, {Enum.reverse(line), node}, []}
+
+        node, line ->
+          {:cont, [node | line]}
+      end,
+      fn
+        [] -> {:cont, []}
+        line -> {:cont, {Enum.reverse(line), nil}, []}
+      end
+    )
+    |> Enum.flat_map(fn {line, break} ->
+      case line_end_media(line, urls) do
+        {before, url} -> [{:nodes, before}, {:url, url}]
+        nil -> [{:nodes, line ++ List.wrap(break)}]
+      end
+    end)
+    |> Enum.chunk_by(&match?({:url, _}, &1))
+    |> Enum.flat_map(fn
+      [{:url, _} | _] = urls ->
+        urls
+
+      runs ->
+        [
+          {:nodes,
+           runs |> Enum.flat_map(fn {:nodes, nodes} -> nodes end) |> trim_trailing_inline()}
+        ]
+    end)
+    |> Enum.reject(fn
+      {:nodes, nodes} -> blank_inline?(nodes)
+      _ -> false
+    end)
+  end
+
+  # `{nodes before, url}` when `line` ends with media whose URL is in `urls`, else nil
+  defp line_end_media(line, urls) do
+    case line |> trim_trailing_inline() |> Enum.reverse() |> drop_end_punctuation() do
+      [%MDEx.Image{url: url} | before] ->
+        cut_line(before, [], url, urls)
+
+      [%MDEx.Link{url: url} = link | before] ->
+        cut_line(before, if(url_text?(link), do: [], else: [link]), url, urls)
+
+      [%MDEx.Text{literal: literal} | before] ->
+        case Regex.run(~r/^(.*?)(https?:\/\/\S*[^\s.,;:!?)])$/s, literal, capture: :all_but_first) do
+          [text, url] ->
+            cut_line(
+              before,
+              if(String.trim(text) == "", do: [], else: [%MDEx.Text{literal: text}]),
+              url,
+              urls
+            )
+
+          _ ->
+            nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  # the punctuation that ends a sentence after a URL (`https://x.`, `[x](u).`, `(see https://x)`) isn't part of it: dropped, as the cut ends the line there a function rather than a module attribute: a compiled regex can't be stored in one on Erlang/OTP 28
+  defp end_punctuation_regex, do: ~r/[.,;:!?)]+$/
+
+  defp drop_end_punctuation([%MDEx.Text{literal: literal} = text | rest] = reversed) do
+    case String.replace(literal, end_punctuation_regex(), "") do
+      ^literal -> reversed
+      "" -> rest
+      trimmed -> [%{text | literal: trimmed} | rest]
+    end
+  end
+
+  defp drop_end_punctuation(reversed), do: reversed
+
+  defp cut_line(reversed_before, kept, url, urls) do
+    if urls == :any or Enum.member?(urls, url),
+      do: {trim_trailing_inline(Enum.reverse(reversed_before) ++ kept), url}
+  end
+
+  # a link whose text is its URL, as Linkify writes a bare URL (shortened, without its scheme)
+  defp url_text?(%MDEx.Link{url: url, nodes: [%MDEx.Text{literal: text}]}) do
+    text = text |> String.trim() |> String.trim_trailing("...")
+    not String.contains?(text, " ") and String.contains?(url, text)
+  end
+
+  defp url_text?(_), do: false
+
+  # without the whitespace (and line breaks) at the end of a line
+  defp trim_trailing_inline(nodes) do
+    case Enum.reverse(nodes) do
+      [%{__struct__: break} | rest] when break in [MDEx.SoftBreak, MDEx.LineBreak] ->
+        trim_trailing_inline(Enum.reverse(rest))
+
+      [%MDEx.Text{literal: literal} = text | rest] ->
+        case String.trim_trailing(literal) do
+          "" -> trim_trailing_inline(Enum.reverse(rest))
+          trimmed -> Enum.reverse([%{text | literal: trimmed} | rest])
+        end
+
+      _ ->
+        nodes
+    end
+  end
+
+  defp blank_inline?(nodes), do: trim_trailing_inline(nodes) == []
+
+  defp parse_markdown_document(markdown, opts) do
+    if Extend.module_enabled?(MDEx),
+      do: MDEx.parse_document(markdown, mdex_options(opts)),
+      else: {:error, :no_mdex}
+  end
+
+  # `content` is markdown, or an `MDEx.Document` (see `markdown_parts/3`)
+  defp markdown_as_html(MDEx, content, opts) do
+    case MDEx.to_html(content, mdex_options(opts)) do
+      {:ok, html} ->
+        html
+
       e ->
         error(e)
-        content
+        if is_binary(content), do: content, else: ""
     end
   end
 
   defp markdown_as_html(Earmark = processor, content, opts) do
+    do_earmark_as_html(processor, content, opts)
+  end
+
+  # the options for MDEx, shared by rendering and by `parse_markdown_document/2`, so a body rendered in parts renders as it would whole
+  defp mdex_options(opts) do
+    {sanitize?, opts} = Keyword.pop(opts, :sanitize, true)
+
+    [
+      parse: [
+        smart: false,
+        relaxed_tasklist_matching: true,
+        relaxed_autolinks: true
+      ],
+      extension: [
+        strikethrough: true,
+        tasklist: true,
+        # can't use because things @ mentions are emails
+        autolink: false,
+        table: true,
+        tagfilter: true,
+        header_id_prefix: ""
+        #  shortcodes: true # NOTE: not needed because we use smile lib
+      ],
+      render: [
+        hardbreaks: true,
+        # unsafe_: opts[:__unsafe__],
+        # Allow rendering of raw HTML and potentially dangerous links?
+        unsafe_: opts[:__unsafe__] || sanitize? != false,
+        # Escape raw HTML instead of clobbering it.
+        escape: sanitize? == false and !opts[:__unsafe__]
+      ],
+      sanitize:
+        cond do
+          is_list(sanitize?) ->
+            sanitize?
+
+          sanitize? ->
+            [
+              # nil preserves Linkify-generated rel (tag ugc / nofollow noopener ugc);
+              # ammonia forbids rel in generic_attributes so we allow it per-tag on <a> below
+              link_rel: Keyword.get(opts, :link_rel, nil),
+              # only the `data-` attributes our own markup uses: any other would let a post reach the hooks of our scripts
+              generic_attributes:
+                ["data-tag", "data-user", "data-emoji", "data-line"] ++
+                  Keyword.get(opts, :generic_attributes, []),
+              # only the classes our own markup uses, per tag (see `sanitizer_classes/0`): any other class would let a post use our styles
+              allowed_classes: sanitizer_classes(),
+              add_tag_attributes:
+                Map.merge(
+                  %{"a" => ["rel"]},
+                  Keyword.get(opts, :add_tag_attributes, %{})
+                ),
+              url_schemes: [
+                "ftp",
+                "ftps",
+                "geo",
+                "http",
+                "https",
+                "irc",
+                "ircs",
+                "magnet",
+                "mailto",
+                "news",
+                "nntp",
+                "openpgp4fpr",
+                "sip",
+                "sms",
+                "smsto",
+                "tel",
+                "url",
+                "webcal",
+                "wtai",
+                "xmpp"
+              ],
+              url_relative:
+                case opts[:url_base] do
+                  false -> :deny
+                  nil -> :passthrough
+                  url_base -> {:rewrite_with_base, url_base}
+                end
+            ]
+
+          true ->
+            nil
+        end,
+      # sanitizes the HTML (but keeping things we need, like class and attributes), default is usually `MDEx.default_sanitize_options()` 
+
+      #  NOTE: unsafe_ should be set to true so the sanitizer is given raw HTML to sanitize
+      # classes rather than inline styles (which the sanitizer strips), coloured per theme by `Bonfire.UI.Common.CodeTheme`
+      syntax_highlight: [
+        engine: :lumis,
+        formatter: :html_linked
+      ]
+    ]
+
+    # |> Keyword.merge(opts)
+    #  |> debug("md_opts")
+  end
+
+  defp do_earmark_as_html(processor, content, opts) do
     case [
            # inner_html: true,
            escape: false,
@@ -801,13 +1033,36 @@ defmodule Bonfire.Common.Text do
 
   def mask_markdown_code(other), do: {other, & &1}
 
+  @doc """
+  Like `mask_markdown_code/1`, for images (`![alt](url)`): their URL must reach the stored body as written, so it can still be matched to its media, rather than be turned into a link or a local path by processing meant for prose.
+
+      iex> {masked, unmask} = mask_markdown_images("see ![](https://example.com/a.png) here")
+      iex> masked =~ "example.com"
+      false
+      iex> unmask.(masked)
+      "see ![](https://example.com/a.png) here"
+  """
+  def mask_markdown_images(markdown) when is_binary(markdown) and markdown != "" do
+    if String.contains?(markdown, "!["),
+      do:
+        mask_markdown_ranges(markdown, markdown_node_ranges(markdown, &match?(%MDEx.Image{}, &1))),
+      else: {markdown, & &1}
+  end
+
+  def mask_markdown_images(other), do: {other, & &1}
+
   defp do_mask_markdown_code(markdown) do
-    case markdown_code_ranges(markdown) do
+    mask_markdown_ranges(markdown, markdown_code_ranges(markdown))
+  end
+
+  # swaps each byte range `{from, to}` of `markdown` for an opaque token, returning the masked text and a function that puts the originals back
+  defp mask_markdown_ranges(markdown, ranges) do
+    case ranges do
       [] ->
         {markdown, & &1}
 
       ranges ->
-        prefix = "bfcode#{System.unique_integer([:positive])}x"
+        prefix = "bfmask#{System.unique_integer([:positive])}x"
 
         # replace from the end so earlier byte offsets stay valid
         {masked, codes} =
@@ -832,6 +1087,11 @@ defmodule Bonfire.Common.Text do
 
   # Byte ranges `{from, to}` of code in Markdown: inline spans including their backticks, and code blocks as whole lines (so fences, indentation and any `> ` or list prefix are included).
   defp markdown_code_ranges(markdown) do
+    markdown_node_ranges(markdown, &(match?(%MDEx.Code{}, &1) or match?(%MDEx.CodeBlock{}, &1)))
+  end
+
+  # Byte ranges `{from, to}` of the Markdown nodes `keep?` picks: a code block as whole lines, any other node (an inline one, such as code or an image) from its first to its last character.
+  defp markdown_node_ranges(markdown, keep?) do
     with true <- Extend.module_enabled?(MDEx),
          {:ok, doc} <- MDEx.parse_document(markdown) do
       line_starts =
@@ -846,22 +1106,26 @@ defmodule Bonfire.Common.Text do
           else: byte_size(markdown)
       end
 
-      for node <- doc, match?(%MDEx.Code{}, node) or match?(%MDEx.CodeBlock{}, node) do
+      for node <- doc, keep?.(node) do
         %{start: {start_line, start_col}, end: {end_line, end_col}} = node.sourcepos
 
         case node do
-          %MDEx.Code{} ->
-            {line_start.(start_line) + start_col - 1, line_start.(end_line) + end_col}
-
           %MDEx.CodeBlock{} ->
             # an end column of 0 means the block ended with the previous line
             {line_start.(start_line),
              line_end.(if end_col == 0, do: end_line - 1, else: end_line)}
+
+          _inline ->
+            {line_start.(start_line) + start_col - 1, line_start.(end_line) + end_col}
         end
       end
     else
       e ->
-        warn(e, "Could not find code in markdown, so it won't be protected from processing")
+        warn(
+          e,
+          "Could not parse markdown, so its code and images won't be protected from processing"
+        )
+
         []
     end
   end

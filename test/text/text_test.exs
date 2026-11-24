@@ -176,6 +176,185 @@ defmodule Bonfire.Common.Text.Test do
     end
   end
 
+  # a real announcement post: a player alone in its paragraph, and a link on the line after its label (with a trailing space, as typed)
+  @youtube "https://www.youtube.com/watch?v=q0BvUFpVJMs"
+  @blog "https://bonfirenetworks.org/posts/for-the-things-we-can-only-do-together/"
+  @announcement "Bonfire for Communities 1.1 is out today: For the things we can only do together.\n\n#{@youtube}\n\nGroups now federate, so you can find, follow and join one from a different Bonfire instance, from the threadiverse, and even from Mastodon, with the account you already have. Take your community back!\n\nBlog post: \n#{@blog}\n\n#bonfire #fediverse\n"
+
+  # media placed in a body (an image, or a player's link, alone on its line) is cut out of the markdown so it can render as a component where it sits
+  describe "standalone_urls/1" do
+    alias Bonfire.Common.Text
+
+    @u1 "https://example.com/files/redir/local/a.png"
+    @u2 "https://video.example.com/w/x"
+
+    test "finds an image or a link alone in a top-level paragraph" do
+      md = "Intro\n\n![](#{@u1})\n\n[x](#{@u2})\n\nmore"
+
+      assert Text.standalone_urls(md) == [@u1, @u2]
+    end
+
+    test "finds a bare URL alone in its paragraph" do
+      assert Text.standalone_urls("Intro\n\n#{@u2}\n\nmore") == [@u2]
+    end
+
+    test "leaves out a URL in the middle of a sentence, in a list, a quote or code" do
+      md = """
+      see ![](#{@u1}) here and [x](#{@u2}) there
+
+      - ![](#{@u1})
+
+      > ![](#{@u1})
+
+      ```
+      ![](#{@u1})
+      ```
+      """
+
+      assert Text.standalone_urls(md) == []
+    end
+
+    test "returns nothing for no body" do
+      assert Text.standalone_urls(nil) == []
+      assert Text.standalone_urls("") == []
+    end
+
+    test "finds a URL alone on its line, after a label line in the same paragraph" do
+      assert Text.standalone_urls("Blog post: \n[x](#{@u2})") == [@u2]
+      assert Text.standalone_urls("Blog post:\n#{@u2}\nmore") == [@u2]
+    end
+
+    test "finds a URL at the end of its line, after its label" do
+      assert Text.standalone_urls("Blog post: #{@u2}") == [@u2]
+      assert Text.standalone_urls("Blog post: [video.example.com/w/x](#{@u2})\nmore") == [@u2]
+      assert Text.standalone_urls("Read [the post](#{@u2})") == [@u2]
+    end
+
+    # a real announcement post: a player alone in its paragraph, and a link on the line after its label
+    test "finds both media of the announcement fixture" do
+      assert Text.standalone_urls(@announcement) == [@youtube, @blog]
+    end
+  end
+
+  describe "markdown_parts/3" do
+    alias Bonfire.Common.Text
+
+    defp html_of(md), do: String.trim(Text.maybe_markdown_to_html(md, []))
+
+    test "cuts the body at each standalone URL in the set, rendering the parts between" do
+      md = "Intro\n\n![](#{@u1})\n\nMid\n\n[x](#{@u2})\n\nEnd"
+
+      assert [{:html, intro}, {:url, @u1}, {:html, mid}, {:url, @u2}, {:html, ending}] =
+               Text.markdown_parts(md, MapSet.new([@u1, @u2]), [])
+
+      assert String.trim(intro) == html_of("Intro")
+      assert String.trim(mid) == html_of("Mid")
+      assert String.trim(ending) == html_of("End")
+    end
+
+    test "cuts at a URL alone on its line, keeping its label line as its own part" do
+      md = "Blog post: \n[x](#{@u2})\n\nEnd"
+
+      assert [{:html, label}, {:url, @u2}, {:html, ending}] =
+               Text.markdown_parts(md, MapSet.new([@u2]), [])
+
+      assert label =~ "Blog post:"
+      refute label =~ @u2
+      assert String.trim(ending) == html_of("End")
+    end
+
+    test "cuts at a URL at the end of its line, keeping the label and dropping the URL's own text" do
+      md = "Blog post: [video.example.com/w/x](#{@u2})\n\nEnd"
+
+      assert [{:html, label}, {:url, @u2}, {:html, _}] =
+               Text.markdown_parts(md, MapSet.new([@u2]), [])
+
+      assert label =~ "Blog post:"
+      refute label =~ "video.example.com"
+    end
+
+    test "keeps a named link's text before its card" do
+      assert [{:html, label}, {:url, @u2}] =
+               Text.markdown_parts("Read [the post](#{@u2})", MapSet.new([@u2]), [])
+
+      assert label =~ "the post"
+    end
+
+    test "cuts the same-line variant of the announcement fixture too" do
+      md = String.replace(@announcement, "Blog post: \n", "Blog post: ")
+
+      assert [{:html, _}, {:url, @youtube}, {:html, middle}, {:url, @blog}, {:html, _}] =
+               Text.markdown_parts(md, MapSet.new([@youtube, @blog]), [])
+
+      assert middle =~ "Blog post:"
+      refute middle =~ "bonfirenetworks.org"
+    end
+
+    test "cuts the announcement fixture at its player and its blog link" do
+      assert [{:html, intro}, {:url, @youtube}, {:html, middle}, {:url, @blog}, {:html, tags}] =
+               Text.markdown_parts(@announcement, MapSet.new([@youtube, @blog]), [])
+
+      assert intro =~ "Bonfire for Communities 1.1"
+      assert middle =~ "Take your community back!"
+      assert middle =~ "Blog post:"
+      assert tags =~ "#bonfire"
+    end
+
+    test "keeps a standalone URL that isn't in the set inside the HTML" do
+      md = "Intro\n\n![](#{@u1})\n\n[x](#{@u2})"
+
+      assert [{:html, html}, {:url, @u2}] = Text.markdown_parts(md, MapSet.new([@u2]), [])
+      assert html =~ ~s(src="#{@u1}")
+    end
+
+    test "keeps an image in the middle of a sentence inside the HTML" do
+      md = "a ![](#{@u1}) b"
+
+      assert [{:html, html}] = Text.markdown_parts(md, MapSet.new([@u1]), [])
+      assert html =~ ~s(src="#{@u1}")
+    end
+
+    test "with an empty set, gives the whole body as one HTML part, as maybe_markdown_to_html does" do
+      md = "Intro\n\n![](#{@u1})"
+
+      assert Text.markdown_parts(md, MapSet.new(), []) ==
+               [{:html, Text.maybe_markdown_to_html(md, [])}]
+    end
+
+    test "a reference link used in one part and defined in another still links" do
+      md = "See [the docs][1]\n\n![](#{@u1})\n\n[1]: https://example.org/docs"
+
+      assert [{:html, html}, {:url, @u1}] = Text.markdown_parts(md, MapSet.new([@u1]), [])
+      assert html =~ ~s(href="https://example.org/docs")
+    end
+
+    test "still sanitises each part" do
+      # led by a word: a body that starts with `<` is taken as HTML and never reaches the markdown path
+      md = "Intro <script>alert(1)</script>\n\n![](#{@u1})\n\n<img src=x onerror=alert(1)>"
+
+      parts = Text.markdown_parts(md, MapSet.new([@u1]), [])
+
+      assert {:url, @u1} in parts
+
+      for {:html, html} <- parts do
+        refute html =~ "<script"
+        refute html =~ "onerror"
+      end
+    end
+
+    test "hides a trailing hashtags paragraph only in the last part, when asked" do
+      md = "Intro\n\n![](#{@u1})\n\nEnd\n\n[#tag](/hashtag/tag)"
+
+      assert [{:html, _intro}, {:url, @u1}, {:html, ending}] =
+               Text.markdown_parts(md, MapSet.new([@u1]), hide_trailing_hashtags: true)
+
+      assert ending ==
+               Text.maybe_markdown_to_html("End\n\n[#tag](/hashtag/tag)",
+                 hide_trailing_hashtags: true
+               )
+    end
+  end
+
   # a post may carry only the classes and `data-` attributes our own markup uses: any other class would let it use our styles (Tailwind classes that cover the screen with a fake dialog), any other `data-` attribute would let it reach our scripts' hooks
   describe "sanitizer classes and data attributes" do
     alias Bonfire.Common.Text

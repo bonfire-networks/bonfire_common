@@ -50,11 +50,11 @@ defmodule Bonfire.Common.ImportDispatchTest do
 
     sources = Import.archive_sources()
 
+    # other extensions' sources (eg. WordPress's) are checked in their own tests, since not every flavour includes them
     assert sources[:archive] == Bonfire.Federate.ActivityPub.Import.Archive
-    assert sources[:wordpress] == Bonfire.WordPress.Import.WXR
 
     # a form sends the key as a string, matched without making an atom
-    assert Import.archive_source("wordpress") == Bonfire.WordPress.Import.WXR
+    assert Import.archive_source("archive") == Bonfire.Federate.ActivityPub.Import.Archive
     assert Import.archive_source("not_a_source") == nil
   end
 end

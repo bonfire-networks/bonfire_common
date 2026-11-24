@@ -801,6 +801,7 @@ defmodule Bonfire.Common.Settings do
 
     result = do_set(attrs, opts)
     maybe_reset_caches(attrs)
+    purge_circle_members_embed()
     result
   end
 
@@ -824,8 +825,14 @@ defmodule Bonfire.Common.Settings do
 
     result = do_set(attrs, opts)
     maybe_reset_caches(attrs)
+    purge_circle_members_embed()
     result
   end
+
+  # whether someone is discoverable decides whether guests see them in a circle's members, so the saved copies of that widget's embed go
+  defp purge_circle_members_embed,
+    do:
+      maybe_apply(Bonfire.UI.Common.Widgets, :bust_embed, [:circle_members], fallback_return: nil)
 
   # defp set_with_hooks(%{activity_pub: %{mrf_keyword: mrf_keyword}} = attrs, opts) do
   #   result =
