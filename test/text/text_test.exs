@@ -355,6 +355,118 @@ defmodule Bonfire.Common.Text.Test do
     end
   end
 
+  # a local post gives each URL that ends a line its own paragraph when published, so it federates with the URL on its own line, where another instance can place its media
+  describe "own_paragraph_urls/1" do
+    alias Bonfire.Common.Text
+
+    @linked "[video.example.com/w/x](#{@u2})"
+
+    test "puts a URL after its label in its own paragraph, bare or as Linkify writes it" do
+      assert Text.own_paragraph_urls("Watch: #{@linked}") == "Watch: \n\n#{@linked}"
+      assert Text.own_paragraph_urls("Watch: #{@u2}") == "Watch: \n\n#{@u2}"
+    end
+
+    test "puts a URL ending a paragraph in its own paragraph" do
+      assert Text.own_paragraph_urls("Intro\n\nsee this #{@linked}.\n\nmore") ==
+               "Intro\n\nsee this \n\n#{@linked}.\n\nmore"
+    end
+
+    test "puts a URL alone on a line of a longer paragraph in its own paragraph, and the lines after it in another" do
+      assert Text.own_paragraph_urls("before\n#{@linked}\nafter") ==
+               "before\n\n\n#{@linked}\n\nafter"
+    end
+
+    test "leaves a named link, a mention or a hashtag ending a line as typed" do
+      for md <- [
+            "Read [the post](#{@u2})",
+            "thanks [@someone](https://example.com/@someone)",
+            "Hello [#bonfire](/hashtag/bonfire)"
+          ] do
+        assert Text.own_paragraph_urls(md) == md
+      end
+    end
+
+    test "leaves the announcement fixture's same-line variant with its blog link in its own paragraph" do
+      md = String.replace(@announcement, "Blog post: \n", "Blog post: ")
+
+      assert Text.standalone_urls(Text.own_paragraph_urls(md)) == [@youtube, @blog]
+      assert Text.own_paragraph_urls(md) =~ "Blog post: \n\n#{@blog}"
+    end
+
+    test "leaves a URL already alone in its paragraph, in a sentence, a list, a quote or code as typed" do
+      md = """
+      Intro
+
+      [x](#{@u2})
+
+      see [x](#{@u2}) there
+
+      - a [x](#{@u2})
+
+      > a [x](#{@u2})
+
+      ```
+      a [x](#{@u2})
+      ```
+      """
+
+      assert Text.own_paragraph_urls(md) == md
+    end
+
+    test "leaves no body as it is" do
+      assert Text.own_paragraph_urls(nil) == nil
+      assert Text.own_paragraph_urls("") == ""
+    end
+  end
+
+  # the HTML twin of `markdown_parts/3`, for a body that isn't markdown (a remote post, an import): for now a cut is a link alone in its paragraph
+  describe "markdown_parts/3 with an HTML body" do
+    alias Bonfire.Common.Text
+
+    @yt "https://www.youtube.com/watch?v=x&t=3"
+
+    test "cuts at a link alone in its paragraph, keeping the paragraphs around it" do
+      html = ~s(<p>Intro</p><p><a href="#{@u2}">#{@u2}</a></p><p>more</p>)
+
+      assert [{:html, "<p>Intro</p>"}, {:url, @u2}, {:html, "<p>more</p>"}] =
+               Text.markdown_parts(html, MapSet.new([@u2]), [])
+    end
+
+    test "cuts at a Mastodon link, its text split in spans" do
+      html =
+        ~s(<p>Intro</p>\n<p> <a href="#{@u2}" target="_blank" rel="nofollow noopener" translate="no"><span class="invisible">https://</span><span class="ellipsis">video.example.com/w/</span><span class="invisible">x</span></a> </p><p>more</p>)
+
+      assert [{:html, "<p>Intro</p>\n"}, {:url, @u2}, {:html, "<p>more</p>"}] =
+               Text.markdown_parts(html, MapSet.new([@u2]), [])
+    end
+
+    test "cuts at a bare link between paragraphs, as an imported embed leaves it" do
+      html = ~s(<p>Intro</p><a href="#{@u2}">A video</a><p>more</p>)
+
+      assert [{:html, "<p>Intro</p>"}, {:url, @u2}, {:html, "<p>more</p>"}] =
+               Text.markdown_parts(html, MapSet.new([@u2]), [])
+    end
+
+    test "matches a URL with `&` as the HTML stores it" do
+      html = ~s(<p>Intro</p><p><a href="https://www.youtube.com/watch?v=x&amp;t=3">video</a></p>)
+
+      assert [{:html, "<p>Intro</p>"}, {:url, @yt}] =
+               Text.markdown_parts(html, MapSet.new([@yt]), [])
+    end
+
+    test "doesn't cut a link ending a paragraph, in a sentence, in a quote or a list, or not in the set" do
+      for html <- [
+            ~s(<p>Watch: <a href="#{@u2}">#{@u2}</a></p>),
+            ~s(<p>see <a href="#{@u2}">this</a> there</p>),
+            ~s(<blockquote><p><a href="#{@u2}">#{@u2}</a></p></blockquote>),
+            ~s(<ul><li><p><a href="#{@u2}">#{@u2}</a></p></li></ul>),
+            ~s(<p>Intro</p><p><a href="#{@u1}">#{@u1}</a></p>)
+          ] do
+        assert [{:html, ^html}] = Text.markdown_parts(html, MapSet.new([@u2]), []), html
+      end
+    end
+  end
+
   # a post may carry only the classes and `data-` attributes our own markup uses: any other class would let it use our styles (Tailwind classes that cover the screen with a fake dialog), any other `data-` attribute would let it reach our scripts' hooks
   describe "sanitizer classes and data attributes" do
     alias Bonfire.Common.Text

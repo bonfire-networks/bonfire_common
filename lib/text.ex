@@ -673,6 +673,13 @@ defmodule Bonfire.Common.Text do
   """
   def markdown_parts(markdown, urls, opts \\ [])
 
+  # a body that isn't markdown (a remote post, an import) is cut by `html_parts/3`
+  def markdown_parts("<" <> _ = html, urls, opts) do
+    if Enum.empty?(urls),
+      do: [{:html, maybe_markdown_to_html(html, opts)}],
+      else: html_parts(html, urls, opts)
+  end
+
   def markdown_parts(markdown, urls, opts) when is_binary(markdown) and markdown != "" do
     with false <- Enum.empty?(urls),
          false <- String.starts_with?(markdown, "<"),
@@ -714,6 +721,221 @@ defmodule Bonfire.Common.Text do
   end
 
   def markdown_parts(markdown, _urls, opts), do: [{:html, maybe_markdown_to_html(markdown, opts)}]
+
+  @doc """
+  The HTML twin of `markdown_parts/3`, for a body that isn't markdown (a remote post, an import), with the same return: cut at each link to a URL in `urls` that is alone in a top-level paragraph (`<p><a href="url">…</a></p>`, whatever the link holds, eg. Mastodon's `<span>`s), or is a bare top-level `<a>` (as an imported embed can leave it). A link in a sentence, ending a paragraph, or in a quote or list isn't cut.
+
+  Each part is the body's own HTML, whole elements, as stored; only the last gets `maybe_markdown_to_html/2`'s treatment of an HTML body (hiding trailing hashtags when asked). Without a cut it's one part, as `maybe_markdown_to_html/2` gives. A regex pass, no parse.
+
+      iex> Bonfire.Common.Text.html_parts(~s(<p>a</p><p><a href="https://example.com/v">v</a></p><p>b</p>), ["https://example.com/v"])
+      [{:html, "<p>a</p>"}, {:url, "https://example.com/v"}, {:html, "<p>b</p>"}]
+  """
+  def html_parts(html, urls, opts \\ [])
+
+  def html_parts(html, urls, opts) when is_binary(html) and html != "" do
+    {parts, rest} =
+      Regex.scan(~r{<a\s[^>]*>.*?</a>}s, html, return: :index)
+      |> Enum.reduce({[], 0}, fn [{start, length}], {parts, from} ->
+        with true <- start >= from,
+             url when is_binary(url) <-
+               placed_link_url(binary_part(html, start, length), urls),
+             {cut_start, cut_end} <- own_line_link_range(html, start, start + length),
+             true <- cut_start >= from do
+          {[{:url, url}, {:html, binary_part(html, from, cut_start - from)} | parts], cut_end}
+        else
+          _ -> {parts, from}
+        end
+      end)
+
+    case parts do
+      [] ->
+        [{:html, maybe_markdown_to_html(html, opts)}]
+
+      parts ->
+        last = binary_part(html, rest, byte_size(html) - rest)
+
+        [{:html, maybe_markdown_to_html(last, opts)} | parts]
+        |> Enum.reject(&match?({:html, h} when not is_binary(h) or h == "", &1))
+        |> Enum.reject(fn
+          {:html, h} -> String.trim(h) == ""
+          _ -> false
+        end)
+        |> Enum.reverse()
+    end
+  end
+
+  def html_parts(html, _urls, opts), do: [{:html, maybe_markdown_to_html(html, opts)}]
+
+  # the URL of a link (`<a …>…</a>`) when it's one of `urls`, compared as the HTML stores it (`&amp;`) or decoded
+  defp placed_link_url(link, urls) do
+    with [_, href] <- Regex.run(~r{^<a\s[^>]*?href="([^"]*)"}, link) do
+      decoded = HtmlEntities.decode(href)
+
+      cond do
+        Enum.member?(urls, decoded) -> decoded
+        Enum.member?(urls, href) -> href
+        true -> nil
+      end
+    end
+  end
+
+  # where to cut for the link from `start` to `stop`: its whole paragraph when it's alone in a top-level `<p>`, itself when it's a bare top-level link, else nil
+  defp own_line_link_range(html, start, stop) do
+    before = binary_part(html, 0, start)
+    after_link = binary_part(html, stop, byte_size(html) - stop)
+
+    with [{p_start, _} | _] <- Regex.run(~r{<p(?:\s[^>]*)?>\s*$}, before, return: :index),
+         [{0, close_length}] <- Regex.run(~r{^\s*</p>}, after_link, return: :index),
+         true <- top_level?(binary_part(html, 0, p_start)) do
+      {p_start, stop + close_length}
+    else
+      _ -> if top_level?(before), do: {start, stop}
+    end
+  end
+
+  # whether every block (paragraph, quote, list, code, …) opened in `html` is closed again
+  defp top_level?(html) do
+    Regex.scan(~r{<(/?)(p|blockquote|li|ul|ol|pre|div|figure|table|details)\b}i, html,
+      capture: :all_but_first
+    )
+    |> Enum.reduce(0, fn
+      ["/", _], depth -> depth - 1
+      [_, _], depth -> depth + 1
+    end)
+    |> Kernel.<=(0)
+  end
+
+  @doc """
+  `markdown` with each URL that ends a line of a top-level paragraph (see `standalone_urls/1`: alone on its line, after a label, or ending the paragraph) moved to a paragraph of its own, and any lines after it to another, so it's alone in its paragraph once rendered to HTML, eg. for another instance to place its media (see `html_parts/3`). Only blank lines are inserted, where the URL starts and where its line ends: nothing the author typed is rewritten. One parse.
+  """
+  def own_paragraph_urls(markdown) when is_binary(markdown) and markdown != "" do
+    with {:ok, doc} <- parse_markdown_document(markdown, []) do
+      line_starts =
+        [0 | for({at, _} <- :binary.matches(markdown, "\n"), do: at + 1)] |> List.to_tuple()
+
+      doc.nodes
+      |> Enum.flat_map(&own_paragraph_inserts(&1, markdown, line_starts))
+      |> Enum.uniq()
+      |> Enum.sort(:desc)
+      |> Enum.reduce(markdown, fn {at, insert}, markdown ->
+        binary_part(markdown, 0, at) <>
+          insert <>
+          binary_part(markdown, at, byte_size(markdown) - at)
+      end)
+    else
+      _ -> markdown
+    end
+  end
+
+  def own_paragraph_urls(markdown), do: markdown
+
+  # `{offset, text to insert}` for each URL in `paragraph` that ends a line, as `paragraph_pieces/2` cuts it
+  defp own_paragraph_inserts(%MDEx.Paragraph{nodes: nodes}, markdown, line_starts) do
+    lines =
+      Enum.chunk_while(
+        nodes,
+        [],
+        fn
+          %{__struct__: break} = node, line when break in [MDEx.SoftBreak, MDEx.LineBreak] ->
+            {:cont, Enum.reverse([node | line]), []}
+
+          node, line ->
+            {:cont, [node | line]}
+        end,
+        fn
+          [] -> {:cont, []}
+          line -> {:cont, Enum.reverse(line), []}
+        end
+      )
+
+    last = length(lines) - 1
+
+    lines
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {line, index} ->
+      with {before, url} <- line_end_media(line, :any),
+           %{sourcepos: %{start: {line_no, column}, end: {end_line, end_column}}} = node <-
+             line_end_node(line),
+           true <- bare_url_node?(node),
+           at when is_integer(at) <-
+             url_offset(
+               node,
+               url,
+               markdown,
+               line_starts,
+               {line_no, column},
+               {end_line, end_column}
+             ) do
+        before_insert =
+          if index > 0 or not blank_inline?(before), do: [{at, "\n\n"}], else: []
+
+        after_insert =
+          if index < last and end_line < tuple_size(line_starts),
+            do: [{elem(line_starts, end_line) - 1, "\n"}],
+            else: []
+
+        before_insert ++ after_insert
+      else
+        _ -> []
+      end
+    end)
+  end
+
+  defp own_paragraph_inserts(_node, _markdown, _line_starts), do: []
+
+  # only a bare URL moves (as typed, or as Linkify writes it): a named link, a mention or a hashtag ending a line stays where it is
+  defp bare_url_node?(%MDEx.Text{}), do: true
+
+  # a link whose text is the start of its URL without the scheme (`[video.example.com/w/x](https://video.example.com/w/x)`, maybe shortened): `url_text?/1` would also take a mention (`[@someone](https://example.com/@someone)`)
+  defp bare_url_node?(%MDEx.Link{url: url, nodes: [%MDEx.Text{literal: text}]}) do
+    shown =
+      text
+      |> String.trim()
+      |> String.trim_trailing("...")
+      |> String.trim_trailing("…")
+      |> String.replace(~r{^(https?://)?(www\.)?}, "")
+
+    shown != "" and String.starts_with?(String.replace(url, ~r{^https?://(www\.)?}, ""), shown)
+  end
+
+  defp bare_url_node?(_), do: false
+
+  # the node that ends `line`: the media `line_end_media/2` found there
+  defp line_end_node(line) do
+    case line |> trim_trailing_inline() |> Enum.reverse() do
+      [%MDEx.Text{literal: literal} = text | rest] ->
+        if String.replace(literal, end_punctuation_regex(), "") == "",
+          do: List.first(rest),
+          else: text
+
+      [node | _] ->
+        node
+
+      _ ->
+        nil
+    end
+  end
+
+  # where the URL starts in `markdown`: where its link or image starts, or where it sits in a text node
+  defp url_offset(
+         %MDEx.Text{},
+         url,
+         markdown,
+         line_starts,
+         {line_no, column},
+         {end_line, end_column}
+       ) do
+    from = elem(line_starts, line_no - 1) + column - 1
+    to = elem(line_starts, end_line - 1) + end_column
+
+    case :binary.matches(binary_part(markdown, from, to - from), url) do
+      [] -> nil
+      matches -> from + (matches |> List.last() |> elem(0))
+    end
+  end
+
+  defp url_offset(_node, _url, _markdown, line_starts, {line_no, column}, _end),
+    do: elem(line_starts, line_no - 1) + column - 1
 
   # a top-level node as pieces: `{:node, node}` to render, `{:url, url}` where the body places media. Only a paragraph can hold a cut: a list, a quote or code never does
   defp node_pieces(%MDEx.Paragraph{} = paragraph, urls) do
