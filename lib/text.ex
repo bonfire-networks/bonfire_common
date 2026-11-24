@@ -806,7 +806,7 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
-  `markdown` with each URL that ends a line of a top-level paragraph (see `standalone_urls/1`: alone on its line, after a label, or ending the paragraph) moved to a paragraph of its own, and any lines after it to another, so it's alone in its paragraph once rendered to HTML, eg. for another instance to place its media (see `html_parts/3`). Only blank lines are inserted, where the URL starts and where its line ends: nothing the author typed is rewritten. One parse.
+  `markdown` with each URL that ends a line of a top-level paragraph (see `standalone_urls/1`: alone on its line, after a label, or ending the paragraph) moved to a paragraph of its own, and any lines after it to another, so it's alone in its paragraph once rendered to HTML, eg. for another instance to place its media (see `html_parts/3`). Only blank lines are inserted, where the URL starts and where its line ends, in place of the spaces before the URL (which would otherwise trail the line before it): nothing else the author typed is rewritten. One parse.
   """
   def own_paragraph_urls(markdown) when is_binary(markdown) and markdown != "" do
     with {:ok, doc} <- parse_markdown_document(markdown, []) do
@@ -817,10 +817,10 @@ defmodule Bonfire.Common.Text do
       |> Enum.flat_map(&own_paragraph_inserts(&1, markdown, line_starts))
       |> Enum.uniq()
       |> Enum.sort(:desc)
-      |> Enum.reduce(markdown, fn {at, insert}, markdown ->
-        binary_part(markdown, 0, at) <>
+      |> Enum.reduce(markdown, fn {from, to, insert}, markdown ->
+        binary_part(markdown, 0, from) <>
           insert <>
-          binary_part(markdown, at, byte_size(markdown) - at)
+          binary_part(markdown, to, byte_size(markdown) - to)
       end)
     else
       _ -> markdown
@@ -829,7 +829,7 @@ defmodule Bonfire.Common.Text do
 
   def own_paragraph_urls(markdown), do: markdown
 
-  # `{offset, text to insert}` for each URL in `paragraph` that ends a line, as `paragraph_pieces/2` cuts it
+  # `{from, to, text}` for each URL in `paragraph` that ends a line, as `paragraph_pieces/2` cuts it: the text replaces the bytes from `from` to `to` (none, or the spaces before the URL)
   defp own_paragraph_inserts(%MDEx.Paragraph{nodes: nodes}, markdown, line_starts) do
     lines =
       Enum.chunk_while(
@@ -865,13 +865,16 @@ defmodule Bonfire.Common.Text do
                line_starts,
                {line_no, column},
                {end_line, end_column}
-             ) do
+             ),
+           true <- word_start?(markdown, at) do
         before_insert =
-          if index > 0 or not blank_inline?(before), do: [{at, "\n\n"}], else: []
+          if index > 0 or not blank_inline?(before),
+            do: [{at - spaces_before(markdown, at), at, "\n\n"}],
+            else: []
 
         after_insert =
           if index < last and end_line < tuple_size(line_starts),
-            do: [{elem(line_starts, end_line) - 1, "\n"}],
+            do: [{elem(line_starts, end_line) - 1, elem(line_starts, end_line) - 1, "\n"}],
             else: []
 
         before_insert ++ after_insert
@@ -882,6 +885,22 @@ defmodule Bonfire.Common.Text do
   end
 
   defp own_paragraph_inserts(_node, _markdown, _line_starts), do: []
+
+  # whether byte `at` of `markdown` starts a word: a URL glued to the text before it (eg. inside a broken link) isn't moved
+  defp word_start?(_markdown, 0), do: true
+  defp word_start?(markdown, at), do: :binary.at(markdown, at - 1) in [?\s, ?\t, ?\n]
+
+  # how many spaces or tabs come right before byte `at` of `markdown`, on its line
+  defp spaces_before(markdown, at, count \\ 0)
+
+  defp spaces_before(markdown, at, count) when at > 0 do
+    case :binary.at(markdown, at - 1) do
+      char when char in [?\s, ?\t] -> spaces_before(markdown, at - 1, count + 1)
+      _ -> count
+    end
+  end
+
+  defp spaces_before(_markdown, _at, count), do: count
 
   # only a bare URL moves (as typed, or as Linkify writes it): a named link, a mention or a hashtag ending a line stays where it is
   defp bare_url_node?(%MDEx.Text{}), do: true

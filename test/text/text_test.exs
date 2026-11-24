@@ -362,13 +362,25 @@ defmodule Bonfire.Common.Text.Test do
     @linked "[video.example.com/w/x](#{@u2})"
 
     test "puts a URL after its label in its own paragraph, bare or as Linkify writes it" do
-      assert Text.own_paragraph_urls("Watch: #{@linked}") == "Watch: \n\n#{@linked}"
-      assert Text.own_paragraph_urls("Watch: #{@u2}") == "Watch: \n\n#{@u2}"
+      assert Text.own_paragraph_urls("Watch: #{@linked}") == "Watch:\n\n#{@linked}"
+      assert Text.own_paragraph_urls("Watch: #{@u2}") == "Watch:\n\n#{@u2}"
     end
 
     test "puts a URL ending a paragraph in its own paragraph" do
       assert Text.own_paragraph_urls("Intro\n\nsee this #{@linked}.\n\nmore") ==
-               "Intro\n\nsee this \n\n#{@linked}.\n\nmore"
+               "Intro\n\nsee this\n\n#{@linked}.\n\nmore"
+    end
+
+    # a URL glued to the text before it (eg. inside a broken link, or a bracket) isn't a word of its own: moving it would split what the author typed
+    test "leaves a URL glued to the text before it as typed" do
+      for md <- ["[a link](#{@u2}]", "see (#{@u2}", "x:#{@u2}"] do
+        assert Text.own_paragraph_urls(md) == md
+      end
+    end
+
+    # the spaces before the URL would be left trailing at the end of the line before it: dropped, tabs too
+    test "drops the spaces or tabs before the URL it moves" do
+      assert Text.own_paragraph_urls("Watch:  \t#{@u2}") == "Watch:\n\n#{@u2}"
     end
 
     test "puts a URL alone on a line of a longer paragraph in its own paragraph, and the lines after it in another" do
@@ -390,7 +402,7 @@ defmodule Bonfire.Common.Text.Test do
       md = String.replace(@announcement, "Blog post: \n", "Blog post: ")
 
       assert Text.standalone_urls(Text.own_paragraph_urls(md)) == [@youtube, @blog]
-      assert Text.own_paragraph_urls(md) =~ "Blog post: \n\n#{@blog}"
+      assert Text.own_paragraph_urls(md) =~ "Blog post:\n\n#{@blog}"
     end
 
     test "leaves a URL already alone in its paragraph, in a sentence, a list, a quote or code as typed" do
