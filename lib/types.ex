@@ -405,10 +405,17 @@ defmodule Bonfire.Common.Types do
 
       iex> maybe_to_integer("abc", 0)
       0
+
+      # what Postgres gives for a SUM
+      iex> maybe_to_integer(Decimal.new("41.6"))
+      42
   """
   def maybe_to_integer(val, fallback \\ 0)
   def maybe_to_integer(val, _fallback) when is_integer(val), do: val
   def maybe_to_integer(val, _fallback) when is_float(val), do: round(val)
+
+  def maybe_to_integer(%Decimal{} = val, _fallback),
+    do: val |> Decimal.round(0, :half_up) |> Decimal.to_integer()
 
   def maybe_to_integer(val, fallback) do
     case maybe_to_float(val, nil) do
