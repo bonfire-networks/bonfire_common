@@ -13,7 +13,22 @@ defmodule Bonfire.Common.Media do
   alias Bonfire.Files
 
   @image_exts [".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"]
-  @external ["link", "remote", "website", "article", "book", "profile", "url", "URL", "object"]
+  @external [
+    "link",
+    "research",
+    "remote",
+    "website",
+    "article",
+    "book",
+    "profile",
+    "url",
+    "URL",
+    "object"
+  ]
+
+  # a link preview with a player (`video/embed`, `audio/embed`): bonfire_common can't call `Bonfire.Files.Media.embed_type?/1` at compile time
+  defp external_embed?(media_type),
+    do: is_binary(media_type) and String.ends_with?(media_type, "/embed")
 
   @doc """
   Takes a Media map (or an object containing one) and returns a URL for the media.
@@ -132,7 +147,7 @@ defmodule Bonfire.Common.Media do
 
   def thumbnail_url(%{media_type: media_type} = media) do
     cond do
-      media_type in @external ->
+      media_type in @external or external_embed?(media_type) ->
         nil
 
       String.starts_with?(media_type || "", "image") ->
