@@ -1610,6 +1610,24 @@ defmodule Bonfire.Common.Text do
   end
 
   @doc """
+  As `maybe_sane_html/1`, with the sanitising an import source's admin chose for its articles' bodies:
+
+  - `:imported`: keeps more of an imported article's structure (see `Bonfire.Common.Text.SanitizeImportedHTML`), still without anything that could run;
+  - `:unsafe`: the HTML as it came, for a source whose authors are trusted (whoever can write raw HTML there could then run script here);
+  - anything else (`:strict`, nil): `maybe_sane_html/1`.
+  """
+  def maybe_sane_html(content, :imported) when is_binary(content) do
+    if Extend.module_enabled?(Bonfire.Common.Text.SanitizeImportedHTML) do
+      Bonfire.Common.Text.SanitizeImportedHTML.sanitize(content)
+    else
+      maybe_sane_html(content)
+    end
+  end
+
+  def maybe_sane_html(content, :unsafe) when is_binary(content), do: content
+  def maybe_sane_html(content, _kind), do: maybe_sane_html(content)
+
+  @doc """
   Extracts plain text from HTML content.
 
   ## Examples
