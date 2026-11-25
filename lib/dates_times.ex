@@ -801,6 +801,27 @@ defmodule Bonfire.Common.DatesTimes do
   def relative_day(_, _), do: nil
 
   @doc """
+  A `wall_time/2` map as a day heading in two parts, `{lead, date}` (locale-aware): the lead is Today, Tomorrow or Yesterday (`relative_day/2`), else the weekday; the date leaves out the year when it is this year's. `{"Thursday", "November 19"}`, `{"Today", "Wednesday, November 25"}`, `{"Friday", "September 20, 2030"}`. Nil without a date. A shorter sibling of `format_day/1`.
+  """
+  def day_heading(wall_time, now \\ DateTime.utc_now())
+
+  def day_heading(%{local: local} = wall_time, %DateTime{} = now) do
+    this_year? = local.year == now.year
+
+    # CLDR skeletons, so each locale orders the date its own way ("19 November" in en-GB, "19 novembre" in it)
+    case relative_day(wall_time, now) do
+      nil ->
+        {format(local, format: "EEEE"),
+         format(local, format: if(this_year?, do: :MMMMd, else: :yMMMMd))}
+
+      word ->
+        {word, format(local, format: if(this_year?, do: :MMMMEEEEd, else: :yMMMMEEEEd))}
+    end
+  end
+
+  def day_heading(_, _), do: nil
+
+  @doc """
   Whether a span of `wall_time/2` maps is a whole day (or days): it starts at midnight, and has no end or ends at a midnight.
   """
   def all_day?(%{local: s}, nil), do: midnight?(s)
