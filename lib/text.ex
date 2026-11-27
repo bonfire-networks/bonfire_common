@@ -540,6 +540,8 @@ defmodule Bonfire.Common.Text do
 
   Pass `hide_trailing_hashtags: true` to mark a last paragraph of only hashtag links `invisible` in the HTML (see `mark_trailing_hashtags/2`), as for a post's body.
 
+  Content that starts with an HTML tag is taken to be HTML already and left as it is, unless `content_format: :markdown` says it is markdown.
+
       > Bonfire.Common.Text.maybe_markdown_to_html("*Hello World*", [])
       "<p><em>Hello World</em></p>"
 
@@ -566,15 +568,22 @@ defmodule Bonfire.Common.Text do
   #   maybe_markdown_to_html(" "<>content, opts) # workaround for weirdness with Earmark's parsing of html when it starts a line
   # end
   def maybe_markdown_to_html("<" <> _ = content, opts) do
-    debug("skipping processing of content that starts with an HTML tag")
-    maybe_mark_trailing_hashtags(content, opts)
+    # a markdown body can start with HTML put in it before conversion (eg. a hashtag link made for remote rendering), so a caller that knows the body is markdown passes `content_format: :markdown` to convert it anyway
+    if opts[:content_format] == :markdown do
+      markdown_to_html_and_mark(content, opts)
+    else
+      debug("skipping processing of content that starts with an HTML tag")
+      maybe_mark_trailing_hashtags(content, opts)
+    end
   end
 
-  def maybe_markdown_to_html(content, opts) do
+  def maybe_markdown_to_html(content, opts), do: markdown_to_html_and_mark(content, opts)
+
+  defp markdown_to_html_and_mark(content, opts) do
     {hide_trailing_hashtags?, opts} = Keyword.pop(opts, :hide_trailing_hashtags, false)
 
     content
-    |> do_maybe_markdown_to_html(opts)
+    |> do_maybe_markdown_to_html(Keyword.delete(opts, :content_format))
     |> maybe_mark_trailing_hashtags(hide_trailing_hashtags: hide_trailing_hashtags?)
   end
 
@@ -2379,6 +2388,95 @@ defmodule Bonfire.Common.Text do
   end
 
   def mark_trailing_hashtags(other, _base_url), do: other
+
+  @doc """
+  Marks the links to mentioned actors in `html` the way Mastodon and other microformats readers recognise a mention: `<span class="h-card"><a class="u-url mention" href="URL">`, with `URL` being the actor's `url` (its profile page). Mastodon builds a link preview from the first link it can't tell is a mention, and its web UI shows a link as a mention only when the `href` is that `url`.
+
+  `mentions` is a list of `%{hrefs: [...], url: url}`: a link whose `href` is any of `hrefs` (eg. the actor's id) is pointed at `url`. Other links are left alone.
+
+  Takes and returns an HTML string, or an HTML tree for callers already working on one. A body with nothing to mark is returned as it came, not re-serialised.
+
+  ## Examples
+
+      iex> mark_mention_links(~s(<p><a href="https://example.com/users/a">@a</a> hi</p>), [%{hrefs: ["https://example.com/users/a"], url: "https://example.com/@a"}])
+      ~s(<p><span class="h-card"><a href="https://example.com/@a" class="u-url mention">@a</a></span> hi</p>)
+
+      iex> mark_mention_links(~s(<p><span class="h-card"><a class="u-url mention" href="https://example.com/users/a">@a</a></span></p>), [%{hrefs: ["https://example.com/users/a"], url: "https://example.com/@a"}])
+      ~s(<p><span class="h-card"><a class="u-url mention" href="https://example.com/@a">@a</a></span></p>)
+
+      iex> mark_mention_links(~s(<p><a href="https://example.com/other">x</a></p>), [%{hrefs: ["https://example.com/users/a"], url: "https://example.com/@a"}])
+      ~s(<p><a href="https://example.com/other">x</a></p>)
+  """
+  def mark_mention_links(html, mentions)
+
+  def mark_mention_links(html, mentions) when is_binary(html) and is_list(mentions) do
+    by_href = mention_urls_by_href(mentions)
+
+    # most bodies have no links at all, so skip parsing unless there's one to look at
+    if by_href != %{} and String.contains?(html, "<a ") do
+      tree = as_html_tree(html)
+      marked = mark_mention_links(tree, by_href)
+
+      if marked == tree, do: html, else: LazyHTML.Tree.to_html(marked)
+    else
+      html
+    end
+  end
+
+  def mark_mention_links(tree, mentions) when is_list(tree) and is_list(mentions),
+    do: mark_mention_links(tree, mention_urls_by_href(mentions))
+
+  def mark_mention_links(tree, by_href) when is_list(tree) and is_map(by_href),
+    do: Enum.map(tree, &mark_mention_link(&1, by_href, false))
+
+  def mark_mention_links(other, _mentions), do: other
+
+  defp mention_urls_by_href(mentions) do
+    for %{hrefs: hrefs, url: url} when is_binary(url) <- mentions,
+        href <- List.wrap(hrefs),
+        is_binary(href),
+        into: %{},
+        do: {URIs.normalise_for_comparison(href), url}
+  end
+
+  defp mark_mention_link({"a", attrs, children} = node, by_href, in_h_card?) do
+    with {"href", href} <- List.keyfind(attrs, "href", 0),
+         url when is_binary(url) <- Map.get(by_href, URIs.normalise_for_comparison(href)) do
+      link =
+        {"a",
+         attrs
+         |> List.keyreplace("href", 0, {"href", url})
+         |> add_html_classes(["u-url", "mention"]), children}
+
+      if in_h_card?, do: link, else: {"span", [{"class", "h-card"}], [link]}
+    else
+      _ -> node
+    end
+  end
+
+  defp mark_mention_link({tag, attrs, children}, by_href, _in_h_card?)
+       when is_binary(tag) and is_list(children) do
+    in_h_card? = tag == "span" and "h-card" in html_classes(attrs)
+    {tag, attrs, Enum.map(children, &mark_mention_link(&1, by_href, in_h_card?))}
+  end
+
+  defp mark_mention_link(other, _by_href, _in_h_card?), do: other
+
+  defp html_classes(attrs) do
+    case List.keyfind(attrs, "class", 0) do
+      {"class", classes} -> String.split(classes)
+      nil -> []
+    end
+  end
+
+  defp add_html_classes(attrs, new_classes) do
+    classes = html_classes(attrs)
+
+    case Enum.reject(new_classes, &(&1 in classes)) do
+      [] -> attrs
+      missing -> List.keystore(attrs, "class", 0, {"class", Enum.join(classes ++ missing, " ")})
+    end
+  end
 
   def as_html_tree(nil), do: nil
   def as_html_tree(tree) when is_list(tree), do: tree
